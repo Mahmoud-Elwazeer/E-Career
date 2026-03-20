@@ -103,8 +103,8 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Google OAuth — hidden until configured */}
-          {/* <Button
+          {/* Google OAuth — hidden until configured
+          <Button
             type="button"
             variant="outline"
             className="w-full mb-4 gap-2"
@@ -124,6 +124,7 @@ export default function Login() {
             <span className="text-xs text-muted-foreground">{isAr ? "أو" : "or"}</span>
             <div className="flex-1 h-px bg-border" />
           </div>
+          */}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "register" && (
