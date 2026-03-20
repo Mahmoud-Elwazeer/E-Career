@@ -103,8 +103,8 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Google OAuth */}
-          <Button
+          {/* Google OAuth — hidden until configured */}
+          {/* <Button
             type="button"
             variant="outline"
             className="w-full mb-4 gap-2"
