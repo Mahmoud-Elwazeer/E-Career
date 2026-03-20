@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin as UnfoldModelAdmin, TabularInline as UnfoldTabularInline
 from apps.jobs.models import Company, Source, Tag, Job, JobTag
+from apps.jobs.import_export_admin import JobImportExportMixin
 
 
 class JobTagInline(UnfoldTabularInline):
@@ -50,7 +51,7 @@ class TagAdmin(UnfoldModelAdmin):
 #     extra = 1
 
 @admin.register(Job)
-class JobAdmin(UnfoldModelAdmin):
+class JobAdmin(JobImportExportMixin, UnfoldModelAdmin):
     list_display = [
         "title", "company", "location_type", "industry",
         "experience_level", "status_badge", "posted_at", "created_at"
