@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Welcome to USAM Career Compass</title>
+</head>
+<body style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 32px;">
+  <div style="max-width: 520px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px;">
+    <img src="https://usam.jobs/logo.png" alt="USAM" style="height: 36px; margin-bottom: 24px;" />
+    <h2 style="color: #0a3836; margin-bottom: 8px;">Welcome, {{ user.first_name }}! 🎉</h2>
+    <p style="color: #555;">Your USAM Career Compass account is ready. Start exploring thousands of jobs across the MENA region.</p>
+    <a href="{{ frontend_url }}/app/jobs"
+       style="display: inline-block; margin: 24px 0; padding: 14px 28px; background: #0a3836; color: white; text-decoration: none; border-radius: 6px; font-weight: bold;">
+      Browse Jobs
+    </a>
+    <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+    <p style="color: #aaa; font-size: 12px;">USAM Career Compass · <a href="https://usam.jobs" style="color: #0a3836;">usam.jobs</a></p>
+  </div>
+</body>
+</html>

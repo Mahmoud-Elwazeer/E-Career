@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://usam.jobs/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
+  <url><loc>https://usam.jobs/jobs</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://usam.jobs/about</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://usam.jobs/profile</loc><changefreq>weekly</changefreq><priority>0.4</priority></url>
+
+  <!-- Jobs -->
+  <url><loc>https://usam.jobs/jobs/j1</loc><lastmod>2026-02-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j2</loc><lastmod>2026-02-25</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j3</loc><lastmod>2026-02-27</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j4</loc><lastmod>2026-02-20</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j5</loc><lastmod>2026-03-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j6</loc><lastmod>2026-02-22</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j7</loc><lastmod>2026-02-26</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j8</loc><lastmod>2026-02-18</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j9</loc><lastmod>2026-03-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j10</loc><lastmod>2026-02-24</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j11</loc><lastmod>2026-02-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j12</loc><lastmod>2026-02-27</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j13</loc><lastmod>2026-02-15</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j14</loc><lastmod>2026-02-23</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j15</loc><lastmod>2026-03-01</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j16</loc><lastmod>2026-02-26</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j17</loc><lastmod>2026-02-20</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j18</loc><lastmod>2026-02-22</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j19</loc><lastmod>2026-02-25</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://usam.jobs/jobs/j20</loc><lastmod>2026-02-28</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>
+
+  <!-- Companies -->
+  <url><loc>https://usam.jobs/companies/c1</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://usam.jobs/companies/c2</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://usam.jobs/companies/c3</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://usam.jobs/companies/c4</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://usam.jobs/companies/c5</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://usam.jobs/companies/c6</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://usam.jobs/companies/c7</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://usam.jobs/companies/c8</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+</urlset>
