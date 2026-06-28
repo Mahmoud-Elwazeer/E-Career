@@ -3,6 +3,7 @@ import { useRef, useEffect, useState } from "react";
 import {
   ArrowLeft, ArrowRight, MapPin, Clock, Bookmark, BookmarkCheck,
   Building2, Globe, DollarSign, Briefcase, Calendar, Share2, Loader2,
+  MessageCircle, Star, AlertTriangle, CheckCircle, XCircle,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -79,16 +80,17 @@ function OverviewGrid({ job, isAr }: any) {
       icon: DollarSign,
       label: isAr ? "الراتب" : "Salary",
       value:
-        job.salary_min && job.salary_max
+        job.salary_display ||
+        (job.salary_min && job.salary_max
           ? `${job.salary_min.toLocaleString()}–${job.salary_max.toLocaleString()} ${job.salary_currency ?? ""}`
-          : isAr ? "غير معلن" : "Not disclosed",
+          : isAr ? "غير معلن" : "Not disclosed"),
     },
     { icon: Briefcase, label: isAr ? "الخبرة" : "Experience", value: job.experience_level },
     { icon: MapPin, label: isAr ? "النوع" : "Type", value: job.location_type },
     {
       icon: Calendar,
       label: isAr ? "تاريخ النشر" : "Posted",
-      value: formatDistanceToNow(new Date(job.posted_at), { addSuffix: true }),
+      value: job.posted_ago || formatDistanceToNow(new Date(job.posted_at), { addSuffix: true }),
     },
   ];
 
@@ -101,6 +103,146 @@ function OverviewGrid({ job, isAr }: any) {
           <p className="text-body font-medium mt-0.5 capitalize">{item.value}</p>
         </div>
       ))}
+    </div>
+  );
+}
+
+// Phase 1C: Match Breakdown Component
+function MatchBreakdownCard({ job, isAr }: any) {
+  if (!job.match_score && !job.match_breakdown) return null;
+  
+  const breakdown = job.match_breakdown;
+  
+  return (
+    <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/50">
+      <CardContent className="p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+            <Star className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <h3 className="text-body font-semibold text-emerald-800 dark:text-emerald-200">
+              {isAr ? "مطابقة ملفك" : "Profile Match"}
+            </h3>
+            <p className="text-caption text-emerald-600 dark:text-emerald-400">
+              {job.match_score}% {isAr ? "تطابق" : "match"}
+            </p>
+          </div>
+        </div>
+        
+        {breakdown?.components && (
+          <div className="space-y-3">
+            {breakdown.components.skills && (
+              <div className="flex items-center justify-between text-caption">
+                <span className="text-muted-foreground">{isAr ? "المهارات" : "Skills"}</span>
+                <span className="font-medium">{Math.round(breakdown.components.skills.score)}%</span>
+              </div>
+            )}
+            {breakdown.components.location && (
+              <div className="flex items-center justify-between text-caption">
+                <span className="text-muted-foreground">{isAr ? "الموقع" : "Location"}</span>
+                <span className="font-medium">{Math.round(breakdown.components.location.score)}%</span>
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Phase 1C: Ask Rashid Button Component
+function AskRashidButton({ jobSlug, isAr }: { jobSlug: string; isAr: boolean }) {
+  const [loading, setLoading] = useState(false);
+  const [response, setResponse] = useState<any>(null);
+  
+  const handleAskRashid = async () => {
+    setLoading(true);
+    try {
+      const { askRashidAboutJob } = await import("@/services/jobs");
+      const result = await askRashidAboutJob(jobSlug);
+      setResponse(result);
+    } catch (error) {
+      console.error("Failed to get Rashid analysis:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <Card className="border-primary/20">
+      <CardContent className="p-5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <MessageCircle className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-body font-medium">{isAr ? "اسأل رشيد" : "Ask Rashid"}</h3>
+            <p className="text-caption text-muted-foreground">
+              {isAr ? "مساعدك الذكي للوظائف" : "Your AI career assistant"}
+            </p>
+          </div>
+        </div>
+        
+        <Button 
+          variant="outline" 
+          className="w-full rounded-xl press-feedback"
+          onClick={handleAskRashid}
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 me-2 animate-spin" />
+          ) : (
+            <MessageCircle className="h-4 w-4 me-2" />
+          )}
+          {isAr ? "حلل هذه الوظيفة" : "Analyze this job"}
+        </Button>
+        
+        {response && (
+          <div className="mt-4 p-3 bg-surface-2 rounded-lg text-caption text-muted-foreground">
+            <p>{response.message}</p>
+            {response.skills_required?.length > 0 && (
+              <div className="mt-2">
+                <span className="font-medium">{isAr ? "المهارات المطلوبة:" : "Skills:"} </span>
+                {response.skills_required.join(", ")}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Phase 1C: Legitimacy Warning Component
+function LegitimacyWarning({ job, isAr }: any) {
+  if (!job.legitimacy_score || job.legitimacy_score >= 50) return null;
+  
+  return (
+    <div className="p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl">
+      <div className="flex items-start gap-3">
+        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div>
+          <h4 className="text-body font-medium text-amber-800 dark:text-amber-200">
+            {isAr ? "تحذير" : "Warning"}
+          </h4>
+          <p className="text-caption text-amber-700 dark:text-amber-300 mt-1">
+            {isAr 
+              ? "تم وضع علامة على هذه الوظيفة لوجود مشاكل محتملة. يرجى التحقق قبل التقديم."
+              : "This job has been flagged for potential issues. Please verify before applying."}
+          </p>
+          {job.legitimacy_flags?.length > 0 && (
+            <ul className="mt-2 text-caption text-amber-600 dark:text-amber-400">
+              {job.legitimacy_flags.map((flag: string, i: number) => (
+                <li key={i} className="flex items-center gap-1.5">
+                  <XCircle className="h-3 w-3" />
+                  {flag}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -329,6 +471,17 @@ export default function JobDetail() {
               onToggleSave={() => (saved ? remove(job.id) : save(job.id))}
               onApplyClick={handleApplyClick}
             />
+            
+            {/* Phase 1C: Match Breakdown */}
+            <MatchBreakdownCard job={job} isAr={isAr} />
+            
+            {/* Phase 1C: Ask Rashid */}
+            <AskRashidButton jobSlug={job.slug} isAr={isAr} />
+          </div>
+          
+          {/* Phase 1C: Legitimacy Warning */}
+          <div className="lg:hidden mt-4">
+            <LegitimacyWarning job={job} isAr={isAr} />
           </div>
         </div>
       </div>

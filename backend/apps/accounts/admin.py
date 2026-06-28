@@ -1,12 +1,11 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html
-from unfold.admin import ModelAdmin as UnfoldModelAdmin
 from apps.accounts.models import User
 
 
 @admin.register(User)
-class UserAdmin(UnfoldModelAdmin, BaseUserAdmin):  # ← Add BaseUserAdmin here
+class UserAdmin(BaseUserAdmin):
     list_display = [
         "email", "full_name", "role_badge", "status_badge",
         "is_active", "is_deleted", "date_joined"
@@ -15,8 +14,6 @@ class UserAdmin(UnfoldModelAdmin, BaseUserAdmin):  # ← Add BaseUserAdmin here
     search_fields = ["email", "first_name", "last_name"]
     ordering = ["-date_joined"]
     readonly_fields = ["uuid", "created_at", "updated_at", "last_login", "deleted_at"]
-    compressed_fields = True
-    warn_unsaved_form = True
 
     fieldsets = (
         ("Identity", {
@@ -81,4 +78,3 @@ class UserAdmin(UnfoldModelAdmin, BaseUserAdmin):  # ← Add BaseUserAdmin here
         self.message_user(request, f"{queryset.count()} users restored.")
 
     actions = ["make_admin", "ban_users", "restore_users"]
-    actions_submit_line = []

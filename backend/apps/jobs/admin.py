@@ -1,56 +1,46 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from unfold.admin import ModelAdmin as UnfoldModelAdmin, TabularInline as UnfoldTabularInline
 from apps.jobs.models import Company, Source, Tag, Job, JobTag
 
 
-class JobTagInline(UnfoldTabularInline):
+class JobTagInline(admin.TabularInline):
     model = JobTag
     extra = 1
     autocomplete_fields = ["tag"]
 
 
 @admin.register(Company)
-class CompanyAdmin(UnfoldModelAdmin):
+class CompanyAdmin(admin.ModelAdmin):
     list_display = ["name", "industry", "is_active", "created_at"]
     list_filter = ["industry", "is_active"]
     search_fields = ["name", "slug", "website"]
     ordering = ["name"]
     readonly_fields = ["uuid", "created_at", "updated_at"]
     prepopulated_fields = {"slug": ("name",)}
-    compressed_fields = True
-    warn_unsaved_form = True
 
 
 @admin.register(Source)
-class SourceAdmin(UnfoldModelAdmin):
+class SourceAdmin(admin.ModelAdmin):
     list_display = ["name", "type", "url", "is_active", "created_at"]
     list_filter = ["type", "is_active"]
     search_fields = ["name", "slug", "url"]
     ordering = ["name"]
     readonly_fields = ["uuid", "created_at", "updated_at"]
     prepopulated_fields = {"slug": ("name",)}
-    compressed_fields = True
-    warn_unsaved_form = True
 
 
 @admin.register(Tag)
-class TagAdmin(UnfoldModelAdmin):
+class TagAdmin(admin.ModelAdmin):
     list_display = ["name", "category", "created_at"]
     list_filter = ["category"]
     search_fields = ["name", "slug"]
     ordering = ["name"]
     readonly_fields = ["uuid", "created_at", "updated_at"]
     prepopulated_fields = {"slug": ("name",)}
-    compressed_fields = True
-    warn_unsaved_form = True
 
-# class JobSourceInline(UnfoldTabularInline):
-#     model = Job.also_on_sources.through
-#     extra = 1
 
 @admin.register(Job)
-class JobAdmin(UnfoldModelAdmin):
+class JobAdmin(admin.ModelAdmin):
     list_display = [
         "title", "company", "location_type", "industry",
         "experience_level", "status_badge", "posted_at", "created_at"
@@ -62,8 +52,6 @@ class JobAdmin(UnfoldModelAdmin):
     prepopulated_fields = {"slug": ("title",)}
     autocomplete_fields = ["company", "source"]
     inlines = [JobTagInline]
-    compressed_fields = True
-    warn_unsaved_form = True
 
     fieldsets = (
         ("Job Info", {
@@ -107,5 +95,4 @@ class JobAdmin(UnfoldModelAdmin):
         updated = queryset.update(status="archived")
         self.message_user(request, f"{updated} jobs archived.")
 
-    actions_submit_line = [] 
     actions = ["publish_jobs", "archive_jobs"]

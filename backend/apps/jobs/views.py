@@ -19,6 +19,95 @@ from apps.core.utils import get_client_ip
 logger = logging.getLogger(__name__)
 
 
+# ── Job Save/Unsave Views ───────────────────────────────────────────────────────
+
+@extend_schema(tags=["Jobs"])
+class JobSaveView(APIView):
+    """POST /api/v1/jobs/<slug>/save/ — Save a job for the authenticated user."""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, slug):
+        try:
+            job = Job.objects.get(slug=slug, status="active")
+        except Job.DoesNotExist:
+            return Response(
+                {"success": False, "data": None, "message": "Job not found.", "errors": None},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        # Check if already saved
+        if job.saves.filter(user=request.user).exists():
+            return Response(
+                {"success": True, "data": {"is_saved": True}, "message": "Job already saved.", "errors": None},
+            )
+        
+        # Create save
+        from apps.users.models import SavedJob
+        SavedJob.objects.create(user=request.user, job=job)
+        
+        return Response(
+            {"success": True, "data": {"is_saved": True}, "message": "Job saved successfully.", "errors": None},
+        )
+
+
+@extend_schema(tags=["Jobs"])
+class JobUnsaveView(APIView):
+    """POST /api/v1/jobs/<slug>/unsave/ — Unsave a job for the authenticated user."""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, slug):
+        try:
+            job = Job.objects.get(slug=slug)
+        except Job.DoesNotExist:
+            return Response(
+                {"success": False, "data": None, "message": "Job not found.", "errors": None},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        # Remove save
+        from apps.users.models import SavedJob
+        deleted, _ = SavedJob.objects.filter(user=request.user, job=job).delete()
+        
+        return Response(
+            {"success": True, "data": {"is_saved": False}, "message": "Job unsaved.", "errors": None},
+        )
+
+
+@extend_schema(tags=["Jobs"])
+class JobAskRashidView(APIView):
+    """GET /api/v1/jobs/<slug>/ask-rashid/ — Get Rashid's analysis of this job (Phase 2B integration)."""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, slug):
+        try:
+            job = Job.objects.select_related("company", "source").prefetch_related("tags").get(slug=slug, status="active")
+        except Job.DoesNotExist:
+            return Response(
+                {"success": False, "data": None, "message": "Job not found.", "errors": None},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        
+        # This will be fully implemented in Phase 2B
+        # For now, return a placeholder with basic job info
+        return Response({
+            "success": True,
+            "data": {
+                "message": "Rashid analysis will be available after Phase 2B",
+                "job_id": job.id,
+                "job_title": job.title,
+                "company": job.company.name if job.company else None,
+                "location": job.location,
+                "salary_range": f"{job.salary_min} - {job.salary_max} {job.salary_currency}" if job.salary_min and job.salary_max else None,
+                "skills_required": [tag.name for tag in job.tags.all()],
+            },
+            "message": "",
+            "errors": None,
+        })
+
+
 # ── Companies ──────────────────────────────────────────────────────────────────
 
 @extend_schema(tags=["Companies"])

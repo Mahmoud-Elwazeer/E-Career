@@ -14,11 +14,6 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 
 # ── Application Definition ──────────────────────────────────────────────────
 INSTALLED_APPS = [
-    # Unfold MUST come before django.contrib.admin
-    "unfold",
-    "unfold.contrib.filters",
-    "unfold.contrib.forms",
-    "unfold.contrib.inlines",
     # Django built-ins
     "django.contrib.admin",
     "django.contrib.auth",
@@ -44,6 +39,14 @@ INSTALLED_APPS = [
     "apps.jobs",
     "apps.users",
     "apps.analytics",
+    # New apps for Phase 1A
+    "apps.rashid",
+    "apps.emails",
+    "apps.employers",
+    # Phase 1B - Scraper
+    "apps.scraper",
+    # Celery Beat
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
@@ -246,6 +249,25 @@ UNFOLD = {
     },
     "TABS": [],
 }
+
+# ── Encryption ──────────────────────────────────────────────────────────────
+FIELD_ENCRYPTION_KEY = config('FIELD_ENCRYPTION_KEY', default='')
+
+if not FIELD_ENCRYPTION_KEY:
+    import warnings
+    warnings.warn(
+        "FIELD_ENCRYPTION_KEY not set! Encrypted fields will not work. "
+        "Generate one with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+    )
+
+# ── Celery Configuration ──────────────────────────────────────────────────────
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://localhost:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'UTC'
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 LOGGING = {

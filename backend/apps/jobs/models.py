@@ -28,6 +28,45 @@ class Company(UUIDModel):
     website = models.URLField(max_length=300, blank=True)
     is_active = models.BooleanField(default=True, db_index=True)
 
+    # ============ NEW FIELDS - ADD THESE ============
+
+    # Visual branding
+    logo = models.ImageField(
+        upload_to='company_logos/', 
+        null=True, 
+        blank=True
+    )
+
+    # Company information
+    domain = models.CharField(
+        max_length=100, 
+        blank=True, 
+        db_index=True,
+        help_text="Company website domain (e.g., google.com)"
+    )
+    description = models.TextField(blank=True)
+    size = models.CharField(
+        max_length=20, 
+        blank=True,
+        help_text="1-10, 11-50, 51-200, etc."
+    )
+    headquarters = models.CharField(max_length=100, blank=True)
+    
+    # External links
+    linkedin_url = models.URLField(blank=True)
+    careers_page_url = models.URLField(
+        blank=True,
+        help_text="Company's official careers page"
+    )
+    
+    # Verification
+    is_verified = models.BooleanField(
+        default=False,
+        help_text="Admin-verified company"
+    )
+
+    # ============ END NEW FIELDS ============
+
     class Meta:
         db_table = "jobs_company"
         ordering = ["name"]
@@ -53,6 +92,52 @@ class Source(UUIDModel):
     logo_url = models.URLField(max_length=500, blank=True)
     type = models.CharField(max_length=20, choices=SOURCE_TYPE_CHOICES, default="manual")
     is_active = models.BooleanField(default=True, db_index=True)
+
+    # ============ NEW FIELDS - ADD THESE ============
+
+    # Scraper configuration
+    scraper_class = models.CharField(
+        max_length=100, 
+        blank=True,
+        help_text="Python class name for this scraper"
+    )
+    schedule_cron = models.CharField(
+        max_length=50, 
+        default='0 */6 * * *',
+        help_text="Cron expression for scraping schedule"
+    )
+    requires_playwright = models.BooleanField(
+        default=False,
+        help_text="Whether this source needs headless browser"
+    )
+    
+    # Run status tracking
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    last_run_status = models.CharField(
+        max_length=20, 
+        default='never',
+        choices=[
+            ('never', 'Never Run'),
+            ('running', 'Running'),
+            ('success', 'Success'),
+            ('failed', 'Failed'),
+        ]
+    )
+    jobs_found_last_run = models.IntegerField(default=0)
+    jobs_added_last_run = models.IntegerField(default=0)
+    
+    # ATS metadata
+    ats_platform = models.CharField(
+        max_length=30, 
+        blank=True,
+        help_text="greenhouse, lever, ashby, etc."
+    )
+    
+    # Error tracking
+    error_count = models.IntegerField(default=0)
+    last_error = models.TextField(blank=True)
+
+    # ============ END NEW FIELDS ============
 
     class Meta:
         db_table = "jobs_source"
@@ -158,6 +243,107 @@ class Job(UUIDModel):
     )
     view_count = models.PositiveIntegerField(default=0)
     click_count = models.PositiveIntegerField(default=0)
+
+    # ============ NEW FIELDS - ADD THESE ============
+
+    # Core pipeline fields
+    direct_apply_url = models.URLField(
+        max_length=2000, 
+        blank=True,
+        db_index=True,
+        help_text="Direct link to company's application page (no aggregators)"
+    )
+    apply_url_verified = models.BooleanField(default=False)
+    apply_url_checked_at = models.DateTimeField(null=True, blank=True)
+    apply_url_status_code = models.IntegerField(
+        null=True, 
+        blank=True,
+        help_text="Last HTTP status code from URL check"
+    )
+    
+    # Source type classification
+    source_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('scraped', 'Scraped from ATS'),
+            ('employer_posted', 'Employer Posted'),
+        ],
+        default='scraped',
+        db_index=True
+    )
+    
+    # Job classification
+    employment_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('full_time', 'Full Time'),
+            ('part_time', 'Part Time'),
+            ('contract', 'Contract'),
+            ('internship', 'Internship'),
+            ('freelance', 'Freelance'),
+        ],
+        null=True, 
+        blank=True, 
+        db_index=True
+    )
+    
+    remote_type = models.CharField(
+        max_length=10,
+        choices=[
+            ('remote', 'Remote'),
+            ('hybrid', 'Hybrid'),
+            ('onsite', 'On-site'),
+        ],
+        null=True, 
+        blank=True, 
+        db_index=True
+    )
+    
+    # Salary information
+    salary_min_new = models.IntegerField(null=True, blank=True)
+    salary_max_new = models.IntegerField(null=True, blank=True)
+    salary_currency_new = models.CharField(max_length=3, default='EGP', blank=True)
+    
+    # Pipeline metadata
+    scraped_at = models.DateTimeField(null=True, blank=True)
+    source_raw_url = models.URLField(
+        max_length=2000, 
+        blank=True,
+        help_text="Original aggregator URL (not shown to users)"
+    )
+    expires_at = models.DateTimeField(null=True, blank=True)
+    is_expired = models.BooleanField(default=False, db_index=True)
+    
+    # Legitimacy scoring (Block G)
+    legitimacy_score = models.FloatField(
+        null=True, 
+        blank=True,
+        help_text="Score from 0.0 to 1.0, higher is more legitimate"
+    )
+    legitimacy_flags = models.JSONField(
+        default=list,
+        help_text="List of flags raised by legitimacy checker"
+    )
+    
+    # ATS metadata
+    raw_data = models.JSONField(
+        null=True, 
+        blank=True,
+        help_text="Original scraped payload for debugging"
+    )
+    ats_platform = models.CharField(
+        max_length=30, 
+        blank=True,
+        help_text="greenhouse, lever, ashby, workday, etc."
+    )
+    ats_job_id = models.CharField(
+        max_length=100, 
+        blank=True, 
+        db_index=True,
+        help_text="ATS's own internal job ID"
+    )
+
+    # ============ END NEW FIELDS ============
 
     class Meta:
         db_table = "jobs_job"

@@ -1,18 +1,15 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from unfold.admin import ModelAdmin as UnfoldModelAdmin
-from apps.core.models import FeatureFlag, ActivityLog, Media
+from apps.core.models import FeatureFlag, ActivityLog, Media, PlatformConfig, ProxyPool, PipelineHealth
 
 
 @admin.register(FeatureFlag)
-class FeatureFlagAdmin(UnfoldModelAdmin):
+class FeatureFlagAdmin(admin.ModelAdmin):
     list_display = ["key", "label", "status_badge", "updated_at"]
     list_filter = ["is_enabled"]
     search_fields = ["key", "label", "description"]
     ordering = ["key"]
     readonly_fields = ["uuid", "created_at", "updated_at"]
-    compressed_fields = True
-    warn_unsaved_form = True
 
     def status_badge(self, obj):
         if obj.is_enabled:
@@ -35,13 +32,12 @@ class FeatureFlagAdmin(UnfoldModelAdmin):
 
 
 @admin.register(ActivityLog)
-class ActivityLogAdmin(UnfoldModelAdmin):
+class ActivityLogAdmin(admin.ModelAdmin):
     list_display = ["action", "user", "target_type", "target_id", "created_at"]
     list_filter = ["action", "target_type", "created_at"]
     search_fields = ["action", "target_type", "target_id", "user__email"]
     ordering = ["-created_at"]
     readonly_fields = ["user", "action", "target_type", "target_id", "metadata", "created_at"]
-    compressed_fields = True
 
     def has_add_permission(self, request):
         return False
@@ -51,14 +47,12 @@ class ActivityLogAdmin(UnfoldModelAdmin):
 
 
 @admin.register(Media)
-class MediaAdmin(UnfoldModelAdmin):
+class MediaAdmin(admin.ModelAdmin):
     list_display = ["filename", "mime_type", "size_display", "uploaded_by", "created_at"]
     list_filter = ["mime_type", "created_at"]
     search_fields = ["filename", "uploaded_by__email"]
     ordering = ["-created_at"]
     readonly_fields = ["uuid", "size", "mime_type", "uploaded_by", "created_at", "updated_at"]
-    compressed_fields = True
-    warn_unsaved_form = True
 
     def size_display(self, obj):
         if obj.size < 1024:
@@ -68,3 +62,41 @@ class MediaAdmin(UnfoldModelAdmin):
         return f"{obj.size / (1024 * 1024):.1f} MB"
 
     size_display.short_description = "Size"
+
+
+@admin.register(PlatformConfig)
+class PlatformConfigAdmin(admin.ModelAdmin):
+    list_display = ["__str__", "maintenance_mode", "updated_at"]
+    readonly_fields = ["updated_at", "updated_by"]
+
+    def has_add_permission(self, request):
+        # Only allow one instance
+        if PlatformConfig.objects.exists():
+            return False
+        return True
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ProxyPool)
+class ProxyPoolAdmin(admin.ModelAdmin):
+    list_display = ["host", "port", "is_active", "fail_count", "last_used"]
+    list_filter = ["is_active"]
+    search_fields = ["host", "username"]
+    ordering = ["-added_at"]
+
+
+@admin.register(PipelineHealth)
+class PipelineHealthAdmin(admin.ModelAdmin):
+    list_display = ["task_name", "last_status", "last_run_at", "last_duration", "run_count"]
+    list_filter = ["last_status"]
+    search_fields = ["task_name"]
+    ordering = ["task_name"]
+    readonly_fields = ["task_name", "last_run_at", "last_status", "last_duration", "last_error", "run_count", "updated_at"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

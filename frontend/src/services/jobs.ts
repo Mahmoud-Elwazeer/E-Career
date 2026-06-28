@@ -32,6 +32,31 @@ export interface Tag {
   category: string;
 }
 
+export interface MatchBreakdown {
+  overall_score: number;
+  components: {
+    skills?: {
+      score: number;
+      matched: string[];
+      missing: string[];
+    };
+    location?: {
+      score: number;
+      user_preference: string[] | null;
+      job_location: string;
+    };
+    experience?: {
+      user_years: number | null;
+      job_requirement: string;
+    };
+    salary?: {
+      user_expectation: number | null;
+      job_offer_min: number | null;
+      job_offer_max: number | null;
+    };
+  };
+}
+
 export interface Job {
   id: number;
   uuid: string;
@@ -49,13 +74,23 @@ export interface Job {
   salary_min?: number;
   salary_max?: number;
   salary_currency?: string;
+  salary_display?: string;
   source_name?: string;
   source_logo?: string;
   source_url: string;
+  direct_apply_url?: string;
+  apply_url_verified?: boolean;
   posted_at: string;
+  posted_ago?: string;
   deadline?: string;
   status: string;
   is_saved: boolean;
+  match_score?: number;
+  match_breakdown?: MatchBreakdown;
+  similar_jobs?: Job[];
+  employment_type?: string;
+  legitimacy_score?: number;
+  legitimacy_flags?: string[];
   company?: Company;
   source?: Source;
   also_on_sources?: Source[];
@@ -128,4 +163,32 @@ export async function fetchTags(): Promise<Tag[]> {
   if (Array.isArray(data)) return data;
   if (data?.results) return data.results;
   return data;
+}
+
+// Phase 1C: Save/Unsave job
+export async function saveJob(slug: string): Promise<{ is_saved: boolean }> {
+  return apiRequest<{ is_saved: boolean }>(`/jobs/${slug}/save/`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+export async function unsaveJob(slug: string): Promise<{ is_saved: boolean }> {
+  return apiRequest<{ is_saved: boolean }>(`/jobs/${slug}/unsave/`, {
+    method: "POST",
+    auth: true,
+  });
+}
+
+// Phase 1C: Ask Rashid about a job (Phase 2B integration)
+export async function askRashidAboutJob(slug: string): Promise<{
+  message: string;
+  job_id: number;
+  job_title: string;
+  company: string;
+  location: string;
+  salary_range: string | null;
+  skills_required: string[];
+}> {
+  return apiRequest(`/jobs/${slug}/ask-rashid/`, { auth: true });
 }
