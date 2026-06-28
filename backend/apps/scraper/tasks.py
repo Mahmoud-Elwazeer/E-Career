@@ -3,7 +3,6 @@ Celery tasks for job scraping pipeline.
 """
 from celery import shared_task
 from django.utils import timezone
-from django.db import models
 from datetime import timedelta
 from typing import List, Dict
 
@@ -19,7 +18,6 @@ from .pipeline.normalizer import (
     normalize_experience_level,
     normalize_remote_type,
     normalize_location,
-    calculate_expiry_date,
 )
 
 
@@ -71,15 +69,21 @@ def scrape_all_sources(self):
         
         # Update pipeline health
         duration = (timezone.now() - start_time).total_seconds()
-        PipelineHealth.objects.update_or_create(
+        pipeline_health, created = PipelineHealth.objects.get_or_create(
             task_name='scrape_all_sources',
             defaults={
                 'last_run_at': start_time,
                 'last_status': 'success',
                 'last_duration': duration,
-                'run_count': models.F('run_count') + 1,
+                'run_count': 1,
             }
         )
+        if not created:
+            pipeline_health.last_run_at = start_time
+            pipeline_health.last_status = 'success'
+            pipeline_health.last_duration = duration
+            pipeline_health.run_count += 1
+            pipeline_health.save()
         
         return {
             'status': 'success',
@@ -106,8 +110,13 @@ def scrape_source(source: Source) -> List[Dict]:
     Scrape jobs from a single source based on ATS platform.
     """
     platform = source.ats_platform.lower() if source.ats_platform else ''
+
+    # Extract company slug (remove ATS platform suffix)
+    # e.g., "stripe-greenhouse" -> "stripe"
     company_slug = source.slug
-    
+    if company_slug.endswith(f"-{platform}"):
+        company_slug = company_slug[:-len(f"-{platform}")]
+
     if platform == 'greenhouse':
         return greenhouse.fetch_greenhouse_jobs(company_slug)
     elif platform == 'lever':
@@ -176,6 +185,8 @@ def process_and_store_jobs(jobs: List[Dict], source: Source) -> int:
                 job_data.get('ats_job_id', '')
             )
             
+            from datetime import date
+
             Job.objects.create(
                 company=company,
                 source=source,
@@ -185,14 +196,15 @@ def process_and_store_jobs(jobs: List[Dict], source: Source) -> int:
                 location=normalize_location(job_data.get('location', '')),
                 direct_apply_url=apply_url,
                 source_type='scraped',
-                employment_type=normalize_employment_type(job_data.get('employment_type')),
-                experience_level=normalize_experience_level(job_data.get('experience_level')),
+                employment_type=normalize_employment_type(job_data.get('employment_type')) or 'full_time',
+                experience_level=normalize_experience_level(job_data.get('experience_level')) or 'mid',
                 remote_type=normalize_remote_type(job_data.get('remote_type')),
                 salary_min=job_data.get('salary_min'),
                 salary_max=job_data.get('salary_max'),
                 salary_currency=job_data.get('salary_currency', 'USD'),
+                posted_at=date.today(),
                 scraped_at=timezone.now(),
-                expires_at=calculate_expiry_date(None),
+                expires_at=timezone.now() + timedelta(days=90),
                 legitimacy_score=legitimacy_score,
                 legitimacy_flags=legitimacy_flags,
                 ats_platform=job_data.get('ats_platform', ''),
@@ -246,15 +258,21 @@ def verify_apply_urls():
         
         # Update pipeline health
         duration = (timezone.now() - start_time).total_seconds()
-        PipelineHealth.objects.update_or_create(
+        pipeline_health, created = PipelineHealth.objects.get_or_create(
             task_name='verify_apply_urls',
             defaults={
                 'last_run_at': start_time,
                 'last_status': 'success',
                 'last_duration': duration,
-                'run_count': models.F('run_count') + 1,
+                'run_count': 1,
             }
         )
+        if not created:
+            pipeline_health.last_run_at = start_time
+            pipeline_health.last_status = 'success'
+            pipeline_health.last_duration = duration
+            pipeline_health.run_count += 1
+            pipeline_health.save()
         
         return {
             'checked': checked,
