@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.contrib.humanize.templatetags.humanize import naturaltime
 from apps.jobs.models import Company, Source, Tag, Job, JobTag
 
 
@@ -48,6 +49,11 @@ class JobListSerializer(serializers.ModelSerializer):
     source_logo = serializers.CharField(source="source.logo_url", read_only=True, allow_null=True)
     tags = TagSerializer(many=True, read_only=True)
     is_saved = serializers.SerializerMethodField()
+    match_score = serializers.SerializerMethodField()
+    salary_display = serializers.SerializerMethodField()
+    posted_ago = serializers.SerializerMethodField()
+    employment_type = serializers.CharField(read_only=True)
+    legitimacy_score = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Job
@@ -55,9 +61,10 @@ class JobListSerializer(serializers.ModelSerializer):
             "id", "uuid", "title", "slug",
             "company_name", "company_logo", "company_slug",
             "location", "location_type", "industry", "experience_level",
-            "salary_min", "salary_max", "salary_currency",
+            "salary_min", "salary_max", "salary_currency", "salary_display",
             "tags", "source_name", "source_logo", "source_url",
-            "posted_at", "deadline", "status", "is_saved",
+            "posted_at", "posted_ago", "deadline", "status", "is_saved",
+            "match_score", "employment_type", "legitimacy_score",
         ]
         read_only_fields = fields
 
@@ -66,6 +73,43 @@ class JobListSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         return obj.saves.filter(user=request.user).exists()
+
+    def get_match_score(self, obj):
+        """Calculate job match percentage for authenticated users with profiles"""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return None
+        
+        try:
+            from apps.profiles.models import UserProfile
+            profile = request.user.userprofile
+            from apps.profiles.services import MatchingService
+            matcher = MatchingService()
+            score = matcher.calculate_match_score(profile, obj)
+            return round(score, 1)
+        except Exception:
+            return None
+
+    def get_salary_display(self, obj):
+        """Format salary for display"""
+        if not obj.salary_min and not obj.salary_max:
+            return None
+        
+        currency = obj.salary_currency or 'EGP'
+        
+        if obj.salary_min and obj.salary_max:
+            return f"{currency} {obj.salary_min:,.0f} - {obj.salary_max:,.0f}"
+        elif obj.salary_min:
+            return f"{currency} {obj.salary_min:,.0f}+"
+        elif obj.salary_max:
+            return f"Up to {currency} {obj.salary_max:,.0f}"
+        return None
+
+    def get_posted_ago(self, obj):
+        """Human-readable time since posting"""
+        if obj.posted_at:
+            return naturaltime(obj.posted_at)
+        return None
 
 
 class JobDetailSerializer(serializers.ModelSerializer):
@@ -76,6 +120,16 @@ class JobDetailSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True, read_only=True)
     also_on_sources = SourceSerializer(many=True, read_only=True)
     is_saved = serializers.SerializerMethodField()
+    match_score = serializers.SerializerMethodField()
+    match_breakdown = serializers.SerializerMethodField()
+    salary_display = serializers.SerializerMethodField()
+    posted_ago = serializers.SerializerMethodField()
+    similar_jobs = serializers.SerializerMethodField()
+    employment_type = serializers.CharField(read_only=True)
+    legitimacy_score = serializers.FloatField(read_only=True)
+    legitimacy_flags = serializers.JSONField(read_only=True)
+    direct_apply_url = serializers.URLField(read_only=True)
+    apply_url_verified = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Job
@@ -83,10 +137,12 @@ class JobDetailSerializer(serializers.ModelSerializer):
             "id", "uuid", "title", "slug",
             "company", "location", "location_type",
             "industry", "experience_level", "description",
-            "tags", "salary_min", "salary_max", "salary_currency",
-            "source", "also_on_sources", "source_url",
-            "posted_at", "deadline", "status",
+            "tags", "salary_min", "salary_max", "salary_currency", "salary_display",
+            "source", "also_on_sources", "source_url", "direct_apply_url", "apply_url_verified",
+            "posted_at", "posted_ago", "deadline", "status",
             "view_count", "click_count", "is_saved",
+            "match_score", "match_breakdown", "similar_jobs",
+            "employment_type", "legitimacy_score", "legitimacy_flags",
             "created_at", "updated_at",
         ]
         read_only_fields = fields
@@ -96,6 +152,77 @@ class JobDetailSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         return obj.saves.filter(user=request.user).exists()
+
+    def get_match_score(self, obj):
+        """Calculate job match percentage for authenticated users with profiles"""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return None
+        
+        try:
+            from apps.profiles.models import UserProfile
+            profile = request.user.userprofile
+            from apps.profiles.services import MatchingService
+            matcher = MatchingService()
+            score = matcher.calculate_match_score(profile, obj)
+            return round(score, 1)
+        except Exception:
+            return None
+
+    def get_match_breakdown(self, obj):
+        """Detailed breakdown of match score"""
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return None
+        
+        try:
+            from apps.profiles.models import UserProfile
+            profile = request.user.userprofile
+            from apps.profiles.services import MatchingService
+            matcher = MatchingService()
+            breakdown = matcher.get_match_breakdown(profile, obj)
+            return breakdown
+        except Exception:
+            return None
+
+    def get_salary_display(self, obj):
+        """Format salary for display"""
+        if not obj.salary_min and not obj.salary_max:
+            return None
+        
+        currency = obj.salary_currency or 'EGP'
+        
+        if obj.salary_min and obj.salary_max:
+            return f"{currency} {obj.salary_min:,.0f} - {obj.salary_max:,.0f}"
+        elif obj.salary_min:
+            return f"{currency} {obj.salary_min:,.0f}+"
+        elif obj.salary_max:
+            return f"Up to {currency} {obj.salary_max:,.0f}"
+        return None
+
+    def get_posted_ago(self, obj):
+        """Human-readable time since posting"""
+        if obj.posted_at:
+            return naturaltime(obj.posted_at)
+        return None
+
+    def get_similar_jobs(self, obj):
+        """Get 5 similar jobs based on industry and tags"""
+        similar = Job.objects.filter(
+            status="active"
+        ).filter(
+            industry=obj.industry
+        ).exclude(
+            id=obj.id
+        ).select_related(
+            "company", "source"
+        ).prefetch_related("tags")[:5]
+        
+        return JobListSerializer(
+            similar,
+            many=True,
+            context=self.context
+        ).data
 
 
 class JobWriteSerializer(serializers.ModelSerializer):
