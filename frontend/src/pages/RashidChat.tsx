@@ -5,12 +5,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Send, Loader2, Wifi, WifiOff, MessageSquare, Plus, Trash2, ChevronDown } from 'lucide-react';
+import { Send, Loader2, Wifi, WifiOff, MessageSquare, Plus, Trash2, ChevronDown, Wrench } from 'lucide-react';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
 import { cn } from '@/lib/utils';
+import ToolSelector from '@/components/rashid/ToolSelector';
 
 interface Message {
   id?: string;
@@ -57,6 +58,7 @@ export default function RashidChat() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [selectedMode, setSelectedMode] = useState('general');
+  const [showTools, setShowTools] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -107,6 +109,26 @@ export default function RashidChat() {
         setIsProcessing(false);
       } else if (data.type === 'message_received') {
         setIsProcessing(true);
+      } else if (data.type === 'tool_processing') {
+        setIsProcessing(true);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: isAr ? `جاري تنفيذ ${data.tool}...` : `Executing ${data.tool}...`,
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      } else if (data.type === 'tool_result') {
+        setMessages((prev) => [
+          ...prev.slice(0, -1), // Remove processing message
+          {
+            role: 'assistant',
+            content: data.result,
+            timestamp: data.timestamp,
+          },
+        ]);
+        setIsProcessing(false);
       } else if (data.type === 'error') {
         console.error('WebSocket error:', data.message);
         setIsProcessing(false);
@@ -231,6 +253,35 @@ export default function RashidChat() {
       console.error('Error deleting conversation:', error);
     }
   };
+
+  const handleToolSelection = useCallback((toolName: string) => {
+    setShowTools(false);
+
+    if (!wsRef.current || !isConnected) {
+      return;
+    }
+
+    // Send tool execution request via WebSocket
+    wsRef.current.send(
+      JSON.stringify({
+        type: 'tool',
+        tool: toolName,
+        context: {}
+      })
+    );
+
+    // Add user message showing tool selection
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        content: isAr ? `استخدام أداة: ${toolName}` : `Using tool: ${toolName}`,
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+
+    setIsProcessing(true);
+  }, [isConnected, isAr]);
 
   if (!isAuthenticated) {
     return null;
@@ -357,7 +408,24 @@ export default function RashidChat() {
                 </p>
               </div>
             </div>
+            <Button
+              onClick={() => setShowTools(!showTools)}
+              variant={showTools ? 'default' : 'outline'}
+              className="flex items-center gap-2"
+            >
+              <Wrench className="h-4 w-4" />
+              {isAr ? 'الأدوات' : 'Tools'}
+            </Button>
           </header>
+
+          {/* Tools Panel */}
+          {showTools && (
+            <ToolSelector
+              onSelectTool={handleToolSelection}
+              onClose={() => setShowTools(false)}
+              isAr={isAr}
+            />
+          )}
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">

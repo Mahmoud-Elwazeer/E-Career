@@ -9,7 +9,9 @@ from .views import (
     ProfileViewSet,
     StoryBankViewSet,
     get_usage_stats,
-    get_config
+    get_config,
+    execute_tool_endpoint,
+    list_tools
 )
 
 # Router for ViewSets
@@ -25,4 +27,8 @@ urlpatterns = [
     # Additional endpoints
     path('usage/', get_usage_stats, name='rashid-usage'),
     path('config/', get_config, name='rashid-config'),
+    
+    # Tool endpoints
+    path('tools/', list_tools, name='rashid-tools'),
+    path('tools/execute/', execute_tool_endpoint, name='rashid-tool-execute'),
 ]

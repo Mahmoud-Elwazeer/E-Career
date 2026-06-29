@@ -31,6 +31,7 @@ from .serializers import (
     RashidConfigSerializer
 )
 from .service import rashid_service
+from .tools import execute_tool, get_available_tools
 
 logger = logging.getLogger(__name__)
 
@@ -244,3 +245,41 @@ def get_config(request):
 
 # Import settings for the config view
 from django.conf import settings
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def execute_tool_endpoint(request):
+    """
+    Execute a Rashid tool
+    
+    POST /api/rashid/tools/execute/
+    {
+        "tool": "cv_review",
+        "context": {...}
+    }
+    """
+    tool_name = request.data.get('tool')
+    context = request.data.get('context', {})
+    
+    if not tool_name:
+        return Response({'error': 'Tool name required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Add user to context
+    context['user'] = request.user
+    
+    # Execute tool
+    result = execute_tool(tool_name, context)
+    
+    return Response({
+        'tool': tool_name,
+        'result': result
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_tools(request):
+    """List available Rashid tools"""
+    tools = get_available_tools()
+    return Response({'tools': tools})

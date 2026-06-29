@@ -11,6 +11,7 @@ from django.contrib.auth import get_user_model
 
 from .models import RashidConversation, RashidMessage
 from .service import rashid_service
+from .tools import execute_tool
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -58,6 +59,8 @@ class RashidConsumer(AsyncWebsocketConsumer):
 
             if message_type == 'message':
                 await self.handle_message(data)
+            elif message_type == 'tool':
+                await self.handle_tool(data)
             elif message_type == 'typing':
                 # Handle typing indicator (broadcast to other users if needed)
                 pass
@@ -98,6 +101,45 @@ class RashidConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             logger.error(f"Error generating response: {e}")
             await self.send_error("Failed to generate response")
+
+    async def handle_tool(self, data):
+        """Handle tool execution request"""
+        tool_name = data.get('tool')
+        context = data.get('context', {})
+
+        if not tool_name:
+            await self.send_error("Tool name required")
+            return
+
+        # Send processing indicator
+        await self.send(text_data=json.dumps({
+            'type': 'tool_processing',
+            'tool': tool_name
+        }))
+
+        # Execute tool
+        try:
+            context['user'] = self.user
+            result = await database_sync_to_async(execute_tool)(tool_name, context)
+
+            # Send result
+            await self.send(text_data=json.dumps({
+                'type': 'tool_result',
+                'tool': tool_name,
+                'result': result,
+                'timestamp': str(timezone.now())
+            }))
+
+            # Save as message
+            await database_sync_to_async(RashidMessage.objects.create)(
+                conversation=self.conversation,
+                role='assistant',
+                content=f"[Tool: {tool_name}]\n\n{result}"
+            )
+
+        except Exception as e:
+            logger.error(f"Error executing tool: {e}")
+            await self.send_error(f"Failed to execute tool: {str(e)}")
 
     async def send_greeting(self):
         """Send greeting message"""
