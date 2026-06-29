@@ -23,6 +23,8 @@ urlpatterns = [
         path("profile/", include("apps.profiles.urls")),
         path("analytics/", include("apps.analytics.urls")),
         path("admin-api/", include("apps.core.admin_urls")),
+        # Rashid AI Assistant (Phase 2B)
+        path("rashid/", include("apps.rashid.urls")),
     ])),
 
     # API Documentation
