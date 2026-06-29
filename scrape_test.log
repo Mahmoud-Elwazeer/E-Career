@@ -1,0 +1,62 @@
+time="2026-06-29T02:41:51+03:00" level=warning msg="M:\\job already web for jobs\\E-Career\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+Scraping 20 active sources...
+Greenhouse scrape failed for 1047-games: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/1047-games/jobs?content=true
+Lever scrape failed for airship-syndicate: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/airship-syndicate?mode=json
+Greenhouse scrape failed for allergan-data-labs: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/allergan-data-labs/jobs?content=true
+BambooHR scrape failed for bitwise-alchemy: 403 Client Error: Forbidden for url: https://www.bamboohr.com
+BambooHR scrape failed for community-gaming: 403 Client Error: Forbidden for url: https://www.bamboohr.com
+Lever scrape failed for creadits: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/creadits?mode=json
+Greenhouse scrape failed for crystal-dynamics: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/crystal-dynamics/jobs?content=true
+Lever scrape failed for demiurge-studios: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/demiurge-studios?mode=json
+BambooHR scrape failed for dimension: 404 Client Error: Not Found for url: https://dimension.bamboohr.com/jobs/list/
+Lever scrape failed for disruptive-games: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/disruptive-games?mode=json
+Lever scrape failed for elodie-games: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/elodie-games?mode=json
+Lever scrape failed for eneba-games: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/eneba-games?mode=json
+Greenhouse scrape failed for epic-games: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/epic-games/jobs?content=true
+Lever scrape failed for ex-populus: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/ex-populus?mode=json
+BambooHR scrape failed for final-strike-games: 403 Client Error: Forbidden for url: https://www.bamboohr.com
+Greenhouse scrape failed for firewalk-studios: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/firewalk-studios/jobs?content=true
+Ashby scrape failed for gardens-interactive: 404 Client Error: Not Found for url: https://api.ashbyhq.com/posting-api/job-board/gardens-interactive
+Greenhouse scrape failed for gram-games: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/gram-games/jobs?content=true
+Greenhouse scrape failed for hb-studios: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/hb-studios/jobs?content=true
+Greenhouse scrape failed for hardsuit-labs: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/hardsuit-labs/jobs?content=true
+Ashby scrape failed for hayden-ai: 404 Client Error: Not Found for url: https://api.ashbyhq.com/posting-api/job-board/hayden-ai
+Lever scrape failed for hi-rez-studios: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/hi-rez-studios?mode=json
+BambooHR scrape failed for hothead-games: 403 Client Error: Forbidden for url: https://www.bamboohr.com
+Greenhouse scrape failed for hypixel-studios: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/hypixel-studios/jobs?content=true
+Lever scrape failed for improbable: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/improbable?mode=json
+Lever scrape failed for jam-city: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/jam-city?mode=json
+BambooHR scrape failed for kixeye: 403 Client Error: Forbidden for url: https://www.bamboohr.com
+Lever scrape failed for kwalee: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/kwalee?mode=json
+Greenhouse scrape failed for la-clippers: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/la-clippers/jobs?content=true
+Greenhouse scrape failed for media-molecule: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/media-molecule/jobs?content=true
+Greenhouse scrape failed for mojang-studios: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/mojang-studios/jobs?content=true
+Greenhouse scrape failed for naughty-dog: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/naughty-dog/jobs?content=true
+Greenhouse scrape failed for niantic: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/niantic/jobs?content=true
+Greenhouse scrape failed for nimble-giant-entertainment: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/nimble-giant-entertainment/jobs?content=true
+Greenhouse scrape failed for op-labs: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/op-labs/jobs?content=true
+Greenhouse scrape failed for oni-studios: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/oni-studios/jobs?content=true
+Greenhouse scrape failed for penn-interactive: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/penn-interactive/jobs?content=true
+Lever scrape failed for peoplefun: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/peoplefun?mode=json
+Greenhouse scrape failed for playgig: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/playgig/jobs?content=true
+Greenhouse scrape failed for playstation-london-studio: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/playstation-london-studio/jobs?content=true
+Ashby scrape failed for pocket-worlds: 404 Client Error: Not Found for url: https://api.ashbyhq.com/posting-api/job-board/pocket-worlds
+Greenhouse scrape failed for rec-room: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/rec-room/jobs?content=true
+Ashby scrape failed for regression-games: 404 Client Error: Not Found for url: https://api.ashbyhq.com/posting-api/job-board/regression-games
+Greenhouse scrape failed for rockstar-games: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/rockstar-games/jobs?content=true
+BambooHR scrape failed for schell-games: 403 Client Error: Forbidden for url: https://www.bamboohr.com
+Greenhouse scrape failed for seam: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/seam/jobs?content=true
+Greenhouse scrape failed for sony-interactive-entertainment: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/sony-interactive-entertainment/jobs?content=true
+BambooHR scrape failed for tlm-partners: 403 Client Error: Forbidden for url: https://www.bamboohr.com
+Greenhouse scrape failed for take-two-interactive: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/take-two-interactive/jobs?content=true
+Greenhouse scrape failed for the-new-york-times: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/the-new-york-times/jobs?content=true
+Greenhouse scrape failed for tripwire: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/tripwire/jobs?content=true
+Lever scrape failed for unknown-worlds: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/unknown-worlds?mode=json
+Greenhouse scrape failed for virtex: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/virtex/jobs?content=true
+Greenhouse scrape failed for wildlife-studios: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/wildlife-studios/jobs?content=true
+Greenhouse scrape failed for wizards-of-the-coast: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/wizards-of-the-coast/jobs?content=true
+Lever scrape failed for clevertap: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/clevertap?mode=json
+Greenhouse scrape failed for free-range-games: 404 Client Error: Not Found for url: https://api.greenhouse.io/v1/boards/free-range-games/jobs?content=true
+BambooHR scrape failed for gazeus-games: 403 Client Error: Forbidden for url: https://www.bamboohr.com
+Lever scrape failed for ramen-vr: 404 Client Error: Not Found for url: https://api.lever.co/v0/postings/ramen-vr?mode=json
+Complete! Found 1567 jobs, added 1564 jobs

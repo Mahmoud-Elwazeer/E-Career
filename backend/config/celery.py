@@ -19,6 +19,7 @@ app.autodiscover_tasks()
 
 # Celery Beat schedule
 app.conf.beat_schedule = {
+    # Scraper tasks
     'scrape-all-sources': {
         'task': 'apps.scraper.tasks.scrape_all_sources',
         'schedule': crontab(minute=0, hour='*/6'),  # Every 6 hours
@@ -30,5 +31,22 @@ app.conf.beat_schedule = {
     'expire-old-jobs': {
         'task': 'apps.scraper.tasks.expire_old_jobs',
         'schedule': crontab(minute=0, hour=3),  # 3 AM daily
+    },
+    # Email tasks
+    'send-job-alerts': {
+        'task': 'apps.emails.tasks.send_job_alerts',
+        'schedule': crontab(minute=0, hour='*/1'),  # Every hour
+    },
+    'send-weekly-digest': {
+        'task': 'apps.emails.tasks.send_weekly_digest',
+        'schedule': crontab(hour=8, minute=0, day_of_week=1),  # Monday 8 AM
+    },
+    'reset-email-counters': {
+        'task': 'apps.emails.tasks.reset_email_account_counters',
+        'schedule': crontab(hour=0, minute=0),  # Midnight daily
+    },
+    'send-re-engagement': {
+        'task': 'apps.emails.tasks.send_re_engagement_emails',
+        'schedule': crontab(hour=10, minute=0, day_of_week=0),  # Sunday 10 AM
     },
 }
