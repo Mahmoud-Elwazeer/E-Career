@@ -20,6 +20,7 @@ urlpatterns = [
         path("auth/", include("apps.accounts.urls")),
         path("users/", include("apps.users.urls")),
         path("jobs/", include("apps.jobs.urls")),
+        path("profile/", include("apps.profiles.urls")),
         path("analytics/", include("apps.analytics.urls")),
         path("admin-api/", include("apps.core.admin_urls")),
     ])),

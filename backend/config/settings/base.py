@@ -45,6 +45,8 @@ INSTALLED_APPS = [
     "apps.employers",
     # Phase 1B - Scraper
     "apps.scraper",
+    # Phase 2A - Profiles
+    "apps.profiles",
     # Celery Beat
     "django_celery_beat",
 ]
@@ -268,6 +270,12 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# ── AWS Bedrock Configuration ─────────────────────────────────────────────────
+AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
+AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
+AWS_DEFAULT_REGION = config('AWS_DEFAULT_REGION', default='us-east-1')
+BEDROCK_MODEL_ID = config('BEDROCK_MODEL_ID', default='anthropic.claude-sonnet-4-20250514-v1:0')
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 LOGGING = {
