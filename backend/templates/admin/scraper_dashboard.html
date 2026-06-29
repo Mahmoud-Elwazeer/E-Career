@@ -1,0 +1,207 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-card .label {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-card .value {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+    
+    .stat-card .value.green { color: #10b981; }
+    .stat-card .value.blue { color: #3b82f6; }
+    .stat-card .value.red { color: #ef4444; }
+    .stat-card .value.purple { color: #8b5cf6; }
+    
+    .health-table {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    
+    .health-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .health-table th {
+        background: #f9fafb;
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .health-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .status-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .status-badge.healthy { background: #d1fae5; color: #065f46; }
+    .status-badge.stale { background: #fef3c7; color: #92400e; }
+    .status-badge.no_data { background: #fee2e2; color: #991b1b; }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+    &rsaquo; {% trans 'Scraper Dashboard' %}
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>Scraper Management Dashboard</h1>
+
+<!-- Stats Grid -->
+<div class="dashboard-grid">
+    <div class="stat-card">
+        <div class="label">Total Jobs</div>
+        <div class="value blue">{{ scrape_stats.total_jobs }}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="label">Active Jobs</div>
+        <div class="value green">{{ scrape_stats.active_jobs }}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="label">This Week</div>
+        <div class="value purple">{{ scrape_stats.jobs_this_week }}</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="label">Scams Blocked</div>
+        <div class="value red">{{ scrape_stats.scam_jobs_blocked }}</div>
+    </div>
+</div>
+
+<!-- Scraper Health -->
+<div class="health-table">
+    <h2 style="padding: 1rem; margin: 0; border-bottom: 1px solid #e5e7eb;">Scraper Health</h2>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Source</th>
+                <th>Status</th>
+                <th style="text-align: right;">Total Jobs</th>
+                <th style="text-align: right;">Active Jobs</th>
+                <th style="text-align: right;">Today</th>
+                <th>Last Scrape</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in scraper_health %}
+            <tr>
+                <td>{{ item.source.name }}</td>
+                <td>
+                    {% if item.status == 'healthy' %}
+                    <span class="status-badge healthy">Healthy</span>
+                    {% elif item.status == 'stale' %}
+                    <span class="status-badge stale">Stale</span>
+                    {% else %}
+                    <span class="status-badge no_data">No Data</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">{{ item.source.total_jobs }}</td>
+                <td style="text-align: right;">{{ item.source.active_jobs }}</td>
+                <td style="text-align: right;">{{ item.source.jobs_today }}</td>
+                <td>
+                    {% if item.last_scrape %}
+                    {{ item.last_scrape|timesince }} ago
+                    {% else %}
+                    Never
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: #6b7280;">No sources configured</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if pipeline_health %}
+<!-- Pipeline Health -->
+<div class="health-table" style="margin-top: 2rem;">
+    <h2 style="padding: 1rem; margin: 0; border-bottom: 1px solid #e5e7eb;">Pipeline Health</h2>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Task</th>
+                <th>Status</th>
+                <th>Last Run</th>
+                <th>Duration</th>
+                <th>Run Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for task in pipeline_health %}
+            <tr>
+                <td>{{ task.task_name }}</td>
+                <td>
+                    {% if task.last_status == 'success' %}
+                    <span class="status-badge healthy">Success</span>
+                    {% elif task.last_status == 'error' %}
+                    <span class="status-badge no_data">Error</span>
+                    {% else %}
+                    <span class="status-badge stale">{{ task.last_status }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if task.last_run_at %}
+                    {{ task.last_run_at|timesince }} ago
+                    {% else %}
+                    Never
+                    {% endif %}
+                </td>
+                <td>
+                    {% if task.last_duration %}
+                    {{ task.last_duration|floatformat:2 }}s
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td>{{ task.run_count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}

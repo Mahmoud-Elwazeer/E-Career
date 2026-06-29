@@ -4,20 +4,21 @@ Profile views for API endpoints
 
 import logging
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
 from apps.users.models import UserProfile, JobMatchScore
 from apps.jobs.models import Job
+from apps.jobs.serializers import JobListSerializer
 from .serializers import (
     UserProfileSerializer, UserProfileUpdateSerializer,
     CVUploadSerializer, JobMatchScoreSerializer,
     ProfileCompletionSerializer, SkillsUpdateSerializer,
     PreferencesUpdateSerializer
 )
-from .services import MatchingService
+from .services import MatchingService, matching_service
 
 logger = logging.getLogger(__name__)
 
@@ -268,3 +269,151 @@ class JobMatchViewSet(viewsets.ReadOnlyModelViewSet):
             'match': JobMatchScoreSerializer(match).data,
             'breakdown': breakdown
         })
+
+
+# ============================================================
+# RECOMMENDATION API ENDPOINTS
+# ============================================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_job_recommendations(request):
+    """
+    Get personalized job recommendations
+    
+    GET /api/recommendations/?limit=20&min_score=60
+    
+    Returns:
+        {
+            'count': int,
+            'recommendations': [
+                {
+                    'job': JobSerializer data,
+                    'match_score': float,
+                    'reasoning': str
+                }
+            ]
+        }
+    """
+    try:
+        profile = request.user.userprofile
+        
+        # Check if profile is complete enough
+        if not profile.skills or len(profile.skills) < 3:
+            return Response({
+                'error': 'Please add at least 3 skills to your profile to get recommendations',
+                'completion_url': '/app/profile'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Get parameters
+        limit = int(request.query_params.get('limit', 20))
+        min_score = float(request.query_params.get('min_score', 60))
+        
+        # Get recommendations
+        recommendations = matching_service.get_recommended_jobs(
+            profile=profile,
+            limit=limit,
+            min_score=min_score
+        )
+        
+        # Serialize
+        results = []
+        for rec in recommendations:
+            job_data = JobListSerializer(
+                rec['job'],
+                context={'request': request}
+            ).data
+            
+            results.append({
+                'job': job_data,
+                'match_score': rec['score'],
+                'reasoning': rec['reasoning']
+            })
+        
+        return Response({
+            'count': len(results),
+            'recommendations': results
+        })
+    
+    except UserProfile.DoesNotExist:
+        return Response({
+            'error': 'Please create a profile first',
+            'profile_url': '/app/profile'
+        }, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error getting recommendations: {e}")
+        return Response({
+            'error': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_job_match_breakdown(request, job_id):
+    """
+    Get detailed match breakdown for a specific job
+    
+    GET /api/jobs/{job_id}/match-breakdown/
+    
+    Returns:
+        {
+            'overall_score': float,
+            'breakdown': {...},
+            'strengths': [...],
+            'gaps': [...],
+            'recommendation': str,
+            'improvement_tips': [...]
+        }
+    """
+    try:
+        profile = request.user.userprofile
+        job = Job.objects.get(id=job_id)
+        
+        breakdown = matching_service.get_match_breakdown(profile, job)
+        
+        return Response(breakdown)
+    
+    except Job.DoesNotExist:
+        return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
+    except UserProfile.DoesNotExist:
+        return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error getting match breakdown: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_similar_jobs(request, job_id):
+    """
+    Get jobs similar to a specific job
+    
+    GET /api/jobs/{job_id}/similar/
+    
+    Returns:
+        {
+            'count': int,
+            'jobs': [JobSerializer data]
+        }
+    """
+    try:
+        job = Job.objects.get(id=job_id)
+        
+        similar_jobs = matching_service.get_similar_jobs(job, limit=5)
+        
+        jobs_data = JobListSerializer(
+            similar_jobs,
+            many=True,
+            context={'request': request}
+        ).data
+        
+        return Response({
+            'count': len(jobs_data),
+            'jobs': jobs_data
+        })
+    
+    except Job.DoesNotExist:
+        return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error getting similar jobs: {e}")
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

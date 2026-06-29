@@ -8,9 +8,16 @@ from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from apps.core.views import HealthCheckView
 
+# Import custom admin views
+from apps.scraper.admin_views import scraper_dashboard, health_monitor
+
 urlpatterns = [
     # Admin (path from ENV for security)
     path(settings.ADMIN_URL, admin.site.urls),
+    
+    # Custom admin dashboard views (Phase 3C)
+    path("admin/scraper-dashboard/", scraper_dashboard, name="admin-scraper-dashboard"),
+    path("admin/health-monitor/", health_monitor, name="admin-health-monitor"),
 
     # Health check
     path("health/", HealthCheckView.as_view(), name="health-check"),
@@ -25,7 +32,12 @@ urlpatterns = [
         path("admin-api/", include("apps.core.admin_urls")),
         # Rashid AI Assistant (Phase 2B)
         path("rashid/", include("apps.rashid.urls")),
+        # Employer Portal (Phase 3A)
+        path("employer/", include("apps.employers.urls")),
     ])),
+
+    # Email tracking (Phase 2D)
+    path("emails/", include("apps.emails.urls")),
 
     # API Documentation
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

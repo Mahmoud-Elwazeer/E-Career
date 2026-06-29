@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 import ResetPassword from "./pages/ResetPassword";
 import Alerts from "./pages/Alerts";
 import ApiDocs from "./pages/ApiDocs";
+import Recommendations from "./pages/Recommendations";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ function AnimatedRoutes() {
         <Route path="/app/profile" element={<RequireAuth><Profile /></RequireAuth>} />
         <Route path="/app/saved" element={<RequireAuth><Profile /></RequireAuth>} />
         <Route path="/app/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
+        <Route path="/app/recommendations" element={<RequireAuth><Recommendations /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
         <Route path="/api-docs" element={<ApiDocs />} />
 

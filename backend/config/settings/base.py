@@ -14,6 +14,11 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 
 # ── Application Definition ──────────────────────────────────────────────────
 INSTALLED_APPS = [
+    # Unfold admin - must be BEFORE django.contrib.admin
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
+    "unfold.contrib.import_export",
     # Django built-ins
     "django.contrib.admin",
     "django.contrib.auth",
@@ -33,6 +38,7 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
+    "import_export",
     # Project apps
     "apps.core",
     "apps.accounts",
@@ -253,6 +259,10 @@ UNFOLD = {
         },
     },
     "TABS": [],
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "ENVIRONMENT": "config.admin_dashboard.environment_callback",
+    "DASHBOARD_CALLBACK": "config.admin_dashboard.dashboard_callback",
 }
 
 # ── Encryption ──────────────────────────────────────────────────────────────
