@@ -49,6 +49,9 @@ INSTALLED_APPS = [
     "apps.profiles",
     # Celery Beat
     "django_celery_beat",
+    # WebSocket support (Phase 2B)
+    "channels",
+    "daphne",
 ]
 
 MIDDLEWARE = [
@@ -276,6 +279,27 @@ AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
 AWS_DEFAULT_REGION = config('AWS_DEFAULT_REGION', default='us-east-1')
 BEDROCK_MODEL_ID = config('BEDROCK_MODEL_ID', default='anthropic.claude-sonnet-4-20250514-v1:0')
+
+# ── Django Channels Configuration ─────────────────────────────────────────────
+ASGI_APPLICATION = 'config.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [config('REDIS_HOST', default='redis://localhost:6379/0')],
+        },
+    },
+}
+
+# ── Rashid AI Configuration ───────────────────────────────────────────────────
+RASHID_CONFIG = {
+    'dialect': 'egyptian_arabic',
+    'personality': 'supportive_mentor',
+    'max_conversation_history': 50,
+    'course_platform_url': 'https://edu.usamif.com',
+    'privacy_mode': True,  # Admin cannot read conversation content
+}
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 LOGGING = {

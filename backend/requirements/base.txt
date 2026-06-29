@@ -22,3 +22,15 @@ fake-useragent==1.4.0
 celery==5.3.4
 redis==5.0.1
 django-celery-beat==2.5.0
+
+# WebSocket support
+channels==4.0.0
+channels-redis==4.2.0
+daphne==4.0.0
+
+# Encryption for Rashid messages
+cryptography==42.0.0
+django-encrypted-model-fields==0.4.0
+
+# AWS Bedrock
+boto3==1.34.0
