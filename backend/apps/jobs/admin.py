@@ -70,9 +70,9 @@ class TagAdmin(ModelAdmin):
 
 
 @admin.register(Job)
-class JobAdmin(ModelAdmin):
+class JobAdmin(ImportExportModelAdmin, ModelAdmin):
     """
-    Enhanced Job admin with unfold styling.
+    Enhanced Job admin with unfold styling and import/export functionality.
     """
     list_display = [
         "title", "company_link", "location_type_badge", "industry",

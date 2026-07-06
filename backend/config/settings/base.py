@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_filters",
     "drf_spectacular",
+    "import_export",
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
