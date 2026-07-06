@@ -104,7 +104,8 @@ export default function Jobs() {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value);
     else next.delete(key);
-    next.set("page", "1");
+    // Reset to page 1 only when changing filters, not when paginating
+    if (key !== "page") next.set("page", "1");
     setSearchParams(next);
   };
 

@@ -44,3 +44,7 @@ os.makedirs(LOG_DIR, exist_ok=True)
 LOGGING["root"]["handlers"] = ["console", "file"]  # noqa: F405
 LOGGING["loggers"]["django"]["handlers"] = ["console", "file"]  # noqa: F405
 LOGGING["loggers"]["apps"]["handlers"] = ["console", "file"]  # noqa: F405
+
+# ── Override SSL redirect — nginx handles SSL termination ─────────────────────
+SECURE_SSL_REDIRECT = False
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

@@ -1,0 +1,70 @@
+{% extends "admin/import_export/import.html" %}
+{% load i18n %}
+
+{% block content %}
+<div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+  <h2 style="margin-top: 0; color: #166534; font-size: 18px;">📋 Job Import Guide</h2>
+  <p style="color: #15803d; margin-bottom: 16px;">Upload a <strong>CSV</strong> or <strong>XLSX</strong> file to bulk-import jobs. Here's how to prepare your file:</p>
+
+  <h3 style="color: #166534; font-size: 14px; margin-bottom: 8px;">Required Columns</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px;">
+    <thead>
+      <tr style="background: #dcfce7;">
+        <th style="padding: 8px; text-align: left; border: 1px solid #bbf7d0;">Column</th>
+        <th style="padding: 8px; text-align: left; border: 1px solid #bbf7d0;">Description</th>
+        <th style="padding: 8px; text-align: left; border: 1px solid #bbf7d0;">Example</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;"><strong>title</strong></td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Job title</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Senior Python Developer</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;"><strong>company_name</strong></td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Company name (auto-created if new)</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Google</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;"><strong>location</strong></td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Job location</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Cairo, Egypt</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;"><strong>location_type</strong></td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">remote / onsite / hybrid</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">remote</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;"><strong>industry</strong></td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">technology / finance / healthcare / education / marketing / engineering / design / sales / other</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">technology</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;"><strong>experience_level</strong></td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">entry / mid / senior / lead</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">senior</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;"><strong>description</strong></td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Full job description</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">We are looking for...</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;"><strong>source_url</strong></td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Link to original job posting</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">https://linkedin.com/jobs/123</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;"><strong>posted_at</strong></td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Date posted (YYYY-MM-DD)</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">2026-03-20</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="color: #166534; font-size: 14px; margin-bottom: 8px;">Optional Columns</h3>
+  <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px;">
+    <thead>
+      <tr style="background: #dcfce7;">
+        <th style="padding: 8px; text-align: left; border: 1px solid #bbf7d0;">Column</th>
+        <th style="padding: 8px; text-align: left; border: 1px solid #bbf7d0;">Description</th>
+        <th style="padding: 8px; text-align: left; border: 1px solid #bbf7d0;">Default</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">status</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">active / pending / archived</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">active</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">tags</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Comma-separated tags (auto-created)</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">—</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">salary_min / salary_max</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Salary range (numbers only)</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">—</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">salary_currency</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Currency code</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">USD</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">source_name</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Source site name (must exist)</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">—</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">deadline</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">Application deadline (YYYY-MM-DD)</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">—</td></tr>
+      <tr><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">slug</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">URL slug (auto-generated from title)</td><td style="padding: 6px 8px; border: 1px solid #bbf7d0;">auto</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="color: #166534; font-size: 14px; margin-bottom: 8px;">💡 Smart Features</h3>
+  <ul style="color: #15803d; font-size: 13px; margin: 0; padding-left: 20px;">
+    <li><strong>Company auto-creation:</strong> New company names are automatically created</li>
+    <li><strong>Tag auto-creation:</strong> New tags in the <code>tags</code> column are auto-created</li>
+    <li><strong>Slug auto-generation:</strong> Leave the slug column empty — it's generated from the title</li>
+    <li><strong>Duplicate handling:</strong> Jobs with the same slug are <strong>updated</strong>, not duplicated</li>
+    <li><strong>Dry run:</strong> Check the <em>"Dry run"</em> checkbox below to preview without saving</li>
+  </ul>
+
+  <div style="margin-top: 16px; padding: 12px; background: #fff; border-radius: 6px; border: 1px solid #bbf7d0;">
+    <strong style="color: #166534;">📥 Download Template:</strong>
+    <a href="/api/v1/admin-api/jobs/template/?format=csv" style="color: #2563eb; text-decoration: underline; margin-left: 8px;">CSV Template</a>
+    <span style="color: #9ca3af; margin: 0 4px;">|</span>
+    <a href="/api/v1/admin-api/jobs/template/?format=xlsx" style="color: #2563eb; text-decoration: underline;">XLSX Template</a>
+    <span style="color: #6b7280; margin-left: 12px; font-size: 12px;">Pre-filled with 2 example rows</span>
+  </div>
+</div>
+
+{{ block.super }}
+{% endblock %}
