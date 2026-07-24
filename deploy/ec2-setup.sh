@@ -7,7 +7,7 @@
 set -euo pipefail
 
 PROJECT_DIR="/var/www/usam"
-REPO_URL="https://github.com/YOUR_GITHUB_USERNAME/usam-career-compass.git"
+REPO_URL="https://github.com/Mahmoud-Elwazeer/E-Career.git"
 PYTHON_VERSION="3.12"
 DB_NAME="usam_db"
 DB_USER="usam_user"
@@ -73,16 +73,17 @@ chmod -R 755 ${PROJECT_DIR}
 # ── 5. Clone repo ─────────────────────────────────────────────────────
 echo "→ Cloning repository..."
 if [ -d "${PROJECT_DIR}/.git" ]; then
-  cd ${PROJECT_DIR} && git pull origin main
+  cd ${PROJECT_DIR} && git pull origin develop
 else
-  git clone ${REPO_URL} ${PROJECT_DIR}
+  git clone -b develop ${REPO_URL} ${PROJECT_DIR}
 fi
 
 # ── 6. Python virtualenv ──────────────────────────────────────────────
 echo "→ Creating Python virtual environment..."
 python3.12 -m venv ${PROJECT_DIR}/venv
 ${PROJECT_DIR}/venv/bin/pip install --upgrade pip
-${PROJECT_DIR}/venv/bin/pip install -r ${PROJECT_DIR}/backend/requirements/production.txt
+${PROJECT_DIR}/venv/bin/pip install -r ${PROJECT_DIR}/backend/requirements/base.txt
+${PROJECT_DIR}/venv/bin/pip install gunicorn
 
 # ── 7. Environment file ───────────────────────────────────────────────
 if [ ! -f "${PROJECT_DIR}/backend/.env" ]; then
@@ -98,23 +99,34 @@ fi
 # ── 8. Django setup ───────────────────────────────────────────────────
 echo "→ Running Django migrations and collectstatic..."
 cd ${PROJECT_DIR}/backend
-export DJANGO_SETTINGS_MODULE=config.settings.production
 ${PROJECT_DIR}/venv/bin/python manage.py migrate --noinput
 ${PROJECT_DIR}/venv/bin/python manage.py collectstatic --noinput
-${PROJECT_DIR}/venv/bin/python manage.py seed_data
+
+# ── 8b. Build React Frontend ──────────────────────────────────────────
+echo "→ Installing Node.js..."
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt-get install -y nodejs
+
+echo "→ Building React frontend..."
+cd ${PROJECT_DIR}/frontend
+npm install
+npm run build
+echo "✓ Frontend built successfully at ${PROJECT_DIR}/frontend/dist"
 
 # ── 9. Gunicorn service ───────────────────────────────────────────────
 echo "→ Installing Gunicorn systemd service..."
-cp /home/ubuntu/usam-career-compass/deploy/gunicorn.service /etc/systemd/system/gunicorn-usam.service
+cp ${PROJECT_DIR}/deploy/gunicorn.service /etc/systemd/system/gunicorn-usam.service
 systemctl daemon-reload
 systemctl enable gunicorn-usam
 systemctl restart gunicorn-usam
 
 # ── 10. Nginx ─────────────────────────────────────────────────────────
 echo "→ Installing Nginx config..."
-cp /home/ubuntu/usam-career-compass/deploy/nginx.conf /etc/nginx/sites-available/usam
+cp ${PROJECT_DIR}/deploy/nginx.conf /etc/nginx/sites-available/usam
 ln -sf /etc/nginx/sites-available/usam /etc/nginx/sites-enabled/usam
 rm -f /etc/nginx/sites-enabled/default
+# Replace YOUR_DOMAIN with jobs.usamif.com
+sed -i 's/YOUR_DOMAIN/jobs.usamif.com/g' /etc/nginx/sites-available/usam
 nginx -t && systemctl reload nginx
 
 echo ""
@@ -123,8 +135,14 @@ echo " ✅ Server bootstrap complete!"
 echo "================================================================"
 echo " Project:   ${PROJECT_DIR}"
 echo " DB:        ${DB_NAME} / ${DB_USER} / ${DB_PASS}"
+echo " Backend:   http://$(curl -s ifconfig.me):8000"
+echo " Frontend:  http://$(curl -s ifconfig.me)"
+echo ""
 echo " Next steps:"
-echo "   1. Edit ${PROJECT_DIR}/backend/.env"
-echo "   2. Point your domain DNS → this server's IP"
-echo "   3. Run: bash /home/ubuntu/usam-career-compass/deploy/ssl-setup.sh"
+echo "   1. Edit ${PROJECT_DIR}/backend/.env (add AWS credentials, email config)"
+echo "   2. Point DNS: jobs.usamif.com → $(curl -s ifconfig.me)"
+echo "   3. Run SSL: bash ${PROJECT_DIR}/deploy/ssl-setup.sh"
+echo "   4. Create admin: cd ${PROJECT_DIR}/backend && ${PROJECT_DIR}/venv/bin/python manage.py createsuperuser"
+echo ""
+echo " To update later: cd ${PROJECT_DIR} && bash deploy/deploy.sh"
 echo "================================================================"
