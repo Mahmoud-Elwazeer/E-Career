@@ -7,7 +7,7 @@
 set -euo pipefail
 
 PROJECT_DIR="/var/www/usam"
-BRANCH="${1:-main}"
+BRANCH="${1:-develop}"
 VENV="${PROJECT_DIR}/venv/bin"
 
 echo "================================================================"
@@ -25,12 +25,12 @@ git pull origin ${BRANCH}
 # ── 2. Install/update Python dependencies ────────────────────────────
 echo "→ Installing Python dependencies..."
 ${VENV}/pip install --upgrade pip
-${VENV}/pip install -r backend/requirements/production.txt
+${VENV}/pip install -r backend/requirements/base.txt
+${VENV}/pip install gunicorn
 
 # ── 3. Django migrations ──────────────────────────────────────────────
 echo "→ Running database migrations..."
 cd backend
-export DJANGO_SETTINGS_MODULE=config.settings.production
 ${VENV}/python manage.py migrate --noinput
 
 # ── 4. Collect static files ───────────────────────────────────────────

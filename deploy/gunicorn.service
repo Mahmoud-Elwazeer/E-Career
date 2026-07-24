@@ -1,48 +1,28 @@
 [Unit]
-Description=USAM Career Compass — Gunicorn WSGI Server
-Documentation=https://docs.gunicorn.org
-After=network.target postgresql.service
-Requires=postgresql.service
+Description=Gunicorn daemon for E-Career Platform
+After=network.target
 
 [Service]
 Type=notify
 User=www-usam
 Group=www-data
-RuntimeDirectory=gunicorn-usam
 WorkingDirectory=/var/www/usam/backend
-
-# Load .env variables
+Environment="PATH=/var/www/usam/venv/bin"
 EnvironmentFile=/var/www/usam/backend/.env
-Environment="DJANGO_SETTINGS_MODULE=config.settings.production"
-
-# Gunicorn command — 3 workers, bind to localhost only
 ExecStart=/var/www/usam/venv/bin/gunicorn \
-    config.wsgi:application \
-    --workers 3 \
-    --worker-class sync \
+    --workers 4 \
     --bind 127.0.0.1:8000 \
-    --timeout 60 \
-    --keep-alive 5 \
-    --max-requests 1000 \
-    --max-requests-jitter 100 \
+    --timeout 120 \
+    --access-logfile /var/www/usam/logs/gunicorn-access.log \
+    --error-logfile /var/www/usam/logs/gunicorn-error.log \
     --log-level info \
-    --access-logfile /var/www/usam/logs/gunicorn_access.log \
-    --error-logfile /var/www/usam/logs/gunicorn_error.log \
-    --capture-output
-
+    config.wsgi:application
 ExecReload=/bin/kill -s HUP $MAINPID
-
-# Auto-restart on crash
-Restart=on-failure
-RestartSec=5s
 KillMode=mixed
-TimeoutStopSec=30
-
-# Security hardening
+TimeoutStopSec=5
 PrivateTmp=true
-NoNewPrivileges=true
-ProtectSystem=strict
-ReadWritePaths=/var/www/usam
+Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
