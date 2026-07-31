@@ -1,0 +1,143 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop, feature/*]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: ecareer_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          cd E-Career/backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-django
+
+      - name: Run migrations
+        run: |
+          cd E-Career/backend
+          python manage.py migrate --settings=config.settings.test
+
+      - name: Run tests
+        run: |
+          cd E-Career/backend
+          pytest --tb=short -v
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ecareer_test
+          REDIS_HOST: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-for-ci
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          cd E-Career/backend
+          python -m pip install --upgrade pip
+          pip install black flake8 mypy isort
+
+      - name: Run Black
+        run: |
+          cd E-Career/backend
+          black --check --diff apps/
+
+      - name: Run isort
+        run: |
+          cd E-Career/backend
+          isort --check-only apps/
+
+      - name: Run flake8
+        run: |
+          cd E-Career/backend
+          flake8 apps/ --max-line-length=120
+
+      - name: Run mypy
+        run: |
+          cd E-Career/backend
+          mypy apps/ --ignore-missing-imports --no-strict-optional
+
+  frontend-lint:
+    name: Frontend Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: E-Career/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd E-Career/frontend
+          npm ci
+
+      - name: Run ESLint
+        run: |
+          cd E-Career/frontend
+          npm run lint
+
+      - name: Run Prettier check
+        run: |
+          cd E-Career/frontend
+          npm run format:check
