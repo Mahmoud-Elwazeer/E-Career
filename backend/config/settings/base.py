@@ -33,13 +33,12 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_filters",
-    "drf_spectacular",
-    "import_export",
-    "allauth",
-    "allauth.account",
-    "allauth.socialaccount",
-    "allauth.socialaccount.providers.google",
-    "import_export",
+     "drf_spectacular",
+     "import_export",
+     "allauth",
+     "allauth.account",
+     "allauth.socialaccount",
+     "allauth.socialaccount.providers.google",
     # Project apps
     "apps.core",
     "apps.accounts",
@@ -54,6 +53,20 @@ INSTALLED_APPS = [
     "apps.scraper",
     # Phase 2A - Profiles
     "apps.profiles",
+    # Phase 1 - Search
+    "apps.search",
+    # Phase 1 - Verification
+    "apps.verification",
+    # Phase 1 - Skills Taxonomy
+    "apps.skills",
+    # Phase 1 - Event System
+    "apps.events",
+    # Phase 1 - AI Intelligence
+    "apps.intelligence",
+    # Phase 1 - Vector Search
+    "apps.vectors",
+    # Phase 2 - Career Intelligence
+    "apps.career",
     # Celery Beat
     "django_celery_beat",
     # WebSocket support (Phase 2B)
@@ -303,6 +316,18 @@ CHANNEL_LAYERS = {
     },
 }
 
+# ── Typesense Configuration ──────────────────────────────────────────────────
+TYPESENSE_HOST = config('TYPESENSE_HOST', default='localhost')
+TYPESENSE_PORT = config('TYPESENSE_PORT', default='8108')
+TYPESENSE_PROTOCOL = config('TYPESENSE_PROTOCOL', default='http')
+TYPESENSE_API_KEY = config('TYPESENSE_API_KEY', default='ecareer_typesense_dev_key')
+SEARCH_TRUST_SCORE_THRESHOLD = config('SEARCH_TRUST_SCORE_THRESHOLD', default=0.4, cast=float)
+
+# ── Qdrant Configuration ─────────────────────────────────────────────────────
+QDRANT_HOST = config('QDRANT_HOST', default='localhost')
+QDRANT_PORT = config('QDRANT_PORT', default='6333', cast=int)
+QDRANT_API_KEY = config('QDRANT_API_KEY', default='ecareer_qdrant_dev_key')
+
 # ── Rashid AI Configuration ───────────────────────────────────────────────────
 RASHID_CONFIG = {
     'dialect': 'egyptian_arabic',
@@ -311,6 +336,27 @@ RASHID_CONFIG = {
     'course_platform_url': 'https://edu.usamif.com',
     'privacy_mode': True,  # Admin cannot read conversation content
 }
+
+# ── Structlog Configuration ──────────────────────────────────────────────────
+import structlog
+
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.stdlib.filter_by_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.stdlib.add_logger_name,
+        structlog.stdlib.add_log_level,
+        structlog.stdlib.PositionalArgumentsFormatter(),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+    ],
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    cache_logger_on_first_use=True,
+)
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 LOGGING = {
@@ -321,6 +367,16 @@ LOGGING = {
             "format": "[{asctime}] {levelname} {name} {message}",
             "style": "{",
         },
+        "json": {
+            "()": structlog.stdlib.ProcessorFormatter,
+            "processor": structlog.processors.JSONRenderer(),
+            "foreign_pre_chain": [
+                structlog.contextvars.merge_contextvars,
+                structlog.stdlib.add_logger_name,
+                structlog.stdlib.add_log_level,
+                structlog.processors.TimeStamper(fmt="iso"),
+            ],
+        },
         "simple": {
             "format": "{levelname} {message}",
             "style": "{",
@@ -330,6 +386,10 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
+        },
+        "json_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "json",
         },
         "file": {
             "class": "logging.handlers.RotatingFileHandler",

@@ -49,15 +49,3 @@ def generate_job_slug(company: str, title: str, job_id: str = "") -> str:
     return f"{company_slug}-{title_slug}-{hash_suffix}"
 
 
-def is_duplicate(job_hash: str) -> bool:
-    """
-    Check if job with this hash already exists in database.
-    """
-    # Import here to avoid circular imports
-    from apps.jobs.models import Job
-    
-    return Job.objects.filter(
-        # We'll add a job_hash field in next migration
-        # For now, check by slug or ats_job_id
-        ats_job_id=job_hash
-    ).exists()

@@ -36,7 +36,20 @@ class CVReviewTool(RashidTool):
         except UserProfile.DoesNotExist:
             return "عذراً، مش لاقي البروفايل بتاعك. اعمل بروفايل الأول عشان أقدر أراجع سيرتك الذاتية."
         
-        if not profile.cv_text:
+        # Read CV from uploaded file
+        cv_text = ""
+        if profile.cv_file:
+            try:
+                cv_text = profile.cv_file.read().decode('utf-8')
+            except Exception:
+                # Try reading as binary and decode
+                import os
+                cv_path = profile.cv_file.path
+                if os.path.exists(cv_path):
+                    with open(cv_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        cv_text = f.read()[:5000]  # Limit to 5000 chars
+        
+        if not cv_text:
             return "عذراً، مش لاقي السيرة الذاتية بتاعتك. ارفع السيرة الذاتية الأول عشان أقدر أراجعها."
         
         system_prompt = """أنت خبير في مراجعة السير الذاتية.
@@ -52,7 +65,7 @@ class CVReviewTool(RashidTool):
         
         prompt = f"""راجع السيرة الذاتية دي:
 
-{profile.cv_text[:3000]}
+{cv_text[:3000]}
 
 قدم تحليل شامل واقتراحات عملية."""
         
@@ -88,7 +101,19 @@ class CoverLetterTool(RashidTool):
         except UserProfile.DoesNotExist:
             return "عذراً، محتاج البروفايل بتاعك عشان أكتب cover letter مناسب. اعمل بروفايل الأول."
         
-        if not profile.cv_text:
+        # Read CV from uploaded file
+        cv_text = ""
+        if profile.cv_file:
+            try:
+                cv_text = profile.cv_file.read().decode('utf-8')
+            except Exception:
+                import os
+                cv_path = profile.cv_file.path
+                if os.path.exists(cv_path):
+                    with open(cv_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        cv_text = f.read()[:5000]
+        
+        if not cv_text:
             return "عذراً، محتاج السيرة الذاتية بتاعتك عشان أكتب cover letter مناسب. ارفع السيرة الذاتية الأول."
         
         # Get job details if job_id provided
@@ -134,7 +159,7 @@ class CoverLetterTool(RashidTool):
 {job_description}
 
 **معلومات المتقدم:**
-{profile.cv_text[:1500]}
+{cv_text[:1500]}
 
 اكتب cover letter احترافي يبرز مناسبة المتقدم للوظيفة."""
         

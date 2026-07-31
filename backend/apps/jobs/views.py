@@ -15,6 +15,14 @@ from apps.jobs.filters import JobFilter
 from apps.core.permissions import IsAdminRole
 from apps.core.pagination import StandardPagination
 from apps.core.utils import get_client_ip
+from apps.events.emitter import emit
+from apps.events.types import (
+    JOB_VIEWED, JOB_SAVED, JOB_UNSAVED, JOB_APPLIED, JOB_DISMISSED,
+    SEARCH_PERFORMED, SEARCH_RESULT_CLICKED,
+    USER_REGISTERED, USER_LOGGED_IN, USER_PROFILE_UPDATED,
+    CV_UPLOADED, CV_PARSED,
+    AI_CONVERSATION_STARTED, AI_MESSAGE_SENT
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +54,20 @@ class JobSaveView(APIView):
         from apps.users.models import SavedJob
         SavedJob.objects.create(user=request.user, job=job)
         
+        # Emit JOB_SAVED event
+        try:
+            emit(
+                event_type=JOB_SAVED,
+                category="job",
+                user=request.user,
+                target_type="job",
+                target_id=str(job.id),
+                data={"source": "job_save_view"},
+                request=request,
+            )
+        except Exception:
+            pass
+        
         return Response(
             {"success": True, "data": {"is_saved": True}, "message": "Job saved successfully.", "errors": None},
         )
@@ -69,6 +91,20 @@ class JobUnsaveView(APIView):
         # Remove save
         from apps.users.models import SavedJob
         deleted, _ = SavedJob.objects.filter(user=request.user, job=job).delete()
+        
+        # Emit JOB_UNSAVED event
+        try:
+            emit(
+                event_type=JOB_UNSAVED,
+                category="job",
+                user=request.user,
+                target_type="job",
+                target_id=str(job.id),
+                data={"source": "job_unsave_view"},
+                request=request,
+            )
+        except Exception:
+            pass
         
         return Response(
             {"success": True, "data": {"is_saved": False}, "message": "Job unsaved.", "errors": None},
@@ -270,6 +306,21 @@ class JobListView(generics.ListCreateAPIView):
         return [AllowAny()]
 
     def list(self, request, *args, **kwargs):
+        # Emit SEARCH_PERFORMED event
+        try:
+            q = request.query_params.get("q", "")
+            emit(
+                event_type=SEARCH_PERFORMED,
+                category="search",
+                user=request.user if request.user.is_authenticated else None,
+                target_type="search",
+                target_id="job_search",
+                data={"query": q, "filters": {k: v for k, v in request.query_params.items() if k != "q"}},
+                request=request,
+            )
+        except Exception:
+            pass
+        
         # Log search analytics
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
@@ -328,6 +379,19 @@ class JobDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
+        # Emit JOB_VIEWED event
+        try:
+            emit(
+                event_type=JOB_VIEWED,
+                category="job",
+                user=request.user if request.user.is_authenticated else None,
+                target_type="job",
+                target_id=str(instance.id),
+                data={"source": "job_detail"},
+                request=request,
+            )
+        except Exception:
+            pass
         # Track view
         try:
             from apps.analytics.models import JobView
@@ -369,6 +433,19 @@ class JobApplyView(APIView):
                 {"success": False, "data": None, "message": "Job not found.", "errors": None},
                 status=status.HTTP_404_NOT_FOUND,
             )
+        # Emit JOB_APPLIED event
+        try:
+            emit(
+                event_type=JOB_APPLIED,
+                category="job",
+                user=request.user if request.user.is_authenticated else None,
+                target_type="job",
+                target_id=str(job.id),
+                data={"source": "job_apply_view"},
+                request=request,
+            )
+        except Exception:
+            pass
         # Track click
         try:
             from apps.analytics.models import JobClick
@@ -399,6 +476,24 @@ class SimilarJobsView(generics.ListAPIView):
     serializer_class = JobListSerializer
     permission_classes = [AllowAny]
     pagination_class = None
+
+    def list(self, request, *args, **kwargs):
+        # Emit SEARCH_RESULT_CLICKED event
+        try:
+            job_slug = self.kwargs.get("slug")
+            emit(
+                event_type=SEARCH_RESULT_CLICKED,
+                category="search",
+                user=request.user if request.user.is_authenticated else None,
+                target_type="job",
+                target_id=job_slug,
+                data={"source": "similar_jobs"},
+                request=request,
+            )
+        except Exception:
+            pass
+        
+        return super().list(request, *args, **kwargs)
 
     def get_queryset(self):
         slug = self.kwargs["slug"]

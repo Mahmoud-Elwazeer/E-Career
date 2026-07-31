@@ -4,6 +4,8 @@ AWS Bedrock integration for CV parsing and AI features
 
 import json
 import logging
+import time
+from datetime import datetime
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
@@ -15,6 +17,14 @@ class BedrockService:
     def __init__(self):
         self._client = None
         self._model_id = getattr(settings, 'BEDROCK_MODEL_ID', 'anthropic.claude-sonnet-4-20250514-v1:0')
+        
+        # Circuit breaker state
+        self._circuit_open = False
+        self._circuit_opened_at = None
+        self._failure_count = 0
+        self._success_count = 0
+        self._last_check_time = None
+        self._failure_window: list[float] = []  # Timestamps of recent failures
 
     @property
     def client(self):
@@ -38,7 +48,67 @@ class BedrockService:
         """Check if Bedrock is configured and available"""
         return self.client is not None
 
-    def invoke_model(self, prompt, system_prompt=None, max_tokens=4096, temperature=0.3):
+    def _check_circuit_breaker(self) -> bool:
+        """
+        Check if circuit breaker should be open.
+        
+        Returns True if circuit is OPEN (should NOT call Bedrock).
+        """
+        if not self._circuit_open:
+            return False
+        
+        # Check if enough time has passed to try again (5 minutes)
+        if self._circuit_opened_at:
+            elapsed = time.time() - self._circuit_opened_at
+            if elapsed >= 300:  # 5 minutes
+                # Reset circuit and try again
+                self._circuit_open = False
+                self._circuit_opened_at = None
+                self._failure_count = 0
+                self._success_count = 0
+                self._failure_window.clear()
+                logger.info("circuit_breaker_reset", model=self._model_id)
+                return False
+        
+        return True  # Circuit is still open
+    
+    def _record_success(self):
+        """Record a successful call."""
+        self._success_count += 1
+        self._failure_count = max(0, self._failure_count - 1)
+        
+        # Reset circuit if we have enough successes
+        if self._success_count >= 5 and self._circuit_open:
+            self._circuit_open = False
+            self._circuit_opened_at = None
+            self._failure_count = 0
+            self._success_count = 0
+            self._failure_window.clear()
+            logger.info("circuit_breaker_reset_on_success", model=self._model_id)
+    
+    def _record_failure(self):
+        """Record a failed call."""
+        self._failure_count += 1
+        self._failure_window.append(time.time())
+        
+        # Clean old failures (older than 2 minutes)
+        now = time.time()
+        self._failure_window = [t for t in self._failure_window if now - t < 120]
+        
+        # Check if failure rate > 50% in the last 2 minutes
+        if len(self._failure_window) >= 2:
+            recent_failures = len([t for t in self._failure_window if now - t < 120])
+            if recent_failures / max(len(self._failure_window), 1) > 0.5:
+                self._circuit_open = True
+                self._circuit_opened_at = now
+                logger.warning(
+                    "circuit_breaker_opened",
+                    model=self._model_id,
+                    failures=recent_failures,
+                    total=len(self._failure_window),
+                )
+    
+    def invoke_model(self, prompt, system_prompt=None, max_tokens=4096, temperature=0.3, user=None):
         """
         Invoke Claude via AWS Bedrock
 
@@ -47,12 +117,22 @@ class BedrockService:
             system_prompt: System instructions
             max_tokens: Maximum response tokens
             temperature: Response creativity (0-1)
+            user: Optional user for cost tracking
 
         Returns:
             str: Model response
         """
         if not self.is_available:
             raise RuntimeError("Bedrock service is not configured")
+
+        # Check circuit breaker
+        if self._check_circuit_breaker():
+            raise RuntimeError("Bedrock circuit breaker is open - service temporarily unavailable")
+
+        start_time = time.time()
+        tokens_in = 0
+        tokens_out = 0
+        cost_usd = 0.0
 
         try:
             messages = [
@@ -78,9 +158,51 @@ class BedrockService:
             )
 
             response_body = json.loads(response['body'].read())
-            return response_body['content'][0]['text']
+            response_text = response_body['content'][0]['text']
+
+            # Estimate tokens (rough approximation: 1 token ~ 4 characters)
+            tokens_in = len(prompt) // 4
+            tokens_out = len(response_text) // 4
+
+            # Calculate cost (approximate rates)
+            # Claude Sonnet: $3.00/1M input tokens, $15.00/1M output tokens
+            # Claude Haiku: $0.25/1M input tokens, $1.25/1M output tokens
+            model_cost = getattr(settings, 'BEDROCK_MODEL_COST', {})
+            input_rate = model_cost.get('input_per_million', 3.00)
+            output_rate = model_cost.get('output_per_million', 15.00)
+            cost_usd = (tokens_in / 1_000_000) * input_rate + (tokens_out / 1_000_000) * output_rate
+
+            # Emit AI_MODEL_CALLED event
+            try:
+                from apps.events.emitter import emit
+                from apps.events.types import AI_MODEL_CALLED
+                emit(
+                    event_type=AI_MODEL_CALLED,
+                    category="ai",
+                    user=user,
+                    target_type="model",
+                    target_id=self._model_id,
+                    data={
+                        "model": self._model_id,
+                        "tokens_in": tokens_in,
+                        "tokens_out": tokens_out,
+                        "cost_usd": round(cost_usd, 6),
+                        "latency_ms": round((time.time() - start_time) * 1000, 2),
+                        "prompt_length": len(prompt),
+                        "response_length": len(response_text),
+                    },
+                    request=None,
+                )
+            except Exception:
+                pass
+
+            # Record success
+            self._record_success()
+            return response_text
 
         except Exception as e:
+            # Record failure
+            self._record_failure()
             logger.error(f"Bedrock API error: {e}")
             raise
 
@@ -169,7 +291,8 @@ Return ONLY the JSON object, no additional text."""
                 prompt=prompt,
                 system_prompt=system_prompt,
                 max_tokens=8000,
-                temperature=0.1
+                temperature=0.1,
+                user=None  # CV parsing is not user-specific
             )
 
             # Extract JSON from response
@@ -243,7 +366,8 @@ Provide match score and detailed analysis."""
                 prompt=prompt,
                 system_prompt=system_prompt,
                 max_tokens=2000,
-                temperature=0.2
+                temperature=0.2,
+                user=None  # Match scoring is not user-specific
             )
 
             json_start = response.find('{')

@@ -12,6 +12,17 @@ from .models import RashidConfig, RashidConversation, RashidMessage, RashidProfi
 logger = logging.getLogger(__name__)
 
 
+def estimate_tokens(text: str) -> int:
+    """
+    Estimate token count from text.
+    Uses ~4 characters per token approximation for Arabic/English text.
+    This is more accurate than word-based estimation.
+    """
+    if not text:
+        return 0
+    return max(1, len(text) // 4)
+
+
 class RashidService:
     """Core Rashid AI service"""
 
@@ -169,7 +180,7 @@ class RashidService:
             conversation=conversation,
             role='user',
             content=user_message,
-            tokens_used=len(user_message.split())
+            tokens_used=estimate_tokens(user_message)
         )
         
         # Build prompt
@@ -203,14 +214,18 @@ class RashidService:
         
         except Exception as e:
             logger.error(f"Bedrock error: {e}")
-            response = "عذراً، حصل خطأ تقني. جرب تاني بعد شوية."
+            # Check if circuit breaker is open
+            if "circuit breaker" in str(e).lower():
+                response = "عذراً، الخادم مزدحم حالياً. حاول تاني بعد شوية."
+            else:
+                response = "عذراً، حصل خطأ تقني. جرب تاني بعد شوية."
         
         # Calculate latency
         latency_ms = int((time.time() - start_time) * 1000)
         
         # Estimate tokens used
-        input_tokens = len(user_message.split())
-        output_tokens = len(response.split())
+        input_tokens = estimate_tokens(user_message)
+        output_tokens = estimate_tokens(response)
         total_tokens = input_tokens + output_tokens
         
         # Save assistant message

@@ -55,7 +55,7 @@ def send_job_alerts():
     
     # Get users with alerts enabled
     profiles = UserProfile.objects.filter(
-        email_alerts_enabled=True
+        email_alerts=True
     ).select_related('user')
     
     if not profiles.exists():
@@ -65,7 +65,7 @@ def send_job_alerts():
     # Get recent jobs (last 24 hours)
     recent_jobs = Job.objects.filter(
         is_active=True,
-        posted_date__gte=timezone.now() - timedelta(hours=24)
+        posted_at__gte=timezone.now() - timedelta(hours=24)
     ).select_related('company', 'source')
     
     if not recent_jobs.exists():
@@ -106,8 +106,8 @@ def send_job_alerts():
                         continue
                 
                 # Check job type match
-                if profile.job_types and job.job_type:
-                    if job.job_type not in profile.job_types:
+                if profile.preferred_type and job.employment_type:
+                    if job.employment_type not in profile.preferred_type:
                         continue
                 
                 # Add to matches
@@ -116,8 +116,8 @@ def send_job_alerts():
                     'title': job.title,
                     'company': job.company.name if job.company else 'Unknown',
                     'location': job.location,
-                    'job_type': job.job_type,
-                    'salary_range': job.salary_range or 'Not specified',
+                    'job_type': job.employment_type,
+                    'salary_range': f"{job.salary_min or 0} - {job.salary_max or 0} {job.salary_currency}" if job.salary_min or job.salary_max else 'Not specified',
                     'url': f"/jobs/{job.id}/"
                 })
             
@@ -146,7 +146,7 @@ def send_weekly_digest():
     
     # Get users with weekly digest enabled
     profiles = UserProfile.objects.filter(
-        email_alerts_enabled=True,
+        email_alerts=True,
         alert_frequency='weekly'
     ).select_related('user')
     
@@ -162,7 +162,7 @@ def send_weekly_digest():
         'week_end': timezone.now().strftime('%Y-%m-%d'),
         'new_jobs': Job.objects.filter(
             is_active=True,
-            posted_date__gte=week_start
+            posted_at__gte=week_start
         ).count(),
         'total_companies': Job.objects.filter(is_active=True).values('company').distinct().count(),
     }

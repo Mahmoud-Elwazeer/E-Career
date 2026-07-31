@@ -13,6 +13,8 @@ from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 from django.utils import timezone
 from datetime import date, timedelta
+import secrets
+import string
 
 
 COMPANIES = [
@@ -112,44 +114,47 @@ class Command(BaseCommand):
         # ── Superuser ────────────────────────────────────────────────────
         # ── Superuser ────────────────────────────────────────────────────
         superadmin_email = "admin@gmail.com"
+        superadmin_password = self._generate_password()
         if not User.objects.filter(email=superadmin_email).exists():
             User.objects.create_superuser(
                 email=superadmin_email,
-                password="User@123",
+                password=superadmin_password,
                 first_name="Super",
                 last_name="Admin",
                 role="admin",
             )
-            self.stdout.write(self.style.SUCCESS(f"✅ Superuser created: {superadmin_email} / SuperAdmin@2025!"))
+            self.stdout.write(self.style.SUCCESS(f"✅ Superuser created: {superadmin_email} / {superadmin_password}"))
         else:
             self.stdout.write(f"⚠️  Superuser already exists: {superadmin_email}")
 
         admin_email = "manager@gmail.com"
+        admin_password = self._generate_password()
         if not User.objects.filter(email=admin_email).exists():
             admin = User.objects.create_user(
                 email=admin_email,
-                password="User@123",
+                password=admin_password,
                 first_name="Admin",
                 last_name="User",
                 role="admin",
                 is_staff=True,
             )
-            self.stdout.write(self.style.SUCCESS(f"✅ Admin created: {admin_email} / Admin@2025!"))
+            self.stdout.write(self.style.SUCCESS(f"✅ Admin created: {admin_email} / {admin_password}"))
         else:
             admin = User.objects.get(email=admin_email)
             self.stdout.write(f"⚠️  Admin already exists: {admin_email}")
 
         # ── Demo user ─────────────────────────────────────────────────────
         demo_email = "user@gmail.com"
+        demo_password = self._generate_password()
         if not User.objects.filter(email=demo_email).exists():
             demo_user = User.objects.create_user(
                 email=demo_email,
-                password="User@2025!",
+                password=demo_password,
                 first_name="Test",
                 last_name="User",
                 role="user",
             )
-            self.stdout.write(self.style.SUCCESS(f"✅ Test user created: {demo_email} / User@2025!"))
+            self.stdout.write(self.style.SUCCESS(f"✅ Test user created: {demo_email} / {demo_password}"))
         else:
             demo_user = User.objects.get(email=demo_email)
             self.stdout.write(f"⚠️  Test user already exists: {demo_email}")
@@ -281,8 +286,13 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("=" * 50))
         self.stdout.write(self.style.SUCCESS("🚀 Seed complete!"))
         self.stdout.write(self.style.SUCCESS("=" * 50))
-        self.stdout.write(f"  Superadmin: superadmin@gmail.com  /  SuperAdmin@2025!")
-        self.stdout.write(f"  Admin:      admin@gmail.com        /  Admin@2025!")
-        self.stdout.write(f"  User:       user@gmail.com         /  User@2025!")
+        self.stdout.write(f"  Superadmin: superadmin@gmail.com  /  (password shown above)")
+        self.stdout.write(f"  Admin:      admin@gmail.com        /  (password shown above)")
+        self.stdout.write(f"  User:       user@gmail.com         /  (password shown above)")
         self.stdout.write(f"  Admin UI:  http://localhost:8000/admin/")
         self.stdout.write(f"  API Docs:  http://localhost:8000/api/docs/")
+
+    def _generate_password(self, length: int = 16) -> str:
+        """Generate a secure random password"""
+        alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+        return ''.join(secrets.choice(alphabet) for _ in range(length))

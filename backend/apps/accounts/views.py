@@ -24,6 +24,10 @@ from apps.accounts.serializers import (
     PasswordResetConfirmSerializer,
     AvatarUploadSerializer,
 )
+from apps.events.emitter import emit
+from apps.events.types import (
+    USER_REGISTERED, USER_LOGGED_IN, USER_LOGGED_OUT, USER_PROFILE_UPDATED
+)
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +62,19 @@ class RegisterView(APIView):
         serializer.is_valid(raise_exception=True)
         try:
             user = serializer.save()
+            # Emit USER_REGISTERED event
+            try:
+                emit(
+                    event_type=USER_REGISTERED,
+                    category="user",
+                    user=user,
+                    target_type="user",
+                    target_id=str(user.id),
+                    data={"email": user.email, "source": "register_view"},
+                    request=request,
+                )
+            except Exception:
+                pass
             tokens = get_tokens_for_user(user)
             user_data = UserMeSerializer(user, context={"request": request}).data
             return Response(
@@ -92,6 +109,19 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
+        # Emit USER_LOGGED_IN event
+        try:
+            emit(
+                event_type=USER_LOGGED_IN,
+                category="user",
+                user=user,
+                target_type="user",
+                target_id=str(user.id),
+                data={"source": "login_view"},
+                request=request,
+            )
+        except Exception:
+            pass
         tokens = get_tokens_for_user(user)
         user_data = UserMeSerializer(user, context={"request": request}).data
         return Response(
@@ -121,6 +151,19 @@ class LogoutView(APIView):
         try:
             token = RefreshToken(refresh_token)
             token.blacklist()
+            # Emit USER_LOGGED_OUT event
+            try:
+                emit(
+                    event_type=USER_LOGGED_OUT,
+                    category="user",
+                    user=request.user,
+                    target_type="user",
+                    target_id=str(request.user.id),
+                    data={"source": "logout_view"},
+                    request=request,
+                )
+            except Exception:
+                pass
         except TokenError as e:
             return Response(
                 {"success": False, "data": None, "message": str(e), "errors": None},
@@ -265,6 +308,19 @@ class MeView(APIView):
             request.user, data=request.data, partial=True, context={"request": request}
         )
         serializer.is_valid(raise_exception=True)
+        # Emit USER_PROFILE_UPDATED event
+        try:
+            emit(
+                event_type=USER_PROFILE_UPDATED,
+                category="user",
+                user=request.user,
+                target_type="user",
+                target_id=str(request.user.id),
+                data={"source": "me_view", "fields": list(request.data.keys())},
+                request=request,
+            )
+        except Exception:
+            pass
         serializer.save()
         return Response(
             {"success": True, "data": serializer.data, "message": "Profile updated.", "errors": None}

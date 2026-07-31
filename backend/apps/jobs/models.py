@@ -287,19 +287,22 @@ class Job(UUIDModel):
         db_index=True
     )
     
-    remote_type = models.CharField(
+    # Work arrangement (consolidated from location_type + remote_type)
+    WORK_ARRANGEMENT_CHOICES = [
+        ('onsite', 'On-site'),
+        ('remote', 'Remote'),
+        ('hybrid', 'Hybrid'),
+    ]
+    work_arrangement = models.CharField(
         max_length=10,
-        choices=[
-            ('remote', 'Remote'),
-            ('hybrid', 'Hybrid'),
-            ('onsite', 'On-site'),
-        ],
+        choices=WORK_ARRANGEMENT_CHOICES,
         null=True, 
         blank=True, 
         db_index=True
     )
     
-    # Salary information
+    # Salary information (duplicate fields - kept for backward compatibility during migration)
+    # TODO: Remove these after migration is complete
     salary_min_new = models.IntegerField(null=True, blank=True)
     salary_max_new = models.IntegerField(null=True, blank=True)
     salary_currency_new = models.CharField(max_length=3, default='EGP', blank=True)

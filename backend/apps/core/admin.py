@@ -6,7 +6,6 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
-from unfold.enums import Color
 
 from apps.core.models import FeatureFlag, ActivityLog, Media, PlatformConfig, ProxyPool, PipelineHealth
 
@@ -25,8 +24,8 @@ class FeatureFlagAdmin(ModelAdmin):
     @display(
         description="Status",
         label={
-            True: Color.GREEN,
-            False: Color.RED,
+            True: "success",
+            False: "danger",
         }
     )
     def status_badge(self, obj):
@@ -129,9 +128,9 @@ class PipelineHealthAdmin(ModelAdmin):
     @display(
         description="Status",
         label={
-            "success": Color.GREEN,
-            "warning": Color.YELLOW,
-            "error": Color.RED,
+            "success": "success",
+            "warning": "warning",
+            "error": "danger",
         }
     )
     def status_badge(self, obj):

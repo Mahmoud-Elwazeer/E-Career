@@ -30,8 +30,10 @@ from .serializers import (
     SendMessageSerializer,
     RashidConfigSerializer
 )
-from .service import rashid_service
+from .service import rashid_service, estimate_tokens
 from .tools import execute_tool, get_available_tools
+from apps.events.emitter import emit
+from apps.events.types import AI_CONVERSATION_STARTED, AI_MESSAGE_SENT
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +84,20 @@ class ConversationViewSet(viewsets.ModelViewSet):
             job=job
         )
 
+        # Emit AI_CONVERSATION_STARTED event
+        try:
+            emit(
+                event_type=AI_CONVERSATION_STARTED,
+                category="ai",
+                user=request.user,
+                target_type="conversation",
+                target_id=str(conversation.id),
+                data={"mode": mode, "job_id": job_id},
+                request=request,
+            )
+        except Exception:
+            pass
+
         # Get greeting message
         greeting = rashid_service.get_greeting(request.user)
 
@@ -90,7 +106,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
             conversation=conversation,
             role='assistant',
             content=greeting,
-            tokens_used=len(greeting.split())
+            tokens_used=estimate_tokens(greeting)
         )
 
         return Response({
@@ -117,6 +133,20 @@ class ConversationViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         message = serializer.validated_data['message']
+
+        # Emit AI_MESSAGE_SENT event
+        try:
+            emit(
+                event_type=AI_MESSAGE_SENT,
+                category="ai",
+                user=request.user,
+                target_type="conversation",
+                target_id=str(conversation.id),
+                data={"message": message},
+                request=request,
+            )
+        except Exception:
+            pass
 
         # Generate response
         response = rashid_service.generate_response(conversation, message)

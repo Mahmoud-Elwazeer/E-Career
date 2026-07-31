@@ -6,8 +6,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from unfold.decorators import display
-from unfold.enums import Color
-from unfold.contrib.import_export.admin import ImportExportModelAdmin
+from import_export.admin import ImportExportModelAdmin
 
 from apps.jobs.models import Company, Source, Tag, Job, JobTag
 
@@ -124,9 +123,9 @@ class JobAdmin(ImportExportModelAdmin, ModelAdmin):
     @display(
         description="Location",
         label={
-            "remote": Color.GREEN,
-            "onsite": Color.BLUE,
-            "hybrid": Color.PURPLE,
+            "remote": "success",
+            "onsite": "blue",
+            "hybrid": "purple",
         }
     )
     def location_type_badge(self, obj):
@@ -135,9 +134,9 @@ class JobAdmin(ImportExportModelAdmin, ModelAdmin):
     @display(
         description="Status",
         label={
-            "active": Color.GREEN,
-            "pending": Color.YELLOW,
-            "archived": Color.GRAY,
+            "active": "success",
+            "pending": "warning",
+            "archived": "gray",
         }
     )
     def status_badge(self, obj):

@@ -9,6 +9,8 @@ from django.utils import timezone
 
 from apps.users.models import UserProfile, JobMatchScore
 from .cv_parser import CVParser
+from apps.events.emitter import emit
+from apps.events.types import CV_UPLOADED, CV_PARSED
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -126,6 +128,20 @@ class CVUploadSerializer(serializers.Serializer):
         # Get or create profile
         profile, created = UserProfile.objects.get_or_create(user=user)
 
+        # Emit CV_UPLOADED event
+        try:
+            emit(
+                event_type=CV_UPLOADED,
+                category="user",
+                user=user,
+                target_type="cv",
+                target_id=str(profile.id) if profile.id else "new",
+                data={"filename": cv_file.name, "size": cv_file.size},
+                request=None,
+            )
+        except Exception:
+            pass
+
         # Extract text
         try:
             cv_text = CVParser.extract_text(cv_file)
@@ -141,6 +157,24 @@ class CVUploadSerializer(serializers.Serializer):
                 parsed_data = bedrock_service.parse_cv(cv_text)
         except Exception as e:
             logger.warning(f"Bedrock parsing failed, using basic extraction: {e}")
+
+        # Emit CV_PARSED event
+        try:
+            emit(
+                event_type=CV_PARSED,
+                category="user",
+                user=user,
+                target_type="cv",
+                target_id=str(profile.id) if profile.id else "new",
+                data={
+                    "parser_used": CVParser().parse_cv(cv_file).parser_used,
+                    "has_parsed_data": parsed_data is not None,
+                    "skills_extracted": len(parsed_data.get('skills', {}).get('technical', [])) if parsed_data else 0,
+                },
+                request=None,
+            )
+        except Exception:
+            pass
 
         # Update profile
         profile.cv_file = cv_file

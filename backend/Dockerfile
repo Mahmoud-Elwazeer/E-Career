@@ -39,4 +39,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/health/ || exit 1
 
 # Default command (can be overridden in docker-compose)
-CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+# Use Daphne for ASGI/WebSocket support
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
