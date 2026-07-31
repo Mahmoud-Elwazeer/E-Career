@@ -49,4 +49,13 @@ app.conf.beat_schedule = {
         'task': 'apps.emails.tasks.send_re_engagement_emails',
         'schedule': crontab(hour=10, minute=0, day_of_week=0),  # Sunday 10 AM
     },
+    # Verification tasks
+    'verify-employer-posted-jobs': {
+        'task': 'apps.scraper.tasks.verify_employer_posted_job',
+        'schedule': crontab(minute=0, hour='*/6'),  # Every 6 hours
+    },
+    'weekly-full-reverification': {
+        'task': 'apps.verification.tasks.weekly_full_reverification',
+        'schedule': crontab(hour=4, minute=0, day_of_week=0),  # Sunday 4 AM weekly
+    },
 }

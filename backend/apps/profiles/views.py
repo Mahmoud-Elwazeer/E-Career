@@ -19,6 +19,8 @@ from .serializers import (
     PreferencesUpdateSerializer
 )
 from .services import MatchingService, matching_service
+from apps.events.emitter import emit
+from apps.events.types import USER_PROFILE_UPDATED
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +66,19 @@ class ProfileViewSet(viewsets.ModelViewSet):
         )
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        # Emit USER_PROFILE_UPDATED event
+        try:
+            emit(
+                event_type=USER_PROFILE_UPDATED,
+                category="user",
+                user=request.user,
+                target_type="user",
+                target_id=str(profile.id),
+                data={"source": "profile_view", "fields": list(request.data.keys())},
+                request=request,
+            )
+        except Exception:
+            pass
         return Response(UserProfileSerializer(profile).data)
 
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser])
@@ -154,6 +169,19 @@ class ProfileViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             profile.skills = serializer.validated_data['skills']
             profile.save(update_fields=['skills', 'updated_at'])
+            # Emit USER_PROFILE_UPDATED event
+            try:
+                emit(
+                    event_type=USER_PROFILE_UPDATED,
+                    category="user",
+                    user=request.user,
+                    target_type="user",
+                    target_id=str(profile.id),
+                    data={"source": "profile_skills_view", "fields": ["skills"]},
+                    request=request,
+                )
+            except Exception:
+                pass
             return Response({
                 'status': 'success',
                 'skills': profile.skills
@@ -184,6 +212,19 @@ class ProfileViewSet(viewsets.ModelViewSet):
                 profile.salary_currency = data.get('salary_currency', 'EGP')
 
             profile.save()
+            # Emit USER_PROFILE_UPDATED event
+            try:
+                emit(
+                    event_type=USER_PROFILE_UPDATED,
+                    category="user",
+                    user=request.user,
+                    target_type="user",
+                    target_id=str(profile.id),
+                    data={"source": "profile_preferences_view", "fields": list(data.keys())},
+                    request=request,
+                )
+            except Exception:
+                pass
             return Response(UserProfileSerializer(profile).data)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

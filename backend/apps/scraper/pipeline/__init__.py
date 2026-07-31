@@ -11,6 +11,15 @@ from .normalizer import (
     calculate_expiry_date,
 )
 
+# Import verification engine
+from apps.verification.stages.ats_fingerprint import BLOCKED_DOMAINS
+
+# Import skill extraction
+from apps.skills.extraction import skill_extractor, SkillExtractor, extract_skills_for_job
+
+# Import embedding service
+from apps.search.embeddings import embedding_service, EmbeddingService
+
 __all__ = [
     'is_direct_company_url',
     'verify_url_live',
@@ -25,4 +34,10 @@ __all__ = [
     'normalize_location',
     'parse_salary',
     'calculate_expiry_date',
+    'BLOCKED_DOMAINS',
+    'skill_extractor',
+    'SkillExtractor',
+    'extract_skills_for_job',
+    'embedding_service',
+    'EmbeddingService',
 ]

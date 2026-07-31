@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from .models import RashidConversation, RashidMessage
-from .service import rashid_service
+from .service import rashid_service, estimate_tokens
 from .tools import execute_tool
 
 logger = logging.getLogger(__name__)
@@ -42,9 +42,10 @@ class RashidConsumer(AsyncWebsocketConsumer):
             self.conversation = await self.create_conversation()
 
         await self.accept()
-
+        
         # Send greeting if new conversation
-        if self.conversation.messages.count() == 0:
+        message_count = await self.get_message_count()
+        if message_count == 0:
             await self.send_greeting()
 
     async def disconnect(self, close_code):
@@ -152,7 +153,7 @@ class RashidConsumer(AsyncWebsocketConsumer):
             conversation=self.conversation,
             role='assistant',
             content=greeting,
-            tokens_used=len(greeting.split())
+            tokens_used=estimate_tokens(greeting)
         )
 
         # Send to client

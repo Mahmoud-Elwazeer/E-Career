@@ -1,0 +1,73 @@
+from django.db import models
+from apps.core.models import UUIDModel
+
+
+class VerificationResult(UUIDModel):
+    """Stores the full verification outcome for a job listing."""
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("verified", "Verified"),
+        ("rejected", "Rejected"),
+        ("expired", "Expired"),
+    ]
+
+    job = models.OneToOneField(
+        "jobs.Job",
+        on_delete=models.CASCADE,
+        related_name="verification",
+    )
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending", db_index=True)
+    trust_score = models.FloatField(default=0.0, db_index=True)
+
+    # Stage 1: ATS Fingerprinting
+    ats_platform_detected = models.CharField(max_length=50, blank=True)
+    ats_confidence = models.FloatField(default=0.0)
+
+    # Stage 2: Redirect Resolution
+    final_url = models.URLField(max_length=2000, blank=True)
+    redirect_chain = models.JSONField(default=list)
+    redirect_count = models.IntegerField(default=0)
+
+    # Stage 3: Domain Verification
+    domain_trust = models.FloatField(default=0.0)
+    domain_matches_company = models.BooleanField(default=False)
+    ssl_valid = models.BooleanField(default=False)
+
+    # Stage 4: Legitimacy Scoring
+    legitimacy_score = models.FloatField(default=0.0)
+    legitimacy_flags = models.JSONField(default=list)
+
+    # Stage 5: Freshness & Liveness
+    url_accessible = models.BooleanField(default=False)
+    last_verified_at = models.DateTimeField(null=True, blank=True)
+    consecutive_failures = models.IntegerField(default=0)
+    http_status_code = models.IntegerField(null=True, blank=True)
+
+    # Stage 6: Deduplication
+    is_duplicate = models.BooleanField(default=False)
+    duplicate_of = models.ForeignKey(
+        "jobs.Job",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="duplicates",
+    )
+    content_hash = models.CharField(max_length=64, blank=True, db_index=True)
+
+    # Metadata
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verification_duration_ms = models.IntegerField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "verification_result"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "trust_score"]),
+            models.Index(fields=["content_hash"]),
+        ]
+
+    def __str__(self):
+        return f"Verification({self.job_id}) → {self.status} ({self.trust_score:.2f})"

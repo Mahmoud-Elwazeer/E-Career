@@ -1,0 +1,87 @@
+"""
+Events app for the E-Career platform.
+
+Provides event emission and tracking capabilities for:
+- User actions (register, login, profile updates)
+- Job interactions (view, save, apply, dismiss)
+- Search activities (search, click)
+- CV management (upload, parse)
+- AI interactions (model calls, conversations)
+"""
+from .emitter import emit, emit_sync
+from .types import (
+    # User Events
+    USER_REGISTERED, USER_LOGGED_IN, USER_LOGGED_OUT, USER_PROFILE_UPDATED, USER_DEACTIVATED,
+    # Job Events
+    JOB_VIEWED, JOB_SAVED, JOB_UNSAVED, JOB_APPLIED, JOB_DISMISSED, JOB_SHARED, JOB_REPORTED,
+    # Search Events
+    SEARCH_PERFORMED, SEARCH_RESULT_CLICKED, SEARCH_FILTER_APPLIED,
+    # CV Events
+    CV_UPLOADED, CV_PARSED, CV_DELETED,
+    # AI Events
+    AI_CONVERSATION_STARTED, AI_MESSAGE_SENT, AI_MODEL_CALLED,
+    # Employer Events
+    EMPLOYER_JOB_POSTED, EMPLOYER_JOB_UPDATED, EMPLOYER_JOB_CLOSED,
+    EMPLOYER_CANDIDATE_VIEWED, EMPLOYER_CANDIDATE_SHORTLISTED,
+    # System Events
+    SCRAPER_RUN_STARTED, SCRAPER_RUN_COMPLETED, SCRAPER_RUN_FAILED,
+    VERIFICATION_COMPLETED, VERIFICATION_REJECTED,
+    SYNC_TYPESENSE_COMPLETED, DAILY_LIVENESS_COMPLETED,
+    # Recommendation Events
+    RECOMMENDATION_SHOWN, RECOMMENDATION_CLICKED, RECOMMENDATION_DISMISSED,
+    # Interview Events
+    INTERVIEW_SESSION_STARTED, INTERVIEW_SESSION_COMPLETED, INTERVIEW_ANSWER_SUBMITTED,
+)
+
+__all__ = [
+    "emit",
+    "emit_sync",
+    # User Events
+    "USER_REGISTERED",
+    "USER_LOGGED_IN",
+    "USER_LOGGED_OUT",
+    "USER_PROFILE_UPDATED",
+    "USER_DEACTIVATED",
+    # Job Events
+    "JOB_VIEWED",
+    "JOB_SAVED",
+    "JOB_UNSAVED",
+    "JOB_APPLIED",
+    "JOB_DISMISSED",
+    "JOB_SHARED",
+    "JOB_REPORTED",
+    # Search Events
+    "SEARCH_PERFORMED",
+    "SEARCH_RESULT_CLICKED",
+    "SEARCH_FILTER_APPLIED",
+    # CV Events
+    "CV_UPLOADED",
+    "CV_PARSED",
+    "CV_DELETED",
+    # AI Events
+    "AI_CONVERSATION_STARTED",
+    "AI_MESSAGE_SENT",
+    "AI_MODEL_CALLED",
+    # Employer Events
+    "EMPLOYER_JOB_POSTED",
+    "EMPLOYER_JOB_UPDATED",
+    "EMPLOYER_JOB_CLOSED",
+    "EMPLOYER_CANDIDATE_VIEWED",
+    "EMPLOYER_CANDIDATE_SHORTLISTED",
+    # System Events
+    "SCRAPER_RUN_STARTED",
+    "SCRAPER_RUN_COMPLETED",
+    "SCRAPER_RUN_FAILED",
+    "VERIFICATION_COMPLETED",
+    "VERIFICATION_REJECTED",
+    "SYNC_TYPESENSE_COMPLETED",
+    "DAILY_LIVENESS_COMPLETED",
+    # Recommendation Events
+    "RECOMMENDATION_SHOWN",
+    "RECOMMENDATION_CLICKED",
+    "RECOMMENDATION_DISMISSED",
+    # Interview Events
+    "INTERVIEW_SESSION_STARTED",
+    "INTERVIEW_SESSION_COMPLETED",
+    "INTERVIEW_ANSWER_SUBMITTED",
+]

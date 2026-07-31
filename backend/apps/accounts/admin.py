@@ -7,7 +7,6 @@ from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
-from unfold.enums import Color
 
 from apps.accounts.models import User
 
@@ -57,9 +56,9 @@ class UserAdmin(ModelAdmin, BaseUserAdmin):
     @display(
         description="Role",
         label={
-            "admin": Color.PURPLE,
-            "employer": Color.BLUE,
-            "job_seeker": Color.GREEN,
+            "admin": "purple",
+            "employer": "blue",
+            "job_seeker": "green",
         }
     )
     def role_badge(self, obj):
@@ -68,9 +67,9 @@ class UserAdmin(ModelAdmin, BaseUserAdmin):
     @display(
         description="Status",
         label={
-            "active": Color.GREEN,
-            "inactive": Color.GRAY,
-            "banned": Color.RED,
+            "active": "success",
+            "inactive": "warning",
+            "banned": "danger",
         }
     )
     def status_badge(self, obj):

@@ -28,6 +28,14 @@ from .permissions import (
     CanPostJobs,
     CanViewApplicants,
 )
+from apps.events.emitter import emit
+from apps.events.types import (
+    EMPLOYER_JOB_POSTED,
+    EMPLOYER_JOB_UPDATED,
+    EMPLOYER_JOB_CLOSED,
+    EMPLOYER_CANDIDATE_VIEWED,
+    EMPLOYER_CANDIDATE_SHORTLISTED,
+)
 
 
 class EmployerRegistrationView(generics.CreateAPIView):
@@ -209,10 +217,24 @@ class JobPostingViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         employer = self.request.user.employer_profile
-        serializer.save(
+        job_post = serializer.save(
             employer=employer,
             company=employer.company
         )
+        
+        # Emit EMPLOYER_JOB_POSTED event
+        try:
+            emit(
+                event_type=EMPLOYER_JOB_POSTED,
+                category="employer",
+                user=employer.user,
+                target_type="job_posting",
+                target_id=str(job_post.id),
+                data={"job_title": job_post.title, "company": job_post.company.name},
+                request=None,
+            )
+        except Exception:
+            pass
     
     def perform_update(self, serializer):
         """Only allow updates if job is in draft status"""
@@ -271,6 +293,20 @@ class JobPostingViewSet(viewsets.ModelViewSet):
         
         job_post.status = 'closed'
         job_post.save()
+        
+        # Emit EMPLOYER_JOB_CLOSED event
+        try:
+            emit(
+                event_type=EMPLOYER_JOB_CLOSED,
+                category="employer",
+                user=job_post.employer.user,
+                target_type="job_posting",
+                target_id=str(job_post.id),
+                data={"job_title": job_post.title, "company": job_post.company.name},
+                request=None,
+            )
+        except Exception:
+            pass
         
         # Update linked Job if exists
         if job_post.mirrored_job:
@@ -365,6 +401,24 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         if application.status == 'applied':
             application.status = 'viewed'
             application.save()
+            
+            # Emit EMPLOYER_CANDIDATE_VIEWED event
+            try:
+                emit(
+                    event_type=EMPLOYER_CANDIDATE_VIEWED,
+                    category="employer",
+                    user=application.job.employer.employer.user,
+                    target_type="job_application",
+                    target_id=str(application.id),
+                    data={
+                        "candidate_name": f"{application.user.first_name} {application.user.last_name}",
+                        "candidate_email": application.user.email,
+                        "job_title": application.job.title,
+                    },
+                    request=None,
+                )
+            except Exception:
+                pass
         
         return super().update(request, *args, **kwargs)
     
@@ -374,6 +428,24 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         application = self.get_object()
         application.status = 'shortlisted'
         application.save()
+        
+        # Emit EMPLOYER_CANDIDATE_SHORTLISTED event
+        try:
+            emit(
+                event_type=EMPLOYER_CANDIDATE_SHORTLISTED,
+                category="employer",
+                user=application.job.employer.employer.user,
+                target_type="job_application",
+                target_id=str(application.id),
+                data={
+                    "candidate_name": f"{application.user.first_name} {application.user.last_name}",
+                    "candidate_email": application.user.email,
+                    "job_title": application.job.title,
+                },
+                request=None,
+            )
+        except Exception:
+            pass
         
         return Response({
             'message': 'Application shortlisted',

@@ -1,0 +1,245 @@
+"""
+Career Intelligence Serializers
+
+This module defines DRF serializers for career profile, skills, learning,
+and talent intelligence features.
+"""
+
+from rest_framework import serializers
+from django.conf import settings
+from apps.skills.models import Skill
+from .models import (
+    CareerProfile,
+    CareerUserSkill,
+    CareerLearning,
+    TalentScore,
+    InterviewSession,
+)
+
+
+class CareerUserSkillSerializer(serializers.ModelSerializer):
+    """Serializer for CareerUserSkill model."""
+    
+    skill_name = serializers.CharField(source='skill.name', read_only=True)
+    skill_id = serializers.CharField(source='skill.id', read_only=True)
+    
+    class Meta:
+        model = CareerUserSkill
+        fields = [
+            'id',
+            'skill_id',
+            'skill_name',
+            'proficiency',
+            'years_experience',
+            'last_used_at',
+            'verified',
+            'verification_source',
+            'source',
+            'confidence',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class CareerUserSkillCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating CareerUserSkill."""
+    
+    skill_id = serializers.UUIDField()
+    
+    class Meta:
+        model = CareerUserSkill
+        fields = [
+            'skill_id',
+            'proficiency',
+            'years_experience',
+            'last_used_at',
+            'verified',
+            'verification_source',
+            'source',
+            'confidence',
+        ]
+
+
+class CareerProfileSerializer(serializers.ModelSerializer):
+    """Serializer for CareerProfile model."""
+    
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_id = serializers.UUIDField(source='user.id', read_only=True)
+    skills = CareerUserSkillSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = CareerProfile
+        fields = [
+            'id',
+            'user_id',
+            'user_email',
+            'cv_file',
+            'cv_parsed_data',
+            'cv_parse_status',
+            'cv_parsed_at',
+            'experience_years',
+            'current_role',
+            'current_company',
+            'target_roles',
+            'target_locations',
+            'target_salary_min',
+            'target_salary_currency',
+            'open_to_remote',
+            'github_username',
+            'github_data',
+            'portfolio_url',
+            'portfolio_analysis',
+            'linkedin_data',
+            'alert_frequency',
+            'min_match_score',
+            'completeness_score',
+            'last_active_at',
+            'skills',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'cv_parse_status',
+            'cv_parsed_at',
+            'completeness_score',
+            'last_active_at',
+            'created_at',
+            'updated_at',
+        ]
+
+
+class CareerProfileUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating CareerProfile."""
+    
+    class Meta:
+        model = CareerProfile
+        fields = [
+            'experience_years',
+            'current_role',
+            'current_company',
+            'target_roles',
+            'target_locations',
+            'target_salary_min',
+            'target_salary_currency',
+            'open_to_remote',
+            'github_username',
+            'portfolio_url',
+            'alert_frequency',
+            'min_match_score',
+        ]
+
+
+class CareerLearningSerializer(serializers.ModelSerializer):
+    """Serializer for CareerLearning model."""
+    
+    class Meta:
+        model = CareerLearning
+        fields = [
+            'id',
+            'title',
+            'platform',
+            'skills_gained',
+            'completed_at',
+            'certificate_url',
+            'course_id',
+            'duration_hours',
+            'difficulty_level',
+            'created_at',
+        ]
+        read_only_fields = ['created_at']
+
+
+class TalentScoreSerializer(serializers.ModelSerializer):
+    """Serializer for TalentScore model."""
+    
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    dimension_breakdown = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = TalentScore
+        fields = [
+            'id',
+            'user_email',
+            'overall_score',
+            'skill_score',
+            'experience_score',
+            'education_score',
+            'portfolio_score',
+            'interview_score',
+            'growth_score',
+            'communication_score',
+            'ai_confidence',
+            'explanations',
+            'score_history',
+            'last_calculated_at',
+            'dimension_breakdown',
+        ]
+        read_only_fields = ['last_calculated_at']
+    
+    def get_dimension_breakdown(self, obj):
+        return obj.get_dimension_breakdown()
+
+
+class InterviewSessionSerializer(serializers.ModelSerializer):
+    """Serializer for InterviewSession model."""
+    
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    
+    class Meta:
+        model = InterviewSession
+        fields = [
+            'id',
+            'user_email',
+            'interview_type',
+            'target_role',
+            'target_company',
+            'mode',
+            'difficulty',
+            'questions',
+            'overall_score',
+            'dimension_scores',
+            'recording_url',
+            'transcript',
+            'started_at',
+            'completed_at',
+            'duration_seconds',
+            'created_at',
+        ]
+        read_only_fields = ['created_at']
+
+
+class InterviewSessionCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating InterviewSession."""
+    
+    class Meta:
+        model = InterviewSession
+        fields = [
+            'interview_type',
+            'target_role',
+            'target_company',
+            'mode',
+            'difficulty',
+        ]
+
+
+class ProfileCompletenessSerializer(serializers.Serializer):
+    """Serializer for profile completeness response."""
+    
+    score = serializers.FloatField()
+    missing_fields = serializers.ListField(child=serializers.CharField())
+    total_fields = serializers.IntegerField()
+    completed_fields = serializers.IntegerField()
+
+
+class SkillGapSerializer(serializers.Serializer):
+    """Serializer for skill gap analysis response."""
+    
+    target_role = serializers.CharField()
+    missing_skills = serializers.ListField(
+        child=serializers.DictField()
+    )
+    skill_importance = serializers.DictField()
+    learning_resources = serializers.ListField(
+        child=serializers.DictField()
+    )

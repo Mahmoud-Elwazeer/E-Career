@@ -6,7 +6,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
-from apps.core.views import HealthCheckView
+from apps.core.views import HealthCheckView, DetailedHealthCheckView
 
 # Import custom admin views
 from apps.scraper.admin_views import scraper_dashboard, health_monitor
@@ -21,6 +21,7 @@ urlpatterns = [
 
     # Health check
     path("health/", HealthCheckView.as_view(), name="health-check"),
+    path("health/detailed/", DetailedHealthCheckView.as_view(), name="health-check-detailed"),
 
     # API v1
     path("api/v1/", include([
@@ -34,6 +35,12 @@ urlpatterns = [
         path("rashid/", include("apps.rashid.urls")),
         # Employer Portal (Phase 3A)
         path("employer/", include("apps.employers.urls")),
+        # Search (Phase 1)
+        path("search/", include("apps.search.urls")),
+        # Vector Search (Phase 1 Week 6)
+        path("vectors/", include("apps.vectors.urls")),
+        # Career Intelligence (Phase 2)
+        path("career/", include("apps.career.urls")),
     ])),
 
     # Email tracking (Phase 2D)
