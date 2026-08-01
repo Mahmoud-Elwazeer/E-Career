@@ -1,143 +1,242 @@
 """
-Admin configuration for Core app using django-unfold.
-Phase 3C: Admin Dashboard Extensions
+Admin interface for Rule Engine, Feature Flags, and GitHub Integration.
 """
+
 from django.contrib import admin
 from django.utils.html import format_html
-from unfold.admin import ModelAdmin
-from unfold.decorators import display
+from .models import Rule, FeatureFlag, GitHubConnection, PortfolioAnalysis
 
-from apps.core.models import FeatureFlag, ActivityLog, Media, PlatformConfig, ProxyPool, PipelineHealth
+
+@admin.register(Rule)
+class RuleAdmin(admin.ModelAdmin):
+    """Admin for Rule model."""
+    
+    list_display = [
+        'name',
+        'category',
+        'action_type',
+        'is_active',
+        'priority',
+        'created_at',
+    ]
+    
+    list_filter = [
+        'category',
+        'action_type',
+        'is_active',
+        'created_at',
+    ]
+    
+    search_fields = [
+        'name',
+        'description',
+    ]
+    
+    readonly_fields = [
+        'uuid',
+        'created_at',
+        'updated_at',
+    ]
+    
+    fieldsets = (
+        ('Basic Info', {
+            'fields': ('name', 'description', 'category')
+        }),
+        ('Conditions', {
+            'fields': ('conditions',),
+            'description': 'Define conditions using JSON format. Example: {"operator": "ALL", "conditions": [{"field": "job.trust_score", "operator": "lt", "value": 0.4}]}'
+        }),
+        ('Action', {
+            'fields': ('action_type', 'action_params')
+        }),
+        ('Settings', {
+            'fields': ('is_active', 'priority', 'uuid', 'created_at', 'updated_at')
+        }),
+    )
+    
+    actions = ['activate_rules', 'deactivate_rules']
+    
+    def activate_rules(self, request, queryset):
+        queryset.update(is_active=True)
+        self.message_user(request, f"Activated {queryset.count()} rules")
+    activate_rules.short_description = "Activate selected rules"
+    
+    def deactivate_rules(self, request, queryset):
+        queryset.update(is_active=False)
+        self.message_user(request, f"Deactivated {queryset.count()} rules")
+    deactivate_rules.short_description = "Deactivate selected rules"
 
 
 @admin.register(FeatureFlag)
-class FeatureFlagAdmin(ModelAdmin):
-    """
-    Enhanced FeatureFlag admin with unfold styling.
-    """
-    list_display = ["key", "label", "status_badge", "updated_at"]
-    list_filter = ["is_enabled"]
-    search_fields = ["key", "label", "description"]
-    ordering = ["key"]
-    readonly_fields = ["uuid", "created_at", "updated_at"]
+class FeatureFlagAdmin(admin.ModelAdmin):
+    """Admin for FeatureFlag model."""
     
-    @display(
-        description="Status",
-        label={
-            True: "success",
-            False: "danger",
-        }
+    list_display = [
+        'key',
+        'label',
+        'is_enabled',
+        'enabled_percentage',
+        'employer_only',
+        'expires_at',
+        'category',
+    ]
+    
+    list_filter = [
+        'is_enabled',
+        'employer_only',
+        'category',
+        'expires_at',
+    ]
+    
+    search_fields = [
+        'key',
+        'label',
+        'description',
+    ]
+    
+    readonly_fields = [
+        'uuid',
+        'created_at',
+        'updated_at',
+    ]
+    
+    fieldsets = (
+        ('Basic Info', {
+            'fields': ('key', 'label', 'description', 'category')
+        }),
+        ('Status', {
+            'fields': ('is_enabled',)
+        }),
+        ('Targeting', {
+            'fields': ('enabled_for_users', 'enabled_percentage', 'regions', 'employer_only')
+        }),
+        ('Timing', {
+            'fields': ('expires_at',)
+        }),
+        ('Metadata', {
+            'fields': ('metadata', 'uuid', 'created_at', 'updated_at')
+        }),
     )
-    def status_badge(self, obj):
-        return "ON" if obj.is_enabled else "OFF"
+
+
+@admin.register(GitHubConnection)
+class GitHubConnectionAdmin(admin.ModelAdmin):
+    """Admin for GitHubConnection model."""
     
-    @admin.action(description="Enable selected flags")
-    def enable_flags(self, request, queryset):
-        count = queryset.update(is_enabled=True)
-        self.message_user(request, f"{count} flags enabled.")
+    list_display = [
+        'username',
+        'user_email',
+        'last_sync_status',
+        'last_synced_at',
+        'created_at',
+    ]
     
-    @admin.action(description="Disable selected flags")
-    def disable_flags(self, request, queryset):
-        count = queryset.update(is_enabled=False)
-        self.message_user(request, f"{count} flags disabled.")
+    list_filter = [
+        'last_sync_status',
+        'created_at',
+    ]
     
-    actions = ["enable_flags", "disable_flags"]
-
-
-@admin.register(ActivityLog)
-class ActivityLogAdmin(ModelAdmin):
-    """
-    Enhanced ActivityLog admin with unfold styling.
-    Read-only audit log.
-    """
-    list_display = ["action", "user", "target_type", "target_id", "created_at"]
-    list_filter = ["action", "target_type", "created_at"]
-    search_fields = ["action", "target_type", "target_id", "user__email"]
-    ordering = ["-created_at"]
-    readonly_fields = ["user", "action", "target_type", "target_id", "metadata", "created_at"]
+    search_fields = [
+        'username',
+        'user__email',
+        'github_id',
+    ]
     
-    def has_add_permission(self, request):
-        return False
+    readonly_fields = [
+        'uuid',
+        'github_id',
+        'username',
+        'last_synced_at',
+        'last_sync_status',
+        'last_sync_error',
+        'created_at',
+        'updated_at',
+    ]
     
-    def has_change_permission(self, request, obj=None):
-        return False
-
-
-@admin.register(Media)
-class MediaAdmin(ModelAdmin):
-    """
-    Enhanced Media admin with unfold styling.
-    """
-    list_display = ["filename", "mime_type", "size_display", "uploaded_by", "created_at"]
-    list_filter = ["mime_type", "created_at"]
-    search_fields = ["filename", "uploaded_by__email"]
-    ordering = ["-created_at"]
-    readonly_fields = ["uuid", "size", "mime_type", "uploaded_by", "created_at", "updated_at"]
-    
-    @display(description="Size")
-    def size_display(self, obj):
-        if obj.size < 1024:
-            return f"{obj.size} B"
-        elif obj.size < 1024 * 1024:
-            return f"{obj.size / 1024:.1f} KB"
-        return f"{obj.size / (1024 * 1024):.1f} MB"
-
-
-@admin.register(PlatformConfig)
-class PlatformConfigAdmin(ModelAdmin):
-    """
-    Enhanced PlatformConfig admin with unfold styling.
-    Singleton configuration.
-    """
-    list_display = ["__str__", "maintenance_mode", "updated_at"]
-    readonly_fields = ["updated_at", "updated_by"]
-    
-    def has_add_permission(self, request):
-        # Only allow one instance
-        if PlatformConfig.objects.exists():
-            return False
-        return True
-    
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
-@admin.register(ProxyPool)
-class ProxyPoolAdmin(ModelAdmin):
-    """
-    Enhanced ProxyPool admin with unfold styling.
-    """
-    list_display = ["host", "port", "is_active", "fail_count", "last_used"]
-    list_filter = ["is_active"]
-    search_fields = ["host", "username"]
-    ordering = ["-added_at"]
-
-
-@admin.register(PipelineHealth)
-class PipelineHealthAdmin(ModelAdmin):
-    """
-    Enhanced PipelineHealth admin with unfold styling.
-    Read-only health monitoring.
-    """
-    list_display = ["task_name", "status_badge", "last_run_at", "last_duration", "run_count"]
-    list_filter = ["last_status"]
-    search_fields = ["task_name"]
-    ordering = ["task_name"]
-    readonly_fields = ["task_name", "last_run_at", "last_status", "last_duration", "last_error", "run_count", "updated_at"]
-    
-    @display(
-        description="Status",
-        label={
-            "success": "success",
-            "warning": "warning",
-            "error": "danger",
-        }
+    fieldsets = (
+        ('Connection', {
+            'fields': ('user', 'github_id', 'username', 'access_token', 'refresh_token', 'expires_at')
+        }),
+        ('Profile', {
+            'fields': ('avatar_url', 'profile_url', 'email', 'name', 'company', 'location')
+        }),
+        ('Sync Status', {
+            'fields': ('last_synced_at', 'last_sync_status', 'last_sync_error')
+        }),
+        ('Metadata', {
+            'fields': ('uuid', 'created_at', 'updated_at')
+        }),
     )
-    def status_badge(self, obj):
-        return obj.last_status or "unknown"
     
-    def has_add_permission(self, request):
-        return False
+    def user_email(self, obj):
+        return obj.user.email
+    user_email.short_description = 'User Email'
+
+
+@admin.register(PortfolioAnalysis)
+class PortfolioAnalysisAdmin(admin.ModelAdmin):
+    """Admin for PortfolioAnalysis model."""
     
-    def has_delete_permission(self, request, obj=None):
-        return False
+    list_display = [
+        'url',
+        'user_email',
+        'status',
+        'quality_score',
+        'completeness_score',
+        'project_count',
+        'created_at',
+    ]
+    
+    list_filter = [
+        'status',
+        'created_at',
+    ]
+    
+    search_fields = [
+        'url',
+        'user__email',
+    ]
+    
+    readonly_fields = [
+        'uuid',
+        'domain',
+        'status',
+        'error_message',
+        'created_at',
+        'updated_at',
+    ]
+    
+    fieldsets = (
+        ('Portfolio', {
+            'fields': ('user', 'url', 'domain')
+        }),
+        ('Analysis Results', {
+            'fields': (
+                'technologies', 'projects', 'quality_score', 'completeness_score',
+                'tech_stack', 'project_count', 'star_count', 'contribution_count'
+            )
+        }),
+        ('AI Observations', {
+            'fields': ('observations',)
+        }),
+        ('Status', {
+            'fields': ('status', 'error_message')
+        }),
+        ('Metadata', {
+            'fields': ('uuid', 'created_at', 'updated_at')
+        }),
+    )
+    
+    def user_email(self, obj):
+        return obj.user.email
+    user_email.short_description = 'User Email'
+    
+    actions = ['resync_analyses']
+    
+    def resync_analyses(self, request, queryset):
+        # Trigger resync for selected analyses
+        for analysis in queryset.filter(status='completed'):
+            analysis.status = 'analyzing'
+            analysis.save()
+        self.message_user(request, f"Resynced {queryset.count()} analyses")
+    resync_analyses.short_description = "Resync selected analyses"
