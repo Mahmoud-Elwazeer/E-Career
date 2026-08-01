@@ -29,11 +29,6 @@ from django.db.models import QuerySet, Count, Avg, Max, Min
 from django.utils import timezone
 from django.conf import settings
 
-from apps.skills.models import Skill, Occupation, OccupationSkill
-from apps.jobs.models import Job, JobSkill
-from apps.events.emitter import emit_sync
-from apps.events.types import TALENT_SCORE_UPDATED
-
 logger = logging.getLogger(__name__)
 
 
@@ -173,11 +168,11 @@ class ScoringEngine:
         """Get skill demand from job market."""
         if self._job_skills is None:
             # Get skill frequency from job postings
-            from apps.jobs.models import JobSkill
-            skill_counts = JobSkill.objects.values('skill_id').annotate(
+            from apps.jobs.models import JobTag
+            skill_counts = JobTag.objects.values('tag_id').annotate(
                 count=Count('id')
             ).order_by('-count')[:100]
-            self._job_skills = {str(s['skill_id']): s['count'] for s in skill_counts}
+            self._job_skills = {str(s['tag_id']): s['count'] for s in skill_counts}
         return self._job_skills
     
     # =========================================================================
@@ -1249,6 +1244,8 @@ class ScoringEngine:
             talent_score.save()
         
         # Emit event
+        from apps.events.emitter import emit_sync
+        from apps.events.types import TALENT_SCORE_UPDATED
         emit_sync(
             event_type=TALENT_SCORE_UPDATED,
             category="system",
