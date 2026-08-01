@@ -520,3 +520,288 @@ class InterviewSession(UUIDModel):
     
     def __str__(self):
         return f"{self.user.email} - {self.interview_type} ({self.started_at})"
+
+
+
+class CareerBrain(UUIDModel):
+    """
+    User's career intelligence context for AI assistants.
+    
+    Aggregates all career-related data into a unified context that can be
+    used by Rashid AI and other AI-powered features.
+    
+    Fields:
+        user: OneToOne relationship with user
+        identity: Career identity, self-perception, professional brand
+        skills: Current skills with proficiency levels
+        goals: Short and long-term career goals
+        preferences: Work style, environment, compensation preferences
+        learning: Recent learning activity and interests
+        history_summary: AI-generated career history summary
+        ai_observations: AI-generated insights about the user
+        confidence_score: Confidence in the career context (0-1)
+        last_updated_at: When the context was last updated
+    """
+    
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='career_brain',
+        db_index=True
+    )
+    
+    # Career identity
+    identity = models.JSONField(
+        default=dict,
+        help_text="Career identity, self-perception, professional brand"
+    )
+    
+    # Skills with proficiency
+    skills = models.JSONField(
+        default=dict,
+        help_text="Skills with proficiency levels: {skill_name: {level, verified, years}}"
+    )
+    
+    # Goals
+    goals = models.JSONField(
+        default=list,
+        help_text="[{goal, priority, timeline, status, milestones}]"
+    )
+    
+    # Preferences
+    preferences = models.JSONField(
+        default=dict,
+        help_text="Work style, environment, compensation preferences"
+    )
+    
+    # Learning history summary
+    learning = models.JSONField(
+        default=dict,
+        help_text="Recent learning activity and interests"
+    )
+    
+    # AI-generated career history summary
+    history_summary = models.TextField(
+        blank=True,
+        help_text="AI-generated career history summary"
+    )
+    
+    # AI observations and insights
+    ai_observations = models.JSONField(
+        default=dict,
+        help_text="AI-generated insights about the user"
+    )
+    
+    # Confidence in the context
+    confidence_score = models.FloatField(
+        default=0.0,
+        help_text="Confidence in the career context (0-1)"
+    )
+    
+    # Timestamps
+    last_updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = "career_brain"
+        verbose_name = "Career Brain"
+        verbose_name_plural = "Career Brains"
+    
+    def __str__(self):
+        return f"Career Brain: {self.user.email}"
+    
+    def to_prompt_context(self, max_tokens: int = 500) -> str:
+        """
+        Serialize relevant context for Bedrock prompts.
+        
+        Prioritizes by relevance and falls back gracefully when confidence < 0.3.
+        
+        Args:
+            max_tokens: Maximum tokens (default 500)
+            
+        Returns:
+            Formatted context string for AI prompts
+        """
+        # If confidence is low, use only CV + explicit preferences
+        if self.confidence_score < 0.3:
+            context_parts = []
+            
+            # Get explicit preferences
+            if self.preferences:
+                if self.preferences.get('target_roles'):
+                    context_parts.append(f"Target Roles: {', '.join(self.preferences.get('target_roles', []))}")
+                if self.preferences.get('target_locations'):
+                    context_parts.append(f"Target Locations: {', '.join(self.preferences.get('target_locations', []))}")
+                if self.preferences.get('salary_min'):
+                    context_parts.append(f"Minimum Salary: {self.preferences.get('salary_min')}")
+            
+            # Get skills from explicit input
+            if self.skills:
+                skill_names = list(self.skills.keys())[:10]
+                if skill_names:
+                    context_parts.append(f"Skills: {', '.join(skill_names)}")
+            
+            return '\n'.join(context_parts) if context_parts else "No career context available."
+        
+        # High confidence - use full context
+        context_parts = []
+        
+        # Identity (most important for personalization)
+        if self.identity:
+            if self.identity.get('professional_title'):
+                context_parts.append(f"Professional Title: {self.identity.get('professional_title')}")
+            if self.identity.get('career_stage'):
+                context_parts.append(f"Career Stage: {self.identity.get('career_stage')}")
+            if self.identity.get('self_perception'):
+                context_parts.append(f"Self-Perception: {self.identity.get('self_perception')}")
+        
+        # Skills
+        if self.skills:
+            skill_list = []
+            for skill_name, skill_data in list(self.skills.items())[:15]:
+                level = skill_data.get('level', 'unknown')
+                verified = skill_data.get('verified', False)
+                verified_str = " (verified)" if verified else ""
+                skill_list.append(f"{skill_name} ({level}){verified_str}")
+            context_parts.append(f"Skills: {', '.join(skill_list)}")
+        
+        # Goals
+        if self.goals:
+            active_goals = [g for g in self.goals if g.get('status') != 'completed']
+            if active_goals:
+                goal_texts = [f"{g.get('goal', 'Goal')}" for g in active_goals[:3]]
+                context_parts.append(f"Current Goals: {', '.join(goal_texts)}")
+        
+        # Preferences
+        if self.preferences:
+            pref_parts = []
+            if self.preferences.get('work_style'):
+                pref_parts.append(f"Work Style: {self.preferences.get('work_style')}")
+            if self.preferences.get('target_locations'):
+                pref_parts.append(f"Locations: {', '.join(self.preferences.get('target_locations', [])[:2])}")
+            if self.preferences.get('salary_min'):
+                pref_parts.append(f"Salary: {self.preferences.get('salary_min')}")
+            if pref_parts:
+                context_parts.append(f"Preferences: {', '.join(pref_parts)}")
+        
+        # AI Observations
+        if self.ai_observations:
+            if self.ai_observations.get('strengths'):
+                context_parts.append(f"Strengths: {', '.join(self.ai_observations.get('strengths', [])[:3])}")
+            if self.ai_observations.get('growth_areas'):
+                context_parts.append(f"Areas to Improve: {', '.join(self.ai_observations.get('growth_areas', [])[:3])}")
+        
+        # History summary
+        if self.history_summary:
+            context_parts.append(f"Career Summary: {self.history_summary[:200]}...")
+        
+        # Truncate if needed
+        full_context = '\n'.join(context_parts)
+        return self._truncate_to_tokens(full_context, max_tokens)
+    
+    def update_from_profile(self, career_profile):
+        """
+        Update CareerBrain from CareerProfile data.
+        
+        Args:
+            career_profile: CareerProfile instance
+        """
+        from apps.career.models import CareerUserSkill, CareerLearning
+        
+        # Update identity
+        self.identity = {
+            'professional_title': career_profile.current_role or 'Career Seeker',
+            'career_stage': self._determine_career_stage(career_profile.experience_years),
+            'self_perception': career_profile.cv_parsed_data.get('self_summary', ''),
+        }
+        
+        # Update skills
+        user_skills = CareerUserSkill.objects.filter(user=self.user)
+        self.skills = {
+            s.skill.name: {
+                'level': s.proficiency,
+                'verified': s.verified,
+                'years': s.years_experience,
+                'source': s.source,
+            }
+            for s in user_skills
+        }
+        
+        # Update goals
+        self.goals = career_profile.target_roles or []
+        
+        # Update preferences
+        self.preferences = {
+            'target_roles': [r.get('role') for r in career_profile.target_roles if r.get('role')],
+            'target_locations': [l.get('city') for l in career_profile.target_locations if l.get('city')],
+            'salary_min': str(career_profile.target_salary_min) if career_profile.target_salary_min else None,
+            'work_style': 'Remote' if career_profile.open_to_remote else 'On-site',
+        }
+        
+        # Update learning
+        recent_learning = CareerLearning.objects.filter(
+            user=self.user,
+            completed_at__gte=timezone.now().date() - timedelta(days=180)
+        )
+        self.learning = {
+            'recent_courses': recent_learning.count(),
+            'platforms': list(set(l.platform for l in recent_learning))[:5],
+            'skills_gained': list(set(
+                skill for l in recent_learning 
+                for skill in l.skills_gained
+            ))[:10],
+        }
+        
+        # Update confidence
+        self.confidence_score = self._calculate_confidence()
+        
+        self.save()
+    
+    def _determine_career_stage(self, experience_years: int) -> str:
+        """Determine career stage based on experience."""
+        if experience_years < 2:
+            return 'entry'
+        elif experience_years < 5:
+            return 'junior'
+        elif experience_years < 10:
+            return 'mid'
+        elif experience_years < 15:
+            return 'senior'
+        else:
+            return 'lead'
+    
+    def _calculate_confidence(self) -> float:
+        """Calculate confidence score based on data completeness."""
+        score = 0.0
+        weight = 0.0
+        
+        # Skills (30%)
+        if self.skills:
+            verified_count = sum(1 for s in self.skills.values() if s.get('verified'))
+            total = len(self.skills)
+            if total > 0:
+                score += (verified_count / total) * 0.3
+                weight += 0.3
+        
+        # Goals (20%)
+        if self.goals:
+            score += 0.2
+            weight += 0.2
+        
+        # Preferences (20%)
+        if self.preferences:
+            pref_count = len([k for k, v in self.preferences.items() if v])
+            if pref_count > 0:
+                score += (pref_count / 4) * 0.2
+                weight += 0.2
+        
+        # Learning (15%)
+        if self.learning and self.learning.get('recent_courses', 0) > 0:
+            score += 0.15
+            weight += 0.15
+        
+        # History summary (15%)
+        if self.history_summary:
+            score += 0.15
+            weight += 0.15
+        
+        return round(score / max(weight, 0.01), 3)

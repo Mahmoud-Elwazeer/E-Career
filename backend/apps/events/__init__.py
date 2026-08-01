@@ -28,8 +28,8 @@ from .types import (
     SYNC_TYPESENSE_COMPLETED, DAILY_LIVENESS_COMPLETED,
     # Recommendation Events
     RECOMMENDATION_SHOWN, RECOMMENDATION_CLICKED, RECOMMENDATION_DISMISSED,
-# Interview Events
-INTERVIEW_SESSION_STARTED, INTERVIEW_SESSION_COMPLETED, INTERVIEW_ANSWER_SUBMITTED,
+    # Interview Events
+    INTERVIEW_SESSION_STARTED, INTERVIEW_SESSION_COMPLETED, INTERVIEW_ANSWER_SUBMITTED,
     # Talent Score Events
     TALENT_SCORE_UPDATED,
     # Learning Events
@@ -40,6 +40,12 @@ INTERVIEW_SESSION_STARTED, INTERVIEW_SESSION_COMPLETED, INTERVIEW_ANSWER_SUBMITT
     GOAL_SET, GOAL_UPDATED, GOAL_COMPLETED,
     # Career Brain Events
     CAREER_BRAIN_UPDATED, CAREER_BRAIN_CONFIDENCE_UPDATED,
+)
+
+from .consumers import (
+    analytics_aggregator,
+    audit_trail_writer,
+    career_brain_updater,
 )
 
 __all__ = [
@@ -91,7 +97,7 @@ __all__ = [
     "INTERVIEW_SESSION_STARTED",
     "INTERVIEW_SESSION_COMPLETED",
     "INTERVIEW_ANSWER_SUBMITTED",
-# Talent Score Events
+    # Talent Score Events
     "TALENT_SCORE_UPDATED",
     # Learning Events
     "LEARNING_COMPLETED", "LEARNING_STARTED",
@@ -101,4 +107,8 @@ __all__ = [
     "GOAL_SET", "GOAL_UPDATED", "GOAL_COMPLETED",
     # Career Brain Events
     "CAREER_BRAIN_UPDATED", "CAREER_BRAIN_CONFIDENCE_UPDATED",
+    # Consumers
+    "analytics_aggregator",
+    "audit_trail_writer",
+    "career_brain_updater",
 ]

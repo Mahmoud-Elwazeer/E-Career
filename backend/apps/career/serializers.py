@@ -14,6 +14,7 @@ from .models import (
     CareerLearning,
     TalentScore,
     InterviewSession,
+    CareerBrain,
 )
 
 
@@ -243,3 +244,60 @@ class SkillGapSerializer(serializers.Serializer):
     learning_resources = serializers.ListField(
         child=serializers.DictField()
     )
+
+
+class ScoreBreakdownSerializer(serializers.Serializer):
+    """Serializer for score breakdown response."""
+    
+    value = serializers.FloatField()
+    confidence = serializers.FloatField()
+    grade = serializers.CharField()
+    trend = serializers.CharField()
+    evidence = serializers.ListField(child=serializers.DictField())
+    explanation = serializers.CharField()
+    actions = serializers.ListField(child=serializers.DictField())
+    breakdown = serializers.DictField()
+
+
+class ScoreTrendSerializer(serializers.Serializer):
+    """Serializer for score trend response."""
+    
+    dimension = serializers.CharField()
+    current_value = serializers.FloatField()
+    previous_value = serializers.FloatField()
+    change = serializers.FloatField()
+    direction = serializers.CharField()
+
+
+class ScoreActionsSerializer(serializers.Serializer):
+    """Serializer for score actions response."""
+    
+    overall_score = serializers.FloatField()
+    overall_grade = serializers.CharField()
+    dimensions = serializers.DictField()
+    explanations = serializers.DictField()
+    actions = serializers.ListField(child=serializers.DictField())
+    confidence = serializers.FloatField()
+
+
+class CareerBrainSerializer(serializers.ModelSerializer):
+    """Serializer for CareerBrain model."""
+    
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    
+    class Meta:
+        model = CareerBrain
+        fields = [
+            'id',
+            'user_email',
+            'identity',
+            'skills',
+            'goals',
+            'preferences',
+            'learning',
+            'history_summary',
+            'ai_observations',
+            'confidence_score',
+            'last_updated_at',
+        ]
+        read_only_fields = ['last_updated_at', 'user_email']
