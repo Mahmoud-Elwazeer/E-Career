@@ -5,6 +5,7 @@ Phase 3C: Admin Dashboard Extensions
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
+from unfold.enums import Color
 
 from apps.users.models import SavedJob, Alert, Notification, UserProfile, JobMatchScore
 
