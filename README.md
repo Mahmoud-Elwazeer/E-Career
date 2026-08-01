@@ -1,318 +1,344 @@
-# USAM Career Compass
+# E-Career Platform (USAM Jobs)
 
-A full-stack job aggregation platform for the MENA region — built with Django 5, DRF, and React.
+> **Production Status**: ✅ Live at [https://jobs.usamif.com](https://jobs.usamif.com)
 
-## Stack
-
-| Layer | Technology |
-|---|---|
-| Backend | Python 3.12, Django 5, Django REST Framework |
-| Auth | JWT (simplejwt) + Google OAuth (allauth) |
-| Database | PostgreSQL 16 |
-| Frontend | React 18, TypeScript, Tailwind CSS, Vite |
-| Admin UI | django-unfold |
-| API Docs | drf-spectacular (Swagger + ReDoc) |
-| Deploy | EC2 + Nginx + Gunicorn + Let's Encrypt |
+A modern job aggregation platform with AI-powered career intelligence, built with Django REST Framework and React.
 
 ---
 
-## Quick Start (Local Development)
+## 🚀 Quick Start
 
-1. `git clone https://github.com/YOUR_USERNAME/usam-career-compass.git`
-2. `cd project/backend && cp .env.example .env` — fill in values
-3. `pip install -r requirements/development.txt`
-4. `python manage.py migrate`
-5. `python manage.py seed_data`
-6. `python manage.py runserver`
-7. `cd ../frontend && npm install && npm run dev`
-8. Open http://localhost:5173
+### Prerequisites
+- Python 3.10+
+- Node.js 20+
+- PostgreSQL 14+
+- Redis 6+
+- Docker & Docker Compose
 
-**API Docs:** http://localhost:8000/api/docs/
-**Admin:** http://localhost:8000/admin/
-
----
-
-## Local Development Setup
-
-### Backend
+### Local Development
 
 ```bash
-# 1. Clone and enter project
-git clone https://github.com/YOUR_USERNAME/usam-career-compass.git
-cd usam-career-compass
+# 1. Clone repository
+git clone https://github.com/Mahmoud-Elwazeer/E-Career.git
+cd E-Career
 
-# 2. Create virtualenv
+# 2. Backend setup
 cd backend
-python3.12 -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
-
-# 3. Install dependencies
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements/development.txt
-
-# 4. Create environment file
-cp .env.example .env
-# Edit .env — at minimum set SECRET_KEY and DATABASE_URL
-# For SQLite in dev, leave DATABASE_URL blank
-
-# 5. Run migrations
+cp .env.example .env  # Edit with your credentials
 python manage.py migrate
-
-# 6. Seed demo data (creates admin + demo user + 20 jobs)
-python manage.py seed_data
-
-# 7. Start dev server
+python manage.py createsuperuser
 python manage.py runserver
-```
 
-The backend runs at `http://localhost:8000`
+# 3. Start Docker services (Typesense + Qdrant)
+docker-compose up -d
 
-**Default accounts after seeding:**
-
-| Role | Email | Password | Notes |
-|---|---|---|---|
-| Super Admin | superadmin@gmail.com | SuperAdmin@2025! | Full Django admin access |
-| Admin | admin@gmail.com | Admin@2025! | Staff access, admin API |
-| User | user@gmail.com | User@2025! | Regular user, browse jobs |
-
-**Key URLs:**
-- API: `http://localhost:8000/api/v1/`
-- Swagger docs: `http://localhost:8000/api/docs/`
-- Admin panel: `http://localhost:8000/admin/`
-- Health check: `http://localhost:8000/health/`
-
-### Frontend
-
-```bash
+# 4. Frontend setup (new terminal)
 cd frontend
-
-# Create env file
-echo "VITE_API_URL=http://localhost:8000/api/v1" > .env.local
-
-# Install dependencies
 npm install
-
-# Start dev server
 npm run dev
 ```
 
-The frontend runs at `http://localhost:8080`
+Visit:
+- Frontend: http://localhost:8080
+- Backend API: http://localhost:8000/api/
+- Admin: http://localhost:8000/admin/
 
 ---
 
-## Environment Variables
+## 📚 Documentation
 
-Copy `backend/.env.example` to `backend/.env` and fill in all values.
-
-| Variable | Description | Required |
-|---|---|---|
-| `SECRET_KEY` | Django secret key (generate with `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"`) | Yes |
-| `DEBUG` | `True` for dev, `False` for prod | Yes |
-| `ALLOWED_HOSTS` | Comma-separated hostnames | Yes |
-| `ADMIN_URL` | Secret admin path (e.g. `my-secret-admin/`) | Yes |
-| `DATABASE_URL` | PostgreSQL connection string | Yes (prod) |
-| `FRONTEND_URL` | Frontend base URL for email links | Yes |
-| `CORS_ALLOWED_ORIGINS` | Comma-separated frontend origins | Yes |
-| `GOOGLE_CLIENT_ID` | Google OAuth app client ID | For OAuth |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth app secret | For OAuth |
-| `EMAIL_HOST_USER` | Gmail address for sending emails | For email |
-| `EMAIL_HOST_PASSWORD` | Gmail app password | For email |
-
-### Frontend env
-
-| Variable | Description |
-|---|---|
-| `VITE_API_URL` | Django API base URL (e.g. `https://yourdomain.com/api/v1`) |
+| Document | Description |
+|----------|-------------|
+| [PROJECT_AUDIT.md](PROJECT_AUDIT.md) | Complete deployment status, architecture, and troubleshooting |
+| [WORKFLOW.md](WORKFLOW.md) | Development workflow and common tasks |
+| [DEPLOYMENT_GUIDE_PHASE1.md](DEPLOYMENT_GUIDE_PHASE1.md) | Phase 1 deployment instructions |
 
 ---
 
-## Running Tests
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Nginx (Port 80/443)                │
+│              Reverse Proxy + Static Files             │
+└───────┬─────────────────────────────────┬───────────┘
+        │                                 │
+        ▼                                 ▼
+┌───────────────┐                  ┌─────────────────┐
+│ React Frontend│                  │  Django Backend │
+│  (Vite + TS)  │                  │  (DRF + Daphne) │
+│  Port: 8080   │                  │   Port: 8000    │
+└───────────────┘                  └────────┬────────┘
+                                            │
+                    ┌───────────────────────┼──────────────────────┐
+                    ▼                       ▼                      ▼
+            ┌──────────────┐      ┌────────────────┐    ┌────────────────┐
+            │ PostgreSQL 14│      │     Redis      │    │     Celery     │
+            │  + pgvector  │      │ Cache + Broker │    │ Workers + Beat │
+            └──────────────┘      └────────────────┘    └────────────────┘
+                    │                                            │
+                    └────────────────┬───────────────────────────┘
+                                     ▼
+                    ┌────────────────────────────────────┐
+                    │  Docker Services                   │
+                    │  • Typesense (Search)              │
+                    │  • Qdrant (Vector DB)              │
+                    └────────────────────────────────────┘
+```
+
+---
+
+## ✨ Features
+
+### Phase 1 (Deployed) ✅
+
+#### Core Platform
+- **User Authentication**: JWT-based auth with email verification
+- **Job Aggregation**: Multi-source job scraping with ATS integration
+- **Admin Dashboard**: Django Unfold-powered admin interface
+
+#### Search & Discovery
+- **Full-Text Search**: Typesense-powered instant search
+- **Semantic Search**: Vector embeddings with Qdrant/pgvector
+- **Trust Score**: AI-powered legitimacy scoring
+- **Smart Filters**: Location, salary, experience, remote options
+
+#### Career Intelligence
+- **Talent Score**: Multi-dimensional career scoring (7 dimensions)
+  - Skill Score (25%)
+  - Experience Score (20%)
+  - Portfolio Score (15%)
+  - Interview Score (15%)
+  - Growth Score (15%)
+  - Education Score (15%)
+  - Communication Score (10%)
+- **Career Brain**: AI-powered career advisor
+- **Real-time Updates**: WebSocket-based score notifications
+- **Score Trends**: Historical tracking and analytics
+
+#### AI Features
+- **Rashid AI**: Egyptian Arabic career assistant
+- **Direct Apply Verification**: Automated URL verification
+- **Scam Detection**: ML-powered job legitimacy analysis
+- **ESCO Taxonomy**: Skills and occupation mapping
+
+#### Employer Portal
+- **Job Posting**: Self-service job publishing
+- **Application Management**: Track applicants
+- **Verification System**: Admin approval workflow
+
+---
+
+## 🛠️ Tech Stack
+
+### Backend
+- **Framework**: Django 4.2 + Django REST Framework
+- **Database**: PostgreSQL 14 with pgvector extension
+- **Cache**: Redis
+- **Task Queue**: Celery + Celery Beat
+- **WebSockets**: Django Channels + Daphne
+- **Search**: Typesense (full-text) + Qdrant/pgvector (semantic)
+- **AI**: AWS Bedrock (Claude Sonnet 4, Cohere Embeddings)
+- **Web Scraping**: Playwright
+
+### Frontend
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **UI Library**: shadcn/ui + Radix UI
+- **Styling**: Tailwind CSS
+- **Routing**: React Router
+- **State**: React Query + Context
+- **Forms**: React Hook Form + Zod
+
+### Infrastructure
+- **Server**: Ubuntu 22.04 LTS
+- **Web Server**: Nginx
+- **Process Manager**: systemd
+- **Containerization**: Docker Compose (services)
+
+---
+
+## 📂 Project Structure
+
+```
+E-Career/
+├── backend/                # Django REST API
+│   ├── apps/              # Django applications
+│   │   ├── accounts/      # Authentication
+│   │   ├── jobs/          # Job listings
+│   │   ├── career/        # Career intelligence ⭐
+│   │   ├── search/        # Typesense + vector search
+│   │   ├── skills/        # ESCO taxonomy
+│   │   ├── verification/  # Direct apply verification
+│   │   ├── scraper/       # ATS scrapers
+│   │   ├── rashid/        # AI assistant
+│   │   ├── events/        # Event system + WebSocket
+│   │   └── ...
+│   ├── config/            # Django settings
+│   └── requirements/      # Python dependencies
+│
+├── frontend/              # React SPA
+│   ├── src/
+│   │   ├── components/   # Reusable components
+│   │   ├── pages/        # Route pages
+│   │   ├── services/     # API clients
+│   │   └── hooks/        # Custom hooks
+│   └── dist/             # Production build
+│
+├── docs/                  # Documentation
+├── PROJECT_AUDIT.md       # Deployment audit ⭐
+├── WORKFLOW.md            # Dev workflow ⭐
+└── docker-compose.yml     # Local services
+```
+
+---
+
+## 🔐 Environment Variables
+
+Copy `.env.example` to `.env` and configure:
 
 ```bash
+# Django
+SECRET_KEY=your-secret-key
+DEBUG=False
+ALLOWED_HOSTS=jobs.usamif.com
+
+# Database
+DATABASE_URL=postgresql://user:pass@localhost/eusam_db
+
+# AWS Bedrock (for AI features)
+AWS_ACCESS_KEY_ID=your-key
+AWS_SECRET_ACCESS_KEY=your-secret
+AWS_DEFAULT_REGION=us-east-1
+
+# Search
+TYPESENSE_API_KEY=your-typesense-key
+QDRANT_API_KEY=your-qdrant-key
+```
+
+See [.env.example](.env.example) for complete list.
+
+---
+
+## 🚢 Deployment
+
+### Production Deployment
+
+```bash
+# 1. Push to GitHub
+git add .
+git commit -m "Feature description"
+git push origin development:main
+
+# 2. Deploy on server
+ssh ubuntu@13.49.245.174
+cd /var/www/usam/backend
+git pull origin main
+source /var/www/usam/venv/bin/activate
+python manage.py migrate
+python manage.py collectstatic --noinput
+sudo systemctl restart usam
+
+# 3. Build frontend
+cd /var/www/usam/frontend
+npm install
+npm run build
+sudo systemctl reload nginx
+```
+
+See [WORKFLOW.md](WORKFLOW.md) for detailed deployment procedures.
+
+---
+
+## 🧪 Testing
+
+```bash
+# Backend tests
 cd backend
-source venv/bin/activate
+python manage.py test
 
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=apps --cov-report=term-missing
-
-# Run only unit tests
-pytest tests/unit/
-
-# Run only integration tests
-pytest tests/integration/
-
-# Run a specific test file
-pytest tests/integration/test_auth.py -v
+# Frontend tests
+cd frontend
+npm test
 ```
 
 ---
 
-## API Reference
+## 📊 Monitoring
 
-Full interactive API documentation is available at `/api/docs/` (Swagger UI) and `/api/redoc/` (ReDoc).
-
-### Auth Endpoints
-
-| Method | Path | Description | Auth |
-|---|---|---|---|
-| POST | `/api/v1/auth/register/` | Register new user | No |
-| POST | `/api/v1/auth/login/` | Login, receive JWT | No |
-| POST | `/api/v1/auth/logout/` | Blacklist refresh token | Yes |
-| POST | `/api/v1/auth/token/refresh/` | Get new access token | No |
-| POST | `/api/v1/auth/password/reset/` | Request password reset email | No |
-| POST | `/api/v1/auth/password/reset/confirm/` | Confirm password reset | No |
-
-### User Endpoints
-
-| Method | Path | Description | Auth |
-|---|---|---|---|
-| GET/PATCH/DELETE | `/api/v1/users/me/` | Current user profile | Yes |
-| POST | `/api/v1/users/me/avatar/` | Upload avatar | Yes |
-| POST | `/api/v1/users/me/change-password/` | Change password | Yes |
-| GET/POST | `/api/v1/users/me/saved-jobs/` | Saved jobs list/save | Yes |
-| DELETE | `/api/v1/users/me/saved-jobs/<id>/` | Unsave a job | Yes |
-| GET/POST | `/api/v1/users/me/alerts/` | Alerts list/create | Yes |
-| GET/PATCH/DELETE | `/api/v1/users/me/alerts/<uuid>/` | Alert detail | Yes |
-| GET | `/api/v1/users/me/notifications/` | Notifications | Yes |
-| PATCH | `/api/v1/users/me/notifications/<uuid>/` | Mark read | Yes |
-| POST | `/api/v1/users/me/notifications/mark-all-read/` | Mark all read | Yes |
-
-### Jobs Endpoints
-
-| Method | Path | Description | Auth |
-|---|---|---|---|
-| GET | `/api/v1/jobs/` | List jobs (filterable) | No |
-| POST | `/api/v1/jobs/` | Create job | Admin |
-| GET | `/api/v1/jobs/<slug>/` | Job detail | No |
-| PATCH | `/api/v1/jobs/<slug>/` | Update job | Admin |
-| DELETE | `/api/v1/jobs/<slug>/` | Archive job | Admin |
-| POST | `/api/v1/jobs/<slug>/apply/` | Track apply click | No |
-| GET | `/api/v1/jobs/<slug>/similar/` | Similar jobs | No |
-| GET | `/api/v1/jobs/companies/` | List companies | No |
-| GET | `/api/v1/jobs/sources/` | List sources | No |
-| GET | `/api/v1/jobs/tags/` | List tags | No |
-
-**Job filters:** `q`, `work_mode`, `industry`, `seniority`, `location`, `company`, `tag`, `salary_min`, `salary_max`
-
-**Ordering:** `posted_at`, `salary_min`, `salary_max`, `title` (prefix `-` for descending)
-
-### Analytics Endpoints (Admin only)
-
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/v1/analytics/stats/` | Dashboard stats |
-| GET | `/api/v1/analytics/charts/` | Jobs by industry/source |
-| GET | `/api/v1/analytics/clicks/` | Apply-click analytics |
-| GET | `/api/v1/analytics/searches/` | Search query analytics |
-| GET | `/api/v1/analytics/conversion/` | View-to-click conversion |
-| GET | `/api/v1/analytics/activity-logs/` | Admin activity log |
-
----
-
-## AWS Deployment
-
-### Prerequisites
-- EC2 instance: Ubuntu 22.04 LTS, t2.micro or larger
-- Domain name with DNS A record pointing to EC2 IP
-- GitHub repository with your code
-
-### Step-by-step
-
-```bash
-# 1. SSH into EC2
-ssh -i your-key.pem ubuntu@YOUR_EC2_IP
-
-# 2. Upload deploy scripts
-scp -i your-key.pem deploy/*.sh ubuntu@YOUR_EC2_IP:~/
-
-# 3. Run server bootstrap (installs everything)
-sudo bash ec2-setup.sh
-
-# 4. Fill in environment variables
-sudo nano /var/www/usam/backend/.env
-
-# 5. Deploy the application
-sudo bash deploy.sh
-
-# 6. Set up SSL (requires DNS already pointing to this IP)
-sudo bash ssl-setup.sh yourdomain.com
-
-# 7. Visit your live site
-curl https://yourdomain.com/health/
-```
-
-### Rolling Back
-
-```bash
-# See recent commits
-sudo bash rollback.sh
-
-# Roll back to a specific commit
-sudo bash rollback.sh abc1234
-```
+### Health Checks
+- **Backend**: https://jobs.usamif.com/health/
+- **Admin**: https://jobs.usamif.com/admin/
 
 ### Logs
-
 ```bash
-# Gunicorn logs
-journalctl -u gunicorn-usam -f
+# Application logs
+sudo journalctl -u usam -f
 
 # Nginx logs
-tail -f /var/log/nginx/usam_error.log
-tail -f /var/log/nginx/usam_access.log
+sudo tail -f /var/log/nginx/error.log
 
-# Django application logs
-tail -f /var/www/usam/logs/django.log
+# Django logs
+tail -f /var/www/usam/backend/logs/django.log
 ```
 
 ---
 
-## Project Structure
+## 🤝 Contributing
 
-```
-usam-career-compass/
-├── backend/
-│   ├── apps/
-│   │   ├── accounts/     # Auth, User model
-│   │   ├── core/         # Shared utilities, FeatureFlags, Media
-│   │   ├── jobs/         # Companies, Sources, Tags, Jobs
-│   │   ├── users/        # SavedJobs, Alerts, Notifications
-│   │   └── analytics/    # JobView, JobClick, SearchLog
-│   ├── config/
-│   │   ├── settings/     # base / development / production / test
-│   │   ├── urls.py
-│   │   └── wsgi.py
-│   ├── templates/emails/ # Welcome + password reset emails
-│   ├── tests/            # pytest + factory_boy
-│   ├── manage.py
-│   └── requirements/
-├── frontend/
-│   ├── src/
-│   │   ├── pages/        # All page components
-│   │   ├── components/   # UI + admin components
-│   │   ├── hooks/        # Auth, saved jobs, alerts, etc.
-│   │   ├── services/     # API client (client.ts, auth.ts, jobs.ts, etc.)
-│   │   └── lib/          # Utilities, shims
-│   └── vite.config.ts
-└── deploy/
-    ├── ec2-setup.sh      # Full server bootstrap
-    ├── nginx.conf        # Reverse proxy + SSL
-    ├── gunicorn.service  # Systemd unit
-    ├── ssl-setup.sh      # Let's Encrypt
-    ├── deploy.sh         # One-command deploy
-    └── rollback.sh       # One-command rollback
-```
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
-## Post-MVP Roadmap
+## 📝 License
 
-- Replace local media storage with **AWS S3** (`django-storages` — structure is ready, one config change)
-- Replace SMTP email with **AWS SES** — one backend swap
-- Add **Celery + Redis** for async tasks (alert emails, scraper jobs)
-- Add more **OAuth providers** via allauth (LinkedIn, GitHub)
-- Add **salary filter** (feature flag `salary_filter` already exists)
-- Add **job scraper** service to auto-import from sources
-- Add **Elasticsearch** for full-text search at scale
+This project is proprietary software. All rights reserved.
+
+---
+
+## 👥 Team
+
+- **Backend**: Django REST Framework, Celery, PostgreSQL
+- **Frontend**: React, TypeScript, Vite
+- **AI/ML**: AWS Bedrock (Claude), Vector Search
+- **DevOps**: Nginx, systemd, Docker
+
+---
+
+## 📞 Support
+
+- **Documentation**: [PROJECT_AUDIT.md](PROJECT_AUDIT.md) | [WORKFLOW.md](WORKFLOW.md)
+- **Issues**: Use GitHub Issues for bug reports
+- **Production**: https://jobs.usamif.com
+
+---
+
+## 🎯 Roadmap
+
+### Phase 2 (Planned)
+- [ ] Mobile apps (React Native)
+- [ ] Advanced analytics dashboard
+- [ ] Company reviews & ratings
+- [ ] Salary insights
+- [ ] Interview prep tools
+- [ ] Career path recommendations
+
+### Phase 3 (Future)
+- [ ] Video interviews
+- [ ] Skills assessment tests
+- [ ] Resume builder
+- [ ] Job application tracking
+- [ ] Networking features
+
+---
+
+**Built with ❤️ by the USAM Team**
+
+Last Updated: August 2026
