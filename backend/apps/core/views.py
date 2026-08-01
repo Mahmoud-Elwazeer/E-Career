@@ -3,9 +3,10 @@ Core app views for Rule Engine, Feature Flags, and GitHub Integration.
 """
 
 import structlog
+from django.db import connection
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -22,6 +23,78 @@ from .serializers import (
 from .rule_engine import RuleEngine, get_seed_rules
 
 logger = structlog.get_logger()
+
+
+# ============================================================================
+# Health Check Views
+# ============================================================================
+
+class HealthCheckView(APIView):
+    """Simple health check endpoint."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        try:
+            # Check database
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+
+            return Response({
+                "success": True,
+                "data": {
+                    "status": "healthy",
+                    "database": "ok"
+                },
+                "message": "Service is running.",
+                "errors": None
+            })
+        except Exception as e:
+            return Response({
+                "success": False,
+                "data": None,
+                "message": "Service unhealthy",
+                "errors": [str(e)]
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+
+class DetailedHealthCheckView(APIView):
+    """Detailed health check with all services."""
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        checks = {}
+
+        # Database
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            checks['database'] = {'status': 'ok'}
+        except Exception as e:
+            checks['database'] = {'status': 'error', 'message': str(e)}
+
+        # Redis
+        try:
+            from django.core.cache import cache
+            cache.set('health_check', 'ok', 10)
+            if cache.get('health_check') == 'ok':
+                checks['redis'] = {'status': 'ok'}
+            else:
+                checks['redis'] = {'status': 'error', 'message': 'Cache read failed'}
+        except Exception as e:
+            checks['redis'] = {'status': 'error', 'message': str(e)}
+
+        # Overall status
+        overall = 'healthy' if all(c.get('status') == 'ok' for c in checks.values()) else 'degraded'
+
+        return Response({
+            "success": True,
+            "data": {
+                "status": overall,
+                "checks": checks
+            },
+            "message": f"Service is {overall}",
+            "errors": None
+        })
 
 
 @api_view(['GET'])
