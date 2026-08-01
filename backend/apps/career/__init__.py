@@ -8,6 +8,4 @@ This module provides career intelligence features including:
 - Interview sessions
 """
 
-from .scoring_engine import ScoringEngine, ScoreResult
-
-__all__ = ['ScoringEngine', 'ScoreResult']
+default_app_config = 'apps.career.apps.CareerConfig'
