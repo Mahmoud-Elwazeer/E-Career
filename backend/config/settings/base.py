@@ -14,6 +14,8 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 
 # ── Application Definition ──────────────────────────────────────────────────
 INSTALLED_APPS = [
+    # Daphne - must be BEFORE django.contrib.staticfiles
+    "daphne",
     # Unfold admin - must be BEFORE django.contrib.admin
     "unfold",
     "unfold.contrib.filters",
@@ -71,7 +73,6 @@ INSTALLED_APPS = [
     "django_celery_beat",
     # WebSocket support (Phase 2B)
     "channels",
-    "daphne",
 ]
 
 MIDDLEWARE = [
