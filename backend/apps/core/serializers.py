@@ -3,7 +3,7 @@ Core app serializers for Rule Engine, Feature Flags, and GitHub Integration.
 """
 
 from rest_framework import serializers
-from .models import Rule, FeatureFlag, GitHubConnection, PortfolioAnalysis
+from .models import Rule, FeatureFlag, GitHubConnection, PortfolioAnalysis, ActivityLog, Media
 
 
 class RuleSerializer(serializers.ModelSerializer):
@@ -153,7 +153,25 @@ class GitHubConnectSerializer(serializers.Serializer):
 
 class PortfolioAnalyzeSerializer(serializers.Serializer):
     """Serializer for portfolio URL analysis request."""
-    
+
     url = serializers.URLField(
         help_text="Portfolio URL to analyze"
     )
+
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    """Serializer for ActivityLog model."""
+
+    class Meta:
+        model = ActivityLog
+        fields = ['id', 'user', 'action', 'target_type', 'target_id', 'metadata', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class MediaSerializer(serializers.ModelSerializer):
+    """Serializer for Media model."""
+
+    class Meta:
+        model = Media
+        fields = ['uuid', 'filename', 'file', 'size', 'mime_type', 'uploaded_by', 'created_at', 'updated_at']
+        read_only_fields = ['uuid', 'created_at', 'updated_at']
