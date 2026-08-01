@@ -8,7 +8,6 @@ Provides event emission and tracking capabilities for:
 - CV management (upload, parse)
 - AI interactions (model calls, conversations)
 """
-from .emitter import emit, emit_sync
 from .types import (
     # User Events
     USER_REGISTERED, USER_LOGGED_IN, USER_LOGGED_OUT, USER_PROFILE_UPDATED, USER_DEACTIVATED,
@@ -34,8 +33,6 @@ from .types import (
 )
 
 __all__ = [
-    "emit",
-    "emit_sync",
     # User Events
     "USER_REGISTERED",
     "USER_LOGGED_IN",
