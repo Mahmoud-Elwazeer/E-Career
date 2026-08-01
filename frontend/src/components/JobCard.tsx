@@ -45,8 +45,9 @@ export function JobCard({ job, isSaved, onToggleSave }: JobCardProps) {
                 layoutId={reduced ? undefined : `job-${job.id}-logo`}
                 src={job.company_logo}
                 alt={job.company_name}
-                className="h-11 w-11 rounded-lg object-cover shrink-0"
-                loading="lazy"
+                className="h-11 w-11 rounded-lg object-cover shrink-0 bg-muted"
+                loading="eager"
+                fetchPriority="high"
                 transition={{ type: "spring", stiffness: 300, damping: 26 }}
               />
             )}
