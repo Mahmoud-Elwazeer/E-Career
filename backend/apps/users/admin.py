@@ -15,6 +15,7 @@ except ImportError:
         RED = "red"
         YELLOW = "yellow"
         BLUE = "blue"
+        PURPLE = "purple"
 
 from apps.users.models import SavedJob, Alert, Notification, UserProfile, JobMatchScore
 

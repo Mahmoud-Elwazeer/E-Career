@@ -19,6 +19,7 @@ except ImportError:
         RED = "red"
         YELLOW = "yellow"
         BLUE = "blue"
+        PURPLE = "purple"
 
 from .models import EmployerProfile, JobPosting, JobApplication
 
