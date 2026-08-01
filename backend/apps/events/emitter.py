@@ -19,11 +19,7 @@ from __future__ import annotations
 import structlog
 from typing import Any
 
-from django.contrib.auth import get_user_model
-
 logger = structlog.get_logger()
-
-User = get_user_model()
 
 
 def emit(
