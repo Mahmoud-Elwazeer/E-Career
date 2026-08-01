@@ -32,8 +32,9 @@ export function TeaserJobCard({ job }: TeaserJobCardProps) {
               <img
                 src={job.company_logo}
                 alt={job.company_name}
-                className="h-10 w-10 rounded-lg object-cover shrink-0"
-                loading="lazy"
+                className="h-10 w-10 rounded-lg object-cover shrink-0 bg-muted"
+                loading="eager"
+                fetchPriority="high"
               />
             )}
             <div className="flex-1 min-w-0">
