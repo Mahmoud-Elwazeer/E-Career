@@ -6,7 +6,6 @@ This module defines the Django admin interface for the skill taxonomy.
 
 from django.contrib import admin
 from unfold.admin import ModelAdmin
-from unfold.forms import UnfoldModelForm
 
 from apps.skills.models import Skill, SkillRelationship, Occupation, OccupationSkill, CareerPath
 

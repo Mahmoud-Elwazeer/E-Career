@@ -4,7 +4,7 @@ Phase 3C: Admin Dashboard Extensions
 """
 from django.contrib import admin
 from django.utils.html import format_html
-from unfold.admin import ModelAdmin, TabularInline, StackedInline
+from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 from import_export.admin import ImportExportModelAdmin
 

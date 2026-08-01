@@ -8,7 +8,10 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
-from unfold.views import UnfoldDashboardView
+try:
+    from unfold.views import UnfoldDashboardView
+except ImportError:
+    pass
 
 
 @staff_member_required
