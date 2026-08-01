@@ -59,3 +59,24 @@ RECOMMENDATION_DISMISSED = "recommendation_dismissed"
 INTERVIEW_SESSION_STARTED = "interview_session_started"
 INTERVIEW_SESSION_COMPLETED = "interview_session_completed"
 INTERVIEW_ANSWER_SUBMITTED = "interview_answer_submitted"
+
+# Talent Score Events
+TALENT_SCORE_UPDATED = "talent_score_updated"
+
+# Learning Events
+LEARNING_COMPLETED = "learning_completed"
+LEARNING_STARTED = "learning_started"
+
+# Skill Events
+SKILL_ADDED = "skill_added"
+SKILL_VERIFIED = "skill_verified"
+SKILL_REMOVED = "skill_removed"
+
+# Goal Events
+GOAL_SET = "goal_set"
+GOAL_UPDATED = "goal_updated"
+GOAL_COMPLETED = "goal_completed"
+
+# Career Brain Events
+CAREER_BRAIN_UPDATED = "career_brain_updated"
+CAREER_BRAIN_CONFIDENCE_UPDATED = "career_brain_confidence_updated"
