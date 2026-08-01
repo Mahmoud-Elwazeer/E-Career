@@ -69,13 +69,66 @@ class RashidService:
         return system_prompt
 
     def _build_user_context(self, user):
-        """Build user context summary from their profile"""
+        """Build user context summary from their profile and Career Brain"""
         try:
             profile = getattr(user, 'rashid_profile', None)
-            if not profile:
-                return "لا توجد معلومات مفصلة عن المستخدم بعد."
+            
+            # Try to get Career Brain first (higher confidence data)
+            career_brain = getattr(user, 'career_brain', None)
             
             context_parts = []
+            
+            # Use Career Brain if available and has good confidence
+            if career_brain and career_brain.confidence_score >= 0.3:
+                # Skills from Career Brain
+                if career_brain.skills and career_brain.skills.get("items"):
+                    skills = career_brain.skills["items"][:10]
+                    skills_str = ', '.join([s.get("name", "") for s in skills if s.get("name")])
+                    if skills_str:
+                        context_parts.append(f"- المهارات: {skills_str}")
+                
+                # Goals from Career Brain
+                if career_brain.goals:
+                    active_goals = [g for g in career_brain.goals if g.get("status") == "active"][:3]
+                    if active_goals:
+                        goals_str = ', '.join([g.get("title", "") for g in active_goals])
+                        context_parts.append(f"- الأهداف: {goals_str}")
+                
+                # Preferences from Career Brain
+                if career_brain.preferences:
+                    pref_parts = []
+                    if career_brain.preferences.get("open_to_remote"):
+                        pref_parts.append("عن بُعد")
+                    if career_brain.preferences.get("target_locations"):
+                        locs = career_brain.preferences["target_locations"][:2]
+                        pref_parts.append(f"المواقع: {', '.join(locs)}")
+                    if pref_parts:
+                        context_parts.append(f"- التفضيلات: {', '.join(pref_parts)}")
+                
+                # AI Observations from Career Brain
+                if career_brain.ai_observations and career_brain.ai_observations.get("key_insights"):
+                    insights = career_brain.ai_observations["key_insights"][:2]
+                    context_parts.append(f"- ملاحظات الذكاء الاصطناعي: {'؛ '.join(insights)}")
+                
+                # History Summary from Career Brain
+                if career_brain.history_summary:
+                    if career_brain.history_summary.get("experiences"):
+                        exps = career_brain.history_summary["experiences"][:2]
+                        if exps:
+                            context_parts.append(f"- الخبرة: {len(exps)} سنوات")
+                
+                # Learning from Career Brain
+                if career_brain.learning and career_brain.learning.get("completed"):
+                    completed = career_brain.learning["completed"][:3]
+                    if completed:
+                        topics = [c.get("title", "") for c in completed]
+                        context_parts.append(f"- التعلم الحديث: {', '.join(topics)}")
+                
+                return '\n'.join(context_parts) if context_parts else "لا توجد معلومات مفصلة عن المستخدم بعد."
+            
+            # Fallback to Rashid profile if Career Brain is not available or has low confidence
+            if not profile:
+                return "لا توجد معلومات مفصلة عن المستخدم بعد."
             
             if profile.current_role:
                 context_parts.append(f"- الوظيفة الحالية: {profile.current_role}")
@@ -93,10 +146,7 @@ class RashidService:
             if profile.current_situation:
                 context_parts.append(f"- الوضع الحالي: {profile.current_situation}")
             
-            if context_parts:
-                return '\n'.join(context_parts)
-            else:
-                return "لا توجد معلومات مفصلة عن المستخدم بعد."
+            return '\n'.join(context_parts) if context_parts else "لا توجد معلومات مفصلة عن المستخدم بعد."
         
         except Exception as e:
             logger.error(f"Error building user context: {e}")

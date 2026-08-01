@@ -58,4 +58,9 @@ app.conf.beat_schedule = {
         'task': 'apps.verification.tasks.weekly_full_reverification',
         'schedule': crontab(hour=4, minute=0, day_of_week=0),  # Sunday 4 AM weekly
     },
+    # Talent score tasks
+    'recalculate-all-talent-scores': {
+        'task': 'apps.career.tasks.batch_recalculate_talent_scores',
+        'schedule': crontab(hour=2, minute=0, day_of_week=0),  # Sunday 2 AM weekly
+    },
 }

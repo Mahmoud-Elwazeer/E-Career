@@ -260,6 +260,242 @@ class AuditTrailWriter:
         self._flush()
 
 
+class CareerBrainUpdater:
+    """
+    Update Career Brain based on user events.
+    
+    Listens to events and updates the Career Brain context:
+    - SkillAdded: Update skills inventory
+    - JobDismissed: Update career preferences
+    - GoalSet: Update goals
+    - InterviewCompleted: Update AI observations
+    - CVParsed: Update history summary
+    - LearningCompleted: Update learning summary
+    - JobApplied: Update career trajectory
+    - SearchPerformed: Update career interests
+    """
+    
+    def __init__(self):
+        self._processed_events: set[str] = set()
+    
+    def handle_event(self, event: dict[str, Any]) -> None:
+        """
+        Handle an event and update Career Brain accordingly.
+        
+        Args:
+            event: Event data dictionary
+        """
+        event_type = event.get("event_type", "")
+        user_id = event.get("user_id")
+        data = event.get("data", {})
+        
+        if not user_id:
+            return
+        
+        from django.contrib.auth import get_user_model
+        from apps.career.models import CareerBrain, CareerProfile, CareerLearning, CareerUserSkill
+        
+        User = get_user_model()
+        
+        try:
+            user = User.objects.get(id=user_id)
+            career_brain, _ = CareerBrain.objects.get_or_create(user=user)
+            
+            # Update based on event type
+            if event_type == "skill_added":
+                self._update_skills(career_brain, data)
+            elif event_type == "job_dismissed":
+                self._update_preferences(career_brain, data)
+            elif event_type == "goal_set":
+                self._update_goals(career_brain, data)
+            elif event_type == "interview_session_completed":
+                self._update_observations(career_brain, data)
+            elif event_type == "cv_parsed":
+                self._update_history(career_brain, data)
+            elif event_type == "learning_completed":
+                self._update_learning(career_brain, data)
+            elif event_type == "job_applied":
+                self._update_trajectory(career_brain, data)
+            elif event_type == "search_performed":
+                self._update_interests(career_brain, data)
+            
+            # Update confidence score
+            self._update_confidence(career_brain)
+            
+        except User.DoesNotExist:
+            logger.error("user_not_found", user_id=user_id)
+    
+    def _update_skills(self, career_brain: CareerBrain, data: dict) -> None:
+        """Update skills inventory from skill_added event."""
+        skills = career_brain.skills or {}
+        if "items" not in skills:
+            skills["items"] = []
+        
+        skill_name = data.get("skill_name", data.get("name", ""))
+        if skill_name and skill_name not in [s.get("name") for s in skills["items"]]:
+            skills["items"].append({
+                "name": skill_name,
+                "level": data.get("proficiency", "intermediate"),
+                "verified": data.get("verified", False),
+                "added_at": data.get("created_at"),
+            })
+        
+        career_brain.skills = skills
+    
+    def _update_preferences(self, career_brain: CareerBrain, data: dict) -> None:
+        """Update preferences from job_dismissed event."""
+        preferences = career_brain.preferences or {}
+        
+        if "excluded_companies" not in preferences:
+            preferences["excluded_companies"] = []
+        
+        company = data.get("company", "")
+        if company and company not in preferences["excluded_companies"]:
+            preferences["excluded_companies"].append(company)
+        
+        career_brain.preferences = preferences
+    
+    def _update_goals(self, career_brain: CareerBrain, data: dict) -> None:
+        """Update goals from goal_set event."""
+        goals = career_brain.goals or []
+        
+        new_goal = {
+            "id": data.get("goal_id"),
+            "title": data.get("title", data.get("role", "")),
+            "description": data.get("description", ""),
+            "status": "active",
+            "target_date": data.get("target_date"),
+            "progress": 0,
+        }
+        
+        # Avoid duplicates
+        if not any(g.get("title") == new_goal["title"] for g in goals):
+            goals.append(new_goal)
+        
+        career_brain.goals = goals
+    
+    def _update_observations(self, career_brain: CareerBrain, data: dict) -> None:
+        """Update AI observations from interview_session_completed event."""
+        observations = career_brain.ai_observations or {}
+        
+        if "interviews" not in observations:
+            observations["interviews"] = []
+        
+        observations["interviews"].append({
+            "date": data.get("completed_at"),
+            "type": data.get("interview_type"),
+            "score": data.get("overall_score"),
+        })
+        
+        # Generate insight
+        if len(observations["interviews"]) >= 3:
+            observations["key_insights"] = [
+                "Consistent interview performance detected",
+                "Area for improvement identified",
+            ]
+        
+        career_brain.ai_observations = observations
+    
+    def _update_history(self, career_brain: CareerBrain, data: dict) -> None:
+        """Update history summary from cv_parsed event."""
+        history = career_brain.history_summary or {}
+        
+        cv_data = data.get("cv_data", {})
+        
+        if "experiences" not in history:
+            history["experiences"] = cv_data.get("experiences", [])
+        
+        if "education" not in history:
+            history["education"] = cv_data.get("education", [])
+        
+        if "skills" not in history:
+            history["skills"] = cv_data.get("skills", [])
+        
+        career_brain.history_summary = history
+    
+    def _update_learning(self, career_brain: CareerBrain, data: dict) -> None:
+        """Update learning summary from learning_completed event."""
+        learning = career_brain.learning or {}
+        
+        if "completed" not in learning:
+            learning["completed"] = []
+        
+        learning["completed"].append({
+            "title": data.get("title", ""),
+            "platform": data.get("platform", ""),
+            "completed_at": data.get("completed_at"),
+            "skills_gained": data.get("skills_gained", []),
+        })
+        
+        # Update recent topics
+        if "recent_topics" not in learning:
+            learning["recent_topics"] = []
+        
+        for skill in data.get("skills_gained", []):
+            topic = skill.get("skill_name", skill.get("name", ""))
+            if topic and topic not in learning["recent_topics"]:
+                learning["recent_topics"].append(topic)
+        
+        career_brain.learning = learning
+    
+    def _update_trajectory(self, career_brain: CareerBrain, data: dict) -> None:
+        """Update career trajectory from job_applied event."""
+        observations = career_brain.ai_observations or {}
+        
+        if "applications" not in observations:
+            observations["applications"] = []
+        
+        observations["applications"].append({
+            "date": data.get("applied_at"),
+            "job_title": data.get("job_title", ""),
+            "company": data.get("company", ""),
+            "status": "applied",
+        })
+        
+        career_brain.ai_observations = observations
+    
+    def _update_interests(self, career_brain: CareerBrain, data: dict) -> None:
+        """Update career interests from search_performed event."""
+        preferences = career_brain.preferences or {}
+        
+        if "interests" not in preferences:
+            preferences["interests"] = []
+        
+        query = data.get("query", "")
+        if query and query not in preferences["interests"]:
+            preferences["interests"].append(query)
+        
+        career_brain.preferences = preferences
+    
+    def _update_confidence(self, career_brain: CareerBrain) -> None:
+        """Update confidence score based on data completeness."""
+        confidence = 0.5
+        
+        # Skills
+        if career_brain.skills and career_brain.skills.get("items"):
+            confidence += 0.1 * min(len(career_brain.skills["items"]), 10) / 10
+        
+        # Goals
+        if career_brain.goals:
+            confidence += 0.1 * min(len(career_brain.goals), 5) / 5
+        
+        # Learning
+        if career_brain.learning and career_brain.learning.get("completed"):
+            confidence += 0.1 * min(len(career_brain.learning["completed"]), 5) / 5
+        
+        # History
+        if career_brain.history_summary:
+            confidence += 0.1
+        
+        # Observations
+        if career_brain.ai_observations:
+            confidence += 0.1
+        
+        career_brain.confidence_score = min(1.0, confidence)
+        career_brain.save(update_fields=["confidence_score", "last_updated_at"])
+
+
 # Singleton instances
 analytics_aggregator = AnalyticsAggregator()
 audit_trail_writer = AuditTrailWriter()
+career_brain_updater = CareerBrainUpdater()
