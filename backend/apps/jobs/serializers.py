@@ -1,3 +1,5 @@
+from datetime import datetime, time, timezone
+
 from rest_framework import serializers
 from django.contrib.humanize.templatetags.humanize import naturaltime
 from apps.jobs.models import Company, Source, Tag, Job, JobTag
@@ -108,7 +110,8 @@ class JobListSerializer(serializers.ModelSerializer):
     def get_posted_ago(self, obj):
         """Human-readable time since posting"""
         if obj.posted_at:
-            return naturaltime(obj.posted_at)
+            dt = datetime.combine(obj.posted_at, time.min, tzinfo=timezone.utc)
+            return naturaltime(dt)
         return None
 
 
@@ -203,7 +206,8 @@ class JobDetailSerializer(serializers.ModelSerializer):
     def get_posted_ago(self, obj):
         """Human-readable time since posting"""
         if obj.posted_at:
-            return naturaltime(obj.posted_at)
+            dt = datetime.combine(obj.posted_at, time.min, tzinfo=timezone.utc)
+            return naturaltime(dt)
         return None
 
     def get_similar_jobs(self, obj):
