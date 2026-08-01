@@ -41,6 +41,8 @@ urlpatterns = [
         path("vectors/", include("apps.vectors.urls")),
         # Career Intelligence (Phase 2)
         path("career/", include("apps.career.urls")),
+        # Core (Rule Engine, Feature Flags, GitHub) - Week 13
+        path("core/", include("apps.core.urls")),
     ])),
 
     # Email tracking (Phase 2D)

@@ -1,112 +1,289 @@
-from rest_framework.views import APIView
+"""
+Core app views for Rule Engine, Feature Flags, and GitHub Integration.
+"""
+
+import structlog
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
-from django.db import connection
-from django.db.utils import OperationalError
-import redis
-from celery import Celery
+from rest_framework.views import APIView
+
+from .models import Rule, FeatureFlag, GitHubConnection, PortfolioAnalysis
+from .serializers import (
+    RuleSerializer,
+    RuleTestSerializer,
+    FeatureFlagSerializer,
+    GitHubConnectionSerializer,
+    PortfolioAnalysisSerializer,
+    GitHubConnectSerializer,
+    PortfolioAnalyzeSerializer,
+)
+from .rule_engine import RuleEngine, get_seed_rules
+
+logger = structlog.get_logger()
 
 
-class HealthCheckView(APIView):
-    """
-    GET /health/
-    Simple health check that pings the database.
-    Returns 200 if healthy, 503 if database is unreachable.
-    """
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_rules(request):
+    """Get all rules for authenticated user."""
+    try:
+        rules = Rule.objects.all()
+        serializer = RuleSerializer(rules, many=True)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+        })
+    except Exception as e:
+        logger.error("get_rules_failed", error=str(e))
+        return Response({
+            'success': False,
+            'error': str(e),
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    permission_classes = [AllowAny]
-    authentication_classes = []
 
-    def get(self, request):
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def test_rules(request):
+    """Test rules against a context."""
+    try:
+        serializer = RuleTestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        context = serializer.validated_data.get('context', {})
+        stop_on_first = serializer.validated_data.get('stop_on_first', False)
+        
+        rules = Rule.objects.filter(is_active=True)
+        engine = RuleEngine(context=context)
+        results = engine.evaluate_rules(rules, stop_on_first=stop_on_first)
+        
+        return Response({
+            'success': True,
+            'context': context,
+            'stop_on_first': stop_on_first,
+            'results': [r.to_dict() for r in results],
+            'executed_actions': engine.execute_actions(),
+        })
+    except Exception as e:
+        logger.error("test_rules_failed", error=str(e))
+        return Response({
+            'success': False,
+            'error': str(e),
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_feature_flags(request):
+    """Get all feature flags with user-specific availability."""
+    try:
+        flags = FeatureFlag.objects.all()
+        serializer = FeatureFlagSerializer(flags, many=True, context={'request': request})
+        return Response({
+            'success': True,
+            'data': serializer.data,
+        })
+    except Exception as e:
+        logger.error("get_feature_flags_failed", error=str(e))
+        return Response({
+            'success': False,
+            'error': str(e),
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def check_feature_flag(request, key: str):
+    """Check if a specific feature flag is enabled for the user."""
+    try:
+        flag = FeatureFlag.objects.filter(key=key).first()
+        
+        if not flag:
+            return Response({
+                'success': False,
+                'error': f"Feature flag '{key}' not found",
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        is_enabled = flag.is_available_for_user(request.user)
+        
+        return Response({
+            'success': True,
+            'key': key,
+            'is_enabled': is_enabled,
+            'flag': FeatureFlagSerializer(flag, context={'request': request}).data,
+        })
+    except Exception as e:
+        logger.error("check_feature_flag_failed", key=key, error=str(e))
+        return Response({
+            'success': False,
+            'error': str(e),
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def github_connections(request):
+    """Get or create GitHub connections for authenticated user."""
+    if request.method == 'GET':
         try:
-            connection.ensure_connection()
-            db_status = "ok"
-        except OperationalError:
-            db_status = "error"
-
-        healthy = db_status == "ok"
-        status_code = 200 if healthy else 503
-
-        return Response(
-            {
-                "success": healthy,
-                "data": {
-                    "status": "healthy" if healthy else "unhealthy",
-                    "database": db_status,
-                },
-                "message": "Service is running." if healthy else "Database connection failed.",
-                "errors": None,
-            },
-            status=status_code,
-        )
-
-
-class DetailedHealthCheckView(APIView):
-    """
-    GET /health/detailed/
-    Detailed health check that checks database, Redis, and Celery.
-    Returns 200 if all services are healthy, 503 if any service is unhealthy.
-    """
-
-    permission_classes = [AllowAny]
-    authentication_classes = []
-
-    def get(self, request):
-        results = {
-            "database": {"status": "unknown", "error": None},
-            "redis": {"status": "unknown", "error": None},
-            "celery": {"status": "unknown", "error": None},
-        }
-        all_healthy = True
-
-        # Check database
-        try:
-            connection.ensure_connection()
-            results["database"]["status"] = "healthy"
-        except OperationalError as e:
-            results["database"]["status"] = "unhealthy"
-            results["database"]["error"] = str(e)
-            all_healthy = False
-
-        # Check Redis
-        try:
-            redis_host = "redis"
-            redis_port = 6379
-            r = redis.Redis(host=redis_host, port=redis_port, db=0, socket_timeout=2)
-            r.ping()
-            results["redis"]["status"] = "healthy"
+            connections = GitHubConnection.objects.filter(user=request.user)
+            serializer = GitHubConnectionSerializer(connections, many=True)
+            return Response({
+                'success': True,
+                'data': serializer.data,
+            })
         except Exception as e:
-            results["redis"]["status"] = "unhealthy"
-            results["redis"]["error"] = str(e)
-            all_healthy = False
-
-        # Check Celery (worker availability)
+            logger.error("get_github_connections_failed", error=str(e))
+            return Response({
+                'success': False,
+                'error': str(e),
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    elif request.method == 'POST':
         try:
-            from config.celery import app as celery_app
-            inspector = celery_app.control.inspect()
-            active_workers = inspector.active()
-            if active_workers:
-                results["celery"]["status"] = "healthy"
-            else:
-                results["celery"]["status"] = "unhealthy"
-                results["celery"]["error"] = "No active Celery workers found"
-                all_healthy = False
+            serializer = GitHubConnectSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            # TODO: Implement GitHub OAuth flow
+            # For now, return placeholder response
+            return Response({
+                'success': True,
+                'message': 'GitHub OAuth flow not yet implemented',
+                'data': serializer.validated_data,
+            })
         except Exception as e:
-            results["celery"]["status"] = "unhealthy"
-            results["celery"]["error"] = str(e)
-            all_healthy = False
+            logger.error("create_github_connection_failed", error=str(e))
+            return Response({
+                'success': False,
+                'error': str(e),
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        status_code = 200 if all_healthy else 503
 
-        return Response(
-            {
-                "success": all_healthy,
-                "data": {
-                    "status": "healthy" if all_healthy else "unhealthy",
-                    "services": results,
-                },
-                "message": "All services are running." if all_healthy else "Some services are unhealthy.",
-                "errors": None,
-            },
-            status=status_code,
-        )
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def portfolio_analyses(request):
+    """Get or create portfolio analyses for authenticated user."""
+    if request.method == 'GET':
+        try:
+            analyses = PortfolioAnalysis.objects.filter(user=request.user)
+            serializer = PortfolioAnalysisSerializer(analyses, many=True)
+            return Response({
+                'success': True,
+                'data': serializer.data,
+            })
+        except Exception as e:
+            logger.error("get_portfolio_analyses_failed", error=str(e))
+            return Response({
+                'success': False,
+                'error': str(e),
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    elif request.method == 'POST':
+        try:
+            serializer = PortfolioAnalyzeSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            
+            url = serializer.validated_data['url']
+            
+            # Create analysis record
+            analysis = PortfolioAnalysis.objects.create(
+                user=request.user,
+                url=url,
+                status='analyzing',
+            )
+            
+            # TODO: Implement portfolio analysis
+            # For now, return placeholder response
+            return Response({
+                'success': True,
+                'message': 'Portfolio analysis started',
+                'data': PortfolioAnalysisSerializer(analysis).data,
+            })
+        except Exception as e:
+            logger.error("create_portfolio_analysis_failed", error=str(e))
+            return Response({
+                'success': False,
+                'error': str(e),
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def seed_rules(request):
+    """Seed initial rules into the database."""
+    try:
+        seed_data = get_seed_rules()
+        
+        created_count = 0
+        for rule_data in seed_data:
+            rule, created = Rule.objects.get_or_create(
+                name=rule_data['name'],
+                defaults=rule_data
+            )
+            if created:
+                created_count += 1
+        
+        return Response({
+            'success': True,
+            'message': f"Seeded {created_count} new rules",
+            'total_rules': len(seed_data),
+        })
+    except Exception as e:
+        logger.error("seed_rules_failed", error=str(e))
+        return Response({
+            'success': False,
+            'error': str(e),
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class RuleViewSet(APIView):
+    """Viewset for Rule model."""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get all rules."""
+        return get_rules(request)
+    
+    def post(self, request):
+        """Test rules against context."""
+        return test_rules(request)
+
+
+class FeatureFlagViewSet(APIView):
+    """Viewset for FeatureFlag model."""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get all feature flags."""
+        return get_feature_flags(request)
+
+
+class GitHubConnectionViewSet(APIView):
+    """Viewset for GitHubConnection model."""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get user's GitHub connections."""
+        return github_connections(request)
+    
+    def post(self, request):
+        """Connect GitHub account."""
+        return github_connections(request)
+
+
+class PortfolioAnalysisViewSet(APIView):
+    """Viewset for PortfolioAnalysis model."""
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get user's portfolio analyses."""
+        return portfolio_analyses(request)
+    
+    def post(self, request):
+        """Analyze portfolio URL."""
+        return portfolio_analyses(request)

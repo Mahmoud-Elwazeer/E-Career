@@ -1,6 +1,8 @@
 import uuid
+import random
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 
 class TimeStampedModel(models.Model):
@@ -38,23 +40,6 @@ class SoftDeleteModel(UUIDModel):
         self.save(update_fields=["is_deleted", "deleted_at"])
 
 
-class FeatureFlag(UUIDModel):
-    """Feature flags for toggling functionality on/off."""
-
-    key = models.CharField(max_length=100, unique=True, db_index=True)
-    label = models.CharField(max_length=200)
-    description = models.TextField(blank=True, null=True)
-    is_enabled = models.BooleanField(default=False)
-    metadata = models.JSONField(default=dict, blank=True)
-
-    class Meta:
-        db_table = "core_featureflag"
-        ordering = ["key"]
-        verbose_name = "Feature Flag"
-        verbose_name_plural = "Feature Flags"
-
-    def __str__(self):
-        return f"{self.label} ({'on' if self.is_enabled else 'off'})"
 
 
 class ActivityLog(models.Model):
@@ -270,3 +255,304 @@ class PipelineHealth(models.Model):
     
     def __str__(self):
         return f"{self.task_name} - {self.last_status}"
+
+
+# ============================================================================
+# Rule Engine (Week 13)
+# ============================================================================
+
+class Rule(UUIDModel):
+    """
+    Configurable rule for automated actions based on conditions.
+    
+    Rules are evaluated against context data and can trigger actions
+    like recommendations, alerts, flags, reminders, or celebrations.
+    
+    Fields:
+        name: Human-readable rule name
+        description: Detailed explanation of what the rule does
+        category: Classification (job, user, career, notification, etc.)
+        conditions: JSONB with condition tree (ALL/ANY/NOT operators)
+        action_type: Type of action to execute
+        action_params: Parameters for the action
+        is_active: Whether the rule is currently active
+        priority: Evaluation order (higher = evaluated first)
+    """
+    
+    CATEGORY_CHOICES = [
+        ('job', 'Job Quality'),
+        ('user', 'User Profile'),
+        ('career', 'Career Progression'),
+        ('notification', 'Notifications'),
+        ('employer', 'Employer Actions'),
+        ('celebration', 'Milestones'),
+    ]
+    
+    ACTION_TYPE_CHOICES = [
+        ('recommend', 'Recommend'),
+        ('alert', 'Alert'),
+        ('flag', 'Flag'),
+        ('remind', 'Remind'),
+        ('celebrate', 'Celebrate'),
+        ('recommend_employer', 'Recommend to Employer'),
+        ('request_cv_update', 'Request CV Update'),
+    ]
+    
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    category = models.CharField(
+        max_length=30,
+        choices=CATEGORY_CHOICES,
+        db_index=True
+    )
+    
+    conditions = models.JSONField(
+        default=dict,
+        help_text="Condition tree: {operator: 'ALL'|'ANY'|'NOT', conditions: [...], field, operator, value}"
+    )
+    
+    action_type = models.CharField(
+        max_length=30,
+        choices=ACTION_TYPE_CHOICES,
+        db_index=True
+    )
+    
+    action_params = models.JSONField(
+        default=dict,
+        help_text="Action-specific parameters"
+    )
+    
+    is_active = models.BooleanField(default=True, db_index=True)
+    priority = models.IntegerField(default=0, db_index=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = "core_rule"
+        ordering = ['-priority', 'name']
+        verbose_name = "Rule"
+        verbose_name_plural = "Rules"
+    
+    def __str__(self):
+        return f"{self.name} ({self.category})"
+
+
+# ============================================================================
+# Enhanced FeatureFlag (Week 13)
+# ============================================================================
+
+class FeatureFlag(UUIDModel):
+    """Enhanced feature flags with A/B testing and targeting."""
+    
+    key = models.CharField(max_length=100, unique=True, db_index=True)
+    label = models.CharField(max_length=200)
+    description = models.TextField(blank=True, null=True)
+    is_enabled = models.BooleanField(default=False)
+    
+    # Enhanced fields
+    enabled_for_users = models.JSONField(
+        default=list,
+        help_text="List of user IDs who have this feature enabled"
+    )
+    enabled_percentage = models.IntegerField(
+        default=0,
+        help_text="Percentage of users to enable this feature for (0-100)"
+    )
+    regions = models.JSONField(
+        default=list,
+        help_text="List of regions where this feature is enabled"
+    )
+    employer_only = models.BooleanField(default=False)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    category = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Feature category for grouping"
+    )
+    
+    metadata = models.JSONField(default=dict, blank=True)
+    
+    class Meta:
+        db_table = "core_featureflag"
+        ordering = ["key"]
+        verbose_name = "Feature Flag"
+        verbose_name_plural = "Feature Flags"
+    
+    def __str__(self):
+        return f"{self.label} ({'on' if self.is_enabled else 'off'})"
+    
+    def is_available_for_user(self, user=None):
+        """Check if feature is available for a specific user."""
+        import random
+        
+        # Check if expired
+        if self.expires_at and timezone.now() > self.expires_at:
+            return False
+        
+        # Check if enabled
+        if not self.is_enabled:
+            return False
+        
+        # Check employer-only flag
+        if self.employer_only and (not user or not user.is_employer):
+            return False
+        
+        # Check user-specific override
+        if user and user.id and str(user.id) in self.enabled_for_users:
+            return True
+        
+        # Check percentage-based A/B
+        if self.enabled_percentage > 0:
+            if user and user.id:
+                # Deterministic based on user ID
+                hash_val = hash(str(user.id) + self.key) % 100
+                return hash_val < self.enabled_percentage
+            else:
+                # Random for anonymous
+                return random.random() * 100 < self.enabled_percentage
+        
+        # Check region
+        if self.regions and user and hasattr(user, 'profile') and user.profile:
+            user_region = user.profile.country or user.profile.city
+            if user_region and user_region not in self.regions:
+                return False
+        
+        return True
+
+
+# ============================================================================
+# GitHub Integration (Week 13)
+# ============================================================================
+
+class GitHubConnection(UUIDModel):
+    """
+    GitHub OAuth connection for a user.
+    
+    Stores GitHub OAuth tokens and connection metadata.
+    """
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='github_connections',
+        db_index=True
+    )
+    
+    # GitHub connection details
+    github_id = models.CharField(max_length=100, unique=True)
+    username = models.CharField(max_length=100)
+    access_token = models.TextField()  # Encrypted in production
+    refresh_token = models.TextField(blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    
+    # Connection metadata
+    avatar_url = models.URLField(blank=True)
+    profile_url = models.URLField(blank=True)
+    email = models.EmailField(blank=True)
+    name = models.CharField(max_length=200, blank=True)
+    company = models.CharField(max_length=200, blank=True)
+    location = models.CharField(max_length=200, blank=True)
+    
+    # Last sync
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    last_sync_status = models.CharField(
+        max_length=20,
+        default='pending',
+        choices=[
+            ('pending', 'Pending'),
+            ('success', 'Success'),
+            ('failed', 'Failed'),
+        ]
+    )
+    last_sync_error = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = "core_github_connection"
+        verbose_name = "GitHub Connection"
+        verbose_name_plural = "GitHub Connections"
+    
+    def __str__(self):
+        return f"{self.username} ({self.user.email})"
+
+
+class PortfolioAnalysis(UUIDModel):
+    """
+    Analysis of a user's portfolio URL.
+    
+    Stores AI-analyzed portfolio data including technologies,
+    projects, and quality metrics.
+    """
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='portfolio_analyses',
+        db_index=True
+    )
+    
+    # Portfolio URL
+    url = models.URLField()
+    domain = models.CharField(max_length=200, blank=True)
+    
+    # Analysis results
+    technologies = models.JSONField(
+        default=list,
+        help_text="List of technologies detected"
+    )
+    projects = models.JSONField(
+        default=list,
+        help_text="List of projects with details"
+    )
+    quality_score = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="AI-calculated quality score (0-1)"
+    )
+    completeness_score = models.FloatField(
+        null=True,
+        blank=True,
+        help_text="How complete the portfolio is (0-1)"
+    )
+    
+    # Detailed analysis
+    tech_stack = models.JSONField(
+        default=dict,
+        help_text="Detailed tech stack breakdown"
+    )
+    project_count = models.IntegerField(default=0)
+    star_count = models.IntegerField(default=0)
+    contribution_count = models.IntegerField(default=0)
+    
+    # AI observations
+    observations = models.JSONField(
+        default=dict,
+        help_text="AI-generated observations about the portfolio"
+    )
+    
+    # Status
+    status = models.CharField(
+        max_length=20,
+        default='pending',
+        choices=[
+            ('pending', 'Pending'),
+            ('analyzing', 'Analyzing'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed'),
+        ]
+    )
+    error_message = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = "core_portfolio_analysis"
+        verbose_name = "Portfolio Analysis"
+        verbose_name_plural = "Portfolio Analyses"
+    
+    def __str__(self):
+        return f"Portfolio: {self.url} ({self.status})"
