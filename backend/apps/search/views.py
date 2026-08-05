@@ -136,6 +136,137 @@ class JobSearchView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+# ============================================================================
+# Recommendation Engine Views
+# ============================================================================
+
+from rest_framework.permissions import IsAuthenticated
+from apps.search.recommendation_engine import get_recommendation_engine
+
+
+@extend_schema(tags=["Recommendations"])
+class JobRecommendationsView(APIView):
+    """
+    GET /api/v1/search/recommendations/
+    
+    Get job recommendations for the authenticated user using ML-based recommendation engine.
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, *args, **kwargs):
+        """
+        Get job recommendations.
+        
+        Query Parameters:
+        - n_recommendations: Number of recommendations (default: 10)
+        - n_items: Number of items to consider (default: 20)
+        """
+        try:
+            n_recommendations = int(request.query_params.get("n_recommendations", 10))
+            n_items = int(request.query_params.get("n_items", 20))
+            
+            engine = get_recommendation_engine(request.user)
+            recommendations = engine.get_recommendations(
+                n_recommendations=n_recommendations,
+                n_items=n_items,
+            )
+            
+            return Response({
+                "success": True,
+                "data": recommendations,
+                "message": "",
+                "errors": None,
+            })
+            
+        except Exception as e:
+            logger.error(f"Recommendations error: {e}")
+            return Response({
+                "success": False,
+                "data": None,
+                "message": "Recommendations failed",
+                "errors": {"detail": str(e)},
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@extend_schema(tags=["Recommendations"])
+class SimilarJobsView(APIView):
+    """
+    GET /api/v1/search/similar-jobs/<job_uuid>/
+    
+    Get jobs similar to a specific job.
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, job_uuid, *args, **kwargs):
+        """
+        Get similar jobs.
+        
+        Query Parameters:
+        - n_similar: Number of similar jobs (default: 5)
+        """
+        try:
+            n_similar = int(request.query_params.get("n_similar", 5))
+            
+            engine = get_recommendation_engine(request.user)
+            similar_jobs = engine.get_similar_jobs(job_uuid, n_similar=n_similar)
+            
+            return Response({
+                "success": True,
+                "data": {
+                    "job_id": job_uuid,
+                    "similar_jobs": similar_jobs,
+                },
+                "message": "",
+                "errors": None,
+            })
+            
+        except Exception as e:
+            logger.error(f"Similar jobs error: {e}")
+            return Response({
+                "success": False,
+                "data": None,
+                "message": "Similar jobs failed",
+                "errors": {"detail": str(e)},
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@extend_schema(tags=["Recommendations"])
+class TrainRecommendationModelView(APIView):
+    """
+    POST /api/v1/search/train-recommendation-model/
+    
+    Train the recommendation model for the authenticated user.
+    """
+    
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        """
+        Train the recommendation model.
+        """
+        try:
+            engine = get_recommendation_engine(request.user)
+            results = engine.train()
+            
+            return Response({
+                "success": True,
+                "data": results,
+                "message": "",
+                "errors": None,
+            })
+            
+        except Exception as e:
+            logger.error(f"Train model error: {e}")
+            return Response({
+                "success": False,
+                "data": None,
+                "message": "Training failed",
+                "errors": {"detail": str(e)},
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 @extend_schema(tags=["Search"])
 class JobAutocompleteView(APIView):
     """

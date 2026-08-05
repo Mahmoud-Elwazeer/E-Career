@@ -8,6 +8,9 @@ from .workday import WorkdayScraper, fetch_workday_jobs
 from .smartrecruiters import SmartRecruitersScraper, fetch_smartrecruiters_jobs
 from .workable import WorkableScraper, fetch_workable_jobs
 from .teamtailor import TeamtailorScraper, fetch_teamtailor_jobs
+from .icims import IcimsScraper, fetch_icims_jobs
+from .oracle import OracleScraper, fetch_oracle_jobs
+from .sap import SAPScraper, fetch_sap_jobs
 
 __all__ = [
     'BaseATSScraper',
@@ -27,4 +30,10 @@ __all__ = [
     'fetch_workable_jobs',
     'TeamtailorScraper',
     'fetch_teamtailor_jobs',
+    'IcimsScraper',
+    'fetch_icims_jobs',
+    'OracleScraper',
+    'fetch_oracle_jobs',
+    'SAPScraper',
+    'fetch_sap_jobs',
 ]

@@ -353,6 +353,16 @@ class Job(UUIDModel):
         ordering = ["-posted_at", "-created_at"]
         verbose_name = "Job"
         verbose_name_plural = "Jobs"
+        # Database indexes for common query patterns
+        indexes = [
+            models.Index(fields=['company', 'status'], name='jobs_job_company_status_idx'),
+            models.Index(fields=['source', 'status'], name='jobs_job_source_status_idx'),
+            models.Index(fields=['ats_platform', 'ats_job_id'], name='jobs_job_ats_idx'),
+            models.Index(fields=['legitimacy_score'], name='jobs_job_legitimacy_idx'),
+            models.Index(fields=['expires_at', 'is_expired'], name='jobs_job_expiry_idx'),
+            models.Index(fields=['scraped_at'], name='jobs_job_scraped_idx'),
+            models.Index(fields=['direct_apply_url'], name='jobs_job_direct_apply_idx'),
+        ]
 
     def __str__(self):
         return f"{self.title} @ {self.company.name}"

@@ -198,3 +198,188 @@ class JobApplication(models.Model):
     
     def __str__(self):
         return f"{self.user.email} → {self.job.title}"
+
+
+# ============================================================================
+# Employer Intelligence (Phase 4)
+# ============================================================================
+
+
+class KnockoutQuestion(models.Model):
+    """
+    Auto-reject criteria for job applications.
+    
+    Questions are evaluated against user profile data.
+    If any question fails, application is auto-rejected.
+    """
+    employer = models.ForeignKey(
+        EmployerProfile,
+        on_delete=models.CASCADE,
+        related_name='knockout_questions'
+    )
+    
+    question_text = models.TextField()
+    question_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('text', 'Text Answer'),
+            ('yes_no', 'Yes/No'),
+            ('select', 'Multiple Choice'),
+        ]
+    )
+    
+    # Evaluation criteria
+    required_answer = models.JSONField(
+        default=dict,
+        help_text="Expected answer(s) for passing"
+    )
+    pass_if_matches = models.BooleanField(
+        default=True,
+        help_text="Pass if answer matches (True) or doesn't match (False)"
+    )
+    
+    # Weight in overall scoring
+    weight = models.FloatField(
+        default=1.0,
+        help_text="Weight of this question in overall score"
+    )
+    
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['created_at']
+        verbose_name = 'Knockout Question'
+        verbose_name_plural = 'Knockout Questions'
+    
+    def __str__(self):
+        return f"{self.question_text[:50]}... ({self.employer})"
+
+
+class CandidateRanking(models.Model):
+    """
+    AI-powered candidate ranking for employer job postings.
+    
+    Stores computed rankings with explainability.
+    """
+    job = models.ForeignKey(
+        'jobs.Job',
+        on_delete=models.CASCADE,
+        related_name='candidate_rankings'
+    )
+    employer = models.ForeignKey(
+        EmployerProfile,
+        on_delete=models.CASCADE,
+        related_name='candidate_rankings'
+    )
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='rankings'
+    )
+    
+    # AI-computed scores
+    overall_score = models.FloatField(
+        help_text="AI-computed match score (0-1)"
+    )
+    skill_match_score = models.FloatField(
+        help_text="Skills match score (0-1)"
+    )
+    experience_score = models.FloatField(
+        help_text="Experience match score (0-1)"
+    )
+    education_score = models.FloatField(
+        help_text="Education match score (0-1)"
+    )
+    salary_expectation_score = models.FloatField(
+        help_text="Salary expectation alignment (0-1)"
+    )
+    
+    # Knockout evaluation
+    knockout_passed = models.BooleanField(default=True)
+    knockout_failures = models.JSONField(
+        default=list,
+        help_text="List of failed knockout questions"
+    )
+    
+    # Explainability
+    explanations = models.JSONField(
+        default=dict,
+        help_text="AI-generated explanations for ranking"
+    )
+    
+    # Status
+    status = models.CharField(
+        max_length=20,
+        default='pending',
+        choices=[
+            ('pending', 'Pending'),
+            ('ranked', 'Ranked'),
+            ('shortlisted', 'Shortlisted'),
+            ('rejected', 'Rejected'),
+        ]
+    )
+    
+    ranked_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-overall_score', 'ranked_at']
+        unique_together = ('job', 'user')
+        verbose_name = 'Candidate Ranking'
+        verbose_name_plural = 'Candidate Rankings'
+    
+    def __str__(self):
+        return f"{self.user.email} → {self.job.title} ({self.overall_score:.0%})"
+
+
+class TalentDiscovery(models.Model):
+    """
+    Proactive talent discovery tracking.
+    
+    Tracks when employers view candidate profiles
+    outside of job applications.
+    """
+    employer = models.ForeignKey(
+        EmployerProfile,
+        on_delete=models.CASCADE,
+        related_name='talent_discoveries'
+    )
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='talent_discoveries'
+    )
+    
+    # Discovery context
+    source = models.CharField(
+        max_length=50,
+        choices=[
+            ('search', 'Search Results'),
+            ('recommendation', 'AI Recommendation'),
+            ('profile_view', 'Profile View'),
+            ('skill_match', 'Skill Match Alert'),
+        ]
+    )
+    
+    search_query = models.TextField(blank=True)
+    matched_skills = models.JSONField(
+        default=list,
+        help_text="Skills that triggered this discovery"
+    )
+    
+    # Interaction
+    viewed_at = models.DateTimeField(null=True, blank=True)
+    saved = models.BooleanField(default=False)
+    notes = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Talent Discovery'
+        verbose_name_plural = 'Talent Discoveries'
+    
+    def __str__(self):
+        return f"{self.employer} discovered {self.user.email}"

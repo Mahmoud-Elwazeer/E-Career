@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Sum, Q
 
-from .models import EmployerProfile, JobPosting, JobApplication
+from .models import EmployerProfile, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery
 from .serializers import (
     EmployerProfileSerializer,
     EmployerProfileWriteSerializer,
@@ -20,6 +20,14 @@ from .serializers import (
     JobApplicationSerializer,
     JobApplicationDetailSerializer,
     EmployerRegistrationSerializer,
+    KnockoutQuestionSerializer,
+    KnockoutQuestionCreateSerializer,
+    CandidateRankingSerializer,
+    CandidateRankingUpdateSerializer,
+    TalentDiscoverySerializer,
+    TalentDiscoveryCreateSerializer,
+    EmployerRankingRequestSerializer,
+    EmployerRankingResponseSerializer,
 )
 from .permissions import (
     IsEmployer,
@@ -487,3 +495,169 @@ def company_search(request):
     return Response({
         'companies': list(companies)
     })
+
+
+# ============================================================================
+# Employer Intelligence Views (Phase 4)
+# ============================================================================
+
+
+class KnockoutQuestionViewSet(viewsets.ModelViewSet):
+    """
+    Knockout question management for employers.
+    
+    GET /api/v1/employer/knockout-questions/ - List questions
+    POST /api/v1/employer/knockout-questions/ - Create question
+    PUT /api/v1/employer/knockout-questions/{id}/ - Update question
+    DELETE /api/v1/employer/knockout-questions/{id}/ - Delete question
+    """
+    permission_classes = [IsAuthenticated, IsVerifiedEmployer]
+    
+    def get_queryset(self):
+        return KnockoutQuestion.objects.filter(
+            employer=self.request.user.employer_profile
+        )
+    
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return KnockoutQuestionCreateSerializer
+        return KnockoutQuestionSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(employer=self.request.user.employer_profile)
+
+
+class CandidateRankingViewSet(viewsets.ModelViewSet):
+    """
+    AI-powered candidate ranking for employers.
+    
+    GET /api/v1/employer/rankings/ - List rankings
+    POST /api/v1/employer/rankings/rank/ - Rank candidates for a job
+    PUT /api/v1/employer/rankings/{id}/ - Update ranking status
+    """
+    permission_classes = [IsAuthenticated, IsVerifiedEmployer]
+    
+    def get_queryset(self):
+        return CandidateRanking.objects.filter(
+            employer=self.request.user.employer_profile
+        ).select_related('user', 'job')
+    
+    def get_serializer_class(self):
+        if self.action == 'update':
+            return CandidateRankingUpdateSerializer
+        return CandidateRankingSerializer
+    
+    @action(detail=False, methods=['post'])
+    def rank(self, request):
+        """
+        Rank candidates for a job.
+        
+        POST /api/v1/employer/rankings/rank/
+        Body: {
+            "job_id": 123,
+            "candidate_ids": [1, 2, 3],
+            "rank_all": false
+        }
+        """
+        serializer = EmployerRankingRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        job_id = serializer.validated_data['job_id']
+        candidate_ids = serializer.validated_data.get('candidate_ids', [])
+        rank_all = serializer.validated_data.get('rank_all', False)
+        
+        employer = self.request.user.employer_profile
+        
+        # Get job
+        from apps.jobs.models import Job
+        try:
+            job = Job.objects.get(id=job_id)
+        except Job.DoesNotExist:
+            return Response(
+                {'error': 'Job not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Get candidates to rank
+        if rank_all:
+            # Rank all applicants for this job
+            from apps.jobs.models import JobApplication
+            candidates = JobApplication.objects.filter(
+                job=job
+            ).select_related('user').values_list('user_id', flat=True)
+        else:
+            candidates = candidate_ids
+        
+        # Calculate rankings (placeholder - would use AI service in production)
+        rankings = []
+        for user_id in candidates:
+            ranking, created = CandidateRanking.objects.get_or_create(
+                job=job,
+                employer=employer,
+                user_id=user_id,
+                defaults={
+                    'overall_score': 0.5,  # Placeholder
+                    'skill_match_score': 0.5,
+                    'experience_score': 0.5,
+                    'education_score': 0.5,
+                    'salary_expectation_score': 0.5,
+                }
+            )
+            
+            # Evaluate knockout questions
+            knockout_questions = KnockoutQuestion.objects.filter(
+                employer=employer,
+                is_active=True
+            )
+            failed_questions = []
+            knockout_passed = True
+            
+            for question in knockout_questions:
+                # Evaluate question against user profile
+                # This is a placeholder - would use actual evaluation logic
+                if not question.pass_if_matches:
+                    failed_questions.append({
+                        'question': question.question_text,
+                        'reason': 'Answer did not match requirements'
+                    })
+                    knockout_passed = False
+            
+            ranking.knockout_passed = knockout_passed
+            ranking.knockout_failures = failed_questions
+            ranking.save()
+            
+            rankings.append({
+                'id': ranking.id,
+                'user_id': user_id,
+                'overall_score': ranking.overall_score,
+                'knockout_passed': ranking.knockout_passed,
+            })
+        
+        return Response({
+            'job_id': job_id,
+            'candidates_ranked': len(rankings),
+            'rankings': rankings,
+        })
+
+
+class TalentDiscoveryViewSet(viewsets.ModelViewSet):
+    """
+    Talent discovery tracking for employers.
+    
+    GET /api/v1/employer/talent-discoveries/ - List discoveries
+    POST /api/v1/employer/talent-discoveries/ - Create discovery
+    """
+    permission_classes = [IsAuthenticated, IsVerifiedEmployer]
+    
+    def get_queryset(self):
+        return TalentDiscovery.objects.filter(
+            employer=self.request.user.employer_profile
+        ).select_related('user')
+    
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return TalentDiscoveryCreateSerializer
+        return TalentDiscoverySerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(employer=self.request.user.employer_profile)

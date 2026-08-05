@@ -436,5 +436,348 @@ Provide match score and detailed analysis."""
         }
 
 
+    def calculate_salary_guidance(self, profile_data, job_data):
+        """
+        Calculate salary guidance for a candidate based on profile and job data.
+        
+        Args:
+            profile_data: User profile dict
+            job_data: Job dict
+            
+        Returns:
+            dict: Salary guidance with range and reasoning
+        """
+        system_prompt = """You are an expert salary negotiation advisor. Analyze the job posting and candidate profile
+to provide salary guidance.
+
+Return JSON:
+{
+  "min_salary": 80000,
+  "target_salary": 95000,
+  "max_salary": 110000,
+  "currency": "USD",
+  "confidence": 0.85,
+  "reasoning": "Based on 5 years experience and market data...",
+  "negotiation_tips": [
+    "Highlight your AWS certification",
+    "Mention your leadership experience"
+  ],
+  "market_comparison": {
+    "local_average": 85000,
+    "industry_average": 92000,
+    "experience_adjustment": "+15%"
+  }
+}
+"""
+        
+        prompt = f"""Provide salary guidance for this candidate applying to this job:
+
+CANDIDATE PROFILE:
+{json.dumps(profile_data, indent=2)}
+
+JOB POSTING:
+{json.dumps(job_data, indent=2)}
+
+Provide salary guidance with reasoning and negotiation tips."""
+
+        try:
+            response = self.invoke_model(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                max_tokens=1500,
+                temperature=0.2,
+                user=None
+            )
+            
+            json_start = response.find('{')
+            json_end = response.rfind('}') + 1
+            json_str = response[json_start:json_end]
+            
+            salary_data = json.loads(json_str)
+            return salary_data
+            
+        except Exception as e:
+            logger.error(f"Error calculating salary guidance: {e}")
+            return self._basic_salary_guidance(profile_data, job_data)
+    
+    def _basic_salary_guidance(self, profile_data, job_data):
+        """Fallback basic salary guidance"""
+        job_salary_min = job_data.get('salary_min')
+        job_salary_max = job_data.get('salary_max')
+        currency = job_data.get('salary_currency', 'USD')
+        
+        if job_salary_min and job_salary_max:
+            target = (job_salary_min + job_salary_max) / 2
+            return {
+                'min_salary': int(job_salary_min * 0.9),
+                'target_salary': int(target),
+                'max_salary': int(job_salary_max * 1.1),
+                'currency': currency,
+                'confidence': 0.5,
+                'reasoning': 'Based on job posting salary range',
+                'negotiation_tips': ['Research market rates', 'Consider benefits package'],
+                'market_comparison': {
+                    'local_average': int(target),
+                    'industry_average': int(target),
+                    'experience_adjustment': '0%'
+                }
+            }
+        
+        return {
+            'min_salary': None,
+            'target_salary': None,
+            'max_salary': None,
+            'currency': currency,
+            'confidence': 0.3,
+            'reasoning': 'No salary range provided in job posting',
+            'negotiation_tips': ['Ask about salary range in interview'],
+            'market_comparison': {
+                'local_average': None,
+                'industry_average': None,
+                'experience_adjustment': None
+            }
+        }
+    
+    def generate_interview_questions(self, role, experience_level, interview_type='technical'):
+        """
+        Generate interview questions for a specific role and experience level.
+        
+        Args:
+            role: Job title/role
+            experience_level: entry, mid, senior, lead
+            interview_type: technical, behavioral, coding, system_design
+            
+        Returns:
+            dict: Interview questions and evaluation criteria
+        """
+        system_prompt = """You are an expert interviewer. Generate relevant interview questions based on the role,
+experience level, and interview type.
+
+Return JSON:
+{
+  "questions": [
+    {
+      "question": "Question text",
+      "type": "technical|behavioral|coding",
+      "difficulty": "junior|mid|senior|lead",
+      "evaluation_criteria": ["What to look for in a good answer"],
+      "red_flags": ["Signs of a weak answer"]
+    }
+  ],
+  "total_questions": 5,
+  "estimated_duration_minutes": 30,
+  "preparation_tips": ["Tips for the candidate"]
+}
+"""
+        
+        prompt = f"""Generate {interview_type} interview questions for a {experience_level} level {role} position.
+
+Return ONLY the JSON object."""
+
+        try:
+            response = self.invoke_model(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                max_tokens=2000,
+                temperature=0.3,
+                user=None
+            )
+            
+            json_start = response.find('{')
+            json_end = response.rfind('}') + 1
+            json_str = response[json_start:json_end]
+            
+            questions_data = json.loads(json_str)
+            return questions_data
+            
+        except Exception as e:
+            logger.error(f"Error generating interview questions: {e}")
+            return self._basic_interview_questions(role, experience_level, interview_type)
+    
+    def _basic_interview_questions(self, role, experience_level, interview_type):
+        """Fallback basic interview questions"""
+        return {
+            'questions': [
+                {
+                    'question': f'Can you tell me about your experience with {role}?',
+                    'type': 'behavioral',
+                    'difficulty': experience_level,
+                    'evaluation_criteria': ['Clear communication', 'Relevant experience', 'Specific examples'],
+                    'red_flags': ['Vague answers', 'Lack of specific examples']
+                },
+                {
+                    'question': f'What are your strengths and weaknesses?',
+                    'type': 'behavioral',
+                    'difficulty': experience_level,
+                    'evaluation_criteria': ['Self-awareness', 'Honesty', 'Improvement mindset'],
+                    'red_flags': ['Generic answers', 'No self-awareness']
+                }
+            ],
+            'total_questions': 2,
+            'estimated_duration_minutes': 15,
+            'preparation_tips': ['Review the job description', 'Prepare STAR examples']
+        }
+    
+    def evaluate_interview_response(self, question, response, role, interview_type='technical'):
+        """
+        Evaluate a candidate's interview response.
+        
+        Args:
+            question: The interview question
+            response: Candidate's response
+            role: Job title/role
+            interview_type: technical, behavioral, coding, system_design
+            
+        Returns:
+            dict: Evaluation score and feedback
+        """
+        system_prompt = """You are an expert interviewer evaluator. Evaluate candidate responses to interview questions.
+
+Return JSON:
+{
+  "score": 75,
+  "max_score": 100,
+  "breakdown": {
+    "relevance": {"score": 80, "feedback": "Answer was relevant to the question"},
+    "depth": {"score": 70, "feedback": "Could provide more detail"},
+    "structure": {"score": 85, "feedback": "Well-structured answer"},
+    "technical_accuracy": {"score": 70, "feedback": "Some technical inaccuracies"}
+  },
+  "strengths": ["Good communication skills", "Relevant experience"],
+  "weaknesses": ["Lacked specific examples", "Some technical gaps"],
+  "improvement_tips": ["Provide more specific examples", "Review technical concepts"],
+  "recommendation": "Consider for next round"
+}
+"""
+        
+        prompt = f"""Evaluate this interview response:
+
+INTERVIEW TYPE: {interview_type}
+ROLE: {role}
+QUESTION: {question}
+CANDIDATE RESPONSE: {response}
+
+Provide evaluation with scores and feedback."""
+
+        try:
+            response = self.invoke_model(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                max_tokens=1500,
+                temperature=0.2,
+                user=None
+            )
+            
+            json_start = response.find('{')
+            json_end = response.rfind('}') + 1
+            json_str = response[json_start:json_end]
+            
+            evaluation_data = json.loads(json_str)
+            return evaluation_data
+            
+        except Exception as e:
+            logger.error(f"Error evaluating interview response: {e}")
+            return {
+                'score': 50,
+                'max_score': 100,
+                'breakdown': {},
+                'strengths': [],
+                'weaknesses': ['Evaluation failed'],
+                'improvement_tips': ['Try again'],
+                'recommendation': 'Review required'
+            }
+    
+    def rank_candidates_for_job(self, job_data, candidate_profiles):
+        """
+        Rank multiple candidates for a job using AI.
+        
+        Args:
+            job_data: Job posting data
+            candidate_profiles: List of candidate profile data
+            
+        Returns:
+            dict: Ranked candidates with scores and explanations
+        """
+        system_prompt = """You are an expert recruitment assistant. Rank candidates based on their fit for a job.
+
+Return JSON:
+{
+  "rankings": [
+    {
+      "candidate_id": 1,
+      "overall_score": 85,
+      "skill_match_score": 90,
+      "experience_score": 80,
+      "education_score": 95,
+      "explanation": "Strong match with 9/10 required skills...",
+      "recommendation": "High priority - schedule interview"
+    }
+  ],
+  "total_candidates": 5,
+  "top_candidate_id": 1
+}
+"""
+        
+        prompt = f"""Rank these candidates for the following job:
+
+JOB POSTING:
+{json.dumps(job_data, indent=2)}
+
+CANDIDATE PROFILES:
+{json.dumps(candidate_profiles, indent=2)}
+
+Provide rankings with detailed explanations."""
+
+        try:
+            response = self.invoke_model(
+                prompt=prompt,
+                system_prompt=system_prompt,
+                max_tokens=3000,
+                temperature=0.2,
+                user=None
+            )
+            
+            json_start = response.find('{')
+            json_end = response.rfind('}') + 1
+            json_str = response[json_start:json_end]
+            
+            ranking_data = json.loads(json_str)
+            return ranking_data
+            
+        except Exception as e:
+            logger.error(f"Error ranking candidates: {e}")
+            return self._basic_candidate_ranking(job_data, candidate_profiles)
+    
+    def _basic_candidate_ranking(self, job_data, candidate_profiles):
+        """Fallback basic candidate ranking"""
+        rankings = []
+        for i, profile in enumerate(candidate_profiles):
+            # Basic scoring
+            score = 50
+            skills = profile.get('skills', [])
+            required_skills = job_data.get('required_skills', [])
+            
+            if required_skills:
+                match_count = len(set(s.lower() for s in skills) & set(s.lower() for s in required_skills))
+                skill_score = (match_count / len(required_skills)) * 100
+                score += skill_score * 0.4
+            
+            rankings.append({
+                'candidate_id': i,
+                'overall_score': min(int(score), 100),
+                'skill_match_score': int(score * 0.5),
+                'experience_score': int(score * 0.3),
+                'education_score': int(score * 0.2),
+                'explanation': 'Basic algorithm ranking',
+                'recommendation': 'Review recommended'
+            })
+        
+        return {
+            'rankings': sorted(rankings, key=lambda x: x['overall_score'], reverse=True),
+            'total_candidates': len(rankings),
+            'top_candidate_id': rankings[0]['candidate_id'] if rankings else None
+        }
+
+
 # Singleton instance
 bedrock_service = BedrockService()

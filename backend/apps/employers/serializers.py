@@ -230,3 +230,153 @@ class EmployerRegistrationSerializer(serializers.Serializer):
                 "You already have an employer profile."
             )
         return data
+
+
+# ============================================================================
+# Employer Intelligence Serializers (Phase 4)
+# ============================================================================
+
+
+class KnockoutQuestionSerializer(serializers.ModelSerializer):
+    """Serializer for KnockoutQuestion model."""
+    
+    employer_name = serializers.CharField(source='employer.company.name', read_only=True)
+    
+    class Meta:
+        model = KnockoutQuestion
+        fields = [
+            'id',
+            'employer',
+            'employer_name',
+            'question_text',
+            'question_type',
+            'required_answer',
+            'pass_if_matches',
+            'weight',
+            'is_active',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'employer_name']
+
+
+class KnockoutQuestionCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating/updating KnockoutQuestion."""
+    
+    class Meta:
+        model = KnockoutQuestion
+        fields = [
+            'question_text',
+            'question_type',
+            'required_answer',
+            'pass_if_matches',
+            'weight',
+            'is_active',
+        ]
+
+
+class CandidateRankingSerializer(serializers.ModelSerializer):
+    """Serializer for CandidateRanking model."""
+    
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    job_title = serializers.CharField(source='job.title', read_only=True)
+    employer_name = serializers.CharField(source='employer.company.name', read_only=True)
+    
+    class Meta:
+        model = CandidateRanking
+        fields = [
+            'id',
+            'job',
+            'job_title',
+            'employer',
+            'employer_name',
+            'user',
+            'user_name',
+            'user_email',
+            'overall_score',
+            'skill_match_score',
+            'experience_score',
+            'education_score',
+            'salary_expectation_score',
+            'knockout_passed',
+            'knockout_failures',
+            'explanations',
+            'status',
+            'ranked_at',
+        ]
+        read_only_fields = ['id', 'ranked_at', 'user_name', 'user_email']
+
+
+class CandidateRankingUpdateSerializer(serializers.ModelSerializer):
+    """Serializer for updating CandidateRanking status."""
+    
+    class Meta:
+        model = CandidateRanking
+        fields = ['status']
+
+
+class TalentDiscoverySerializer(serializers.ModelSerializer):
+    """Serializer for TalentDiscovery model."""
+    
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    employer_name = serializers.CharField(source='employer.company.name', read_only=True)
+    
+    class Meta:
+        model = TalentDiscovery
+        fields = [
+            'id',
+            'employer',
+            'employer_name',
+            'user',
+            'user_name',
+            'user_email',
+            'source',
+            'search_query',
+            'matched_skills',
+            'viewed_at',
+            'saved',
+            'notes',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'user_name', 'user_email']
+
+
+class TalentDiscoveryCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating TalentDiscovery."""
+    
+    class Meta:
+        model = TalentDiscovery
+        fields = [
+            'user',
+            'source',
+            'search_query',
+            'matched_skills',
+            'saved',
+            'notes',
+        ]
+
+
+class EmployerRankingRequestSerializer(serializers.Serializer):
+    """Serializer for ranking candidates for a job."""
+    
+    job_id = serializers.IntegerField(required=True)
+    candidate_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        default=list
+    )
+    rank_all = serializers.BooleanField(
+        default=False,
+        help_text="Rank all candidates for this job"
+    )
+
+
+class EmployerRankingResponseSerializer(serializers.Serializer):
+    """Serializer for ranking response."""
+    
+    job_id = serializers.IntegerField()
+    candidates_ranked = serializers.IntegerField()
+    rankings = serializers.ListField(
+        child=serializers.DictField()
+    )

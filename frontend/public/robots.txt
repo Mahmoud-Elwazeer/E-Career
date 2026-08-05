@@ -1,14 +1,20 @@
-User-agent: Googlebot
-Allow: /
+# Robots.txt for USAM Career Compass
+# https://jobs.usamif.com
 
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
+# Allow all robots to access the site
 User-agent: *
 Allow: /
+
+# Disallow admin areas
+Disallow: /admin/
+Disallow: /api/admin/
+
+# Disallow private user areas
+Disallow: /api/profiles/
+Disallow: /api/saved-jobs/
+
+# Sitemap location
+Sitemap: https://jobs.usamif.com/sitemap.xml
+
+# Crawl delay (optional - helps reduce server load)
+Crawl-delay: 1

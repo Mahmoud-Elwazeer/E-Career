@@ -1331,3 +1331,401 @@ class ScoringEngine:
                             all_scores['communication_score'].value * 0.10,
             "dimensions": {k: v.value for k, v in all_scores.items()},
         }]
+
+    # =========================================================================
+    # Explanation Generator (GAP 3 - Missing)
+    # =========================================================================
+
+    def generate_explanation(self, dimension: str, score_result: ScoreResult) -> Dict[str, Any]:
+        """
+        Generate natural language explanation for a score dimension.
+        
+        Args:
+            dimension: The score dimension (e.g., 'skill_score', 'experience_score')
+            score_result: The ScoreResult object with score data
+            
+        Returns:
+            Dictionary with explanation, evidence, and recommendations
+        """
+        explanation_data = {
+            "dimension": dimension,
+            "score": score_result.value,
+            "grade": score_result.grade,
+            "confidence": score_result.confidence,
+            "explanation": score_result.explanation,
+            "evidence": score_result.evidence,
+            "actions": score_result.actions,
+            "trend": score_result.trend,
+        }
+        
+        # Add dimension-specific context
+        dimension_contexts = {
+            "skill_score": {
+                "importance": "Technical skills are crucial for demonstrating your ability to perform in a technical role",
+                "benchmark": "Top 25% of candidates typically have skill scores above 0.75",
+            },
+            "experience_score": {
+                "importance": "Experience shows your ability to apply skills in real-world scenarios",
+                "benchmark": "Mid-level candidates typically have 3-7 years of experience",
+            },
+            "portfolio_score": {
+                "importance": "Portfolio demonstrates your practical application of skills",
+                "benchmark": "Strong portfolios show consistent activity over 6+ months",
+            },
+            "interview_score": {
+                "importance": "Interview performance shows your communication and problem-solving skills",
+                "benchmark": "Top candidates score above 0.8 on technical interviews",
+            },
+            "growth_score": {
+                "importance": "Learning velocity indicates your ability to adapt and grow",
+                "benchmark": "High growth candidates complete 3+ courses per quarter",
+            },
+            "communication_score": {
+                "importance": "Communication skills are essential for collaboration and clarity",
+                "benchmark": "Clear communication is expected at all levels",
+            },
+        }
+        
+        if dimension in dimension_contexts:
+            explanation_data["context"] = dimension_contexts[dimension]
+        
+        return explanation_data
+
+    # =========================================================================
+    # Interview Simulation System (GAP 4 - Missing)
+    # =========================================================================
+
+    def generate_questions(self, interview_type: str, target_role: str, difficulty: str = "mid") -> List[Dict[str, Any]]:
+        """
+        Generate interview questions based on type, role, and difficulty.
+        
+        Args:
+            interview_type: 'technical', 'behavioral', 'coding', 'system_design', 'case_study'
+            target_role: The target job role (e.g., 'Software Engineer', 'Data Scientist')
+            difficulty: 'junior', 'mid', 'senior', 'lead'
+            
+        Returns:
+            List of question dictionaries with question text, type, and evaluation criteria
+        """
+        # Question templates by type and difficulty
+        question_templates = {
+            "technical": {
+                "junior": [
+                    {
+                        "question": f"Can you describe a project where you used technical skills to solve a problem?",
+                        "type": "behavioral",
+                        "category": "technical_fundamentals",
+                        "evaluation_criteria": ["problem_solving", "technical_implementation", "results"],
+                        "expected_length": "2-3 minutes",
+                    },
+                    {
+                        "question": f"What technical skills are you most confident in, and how have you applied them?",
+                        "type": "self_assessment",
+                        "category": "technical_skills",
+                        "evaluation_criteria": ["self-awareness", "practical_application", "depth_of_knowledge"],
+                        "expected_length": "1-2 minutes",
+                    },
+                ],
+                "mid": [
+                    {
+                        "question": f"Describe a technical challenge you faced in your recent work and how you solved it.",
+                        "type": "behavioral",
+                        "category": "technical_problem_solving",
+                        "evaluation_criteria": ["analysis", "solution_approach", "implementation", "results"],
+                        "expected_length": "3-4 minutes",
+                    },
+                    {
+                        "question": f"How do you stay current with new technologies in your field?",
+                        "type": "behavioral",
+                        "category": "learning_growth",
+                        "evaluation_criteria": ["learning_methods", "time_management", "application"],
+                        "expected_length": "2-3 minutes",
+                    },
+                ],
+                "senior": [
+                    {
+                        "question": f"Describe a complex technical problem you solved that required collaboration across teams.",
+                        "type": "behavioral",
+                        "category": "technical_leadership",
+                        "evaluation_criteria": ["technical_depth", "collaboration", "impact", "communication"],
+                        "expected_length": "4-5 minutes",
+                    },
+                    {
+                        "question": f"How do you approach technical debt in your projects?",
+                        "type": "scenario",
+                        "category": "software_engineering_practices",
+                        "evaluation_criteria": ["awareness", "strategy", "tradeoffs", "communication"],
+                        "expected_length": "3-4 minutes",
+                    },
+                ],
+                "lead": [
+                    {
+                        "question": f"Describe a major technical decision you made that impacted your team or organization.",
+                        "type": "behavioral",
+                        "category": "technical_strategy",
+                        "evaluation_criteria": ["strategic_thinking", "impact", "stakeholder_management", "execution"],
+                        "expected_length": "5-6 minutes",
+                    },
+                ],
+            },
+            "behavioral": {
+                "junior": [
+                    {
+                        "question": "Tell me about a time you faced a challenge in a team setting.",
+                        "type": "behavioral",
+                        "category": "teamwork",
+                        "evaluation_criteria": ["communication", "collaboration", "conflict_resolution"],
+                        "expected_length": "2-3 minutes",
+                    },
+                    {
+                        "question": "Describe a time you received feedback and how you responded.",
+                        "type": "behavioral",
+                        "category": "growth_mindset",
+                        "evaluation_criteria": ["receptiveness", "action", "results"],
+                        "expected_length": "2-3 minutes",
+                    },
+                ],
+                "mid": [
+                    {
+                        "question": "Tell me about a time you had to manage competing priorities.",
+                        "type": "behavioral",
+                        "category": "time_management",
+                        "evaluation_criteria": ["prioritization", "planning", "execution"],
+                        "expected_length": "3-4 minutes",
+                    },
+                    {
+                        "question": "Describe a situation where you had to influence others without authority.",
+                        "type": "behavioral",
+                        "category": "influence",
+                        "evaluation_criteria": ["approach", "communication", "results"],
+                        "expected_length": "3-4 minutes",
+                    },
+                ],
+                "senior": [
+                    {
+                        "question": "Describe a time you had to make a difficult decision with incomplete information.",
+                        "type": "behavioral",
+                        "category": "decision_making",
+                        "evaluation_criteria": ["analysis", "judgment", "communication", "results"],
+                        "expected_length": "4-5 minutes",
+                    },
+                ],
+                "lead": [
+                    {
+                        "question": "Tell me about a time you had to lead through organizational change.",
+                        "type": "behavioral",
+                        "category": "leadership",
+                        "evaluation_criteria": ["vision", "communication", "execution", "results"],
+                        "expected_length": "5-6 minutes",
+                    },
+                ],
+            },
+            "coding": {
+                "junior": [
+                    {
+                        "question": "Write a function to reverse a string.",
+                        "type": "coding",
+                        "category": "algorithms",
+                        "evaluation_criteria": ["correctness", "efficiency", "readability"],
+                        "expected_length": "10-15 minutes",
+                        "difficulty": "easy",
+                    },
+                    {
+                        "question": "Write a function to find the maximum value in an array.",
+                        "type": "coding",
+                        "category": "algorithms",
+                        "evaluation_criteria": ["correctness", "efficiency", "edge_cases"],
+                        "expected_length": "10-15 minutes",
+                        "difficulty": "easy",
+                    },
+                ],
+                "mid": [
+                    {
+                        "question": "Implement a function to check if a string has all unique characters.",
+                        "type": "coding",
+                        "category": "algorithms",
+                        "evaluation_criteria": ["correctness", "efficiency", "space_complexity"],
+                        "expected_length": "15-20 minutes",
+                        "difficulty": "medium",
+                    },
+                    {
+                        "question": f"Write a solution for a common problem in {target_role} work.",
+                        "type": "coding",
+                        "category": "domain_specific",
+                        "evaluation_criteria": ["correctness", "domain_knowledge", "code_quality"],
+                        "expected_length": "20-25 minutes",
+                        "difficulty": "medium",
+                    },
+                ],
+                "senior": [
+                    {
+                        "question": "Design a data structure for a cache with O(1) get and set operations.",
+                        "type": "coding",
+                        "category": "system_design",
+                        "evaluation_criteria": ["efficiency", "scalability", "edge_cases"],
+                        "expected_length": "25-30 minutes",
+                        "difficulty": "hard",
+                    },
+                ],
+                "lead": [
+                    {
+                        "question": "Design a scalable system for handling high-volume data processing.",
+                        "type": "coding",
+                        "category": "system_design",
+                        "evaluation_criteria": ["architecture", "scalability", "reliability", "tradeoffs"],
+                        "expected_length": "30-45 minutes",
+                        "difficulty": "hard",
+                    },
+                ],
+            },
+            "system_design": {
+                "mid": [],
+                "senior": [
+                    {
+                        "question": "Design a URL shortening service like Bitly.",
+                        "type": "system_design",
+                        "category": "web_services",
+                        "evaluation_criteria": ["scalability", "performance", "reliability", "storage"],
+                        "expected_length": "30-40 minutes",
+                    },
+                ],
+                "lead": [
+                    {
+                        "question": "Design a distributed system for real-time analytics processing.",
+                        "type": "system_design",
+                        "category": "distributed_systems",
+                        "evaluation_criteria": ["architecture", "scalability", "fault_tolerance", "monitoring"],
+                        "expected_length": "40-50 minutes",
+                    },
+                ],
+            },
+            "case_study": {
+                "junior": [],
+                "mid": [],
+                "senior": [
+                    {
+                        "question": "How would you improve the user experience of a popular product?",
+                        "type": "case_study",
+                        "category": "product",
+                        "evaluation_criteria": ["analysis", "solution", "tradeoffs", "communication"],
+                        "expected_length": "20-25 minutes",
+                    },
+                ],
+                "lead": [
+                    {
+                        "question": "How would you prioritize features for a product with limited resources?",
+                        "type": "case_study",
+                        "category": "strategy",
+                        "evaluation_criteria": ["strategic_thinking", "prioritization", "stakeholder_management", "execution"],
+                        "expected_length": "25-30 minutes",
+                    },
+                ],
+            },
+        }
+        
+        # Get questions for the specified type and difficulty
+        type_questions = question_templates.get(interview_type, {})
+        difficulty_questions = type_questions.get(difficulty, [])
+        
+        # If no questions for this difficulty, use mid as fallback
+        if not difficulty_questions:
+            difficulty_questions = type_questions.get("mid", [])
+        
+        # If still no questions, use junior as fallback
+        if not difficulty_questions:
+            difficulty_questions = type_questions.get("junior", [])
+        
+        # Add role-specific context to questions
+        for question in difficulty_questions:
+            question["target_role"] = target_role
+            question["role_context"] = f"For a {target_role} position"
+        
+        return difficulty_questions[:5]  # Return up to 5 questions
+
+    def evaluate_answer(self, question: str, answer: str, criteria: List[str] = None) -> Dict[str, Any]:
+        """
+        Evaluate a user's answer to an interview question.
+        
+        Args:
+            question: The interview question
+            answer: The user's answer
+            criteria: List of evaluation criteria (optional)
+            
+        Returns:
+            Dictionary with evaluation score, feedback, and recommendations
+        """
+        if criteria is None:
+            criteria = ["relevance", "clarity", "depth", "structure", "examples"]
+        
+        # Calculate scores for each criterion
+        scores = {}
+        feedback = {}
+        
+        # Relevance (how well the answer addresses the question)
+        relevance_keywords = ["because", "therefore", "so", "as a result"]
+        has_relevance_indicators = any(kw in answer.lower() for kw in relevance_keywords)
+        relevance_score = 0.5 + (0.3 if has_relevance_indicators else 0) + (0.2 if len(answer) > 50 else 0)
+        scores["relevance"] = min(1.0, relevance_score)
+        feedback["relevance"] = "Good relevance to the question" if scores["relevance"] >= 0.7 else "Try to stay focused on the question"
+        
+        # Clarity (how clear and understandable the answer is)
+        clarity_words = len(answer.split())
+        clarity_score = 0.5 + min(0.3, clarity_words / 100) + (0.2 if "." in answer else 0)
+        scores["clarity"] = min(1.0, clarity_score)
+        feedback["clarity"] = "Clear and well-expressed" if scores["clarity"] >= 0.7 else "Consider structuring your answer more clearly"
+        
+        # Depth (level of detail and insight)
+        depth_indicators = ["because", "for example", "such as", "specifically", "detailed"]
+        has_depth_indicators = any(ind in answer.lower() for ind in depth_indicators)
+        depth_score = 0.4 + (0.3 if has_depth_indicators else 0) + (0.3 if len(answer) > 100 else 0)
+        scores["depth"] = min(1.0, depth_score)
+        feedback["depth"] = "Good depth and detail" if scores["depth"] >= 0.7 else "Add more specific details and examples"
+        
+        # Structure (organization and flow)
+        structure_indicators = [". ", ", ", "first", "second", "finally", "in conclusion"]
+        has_structure_indicators = any(ind in answer.lower() for ind in structure_indicators)
+        structure_score = 0.4 + (0.3 if has_structure_indicators else 0) + (0.3 if answer.count(".") > 1 else 0)
+        scores["structure"] = min(1.0, structure_score)
+        feedback["structure"] = "Well-structured answer" if scores["structure"] >= 0.7 else "Consider using a structured approach (e.g., STAR method)"
+        
+        # Examples (use of specific examples)
+        example_indicators = ["example", "such as", "for instance", "like", "when", "where"]
+        has_example_indicators = any(ind in answer.lower() for ind in example_indicators)
+        example_score = 0.5 + (0.3 if has_example_indicators else 0) + (0.2 if len(answer) > 150 else 0)
+        scores["examples"] = min(1.0, example_score)
+        feedback["examples"] = "Good use of examples" if scores["examples"] >= 0.7 else "Include specific examples to support your points"
+        
+        # Calculate overall score
+        overall_score = sum(scores.values()) / len(scores)
+        
+        # Generate recommendations
+        recommendations = []
+        for criterion, score in scores.items():
+            if score < 0.7:
+                recommendations.append({
+                    "criterion": criterion,
+                    "score": round(score, 2),
+                    "feedback": feedback[criterion],
+                    "improvement": f"Focus on improving {criterion} in your answers"
+                })
+        
+        # Generate overall feedback
+        if overall_score >= 0.8:
+            overall_feedback = "Excellent answer! Your response was strong across all evaluation criteria."
+        elif overall_score >= 0.6:
+            overall_feedback = "Good answer. You covered the main points well, with room for improvement in some areas."
+        elif overall_score >= 0.4:
+            overall_feedback = "Fair answer. Consider adding more detail, examples, or structure to improve."
+        else:
+            overall_feedback = "Needs improvement. Focus on addressing the question directly with specific examples."
+        
+        return {
+            "question": question,
+            "answer_length": len(answer),
+            "overall_score": round(overall_score, 3),
+            "scores": {k: round(v, 3) for k, v in scores.items()},
+            "feedback": feedback,
+            "overall_feedback": overall_feedback,
+            "recommendations": recommendations,
+            "grade": "A" if overall_score >= 0.8 else "B" if overall_score >= 0.6 else "C" if overall_score >= 0.4 else "D" if overall_score >= 0.2 else "F",
+        }
