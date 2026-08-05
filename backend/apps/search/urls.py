@@ -10,6 +10,9 @@ from apps.search.views import (
     JobAutocompleteView,
     JobFacetsView,
     SearchHealthView,
+    JobRecommendationsView,
+    SimilarJobsView,
+    TrainRecommendationModelView,
 )
 
 urlpatterns = [
@@ -24,4 +27,9 @@ urlpatterns = [
     
     # Health check endpoint
     path("health/", SearchHealthView.as_view(), name="search-health"),
+    
+    # Recommendation endpoints
+    path("recommendations/", JobRecommendationsView.as_view(), name="search-recommendations"),
+    path("similar-jobs/<str:job_uuid>/", SimilarJobsView.as_view(), name="search-similar-jobs"),
+    path("train-recommendation-model/", TrainRecommendationModelView.as_view(), name="train-recommendation-model"),
 ]

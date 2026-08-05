@@ -2,11 +2,13 @@
 Root URL configuration for USAM Career Compass backend.
 """
 from django.contrib import admin
+from django.contrib.sitemaps.views import sitemap
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
 from apps.core.views import HealthCheckView, DetailedHealthCheckView
+from apps.jobs.sitemaps import sitemaps as job_sitemaps
 
 # Import custom admin views
 from apps.scraper.admin_views import scraper_dashboard, health_monitor
@@ -41,6 +43,10 @@ urlpatterns = [
         path("vectors/", include("apps.vectors.urls")),
         # Career Intelligence (Phase 2)
         path("career/", include("apps.career.urls")),
+        # Salary Intelligence (Phase 3)
+        path("salary/", include("apps.salary.urls")),
+        # Assessment Platform (Phase 3)
+        path("assessment/", include("apps.assessment.urls")),
         # Core (Rule Engine, Feature Flags, GitHub) - Week 13
         path("core/", include("apps.core.urls")),
     ])),
@@ -55,6 +61,10 @@ urlpatterns = [
 
     # django-allauth (for social auth callbacks)
     path("accounts/", include("allauth.urls")),
+
+    # Sitemap for SEO
+    path('sitemap.xml', sitemap, {'sitemaps': job_sitemaps},
+         name='django.contrib.sitemaps.views.sitemap'),
 ]
 
 # Serve media files in development

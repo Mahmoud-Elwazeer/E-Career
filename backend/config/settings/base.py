@@ -43,6 +43,8 @@ INSTALLED_APPS = [
      "allauth.socialaccount.providers.google",
     # Project apps
     "apps.core",
+    # Monitoring & Observability
+    "apps.monitoring",
     "apps.accounts",
     "apps.jobs",
     "apps.users",
@@ -69,6 +71,10 @@ INSTALLED_APPS = [
     "apps.vectors",
     # Phase 2 - Career Intelligence
     "apps.career",
+    # Phase 3 - Salary Intelligence
+    "apps.salary",
+    # Phase 3 - Assessment Platform
+    "apps.assessment",
     # Celery Beat
     "django_celery_beat",
     # WebSocket support (Phase 2B)
@@ -305,6 +311,12 @@ AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
 AWS_DEFAULT_REGION = config('AWS_DEFAULT_REGION', default='us-east-1')
 BEDROCK_MODEL_ID = config('BEDROCK_MODEL_ID', default='anthropic.claude-sonnet-4-20250514-v1:0')
 
+# ── AWS Billing Alerts Configuration ───────────────────────────────────────────
+# CloudWatch billing alarm thresholds (in USD)
+AWS_BILLING_ALERT_THRESHOLD = config('AWS_BILLING_ALERT_THRESHOLD', default=100, cast=float)
+AWS_BILLING_ALERT_EMAIL = config('AWS_BILLING_ALERT_EMAIL', default='')
+AWS_BILLING_MONITOR_ENABLED = config('AWS_BILLING_MONITOR_ENABLED', default=False, cast=bool)
+
 # ── Django Channels Configuration ─────────────────────────────────────────────
 ASGI_APPLICATION = 'config.asgi.application'
 
@@ -358,6 +370,23 @@ structlog.configure(
     logger_factory=structlog.stdlib.LoggerFactory(),
     cache_logger_on_first_use=True,
 )
+
+# ── GZIP Compression (70-90% smaller payloads) ───────────────────────────────
+MIDDLEWARE = [
+    'django.middleware.gzip.GZipMiddleware',  # Add first for compression
+] + MIDDLEWARE
+
+# ── Caching Configuration (API Response Caching) ───────────────────────────────
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': config('REDIS_CACHE_URL', default='redis://localhost:6379/1'),
+        'TIMEOUT': 300,  # 5 minutes default
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
 
 # ── Logging ──────────────────────────────────────────────────────────────────
 LOGGING = {

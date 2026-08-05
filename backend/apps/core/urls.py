@@ -11,6 +11,12 @@ from .views import (
     github_connections,
     portfolio_analyses,
     seed_rules,
+    export_user_data,
+    delete_user_data,
+    anonymize_user_data,
+    GDPRDataExportViewSet,
+    GDPRDataDeletionViewSet,
+    GDPRDataAnonymizationViewSet,
 )
 
 urlpatterns = [
@@ -28,4 +34,9 @@ urlpatterns = [
 
     # Portfolio analysis endpoints
     path('portfolio/', portfolio_analyses, name='portfolio-analyses'),
+
+    # GDPR compliance endpoints
+    path('gdpr/export/', GDPRDataExportViewSet.as_view(), name='gdpr-export'),
+    path('gdpr/delete/', GDPRDataDeletionViewSet.as_view(), name='gdpr-delete'),
+    path('gdpr/anonymize/', GDPRDataAnonymizationViewSet.as_view(), name='gdpr-anonymize'),
 ]

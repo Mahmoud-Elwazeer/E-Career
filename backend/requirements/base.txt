@@ -51,6 +51,9 @@ typesense==0.21.0
 # Vector search
 qdrant-client==1.11.3
 
+# Cohere embeddings for semantic search
+cohere==5.5.6
+
 # Graph database
 apache-age-python==0.0.6
 
@@ -63,6 +66,9 @@ openpyxl==3.1.5
 # CV Parsing
 docling==2.5.0  # IBM Docling - MIT license
 pdfplumber==0.11.0  # PDF text extraction
+
+# Monitoring & Observability
+sentry-sdk==2.13.0  # Error tracking and monitoring
 easyocr==1.7.0  # OCR for scanned/image CVs
 pytesseract==0.3.10  # Tesseract OCR wrapper
 python-docx==1.1.0  # DOCX parsing

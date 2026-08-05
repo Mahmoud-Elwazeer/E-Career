@@ -21,7 +21,7 @@ except ImportError:
         BLUE = "blue"
         PURPLE = "purple"
 
-from .models import EmployerProfile, JobPosting, JobApplication
+from .models import EmployerProfile, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery
 
 
 @admin.register(EmployerProfile)
@@ -278,3 +278,137 @@ def get_pending_verifications_count():
 def get_pending_jobs_count():
     """Badge count for pending job approvals"""
     return JobPosting.objects.filter(status='pending_review').count()
+
+
+# ============================================================================
+# Employer Intelligence Admin (Phase 4)
+# ============================================================================
+
+
+@admin.register(KnockoutQuestion)
+class KnockoutQuestionAdmin(ModelAdmin):
+    """Admin for KnockoutQuestion model."""
+    
+    list_display = [
+        'question_text',
+        'employer_company',
+        'question_type',
+        'pass_if_matches',
+        'weight',
+        'is_active',
+        'created_at',
+    ]
+    list_filter = ['question_type', 'pass_if_matches', 'is_active', 'created_at']
+    search_fields = ['question_text', 'employer__company__name']
+    readonly_fields = ['created_at']
+    
+    fieldsets = (
+        ('Question', {
+            'fields': ('question_text', 'question_type', 'required_answer')
+        }),
+        ('Evaluation', {
+            'fields': ('pass_if_matches', 'weight')
+        }),
+        ('Status', {
+            'fields': ('is_active', 'created_at')
+        }),
+    )
+    
+    @display(description='Company', ordering='employer__company__name')
+    def employer_company(self, obj):
+        return obj.employer.company.name
+
+
+@admin.register(CandidateRanking)
+class CandidateRankingAdmin(ModelAdmin):
+    """Admin for CandidateRanking model."""
+    
+    list_display = [
+        'user_email',
+        'job_title',
+        'overall_score',
+        'skill_match_score',
+        'experience_score',
+        'knockout_passed',
+        'status',
+        'ranked_at',
+    ]
+    list_filter = ['status', 'knockout_passed', 'ranked_at']
+    search_fields = ['user__email', 'job__title']
+    readonly_fields = ['ranked_at']
+    
+    fieldsets = (
+        ('Candidate & Job', {
+            'fields': ('user', 'job', 'employer')
+        }),
+        ('Scores', {
+            'fields': (
+                'overall_score', 'skill_match_score', 'experience_score',
+                'education_score', 'salary_expectation_score'
+            )
+        }),
+        ('Knockout Evaluation', {
+            'fields': ('knockout_passed', 'knockout_failures')
+        }),
+        ('Explanations', {
+            'fields': ('explanations',),
+            'classes': ('collapse',)
+        }),
+        ('Status', {
+            'fields': ('status', 'ranked_at')
+        }),
+    )
+    
+    @display(description='Applicant Email', ordering='user__email')
+    def user_email(self, obj):
+        return obj.user.email
+    
+    @display(description='Job', ordering='job__title')
+    def job_title(self, obj):
+        return obj.job.title
+
+
+@admin.register(TalentDiscovery)
+class TalentDiscoveryAdmin(ModelAdmin):
+    """Admin for TalentDiscovery model."""
+    
+    list_display = [
+        'user_email',
+        'employer_company',
+        'source',
+        'search_query',
+        'matched_skills_count',
+        'viewed_at',
+        'saved',
+        'created_at',
+    ]
+    list_filter = ['source', 'saved', 'created_at']
+    search_fields = ['user__email', 'search_query', 'employer__company__name']
+    readonly_fields = ['created_at']
+    
+    fieldsets = (
+        ('Discovery', {
+            'fields': ('user', 'employer', 'source')
+        }),
+        ('Search Context', {
+            'fields': ('search_query', 'matched_skills')
+        }),
+        ('Interaction', {
+            'fields': ('viewed_at', 'saved', 'notes')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at',),
+        }),
+    )
+    
+    @display(description='Applicant Email', ordering='user__email')
+    def user_email(self, obj):
+        return obj.user.email
+    
+    @display(description='Company', ordering='employer__company__name')
+    def employer_company(self, obj):
+        return obj.employer.company.name
+    
+    @display(description='Matched Skills')
+    def matched_skills_count(self, obj):
+        return len(obj.matched_skills) if obj.matched_skills else 0
