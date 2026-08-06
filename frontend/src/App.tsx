@@ -22,6 +22,7 @@ import ApiDocs from "./pages/ApiDocs";
 import Recommendations from "./pages/Recommendations";
 import RashidChat from "./pages/RashidChat";
 import { EmployerDashboard, EmployerRegister, JobPostingForm } from "./pages/employer";
+import { RashidWidget } from "./components/rashid/RashidWidget";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <AnimatedRoutes />
+            <RashidWidget />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>

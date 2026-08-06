@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Briefcase, Bookmark, Bell, Info, Menu, Building2, User } from "lucide-react";
+import { Briefcase, Bookmark, Bell, Info, Menu, Building2, User, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -10,6 +10,7 @@ const navItems = [
   { to: "/jobs", label: "Jobs", labelAr: "وظائف", icon: Briefcase },
   { to: "/companies", label: "Companies", labelAr: "الشركات", icon: Building2 },
   { to: "/profile", label: "Profile", labelAr: "الملف", icon: User },
+  { to: "/app/rashid", label: "Rashid", labelAr: "راشد", icon: MessageSquare },
   { to: "/about", label: "About", labelAr: "عن USAM", icon: Info },
 ];
 

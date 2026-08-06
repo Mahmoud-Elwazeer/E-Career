@@ -41,15 +41,19 @@ urlpatterns = [
         path("search/", include("apps.search.urls")),
         # Vector Search (Phase 1 Week 6)
         path("vectors/", include("apps.vectors.urls")),
-        # Career Intelligence (Phase 2)
-        path("career/", include("apps.career.urls")),
-        # Salary Intelligence (Phase 3)
-        path("salary/", include("apps.salary.urls")),
-        # Assessment Platform (Phase 3)
-        path("assessment/", include("apps.assessment.urls")),
-        # Core (Rule Engine, Feature Flags, GitHub) - Week 13
-        path("core/", include("apps.core.urls")),
-    ])),
+         # Career Intelligence (Phase 2)
+         path("career/", include("apps.career.urls")),
+         # Skills Taxonomy (Phase 2)
+         path("skills/", include("apps.skills.urls")),
+         # Salary Intelligence (Phase 3)
+         path("salary/", include("apps.salary.urls")),
+         # Assessment Platform (Phase 3)
+         path("assessment/", include("apps.assessment.urls")),
+         # Monitoring (Phase 3)
+         path("monitoring/", include("apps.monitoring.urls")),
+         # Core (Rule Engine, Feature Flags, GitHub) - Week 13
+         path("core/", include("apps.core.urls")),
+     ])),
 
     # Email tracking (Phase 2D)
     path("emails/", include("apps.emails.urls")),

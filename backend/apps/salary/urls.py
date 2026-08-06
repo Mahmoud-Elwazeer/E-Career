@@ -31,11 +31,4 @@ urlpatterns = [
     # Salary alerts endpoints
     path('alerts/', get_salary_alerts, name='salary-alerts'),
     path('alerts/<str:alert_id>/read/', mark_alert_as_read, name='salary-mark-alert-read'),
-    
-    # ViewSet endpoints
-    path('salary-data/', SalaryDataViewSet.as_view(), name='salary-data'),
-    path('market-rates/', MarketRateViewSet.as_view(), name='market-rates'),
-    path('benchmarks/', SalaryBenchmarkViewSet.as_view(), name='salary-benchmarks'),
-    path('insights/', SalaryInsightViewSet.as_view(), name='salary-insights'),
-    path('alerts/', SalaryAlertViewSet.as_view(), name='salary-alerts'),
 ]

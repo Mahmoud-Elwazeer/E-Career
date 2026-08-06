@@ -35,11 +35,4 @@ urlpatterns = [
     
     # Assessment templates
     path('templates/', get_assessment_templates, name='get-assessment-templates'),
-    
-    # ViewSet endpoints
-    path('assessments/', AssessmentViewSet.as_view(), name='assessments'),
-    path('questions/', AssessmentQuestionViewSet.as_view(), name='assessment-questions'),
-    path('attempts/', AssessmentAttemptViewSet.as_view(), name='assessment-attempts'),
-    path('badges/', SkillBadgeViewSet.as_view(), name='skill-badges'),
-    path('templates/', AssessmentTemplateViewSet.as_view(), name='assessment-templates'),
 ]
