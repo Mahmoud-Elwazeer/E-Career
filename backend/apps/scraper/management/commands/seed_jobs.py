@@ -4,8 +4,10 @@ Covers Egyptian/MENA market: Cairo, Alexandria, Dubai, Riyadh, Remote.
 """
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.utils.text import slugify
 from apps.jobs.models import Job, Company, Source, Tag
 import random
+import uuid
 from datetime import timedelta
 
 COMPANIES = [
@@ -105,7 +107,7 @@ class Command(BaseCommand):
                 if tag_name not in tags_cache:
                     tag, _ = Tag.objects.get_or_create(
                         name=tag_name,
-                        defaults={'category': 'skill'}
+                        defaults={'category': 'skill', 'slug': slugify(tag_name)}
                     )
                     tags_cache[tag_name] = tag
         
@@ -128,8 +130,12 @@ class Command(BaseCommand):
             
             posted_days_ago = random.randint(1, 30)
             
+            title_str = f"{template['title']} - {company.name}"
+            slug = slugify(f"{title_str}-{uuid.uuid4().hex[:8]}")
+
             job = Job.objects.create(
-                title=f"{template['title']} - {company.name}",
+                title=title_str,
+                slug=slug,
                 company=company,
                 source=source,
                 location=location,
