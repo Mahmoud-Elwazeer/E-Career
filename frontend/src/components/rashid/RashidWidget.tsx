@@ -8,9 +8,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { RashidAvatar } from './RashidAvatar';
 import { RashidBubble } from './RashidBubble';
 import { RashidMiniChat } from './RashidMiniChat';
+import { RashidCharacter } from './character';
 
 type RashidTool = 
   | 'cv_review'
@@ -34,10 +34,11 @@ export function RashidWidget() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [showBubble, setShowBubble] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
-  const [isMobile, setIsMobile] = useState(false);
-  const [toolToOpen, setToolToOpen] = useState<RashidTool | null>(null);
-  const [toolContext, setToolContext] = useState<Record<string, any> | null>(null);
-  const widgetRef = useRef<HTMLDivElement>(null);
+   const [isMobile, setIsMobile] = useState(false);
+   const [toolToOpen, setToolToOpen] = useState<RashidTool | null>(null);
+   const [toolContext, setToolContext] = useState<Record<string, any> | null>(null);
+   const [widgetState, setWidgetState] = useState<'idle' | 'talking' | 'thinking' | 'listening'>('idle');
+   const widgetRef = useRef<HTMLDivElement>(null);
 
   // Check if mobile
   useEffect(() => {
@@ -64,21 +65,24 @@ export function RashidWidget() {
     return () => window.removeEventListener('rashid:open', handleRashidOpen as EventListener);
   }, []);
 
-  // Show bubble after delay on page load (only once per day)
-  useEffect(() => {
-    if (!isAuthenticated || isMobile) return;
+   // Show bubble after delay on page load (only once per day)
+   useEffect(() => {
+     if (!isAuthenticated || isMobile) return;
 
-    const lastDismissed = localStorage.getItem('rashid_last_dismissed');
-    const now = Date.now();
-    const oneDay = 24 * 60 * 60 * 1000;
+     const lastDismissed = localStorage.getItem('rashid_last_dismissed');
+     const now = Date.now();
+     const oneDay = 24 * 60 * 60 * 1000;
 
-    if (!lastDismissed || now - parseInt(lastDismissed) > oneDay) {
-      const timer = setTimeout(() => {
-        setShowBubble(true);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [isAuthenticated, isMobile]);
+     if (!lastDismissed || now - parseInt(lastDismissed) > oneDay) {
+       const timer = setTimeout(() => {
+         setShowBubble(true);
+         // Show wave pose briefly on first appearance
+         setWidgetState('talking');
+         setTimeout(() => setWidgetState('idle'), 3000);
+       }, 2000);
+       return () => clearTimeout(timer);
+     }
+   }, [isAuthenticated, isMobile]);
 
   // Persist conversation ID
   useEffect(() => {
@@ -182,23 +186,24 @@ export function RashidWidget() {
           {/* Speech Bubble */}
           <RashidBubble show={showBubble} onClose={handleBubbleClose} />
 
-          {/* Character Avatar */}
-          <motion.button
-            onClick={handleWidgetClick}
-            className="relative group"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <RashidAvatar 
-              state={isExpanded ? 'talking' : 'idle'} 
-              size={isMobile ? 'sm' : 'md'} 
-            />
-            
-            {/* Tooltip */}
-            <div className="absolute -top-12 right-0 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-              {lang === 'ar' ? 'راشد - مساعدك المهني' : 'Rashid - Your Career Advisor'}
-            </div>
-          </motion.button>
+           {/* Character Avatar */}
+           <motion.button
+             onClick={handleWidgetClick}
+             className="relative group"
+             whileHover={{ scale: 1.1 }}
+             whileTap={{ scale: 0.95 }}
+           >
+             <RashidCharacter 
+               pose={isExpanded ? 'listening' : widgetState === 'talking' ? 'wave' : 'bust'}
+               size={isMobile ? 'sm' : 'md'}
+               className="w-12 h-12 md:w-16 md:h-16"
+             />
+             
+             {/* Tooltip */}
+             <div className="absolute -top-12 right-0 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+               {lang === 'ar' ? 'راشد - مساعدك المهني' : 'Rashid - Your Career Advisor'}
+             </div>
+           </motion.button>
         </div>
       </motion.div>
     </>
