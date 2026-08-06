@@ -1,0 +1,136 @@
+/**
+ * Rashid Character Animations
+ * Keyframe animations for the floating widget
+ */
+
+/* Idle breathing animation */
+@keyframes rashid-breathe {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+/* Talking animation */
+@keyframes rashid-talk {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-3px);
+  }
+  75% {
+    transform: translateY(-3px);
+  }
+}
+
+/* Thinking animation */
+@keyframes rashid-think {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(5deg);
+  }
+  75% {
+    transform: rotate(-5deg);
+  }
+}
+
+/* Speech bubble pop */
+@keyframes bubble-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Widget entrance */
+@keyframes widget-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(50px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Chat panel slide up */
+@keyframes panel-slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(100px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Mobile full screen */
+@keyframes mobile-full-screen {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Pulse animation for online status */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Floating character */
+.rashid-idle {
+  animation: rashid-breathe 2s ease-in-out infinite;
+}
+
+.rashid-talking {
+  animation: rashid-talk 0.5s ease-in-out infinite;
+}
+
+.rashid-thinking {
+  animation: rashid-think 3s ease-in-out infinite;
+}
+
+/* Speech bubble */
+.rashid-bubble {
+  animation: bubble-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Widget entrance */
+.rashid-widget-enter {
+  animation: widget-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Chat panel */
+.rashid-panel-slide {
+  animation: panel-slide-up 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Mobile full screen */
+.rashid-mobile-full {
+  animation: mobile-full-screen 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Online pulse */
+.rashid-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}

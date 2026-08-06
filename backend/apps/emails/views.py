@@ -10,6 +10,8 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 import logging
+import re
+from urllib.parse import urlparse
 
 from .models import EmailLog, EmailTemplate
 
@@ -52,10 +54,56 @@ class TrackOpenView(View):
 class TrackClickView(View):
     """
     Track email link click and redirect to destination.
+    Validates URL to prevent open redirect attacks.
     """
+    
+    # Allowed URL patterns
+    SAFE_URL_PATTERNS = [
+        r'^https://jobs\.usamif\.com/.*$',
+        r'^https://www\.jobs\.usamif\.com/.*$',
+        r'^https://localhost:.*$',
+        r'^https://127\.0\.0\.1:.*$',
+    ]
+    
+    def _is_safe_url(self, url):
+        """Check if URL is safe for redirect."""
+        if not url:
+            return False
+        
+        # Check for dangerous schemes
+        url_lower = url.lower().strip()
+        if url_lower.startswith(('javascript:', 'data:', 'vbscript:')):
+            return False
+        
+        # Must start with https://
+        if not url_lower.startswith('https://'):
+            return False
+        
+        # Parse URL and check domain
+        try:
+            parsed = urlparse(url)
+            hostname = parsed.hostname or ''
+            
+            # Allow our domain
+            if hostname in ('jobs.usamif.com', 'www.jobs.usamif.com', 'localhost', '127.0.0.1'):
+                return True
+            
+            # Check against allowed patterns
+            for pattern in self.SAFE_URL_PATTERNS:
+                if re.match(pattern, url, re.IGNORECASE):
+                    return True
+            
+            return False
+        except Exception:
+            return False
     
     def get(self, request, tracking_id):
         destination = request.GET.get('url', '/')
+        
+        # Validate URL
+        if not self._is_safe_url(destination):
+            logger.warning(f"Unsafe redirect attempt: {destination}")
+            destination = '/'  # Default to home
         
         try:
             email_log = EmailLog.objects.get(tracking_id=tracking_id)

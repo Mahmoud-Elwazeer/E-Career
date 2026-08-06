@@ -7,6 +7,7 @@ from rest_framework import viewsets, status, generics
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.throttling import UserRateThrottle
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
@@ -38,6 +39,11 @@ from apps.events.types import AI_CONVERSATION_STARTED, AI_MESSAGE_SENT
 logger = logging.getLogger(__name__)
 
 
+class MessageRateThrottle(UserRateThrottle):
+    rate = "20/minute"
+    scope = "rashid_message"
+
+
 class ConversationViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing Rashid conversations
@@ -49,6 +55,7 @@ class ConversationViewSet(viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated]
+    throttle_classes = [MessageRateThrottle]
 
     def get_queryset(self):
         return RashidConversation.objects.filter(

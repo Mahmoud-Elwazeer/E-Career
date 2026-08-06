@@ -16,8 +16,18 @@ from django.http import HttpResponse
 from django.utils import timezone
 
 from apps.career.models import CareerProfile, CareerUserSkill, CareerLearning, TalentScore, InterviewSession, CareerBrain
-from apps.accounts.models import PasswordReset, EmailVerification
-from apps.verification.models import VerificationRequest
+
+try:
+    from apps.accounts.models import PasswordReset, EmailVerification
+except ImportError:
+    PasswordReset = None
+    EmailVerification = None
+
+try:
+    from apps.verification.models import VerificationResult
+except ImportError:
+    VerificationResult = None
+
 from apps.events.models import Event
 
 try:
@@ -176,10 +186,7 @@ class GDPRService:
                     'job_id': str(app.job.uuid) if app.job else None,
                     'company_name': app.job.company.name if app.job and app.job.company else None,
                     'status': app.status,
-                    'cover_letter': app.cover_letter,
-                    'resume': app.resume,
-                    'applied_at': app.created_at.isoformat(),
-                    'updated_at': app.updated_at.isoformat(),
+                    'applied_at': app.applied_at.isoformat(),
                 }
                 for app in applications
             ]
@@ -241,8 +248,7 @@ class GDPRService:
         if export_data['data_categories']['job_applications']:
             apps_buffer = StringIO()
             writer = csv.DictWriter(apps_buffer, fieldnames=[
-                'job_title', 'job_id', 'company_name', 'status',
-                'cover_letter', 'resume', 'applied_at', 'updated_at'
+                'job_title', 'job_id', 'company_name', 'status', 'applied_at'
             ])
             writer.writeheader()
             writer.writerows(export_data['data_categories']['job_applications'])
@@ -325,21 +331,31 @@ class GDPRService:
                 deleted_cv_analyses, _ = CVAnalysis.objects.filter(user=self.user).delete()
                 deletion_results['deleted_categories']['cv_analyses'] = deleted_cv_analyses
             
-            # Delete verification requests
-            deleted_verifications, _ = VerificationRequest.objects.filter(user=self.user).delete()
-            deletion_results['deleted_categories']['verification_requests'] = deleted_verifications
+            # Delete verification results (for jobs the user applied to)
+            if VerificationResult is not None:
+                from apps.jobs.models import Job
+                deleted_verifications, _ = VerificationResult.objects.filter(job__applications__user=self.user).distinct().delete()
+                deletion_results['deleted_categories']['verification_results'] = deleted_verifications
+            else:
+                deletion_results['deleted_categories']['verification_results'] = 0
             
             # Delete events
             deleted_events, _ = Event.objects.filter(user=self.user).delete()
             deletion_results['deleted_categories']['events'] = deleted_events
             
             # Delete password resets
-            deleted_password_resets, _ = PasswordReset.objects.filter(user=self.user).delete()
-            deletion_results['deleted_categories']['password_resets'] = deleted_password_resets
+            if PasswordReset is not None:
+                deleted_password_resets, _ = PasswordReset.objects.filter(user=self.user).delete()
+                deletion_results['deleted_categories']['password_resets'] = deleted_password_resets
+            else:
+                deletion_results['deleted_categories']['password_resets'] = 0
             
             # Delete email verifications
-            deleted_email_verifications, _ = EmailVerification.objects.filter(user=self.user).delete()
-            deletion_results['deleted_categories']['email_verifications'] = deleted_email_verifications
+            if EmailVerification is not None:
+                deleted_email_verifications, _ = EmailVerification.objects.filter(user=self.user).delete()
+                deletion_results['deleted_categories']['email_verifications'] = deleted_email_verifications
+            else:
+                deletion_results['deleted_categories']['email_verifications'] = 0
             
             # Mark user as deleted
             self.user.is_active = False
@@ -416,13 +432,8 @@ class GDPRService:
             )
             anonymization_results['anonymized_categories']['interview_sessions'] = True
             
-            # Anonymize job applications
-            if JobApplication is not None:
-                JobApplication.objects.filter(user=self.user).update(
-                    cover_letter='',
-                    resume='',
-                )
-                anonymization_results['anonymized_categories']['job_applications'] = True
+            # Job applications don't have cover_letter or resume fields
+            anonymization_results['anonymized_categories']['job_applications'] = True
             
             # Anonymize career brain
             try:
