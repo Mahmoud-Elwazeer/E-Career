@@ -13,6 +13,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { cn } from '@/lib/utils';
 import ToolSelector from '@/components/rashid/ToolSelector';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
+
 interface Message {
   id?: string;
   role: 'user' | 'assistant';
@@ -58,11 +60,16 @@ export default function RashidChat() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [selectedMode, setSelectedMode] = useState('general');
-  const [showTools, setShowTools] = useState(false);
+   const [showTools, setShowTools] = useState(false);
 
-  const wsRef = useRef<WebSocket | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+   const wsRef = useRef<WebSocket | null>(null);
+   const messagesEndRef = useRef<HTMLDivElement>(null);
+   const inputRef = useRef<HTMLInputElement>(null);
+   const [useWebSocket, setUseWebSocket] = useState(true);
+   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'rest' | 'error'>('connecting');
+   const [restMessages, setRestMessages] = useState<Message[]>([]);
+   const [restProcessing, setRestProcessing] = useState(false);
+   const restIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -78,154 +85,244 @@ export default function RashidChat() {
     }
   }, [isAuthenticated]);
 
-  // WebSocket connection
-  useEffect(() => {
-    if (!isAuthenticated) return;
+   // WebSocket connection with REST fallback
+   useEffect(() => {
+     if (!isAuthenticated) return;
 
-    const wsUrl = conversationId
-      ? `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/rashid/${conversationId}/`
-      : `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/rashid/`;
+     // Try WebSocket first
+     const wsUrl = conversationId
+       ? `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/rashid/${conversationId}/`
+       : `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/rashid/`;
 
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+     const ws = new WebSocket(wsUrl);
+     wsRef.current = ws;
 
-    ws.onopen = () => {
-      setIsConnected(true);
-      console.log('WebSocket connected');
-    };
+     let wsConnected = false;
+     const wsConnectTimer = setTimeout(() => {
+       if (!wsConnected && !useWebSocket) {
+         // WebSocket failed, switch to REST
+         setConnectionStatus('rest');
+         setUseWebSocket(false);
+         console.log('WebSocket failed, switching to REST API');
+       }
+     }, 3000);
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+     ws.onopen = () => {
+       wsConnected = true;
+       clearTimeout(wsConnectTimer);
+       setConnectionStatus('connected');
+       setUseWebSocket(true);
+       console.log('WebSocket connected');
+     };
 
-      if (data.type === 'message') {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: data.role,
-            content: data.content,
-            timestamp: data.timestamp,
-          },
-        ]);
-        setIsProcessing(false);
-      } else if (data.type === 'message_received') {
-        setIsProcessing(true);
-      } else if (data.type === 'tool_processing') {
-        setIsProcessing(true);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: isAr ? `جاري تنفيذ ${data.tool}...` : `Executing ${data.tool}...`,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
-      } else if (data.type === 'tool_result') {
-        setMessages((prev) => [
-          ...prev.slice(0, -1), // Remove processing message
-          {
-            role: 'assistant',
-            content: data.result,
-            timestamp: data.timestamp,
-          },
-        ]);
-        setIsProcessing(false);
-      } else if (data.type === 'error') {
-        console.error('WebSocket error:', data.message);
-        setIsProcessing(false);
-      }
-    };
+     ws.onmessage = (event) => {
+       const data = JSON.parse(event.data);
 
-    ws.onclose = () => {
-      setIsConnected(false);
-      console.log('WebSocket disconnected');
-    };
+       if (data.type === 'message') {
+         setMessages((prev) => [
+           ...prev,
+           {
+             role: data.role,
+             content: data.content,
+             timestamp: data.timestamp,
+           },
+         ]);
+         setIsProcessing(false);
+       } else if (data.type === 'message_received') {
+         setIsProcessing(true);
+       } else if (data.type === 'tool_processing') {
+         setIsProcessing(true);
+         setMessages((prev) => [
+           ...prev,
+           {
+             role: 'assistant',
+             content: isAr ? `جاري تنفيذ ${data.tool}...` : `Executing ${data.tool}...`,
+             timestamp: new Date().toISOString(),
+           },
+         ]);
+       } else if (data.type === 'tool_result') {
+         setMessages((prev) => [
+           ...prev.slice(0, -1), // Remove processing message
+           {
+             role: 'assistant',
+             content: data.result,
+             timestamp: data.timestamp,
+           },
+         ]);
+         setIsProcessing(false);
+       } else if (data.type === 'error') {
+         console.error('WebSocket error:', data.message);
+         setIsProcessing(false);
+       }
+     };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setIsConnected(false);
-    };
+     ws.onclose = () => {
+       if (useWebSocket) {
+         setConnectionStatus('error');
+         console.log('WebSocket disconnected');
+       }
+     };
 
-    return () => {
-      ws.close();
-    };
-  }, [conversationId, isAuthenticated]);
+     ws.onerror = (error) => {
+       if (useWebSocket) {
+         setConnectionStatus('error');
+         console.error('WebSocket error:', error);
+       }
+     };
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+     return () => {
+       ws.close();
+       clearTimeout(wsConnectTimer);
+       if (restIntervalRef.current) {
+         clearInterval(restIntervalRef.current);
+       }
+     };
+   }, [conversationId, isAuthenticated, useWebSocket]);
 
-  const fetchConversations = async () => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/rashid/conversations/`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-        }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setConversations(data.results || data);
-      }
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    }
-  };
+   // REST API polling for messages (fallback mode)
+   useEffect(() => {
+     if (!useWebSocket && conversationId && connectionStatus === 'rest') {
+       const fetchMessages = async () => {
+         try {
+           const response = await fetch(`${API_BASE_URL}/rashid/conversations/${conversationId}/messages/`, {
+             headers: {
+               Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+             },
+           });
+           if (response.ok) {
+             const data = await response.json();
+             const newMessages = data.map((msg: any) => ({
+               role: msg.role as 'user' | 'assistant',
+               content: msg.content,
+               timestamp: msg.created_at || new Date().toISOString(),
+             }));
+             setRestMessages(newMessages);
+           }
+         } catch (error) {
+           console.error('Error fetching messages via REST:', error);
+         }
+       };
 
-  const startNewConversation = async (mode: string = 'general') => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'}/rashid/conversations/`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
-          },
-          body: JSON.stringify({ mode }),
-        }
-      );
+       fetchMessages();
+       restIntervalRef.current = setInterval(fetchMessages, 2000);
+     }
 
-      if (response.ok) {
-        const data = await response.json();
-        setMessages([]);
-        navigate(`/app/rashid/${data.id}`);
-        fetchConversations();
-      }
-    } catch (error) {
-      console.error('Error starting conversation:', error);
-    }
-  };
+     return () => {
+       if (restIntervalRef.current) {
+         clearInterval(restIntervalRef.current);
+       }
+     };
+   }, [useWebSocket, conversationId, connectionStatus]);
 
-  const handleSendMessage = useCallback(() => {
-    if (!inputMessage.trim() || !wsRef.current || !isConnected) return;
+   const fetchConversations = async () => {
+     try {
+       const response = await fetch(
+         `${API_BASE_URL}/rashid/conversations/`,
+         {
+           headers: {
+             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+           },
+         }
+       );
+       if (response.ok) {
+         const data = await response.json();
+         setConversations(data.results || data);
+       }
+     } catch (error) {
+       console.error('Error fetching conversations:', error);
+     }
+   };
 
-    const message = inputMessage.trim();
-    setInputMessage('');
+   const startNewConversation = async (mode: string = 'general') => {
+     try {
+       const response = await fetch(
+         `${API_BASE_URL}/rashid/conversations/`,
+         {
+           method: 'POST',
+           headers: {
+             'Content-Type': 'application/json',
+             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+           },
+           body: JSON.stringify({ mode }),
+         }
+       );
 
-    // Add user message to UI immediately
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'user',
-        content: message,
-        timestamp: new Date().toISOString(),
-      },
-    ]);
+       if (response.ok) {
+         const data = await response.json();
+         setMessages([]);
+         navigate(`/app/rashid/${data.id}`);
+         fetchConversations();
+       }
+     } catch (error) {
+       console.error('Error starting conversation:', error);
+     }
+   };
 
-    // Send to WebSocket
-    wsRef.current.send(
-      JSON.stringify({
-        type: 'message',
-        message,
-      })
-    );
+   const handleSendMessage = useCallback(() => {
+     if (!inputMessage.trim()) return;
 
-    setIsProcessing(true);
-    inputRef.current?.focus();
-  }, [inputMessage, isConnected]);
+     const message = inputMessage.trim();
+     setInputMessage('');
+
+     if (useWebSocket && wsRef.current && connectionStatus === 'connected') {
+       // Send via WebSocket
+       setMessages((prev) => [
+         ...prev,
+         {
+           role: 'user',
+           content: message,
+           timestamp: new Date().toISOString(),
+         },
+       ]);
+
+       wsRef.current.send(
+         JSON.stringify({
+           type: 'message',
+           message,
+         })
+       );
+
+       setIsProcessing(true);
+     } else {
+       // Send via REST API
+       setRestMessages((prev) => [
+         ...prev,
+         {
+           role: 'user',
+           content: message,
+           timestamp: new Date().toISOString(),
+         },
+       ]);
+       setRestProcessing(true);
+
+       fetch(`${API_BASE_URL}/rashid/conversations/${conversationId}/send_message/`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+         },
+         body: JSON.stringify({ message }),
+       })
+         .then((res) => res.json())
+         .then((data) => {
+           setRestMessages((prev) => [
+             ...prev,
+             {
+               role: 'assistant',
+               content: data.assistant_response,
+               timestamp: new Date().toISOString(),
+             },
+           ]);
+           setRestProcessing(false);
+         })
+         .catch((err) => {
+           console.error('REST send error:', err);
+           setRestProcessing(false);
+         });
+     }
+
+     inputRef.current?.focus();
+   }, [inputMessage, useWebSocket, wsRef.current, connectionStatus, conversationId]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -254,34 +351,67 @@ export default function RashidChat() {
     }
   };
 
-  const handleToolSelection = useCallback((toolName: string) => {
-    setShowTools(false);
+   const handleToolSelection = useCallback((toolName: string) => {
+     setShowTools(false);
 
-    if (!wsRef.current || !isConnected) {
-      return;
-    }
+     if (useWebSocket && wsRef.current && connectionStatus === 'connected') {
+       // Send via WebSocket
+       wsRef.current.send(
+         JSON.stringify({
+           type: 'tool',
+           tool: toolName,
+           context: {}
+         })
+       );
 
-    // Send tool execution request via WebSocket
-    wsRef.current.send(
-      JSON.stringify({
-        type: 'tool',
-        tool: toolName,
-        context: {}
-      })
-    );
+       setMessages((prev) => [
+         ...prev,
+         {
+           role: 'user',
+           content: isAr ? `استخدام أداة: ${toolName}` : `Using tool: ${toolName}`,
+           timestamp: new Date().toISOString(),
+         },
+       ]);
 
-    // Add user message showing tool selection
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'user',
-        content: isAr ? `استخدام أداة: ${toolName}` : `Using tool: ${toolName}`,
-        timestamp: new Date().toISOString(),
-      },
-    ]);
+       setIsProcessing(true);
+     } else {
+       // Send via REST API
+       setRestMessages((prev) => [
+         ...prev,
+         {
+           role: 'user',
+           content: isAr ? `استخدام أداة: ${toolName}` : `Using tool: ${toolName}`,
+           timestamp: new Date().toISOString(),
+         },
+       ]);
+       setRestProcessing(true);
 
-    setIsProcessing(true);
-  }, [isConnected, isAr]);
+       fetch(`${API_BASE_URL}/rashid/conversations/${conversationId}/send_message/`, {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+         },
+         body: JSON.stringify({ message: `Use tool: ${toolName}` }),
+       })
+         .then((res) => res.json())
+         .then((data) => {
+           setRestMessages((prev) => [
+             ...prev,
+             {
+               role: 'assistant',
+               content: data.assistant_response,
+               timestamp: new Date().toISOString(),
+             },
+           ]);
+           setRestProcessing(false);
+         })
+         .catch((err) => {
+           console.error('REST tool error:', err);
+           setRestProcessing(false);
+         });
+     }
+   }, [useWebSocket, wsRef.current, connectionStatus, conversationId, isAr]);
 
   if (!isAuthenticated) {
     return null;
