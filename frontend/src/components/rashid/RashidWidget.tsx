@@ -50,20 +50,35 @@ export function RashidWidget() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Listen for custom events to open with specific tool
-  useEffect(() => {
-    const handleRashidOpen = (event: CustomEvent<RashidToolContext>) => {
-      const { tool, context } = event.detail || {};
-      if (tool) {
-        setToolToOpen(tool);
-        setToolContext(context || {});
-        setIsExpanded(true);
-      }
-    };
+   // Listen for custom events to open with specific tool
+   useEffect(() => {
+     const handleRashidOpen = (event: CustomEvent<RashidToolContext>) => {
+       const { tool, context } = event.detail || {};
+       if (tool) {
+         setToolToOpen(tool);
+         setToolContext(context || {});
+         setIsExpanded(true);
+       }
+     };
 
-    window.addEventListener('rashid:open', handleRashidOpen as EventListener);
-    return () => window.removeEventListener('rashid:open', handleRashidOpen as EventListener);
-  }, []);
+     window.addEventListener('rashid:open', handleRashidOpen as EventListener);
+     return () => window.removeEventListener('rashid:open', handleRashidOpen as EventListener);
+   }, []);
+
+   // Listen for tool-specific events from AskRashidButton
+   useEffect(() => {
+     const handleRashidOpenTool = (event: CustomEvent) => {
+       const { tool, context } = event.detail || {};
+       if (tool) {
+         setToolToOpen(tool);
+         setToolContext(context || {});
+         setIsExpanded(true);
+       }
+     };
+
+     window.addEventListener('rashid:open-tool', handleRashidOpenTool as EventListener);
+     return () => window.removeEventListener('rashid:open-tool', handleRashidOpenTool as EventListener);
+   }, []);
 
    // Show bubble after delay on page load (only once per day)
    useEffect(() => {

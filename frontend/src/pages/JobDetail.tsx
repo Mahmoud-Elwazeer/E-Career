@@ -19,6 +19,7 @@ import { fetchJobBySlug, fetchSimilarJobs, logApplyClick } from "@/services/jobs
 import { useSavedJobs } from "@/hooks/use-saved-jobs";
 import { useTheme } from "@/hooks/use-theme";
 import { useJobStructuredData, usePageMeta, useBreadcrumbStructuredData } from "@/hooks/use-seo";
+import { AskRashidCard } from "@/components/rashid/AskRashidButton";
 import { formatDistanceToNow } from "date-fns";
 import type { Job } from "@/services/jobs";
 
@@ -475,8 +476,8 @@ export default function JobDetail() {
             {/* Phase 1C: Match Breakdown */}
             <MatchBreakdownCard job={job} isAr={isAr} />
             
-            {/* Phase 1C: Ask Rashid */}
-            <AskRashidButton jobSlug={job.slug} isAr={isAr} />
+            {/* Phase 3: Ask Rashid Card */}
+            <AskRashidCard jobSlug={job.slug} isAr={isAr} />
           </div>
           
           {/* Phase 1C: Legitimacy Warning */}
