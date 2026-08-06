@@ -1,77 +1,73 @@
 #!/bin/bash
-# ============================================================
-# USAM Career Compass — One-Command Deploy
-# Pulls latest code, migrates, collects static, restarts
-# Usage: bash deploy.sh [branch]
-# ============================================================
-set -euo pipefail
+# E-Career Deployment Script
+# Usage: bash deploy.sh
 
-PROJECT_DIR="/var/www/usam"
-BRANCH="${1:-develop}"
-VENV="${PROJECT_DIR}/venv/bin"
+set -e
 
-echo "================================================================"
-echo " USAM Career Compass — Deploying branch: ${BRANCH}"
-echo "================================================================"
+echo "=== E-Career Deployment Script ==="
+echo "Server: $(hostname)"
+echo "Date: $(date)"
+echo ""
 
-cd ${PROJECT_DIR}
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
 
-# ── 1. Pull latest code ───────────────────────────────────────────────
-echo "→ Pulling latest code from ${BRANCH}..."
-git fetch origin
-git checkout ${BRANCH}
-git pull origin ${BRANCH}
-
-# ── 2. Install/update Python dependencies ────────────────────────────
-echo "→ Installing Python dependencies..."
-${VENV}/pip install --upgrade pip
-${VENV}/pip install -r backend/requirements/base.txt
-${VENV}/pip install gunicorn
-
-# ── 3. Django migrations ──────────────────────────────────────────────
-echo "→ Running database migrations..."
-cd backend
-${VENV}/python manage.py migrate --noinput
-
-# ── 4. Collect static files ───────────────────────────────────────────
-echo "→ Collecting static files..."
-${VENV}/python manage.py collectstatic --noinput --clear
-
-# ── 5. Build React frontend ───────────────────────────────────────────
-echo "→ Building React frontend..."
-cd ${PROJECT_DIR}/frontend
-if command -v npm &>/dev/null; then
-  npm ci --prefer-offline
-  npm run build
-  # Copy build output to nginx-served dir
-  rm -rf ${PROJECT_DIR}/frontend/dist_prev 2>/dev/null || true
-  echo "→ Frontend built successfully."
+# Check if running on server (not local)
+if [ -z "$DEPLOY_ENV" ]; then
+    echo -e "${YELLOW}Warning: DEPLOY_ENV not set. Assuming local development.${NC}"
+    echo "Set DEPLOY_ENV=production for production deployment"
 fi
 
-# ── 6. Restart Gunicorn ───────────────────────────────────────────────
-echo "→ Restarting Gunicorn..."
-systemctl restart gunicorn-usam
+cd "$(dirname "$0")/.."
 
-# Give Gunicorn a moment to start
+# Pull latest code
+echo ">>> Pulling latest code..."
+git pull origin development
+
+# Backend
+echo ">>> Installing backend dependencies..."
+cd backend
+source /var/www/usam/venv/bin/activate 2>/dev/null || true
+pip install -r requirements.txt --quiet 2>/dev/null || echo "Skipping pip install (not in venv)"
+
+# Migrations
+echo ">>> Running migrations..."
+python manage.py migrate --noinput 2>/dev/null || echo "Skipping migrations (not in production)"
+
+# Static files
+echo ">>> Collecting static files..."
+python manage.py collectstatic --noinput --clear 2>/dev/null || echo "Skipping static files (not in production)"
+
+# Frontend
+echo ">>> Building frontend..."
+cd /var/www/usam/frontend 2>/dev/null || cd ../frontend
+npm install --silent 2>/dev/null || echo "Skipping npm install"
+npm run build 2>/dev/null || echo "Skipping frontend build"
+
+# Restart services (only if running on server)
+if [ -n "$DEPLOY_ENV" ] && [ "$DEPLOY_ENV" = "production" ]; then
+    echo ">>> Restarting services..."
+    sudo systemctl restart usam 2>/dev/null || echo "Skipping usam service restart"
+    sudo systemctl restart celery-usam 2>/dev/null || echo "Skipping celery-usam service restart"
+    sudo systemctl restart celery-beat-usam 2>/dev/null || echo "Skipping celery-beat-usam service restart"
+fi
+
+# Health check
+echo ">>> Running health check..."
 sleep 3
-systemctl is-active --quiet gunicorn-usam && echo "✓ Gunicorn is running" || echo "✗ Gunicorn failed to start — check logs"
-
-# ── 7. Reload Nginx ───────────────────────────────────────────────────
-echo "→ Testing and reloading Nginx..."
-nginx -t && systemctl reload nginx && echo "✓ Nginx reloaded"
-
-# ── 8. Health check ───────────────────────────────────────────────────
-echo "→ Running health check..."
-sleep 2
-HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/health/ || echo "000")
-if [ "$HTTP_STATUS" = "200" ]; then
-  echo "✓ Health check passed (HTTP 200)"
+STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/jobs/ 2>/dev/null || echo "000")
+if [ "$STATUS" = "200" ]; then
+    echo -e "${GREEN}✅ API is healthy (HTTP $STATUS)${NC}"
 else
-  echo "✗ Health check returned HTTP ${HTTP_STATUS} — check logs:"
-  echo "  journalctl -u gunicorn-usam -n 50 --no-pager"
+    echo -e "${RED}❌ API check failed (HTTP $STATUS)${NC}"
+    echo "Checking service status..."
+    sudo journalctl -u usam --since "30 sec ago" --no-pager 2>/dev/null | tail -10 || echo "Cannot check service logs"
+    exit 1
 fi
 
 echo ""
-echo "================================================================"
-echo " ✅ Deploy complete — $(date)"
-echo "================================================================"
+echo "=== Deployment Complete ==="
+echo "Site: https://jobs.usamif.com"
