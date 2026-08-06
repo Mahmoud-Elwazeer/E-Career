@@ -21,7 +21,6 @@ from .serializers import (
     PortfolioAnalyzeSerializer,
 )
 from .rule_engine import RuleEngine, get_seed_rules
-from .gdpr_service import GDPRService
 
 logger = structlog.get_logger()
 
@@ -377,6 +376,7 @@ def export_user_data(request):
         JSON with all user data organized by category
     """
     try:
+        from .gdpr_service import GDPRService
         service = GDPRService(request.user)
         export_data = service.export_user_data()
         
@@ -404,6 +404,7 @@ def delete_user_data(request):
         Dictionary with deletion results
     """
     try:
+        from .gdpr_service import GDPRService
         service = GDPRService(request.user)
         deletion_results = service.delete_user_data()
         
@@ -432,6 +433,7 @@ def anonymize_user_data(request):
         Dictionary with anonymization results
     """
     try:
+        from .gdpr_service import GDPRService
         service = GDPRService(request.user)
         anonymization_results = service.delete_user_data_anonymized()
         
