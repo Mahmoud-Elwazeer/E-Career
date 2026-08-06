@@ -1,22 +1,17 @@
 /**
  * Rashid Mini Chat Component
  * Embedded chat panel that appears when widget is clicked
+ * Uses REST API for production (WebSocket fallback for development)
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Send, X, MessageSquare, ChevronDown, Loader2 } from 'lucide-react';
+import { Send, X, MessageSquare, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-
-interface Message {
-  id?: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: string;
-}
 
 type RashidTool = 
   | 'cv_review'
@@ -32,6 +27,13 @@ interface RashidToolContext {
   context?: Record<string, any>;
 }
 
+interface Message {
+  id?: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: string;
+}
+
 interface RashidMiniChatProps {
   isOpen: boolean;
   onClose: () => void;
@@ -39,6 +41,8 @@ interface RashidMiniChatProps {
   conversationId?: string;
   initialTool?: RashidToolContext;
 }
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 export function RashidMiniChat({ 
   isOpen, 
@@ -50,94 +54,139 @@ export function RashidMiniChat({
   const { isAuthenticated } = useAuth();
   const { lang } = useTheme();
   const isAr = lang === 'ar';
-  const dir = isAr ? 'rtl' : 'ltr';
+  const queryClient = useQueryClient();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showMessages, setShowMessages] = useState(false);
-
-  const wsRef = useRef<WebSocket | null>(null);
+  const [localConversationId, setLocalConversationId] = useState<string | undefined>(conversationId);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'error'>('connecting');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch existing messages if conversation exists
-  useEffect(() => {
-    if (conversationId && isAuthenticated) {
-      // In a real app, fetch messages from API
-      // For now, show a welcome message
-      setMessages([
-        {
-          role: 'assistant',
-          content: isAr 
-            ? 'أهلاً! أنا راشد، مستشارك المهني. كيف يمكنني مساعدتك اليوم؟'
-            : "Hi! I'm Rashid, your career advisor. How can I help you today?",
-          timestamp: new Date().toISOString(),
+  // Load messages when conversation exists
+  const { data: messagesData, isLoading: messagesLoading } = useQuery({
+    queryKey: ['rashid-messages', localConversationId],
+    queryFn: async () => {
+      if (!localConversationId) return [];
+      const response = await fetch(`${API_BASE_URL}/rashid/conversations/${localConversationId}/messages/`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
         },
-      ]);
+      });
+      if (!response.ok) throw new Error('Failed to fetch messages');
+      return response.json();
+    },
+    enabled: !!localConversationId && isOpen,
+  });
+
+  // Create conversation mutation
+  const createConversationMutation = useMutation({
+    mutationFn: async (mode: string = 'general') => {
+      const response = await fetch(`${API_BASE_URL}/rashid/conversations/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({ mode }),
+      });
+      if (!response.ok) throw new Error('Failed to create conversation');
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setLocalConversationId(data.id);
+      localStorage.setItem('rashid_conversation_id', data.id);
+      setConnectionStatus('connected');
+    },
+  });
+
+  // Send message mutation
+  const sendMessageMutation = useMutation({
+    mutationFn: async ({ conversationId, content }: { conversationId: string; content: string }) => {
+      const response = await fetch(`${API_BASE_URL}/rashid/conversations/${conversationId}/send_message/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: JSON.stringify({ message: content }),
+      });
+      if (!response.ok) throw new Error('Failed to send message');
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      // Add user message
+      const userMessage: Message = {
+        role: 'user',
+        content: variables.content,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Add assistant response
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: data.assistant_response,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, userMessage, assistantMessage]);
+      setInputMessage('');
+      setIsProcessing(false);
+    },
+    onError: () => {
+      setIsProcessing(false);
+      setConnectionStatus('error');
+    },
+  });
+
+  // Load initial messages
+  useEffect(() => {
+    if (messagesData && messagesData.length > 0) {
+      setMessages(messagesData.map((msg: any) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+        timestamp: msg.created_at || new Date().toISOString(),
+      })));
     }
-  }, [conversationId, isAuthenticated, isAr]);
+  }, [messagesData]);
 
   // Auto-scroll to bottom
   useEffect(() => {
-    if (showMessages) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages, showMessages]);
+  }, [messages, isProcessing]);
 
-  // WebSocket connection
+  // Initialize conversation on open
   useEffect(() => {
-    if (!isAuthenticated || !isOpen) return;
+    if (isOpen && !localConversationId) {
+      createConversationMutation.mutate('general');
+    }
+  }, [isOpen, localConversationId, createConversationMutation]);
 
-    const wsUrl = conversationId
-      ? `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/rashid/${conversationId}/`
-      : `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/rashid/`;
-
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      setIsConnected(true);
-    };
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'message') {
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: data.role as 'user' | 'assistant',
-            content: data.content,
-            timestamp: new Date().toISOString(),
-          },
-        ]);
-      }
-    };
-
-    ws.onclose = () => {
-      setIsConnected(false);
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [isAuthenticated, isOpen, conversationId]);
+  // Handle initial tool from widget
+  useEffect(() => {
+    if (initialTool && localConversationId && messages.length === 0) {
+      // Send initial tool command
+      const toolCommand = isAr 
+        ? `استخدم أداة ${initialTool.tool}` 
+        : `Use tool: ${initialTool.tool}`;
+      
+      sendMessageMutation.mutate({
+        conversationId: localConversationId,
+        content: toolCommand,
+      });
+    }
+  }, [initialTool, localConversationId, messages.length, isAr, sendMessageMutation]);
 
   const handleSendMessage = () => {
-    if (!inputMessage.trim() || !isConnected) return;
+    if (!inputMessage.trim() || !localConversationId || isProcessing) return;
 
-    const userMessage: Message = {
-      role: 'user',
-      content: inputMessage,
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInputMessage('');
     setIsProcessing(true);
-
-    // Send to WebSocket
-    wsRef.current?.send(JSON.stringify({ type: 'message', content: userMessage.content }));
+    sendMessageMutation.mutate({
+      conversationId: localConversationId,
+      content: inputMessage,
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -166,8 +215,8 @@ export function RashidMiniChat({
           <div>
             <h3 className="text-white font-semibold text-lg">راشد</h3>
             <p className="text-blue-100 text-xs flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              {isConnected ? (isAr ? 'متصل' : 'Online') : (isAr ? 'يتصل' : 'Connecting...')}
+              <span className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-400' : connectionStatus === 'connecting' ? 'bg-yellow-400 animate-pulse' : 'bg-red-400'}`} />
+              {connectionStatus === 'connected' ? (isAr ? 'متصل' : 'Online') : connectionStatus === 'connecting' ? (isAr ? 'يتصل' : 'Connecting...') : (isAr ? 'خطأ' : 'Error')}
             </p>
           </div>
         </div>
@@ -181,15 +230,19 @@ export function RashidMiniChat({
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-950">
-        {messages.length === 0 ? (
+        {messagesLoading ? (
+          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+            <Loader2 className="w-6 h-6 animate-spin" />
+          </div>
+        ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
             <MessageSquare className="w-12 h-12 mb-2 opacity-50" />
             <p>{isAr ? 'ابدأ المحادثة' : 'Start the conversation'}</p>
           </div>
         ) : (
-          messages.map((msg) => (
+          messages.map((msg, idx) => (
             <div
-              key={msg.timestamp + Math.random()}
+              key={idx}
               className={cn(
                 'max-w-[85%] p-3 rounded-2xl text-sm',
                 msg.role === 'user'
@@ -200,6 +253,12 @@ export function RashidMiniChat({
               {msg.content}
             </div>
           ))
+        )}
+        {isProcessing && (
+          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>{isAr ? 'جاري الرد...' : 'Typing...'}</span>
+          </div>
         )}
         <div ref={messagesEndRef} />
       </div>
@@ -214,11 +273,11 @@ export function RashidMiniChat({
             onKeyDown={handleKeyDown}
             placeholder={isAr ? 'اكتب رسالتك...' : 'Type your message...'}
             className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
-            disabled={isProcessing || !isConnected}
+            disabled={isProcessing || connectionStatus !== 'connected'}
           />
           <button
             onClick={handleSendMessage}
-            disabled={!inputMessage.trim() || isProcessing || !isConnected}
+            disabled={!inputMessage.trim() || isProcessing || connectionStatus !== 'connected'}
             className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isProcessing ? (
