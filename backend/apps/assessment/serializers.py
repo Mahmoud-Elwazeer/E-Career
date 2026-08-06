@@ -42,7 +42,7 @@ class AssessmentSerializer(serializers.ModelSerializer):
     
     created_by_email = serializers.EmailField(source='created_by.email', read_only=True)
     questions = AssessmentQuestionSerializer(many=True, read_only=True)
-    skills = serializers.PrimaryKeyRelatedField(many=True, queryset=None, required=False)
+    skills = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     
     class Meta:
         model = Assessment
