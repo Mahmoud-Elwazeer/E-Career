@@ -16,11 +16,19 @@ from django.http import HttpResponse
 from django.utils import timezone
 
 from apps.career.models import CareerProfile, CareerUserSkill, CareerLearning, TalentScore, InterviewSession, CareerBrain
-from apps.jobs.models import JobApplication
-from apps.profiles.models import CVAnalysis
 from apps.accounts.models import PasswordReset, EmailVerification
 from apps.verification.models import VerificationRequest
 from apps.events.models import Event
+
+try:
+    from apps.jobs.models import JobApplication
+except ImportError:
+    JobApplication = None
+
+try:
+    from apps.profiles.models import CVAnalysis
+except ImportError:
+    CVAnalysis = None
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -160,20 +168,21 @@ class GDPRService:
         ]
         
         # Job applications
-        applications = JobApplication.objects.filter(user=self.user)
-        export_data['data_categories']['job_applications'] = [
-            {
-                'job_title': app.job.title if app.job else None,
-                'job_id': str(app.job.uuid) if app.job else None,
-                'company_name': app.job.company.name if app.job and app.job.company else None,
-                'status': app.status,
-                'cover_letter': app.cover_letter,
-                'resume': app.resume,
-                'applied_at': app.created_at.isoformat(),
-                'updated_at': app.updated_at.isoformat(),
-            }
-            for app in applications
-        ]
+        if JobApplication is not None:
+            applications = JobApplication.objects.filter(user=self.user)
+            export_data['data_categories']['job_applications'] = [
+                {
+                    'job_title': app.job.title if app.job else None,
+                    'job_id': str(app.job.uuid) if app.job else None,
+                    'company_name': app.job.company.name if app.job and app.job.company else None,
+                    'status': app.status,
+                    'cover_letter': app.cover_letter,
+                    'resume': app.resume,
+                    'applied_at': app.created_at.isoformat(),
+                    'updated_at': app.updated_at.isoformat(),
+                }
+                for app in applications
+            ]
         
         # Career brain
         try:
@@ -299,8 +308,9 @@ class GDPRService:
             deletion_results['deleted_categories']['interview_sessions'] = deleted_interviews
             
             # Delete job applications
-            deleted_apps, _ = JobApplication.objects.filter(user=self.user).delete()
-            deletion_results['deleted_categories']['job_applications'] = deleted_apps
+            if JobApplication is not None:
+                deleted_apps, _ = JobApplication.objects.filter(user=self.user).delete()
+                deletion_results['deleted_categories']['job_applications'] = deleted_apps
             
             # Delete career brain
             try:
@@ -311,8 +321,9 @@ class GDPRService:
                 deletion_results['deleted_categories']['career_brain'] = False
             
             # Delete CV analyses
-            deleted_cv_analyses, _ = CVAnalysis.objects.filter(user=self.user).delete()
-            deletion_results['deleted_categories']['cv_analyses'] = deleted_cv_analyses
+            if CVAnalysis is not None:
+                deleted_cv_analyses, _ = CVAnalysis.objects.filter(user=self.user).delete()
+                deletion_results['deleted_categories']['cv_analyses'] = deleted_cv_analyses
             
             # Delete verification requests
             deleted_verifications, _ = VerificationRequest.objects.filter(user=self.user).delete()
@@ -406,11 +417,12 @@ class GDPRService:
             anonymization_results['anonymized_categories']['interview_sessions'] = True
             
             # Anonymize job applications
-            JobApplication.objects.filter(user=self.user).update(
-                cover_letter='',
-                resume='',
-            )
-            anonymization_results['anonymized_categories']['job_applications'] = True
+            if JobApplication is not None:
+                JobApplication.objects.filter(user=self.user).update(
+                    cover_letter='',
+                    resume='',
+                )
+                anonymization_results['anonymized_categories']['job_applications'] = True
             
             # Anonymize career brain
             try:
