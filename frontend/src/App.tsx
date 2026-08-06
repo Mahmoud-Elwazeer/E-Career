@@ -23,6 +23,7 @@ import Recommendations from "./pages/Recommendations";
 import RashidChat from "./pages/RashidChat";
 import { EmployerDashboard, EmployerRegister, JobPostingForm } from "./pages/employer";
 import { RashidWidget } from "./components/rashid/RashidWidget";
+import { RashidOnboarding } from "./components/rashid/RashidOnboarding";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,7 @@ const App = () => (
           <BrowserRouter>
             <AnimatedRoutes />
             <RashidWidget />
+            <RashidOnboarding />
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
