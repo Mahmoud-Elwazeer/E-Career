@@ -4,7 +4,7 @@ Phase 3A: Employer self-service portal
 """
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import EmployerProfile, JobPosting, JobApplication
+from .models import EmployerProfile, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery
 from apps.jobs.serializers import CompanySerializer
 
 User = get_user_model()
