@@ -3,6 +3,9 @@
 /* Rashid Character Animations */
 @import './components/rashid/rashid-animations.css';
 
+/* RTL Support for Arabic */
+@import './index-rtl.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

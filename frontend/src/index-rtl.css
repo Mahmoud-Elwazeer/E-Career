@@ -1,0 +1,278 @@
+/*
+RTL (Right-to-Left) Support Styles for Arabic Language
+
+This file contains RTL-specific styles for the USAM Career Compass application.
+*/
+
+/* ============================================================================
+   Base RTL Styles
+   ============================================================================ */
+
+[dir="rtl"] {
+  /* Text alignment */
+  text-align: right;
+}
+
+[dir="rtl"] body {
+  text-align: right;
+}
+
+/* ============================================================================
+   Layout Adjustments
+   ============================================================================ */
+
+/* Navbar */
+[dir="rtl"] .navbar {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .navbar-brand {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+[dir="rtl"] .navbar-nav {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .nav-item {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+/* Sidebar */
+[dir="rtl"] .sidebar {
+  border-left: 1px solid #e5e7eb;
+  border-right: none;
+}
+
+[dir="rtl"] .sidebar .nav-link {
+  padding-left: 0;
+  padding-right: 1rem;
+}
+
+[dir="rtl"] .sidebar .nav-link::before {
+  left: auto;
+  right: 0;
+}
+
+/* Main Content */
+[dir="rtl"] .main-content {
+  margin-left: 0;
+  margin-right: 250px;
+}
+
+/* ============================================================================
+   Components
+   ============================================================================ */
+
+/* Buttons */
+[dir="rtl"] .btn {
+  direction: rtl;
+}
+
+[dir="rtl"] .btn-icon {
+  margin-left: 0.5rem;
+  margin-right: 0;
+}
+
+/* Cards */
+[dir="rtl"] .card {
+  direction: rtl;
+}
+
+[dir="rtl"] .card-header {
+  text-align: right;
+}
+
+[dir="rtl"] .card-body {
+  text-align: right;
+}
+
+/* Forms */
+[dir="rtl"] .form-label {
+  text-align: right;
+}
+
+[dir="rtl"] .form-control {
+  text-align: right;
+}
+
+[dir="rtl"] .input-group-text {
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+/* Tables */
+[dir="rtl"] table {
+  direction: rtl;
+}
+
+[dir="rtl"] th:first-child,
+[dir="rtl"] td:first-child {
+  padding-left: 0;
+  padding-right: 1rem;
+}
+
+/* ============================================================================
+   Icons & SVGs
+   ============================================================================ */
+
+/* Flip icons that have direction */
+[dir="rtl"] .icon-left {
+  transform: scaleX(-1);
+}
+
+[dir="rtl"] .icon-right {
+  transform: scaleX(-1);
+}
+
+/* ============================================================================
+   Utilities
+   ============================================================================ */
+
+/* Text alignment */
+[dir="rtl"] .text-left {
+  text-align: right !important;
+}
+
+[dir="rtl"] .text-right {
+  text-align: left !important;
+}
+
+/* Spacing */
+[dir="rtl"] .ps-0 {
+  padding-right: 0 !important;
+  padding-left: 0 !important;
+}
+
+[dir="rtl"] .pe-0 {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+[dir="rtl"] .ms-0 {
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+}
+
+[dir="rtl"] .me-0 {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* ============================================================================
+   Rashid Widget RTL Adjustments
+   ============================================================================ */
+
+[dir="rtl"] .rashid-widget {
+  left: auto;
+  right: 20px;
+}
+
+[dir="rtl"] .rashid-bubble {
+  direction: rtl;
+  text-align: right;
+}
+
+[dir="rtl"] .rashid-bubble::before {
+  left: auto;
+  right: -10px;
+  border-left-color: #3b82f6;
+  border-right-color: transparent;
+}
+
+[dir="rtl"] .rashid-avatar {
+  margin-left: 0;
+  margin-right: 10px;
+}
+
+/* ============================================================================
+   Job Cards RTL
+   ============================================================================ */
+
+[dir="rtl"] .job-card {
+  direction: rtl;
+}
+
+[dir="rtl"] .job-card-header {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .job-card-footer {
+  flex-direction: row-reverse;
+}
+
+/* ============================================================================
+   Profile Page RTL
+   ============================================================================ */
+
+[dir="rtl"] .profile-header {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .profile-avatar {
+  margin-left: 0;
+  margin-right: 1.5rem;
+}
+
+/* ============================================================================
+   Dashboard RTL
+   ============================================================================ */
+
+[dir="rtl"] .dashboard-grid {
+  direction: rtl;
+}
+
+[dir="rtl"] .dashboard-card {
+  direction: rtl;
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+/* Flip animations for RTL */
+[dir="rtl"] .animate-slide-left {
+  animation: slideRight 0.3s ease-out;
+}
+
+[dir="rtl"] .animate-slide-right {
+  animation: slideLeft 0.3s ease-out;
+}
+
+@keyframes slideLeft {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideRight {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================================================
+   Print Styles
+   ============================================================================ */
+
+@media print {
+  [dir="rtl"] {
+    direction: rtl;
+    text-align: right;
+  }
+  
+  [dir="rtl"] .no-print {
+    display: none !important;
+  }
+}

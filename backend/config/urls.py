@@ -51,7 +51,11 @@ urlpatterns = [
           path("assessment/", include("apps.assessment.urls")),
           # Interviews App (Phase 4)
           path("interviews/", include("apps.interviews.urls")),
-          # Monitoring (Phase 3)
+          # Resume Builder (Phase 5)
+          path("resume/", include("apps.resume.urls")),
+          # Notification Preferences (Phase 5)
+          path("notifications/", include("apps.notifications.urls")),
+           # Monitoring (Phase 3)
           path("monitoring/", include("apps.monitoring.urls")),
          # Core (Rule Engine, Feature Flags, GitHub) - Week 13
          path("core/", include("apps.core.urls")),
