@@ -77,6 +77,10 @@ INSTALLED_APPS = [
     "apps.assessment",
     # Phase 4 - Interviews App
     "apps.interviews",
+    # Phase 4 - Notifications
+    "apps.notifications",
+    # Phase 4 - Resume Builder
+    "apps.resume",
     # Celery Beat
     "django_celery_beat",
     # WebSocket support (Phase 2B)
