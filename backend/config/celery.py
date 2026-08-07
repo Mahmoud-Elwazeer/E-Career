@@ -54,13 +54,22 @@ app.conf.beat_schedule = {
         'task': 'apps.scraper.tasks.verify_employer_posted_job',
         'schedule': crontab(minute=0, hour='*/6'),  # Every 6 hours
     },
-    'weekly-full-reverification': {
-        'task': 'apps.verification.tasks.weekly_full_reverification',
-        'schedule': crontab(hour=4, minute=0, day_of_week=0),  # Sunday 4 AM weekly
+    'daily-liveness-check': {
+        'task': 'apps.verification.tasks.daily_liveness_check',
+        'schedule': crontab(hour=3, minute=0),  # 3 AM daily
+    },
+    'weekly-reverification': {
+        'task': 'apps.verification.tasks.weekly_reverification',
+        'schedule': crontab(hour=2, minute=0, day_of_week=0),  # Sunday 2 AM weekly
     },
     # Talent score tasks
     'recalculate-all-talent-scores': {
         'task': 'apps.career.tasks.batch_recalculate_talent_scores',
         'schedule': crontab(hour=2, minute=0, day_of_week=0),  # Sunday 2 AM weekly
+    },
+    # GDPR tasks
+    'cleanup-old-gdpr-exports': {
+        'task': 'apps.core.tasks.cleanup_old_gdpr_exports',
+        'schedule': crontab(hour=4, minute=0),  # 4 AM daily
     },
 }
