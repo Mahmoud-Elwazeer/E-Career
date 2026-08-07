@@ -1,0 +1,21 @@
+conceptUri,preferredLabel,altLabels,description,skillType,reuseLevel
+http://data.europa.eu/esco/skill/S1,Python programming,"Python,Programming","Programming in Python language",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S2,JavaScript,"JS,Javascript","JavaScript programming",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S3,Project Management,"PM,Management","Managing projects",skill,transversal
+http://data.europa.eu/esco/skill/S4,Communication,"Communicate,Speaking","Communication skills",skill,transversal
+http://data.europa.eu/esco/skill/S5,Problem Solving,"Problem-solving,Analysis","Solving problems",skill,transversal
+http://data.europa.eu/esco/skill/S6,Django framework,"Django,Web framework","Django web framework",knowledge,sector-specific
+http://data.europa.eu/esco/skill/S7,SQL databases,"SQL,Database","SQL database management",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S8,React framework,"React,ReactJS","React JavaScript library",knowledge,sector-specific
+http://data.europa.eu/esco/skill/S9,Leadership,"Lead,Management","Team leadership",skill,transversal
+http://data.europa.eu/esco/skill/S10,Data Analysis,"Analysis,Analytics","Analyzing data",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S11,AWS Cloud,"Amazon Web Services,Cloud","AWS cloud computing",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S12,Docker,"Containers,Docker","Container technology",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S13,Machine Learning,"ML,AI","Machine learning algorithms",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S14,RESTful API,"REST,API","REST API design",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S15,Agile methodology,"Agile,Scrum","Agile project management",skill,transversal
+http://data.europa.eu/esco/skill/S16,Git version control,"Git,Version control","Git source control",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S17,TypeScript,"TS,TypeScript","TypeScript programming",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S18,PostgreSQL,"Postgres,Database","PostgreSQL database",knowledge,cross-sector
+http://data.europa.eu/esco/skill/S19,Node.js,"NodeJS,Node","Node.js runtime",knowledge,sector-specific
+http://data.europa.eu/esco/skill/S20,DevOps practices,"DevOps,CI/CD","DevOps and CI/CD",knowledge,cross-sector
