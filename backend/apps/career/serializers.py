@@ -16,6 +16,7 @@ from .models import (
     InterviewSession,
     CareerBrain,
     CareerGoal,
+    CareerGoalAction,
 )
 
 
