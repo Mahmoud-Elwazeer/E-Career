@@ -410,3 +410,103 @@ class CareerBrainView(APIView):
         serializer.save()
         
         return Response(serializer.data)
+
+
+# ============================================================================
+# Profile Completeness API
+# ============================================================================
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_profile_completeness(request):
+    """
+    Get profile completeness score for the authenticated user.
+    
+    Returns:
+        - Overall completeness score (0-100)
+        - Breakdown by dimension
+        - Missing fields
+        - Recommendations
+    """
+    try:
+        from apps.career.completeness_calculator import calculate_profile_completeness
+        
+        career_profile = request.user.career_profile
+        result = calculate_profile_completeness(career_profile)
+        
+        return Response({
+            'success': True,
+            'data': result,
+        })
+    except Exception as e:
+        logger.error("get_profile_completeness_failed", error=str(e))
+        return Response({
+            'success': False,
+            'error': str(e),
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def recalculate_profile_completeness(request):
+    """
+    Recalculate and update profile completeness score.
+    
+    Returns:
+        - Updated completeness score
+    """
+    try:
+        from apps.career.completeness_calculator import calculate_profile_completeness
+        
+        career_profile = request.user.career_profile
+        result = calculate_profile_completeness(career_profile)
+        
+        # Update the profile's completeness score
+        career_profile.completeness_score = result['score'] / 100.0
+        career_profile.save(update_fields=['completeness_score'])
+        
+        return Response({
+            'success': True,
+            'data': result,
+        })
+    except Exception as e:
+        logger.error("recalculate_profile_completeness_failed", error=str(e))
+        return Response({
+            'success': False,
+            'error': str(e),
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ============================================================================
+# Skill Gap Analysis API
+# ============================================================================
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_skill_gap_analysis(request):
+    """
+    Get skill gap analysis for the authenticated user.
+    
+    Returns:
+        - Overall gap score
+        - Gaps by target role
+        - Missing skills
+        - Recommendations
+    """
+    try:
+        from apps.career.skill_gap_analysis import analyze_skill_gaps
+        
+        result = analyze_skill_gaps(request.user)
+        
+        return Response({
+            'success': True,
+            'data': result,
+        })
+    except Exception as e:
+        logger.error("get_skill_gap_analysis_failed", error=str(e))
+        return Response({
+            'success': False,
+            'error': str(e),
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

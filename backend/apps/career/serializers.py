@@ -301,3 +301,104 @@ class CareerBrainSerializer(serializers.ModelSerializer):
             'last_updated_at',
         ]
         read_only_fields = ['last_updated_at', 'user_email']
+
+
+# ============================================================================
+# Career Goal Serializers
+# ============================================================================
+
+
+class CareerGoalSerializer(serializers.ModelSerializer):
+    """Serializer for CareerGoal model."""
+    
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    
+    class Meta:
+        model = CareerGoal
+        fields = [
+            'id',
+            'user_email',
+            'title',
+            'description',
+            'goal_type',
+            'target_role',
+            'target_skill',
+            'target_salary_min',
+            'target_company',
+            'target_certification',
+            'target_date',
+            'status',
+            'priority',
+            'progress',
+            'milestones',
+            'completed_at',
+            'archived_at',
+            'created_at',
+        ]
+        read_only_fields = ['created_at', 'completed_at', 'archived_at', 'user_email']
+
+
+class CareerGoalCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating CareerGoal."""
+    
+    class Meta:
+        model = CareerGoal
+        fields = [
+            'title',
+            'description',
+            'goal_type',
+            'target_role',
+            'target_skill',
+            'target_salary_min',
+            'target_company',
+            'target_certification',
+            'target_date',
+            'priority',
+        ]
+    
+    def create(self, validated_data):
+        user = self.context.get('user')
+        return CareerGoal.objects.create(user=user, **validated_data)
+
+
+class CareerGoalActionSerializer(serializers.ModelSerializer):
+    """Serializer for CareerGoalAction model."""
+    
+    goal_title = serializers.CharField(source='goal.title', read_only=True)
+    
+    class Meta:
+        model = CareerGoalAction
+        fields = [
+            'id',
+            'goal',
+            'goal_title',
+            'title',
+            'description',
+            'priority',
+            'status',
+            'due_date',
+            'completed_at',
+            'category',
+            'created_at',
+        ]
+        read_only_fields = ['created_at', 'completed_at', 'goal']
+
+
+class CareerGoalActionCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating CareerGoalAction."""
+    
+    class Meta:
+        model = CareerGoalAction
+        fields = [
+            'title',
+            'description',
+            'priority',
+            'status',
+            'due_date',
+            'category',
+        ]
+    
+    def create(self, validated_data):
+        user = self.context.get('user')
+        goal = self.context.get('goal')
+        return CareerGoalAction.objects.create(goal=goal, **validated_data)

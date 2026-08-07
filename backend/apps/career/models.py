@@ -806,3 +806,218 @@ class CareerBrain(UUIDModel):
             weight += 0.15
         
         return round(score / max(weight, 0.01), 3)
+
+
+# ============================================================================
+# Goal Setting Models
+# ============================================================================
+
+
+class CareerGoal(UUIDModel):
+    """
+    User career goal with timeline and tracking.
+    
+    Goals can be:
+    - Role-based (e.g., "Senior Developer")
+    - Skill-based (e.g., "Learn Machine Learning")
+    - Salary-based (e.g., "$100k+")
+    - Company-based (e.g., "Work at Google")
+    """
+    
+    PRIORITY_CHOICES = [
+        ('low', 'Low Priority'),
+        ('medium', 'Medium Priority'),
+        ('high', 'High Priority'),
+        ('critical', 'Critical'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('in_progress', 'In Progress'),
+        ('paused', 'Paused'),
+        ('completed', 'Completed'),
+        ('archived', 'Archived'),
+    ]
+    
+    TYPE_CHOICES = [
+        ('role', 'Role Goal'),
+        ('skill', 'Skill Goal'),
+        ('salary', 'Salary Goal'),
+        ('company', 'Company Goal'),
+        ('learning', 'Learning Goal'),
+        ('certification', 'Certification Goal'),
+    ]
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='career_goals',
+        db_index=True
+    )
+    
+    # Goal definition
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    goal_type = models.CharField(
+        max_length=20,
+        choices=TYPE_CHOICES,
+        default='role',
+        db_index=True
+    )
+    
+    # Specific goal data
+    target_role = models.CharField(max_length=200, blank=True)
+    target_skill = models.CharField(max_length=200, blank=True)
+    target_salary_min = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+    target_company = models.CharField(max_length=200, blank=True)
+    target_certification = models.CharField(max_length=200, blank=True)
+    
+    # Timeline
+    target_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Progress tracking
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='active',
+        db_index=True
+    )
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default='medium',
+        db_index=True
+    )
+    progress = models.IntegerField(
+        default=0,
+        help_text="Progress percentage (0-100)"
+    )
+    
+    # Milestones
+    milestones = models.JSONField(
+        default=list,
+        help_text="[{title, due_date, completed}]"
+    )
+    
+    # Metadata
+    completed_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        db_table = "career_goal"
+        ordering = ["-created_at"]
+        verbose_name = "Career Goal"
+        verbose_name_plural = "Career Goals"
+    
+    def __str__(self):
+        return f"Goal: {self.title} ({self.status})"
+    
+    def save(self, *args, **kwargs):
+        # Update status based on progress
+        if self.progress >= 100 and self.status != 'completed':
+            self.status = 'completed'
+            from django.utils import timezone
+            self.completed_at = timezone.now()
+        super().save(*args, **kwargs)
+    
+    def add_milestone(self, title: str, due_date=None) -> Dict[str, Any]:
+        """Add a new milestone to the goal."""
+        from django.utils import timezone
+        
+        milestone = {
+            'id': str(uuid.uuid4())[:8],
+            'title': title,
+            'due_date': due_date.isoformat() if due_date else None,
+            'completed': False,
+            'created_at': timezone.now().isoformat(),
+        }
+        
+        self.milestones.append(milestone)
+        self.save(update_fields=['milestones'])
+        
+        return milestone
+    
+    def complete_milestone(self, milestone_id: str) -> bool:
+        """Mark a milestone as completed."""
+        for milestone in self.milestones:
+            if milestone.get('id') == milestone_id:
+                milestone['completed'] = True
+                milestone['completed_at'] = timezone.now().isoformat()
+                self.save(update_fields=['milestones'])
+                return True
+        return False
+
+
+class CareerGoalAction(UUIDModel):
+    """
+    Action item for a career goal.
+    
+    Represents specific steps to achieve a goal.
+    """
+    
+    PRIORITY_CHOICES = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    goal = models.ForeignKey(
+        CareerGoal,
+        on_delete=models.CASCADE,
+        related_name='actions',
+        db_index=True
+    )
+    
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default='medium',
+        db_index=True
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        db_index=True
+    )
+    
+    due_date = models.DateField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    # Context
+    category = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="e.g., learning, networking, application"
+    )
+    
+    class Meta:
+        db_table = "career_goal_action"
+        ordering = ["due_date", "-created_at"]
+        verbose_name = "Goal Action"
+        verbose_name_plural = "Goal Actions"
+    
+    def __str__(self):
+        return f"Action: {self.title}"
+    
+    def save(self, *args, **kwargs):
+        if self.status == 'completed' and not self.completed_at:
+            from django.utils import timezone
+            self.completed_at = timezone.now()
+        super().save(*args, **kwargs)
