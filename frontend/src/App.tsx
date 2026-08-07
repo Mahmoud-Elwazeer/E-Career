@@ -76,24 +76,29 @@ function AnimatedRoutes() {
   );
 }
 
-const App = () => {
-  // Sync i18n with theme language
+function AppContent() {
   useI18nSync();
 
   return (
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AnimatedRoutes />
+          <RashidWidget />
+          <RashidOnboarding />
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
+  );
+}
+
+const App = () => {
+  return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <AnimatedRoutes />
-              <RashidWidget />
-              <RashidOnboarding />
-            </BrowserRouter>
-          </TooltipProvider>
-        </AuthProvider>
+        <AppContent />
       </ThemeProvider>
     </QueryClientProvider>
   );
