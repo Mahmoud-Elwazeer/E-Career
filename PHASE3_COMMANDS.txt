@@ -1,0 +1,70 @@
+# PHASE 3: GENERATE EMBEDDINGS - COPY/PASTE COMMANDS
+# Execute these commands in your terminal (Git Bash or PowerShell)
+
+# ============================================
+# STEP 1: Connect to Production Server
+# ============================================
+ssh ubuntu@13.49.245.174
+
+# ============================================
+# STEP 2: Navigate and Activate Virtual Environment
+# ============================================
+cd /var/www/usam/backend
+source ../venv/bin/activate
+
+# ============================================
+# STEP 3: Test Embeddings (10 Jobs - 45 seconds)
+# ============================================
+python3 manage.py embed_jobs --limit 10 --batch-size 5
+
+# Expected output:
+# Starting job embedding process...
+# Processing 10 jobs in 2 batches...
+# Batch 1/2: Processing 5 jobs... ✓
+# Batch 2/2: Processing 5 jobs... ✓
+# Summary: 10 embedded, 0 failed
+
+# ============================================
+# STEP 4: Generate All Embeddings (221 Jobs - 8-10 minutes)
+# ============================================
+python3 manage.py embed_jobs --batch-size 50
+
+# Expected output:
+# Starting job embedding process...
+# Processing 221 jobs in 5 batches...
+# Batch 1/5: Processing 50 jobs... ✓ (120s)
+# Batch 2/5: Processing 50 jobs... ✓ (118s)
+# Batch 3/5: Processing 50 jobs... ✓ (125s)
+# Batch 4/5: Processing 50 jobs... ✓ (122s)
+# Batch 5/5: Processing 21 jobs... ✓ (52s)
+# Summary: 221 embedded, 0 failed
+# Time: 537 seconds
+
+# ============================================
+# STEP 5: Verify Embeddings Created
+# ============================================
+python3 manage.py shell -c "from apps.jobs.models import Job; total = Job.objects.filter(status='active').count(); embedded = Job.objects.filter(status='active', embedding__isnull=False).count(); print(f'Total: {total}, Embedded: {embedded}, Coverage: {embedded/total*100:.1f}%')"
+
+# Expected output:
+# Total: 221, Embedded: 221, Coverage: 100.0%
+
+# ============================================
+# STEP 6: Test Semantic Search
+# ============================================
+curl "http://localhost:8000/api/v1/vectors/search/semantic/?q=Python+developer+remote&limit=5"
+
+# Expected: Returns JSON with 5 most relevant Python developer jobs
+
+# ============================================
+# STEP 7: Exit Server
+# ============================================
+exit
+
+# ============================================
+# COMPLETED! 🎉
+# ============================================
+# Now test on website: https://jobs.usamif.com
+# Try searches like:
+# - "Machine learning engineer with AWS"
+# - "Remote frontend React developer"
+# - "Senior backend Python Django"
