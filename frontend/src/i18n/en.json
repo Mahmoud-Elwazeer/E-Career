@@ -1,0 +1,96 @@
+{
+  "nav": {
+    "jobs": "Jobs",
+    "companies": "Companies",
+    "profile": "Profile",
+    "rashid": "Rashid",
+    "interview": "Interview",
+    "about": "About USAM"
+  },
+  "navJobs": "Jobs",
+  "navCompanies": "Companies",
+  "navProfile": "Profile",
+  "navRashid": "Rashid",
+  "navInterview": "Interview",
+  "navAbout": "About USAM",
+  "home": {
+    "title": "USAM Career Compass",
+    "subtitle": "Your AI-powered career development companion",
+    "getStarted": "Get Started",
+    "exploreJobs": "Explore Jobs",
+    "features": {
+      "title": "Features",
+      "aiMatching": "AI-Powered Job Matching",
+      "aiMatchingDesc": "Find the perfect job matches based on your skills and preferences",
+      "careerScoring": "Career Scoring System",
+      "careerScoringDesc": "Get insights into your career readiness and skill gaps",
+      "interviewPractice": "Interview Practice",
+      "interviewPracticeDesc": "Practice interviews with AI feedback and guidance"
+    }
+  },
+  "jobs": {
+    "title": "Job Board",
+    "searchPlaceholder": "Search jobs...",
+    "filterByLocation": "Filter by location",
+    "filterByCompany": "Filter by company",
+    "noJobsFound": "No jobs found",
+    "jobTitle": "Job Title",
+    "company": "Company",
+    "location": "Location",
+    "salary": "Salary",
+    "apply": "Apply Now",
+    "viewDetails": "View Details"
+  },
+  "jobDetail": {
+    "title": "Job Details",
+    "companyName": "Company",
+    "location": "Location",
+    "salaryRange": "Salary Range",
+    "jobType": "Job Type",
+    "description": "Description",
+    "requirements": "Requirements",
+    "applyNow": "Apply Now",
+    "backToJobs": "Back to Jobs"
+  },
+  "profile": {
+    "title": "My Profile",
+    "personalInfo": "Personal Information",
+    "skills": "Skills",
+    "experience": "Experience",
+    "education": "Education",
+    "editProfile": "Edit Profile",
+    "saveChanges": "Save Changes"
+  },
+  "about": {
+    "title": "About USAM",
+    "mission": "Our Mission",
+    "vision": "Our Vision",
+    "team": "Our Team"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot Password?",
+    "dontHaveAccount": "Don't have an account?",
+    "alreadyHaveAccount": "Already have an account?",
+    "loginSubtitle": "Sign in to access your career dashboard"
+  },
+  "buttons": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "submit": "Submit",
+    "search": "Search",
+    "filter": "Filter"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Information"
+  }
+}

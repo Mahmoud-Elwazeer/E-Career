@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>New Jobs Matching Your Preferences</title>
+</head>
+<body style="font-family: Arial, sans-serif; background: #f4f4f4; padding: 32px;">
+  <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; padding: 40px;">
+    <img src="https://usam.jobs/logo.png" alt="USAM Career Compass" style="height: 40px; margin-bottom: 24px;" />
+    <h2 style="color: #0a3836; margin-bottom: 16px;">New Jobs Just for You! 🚀</h2>
+    <p style="color: #555; margin-bottom: 24px;">We found {{ total_jobs }} new jobs that match your preferences. Here are the top {{ jobs|length }}:</p>
+    
+    {% for job in jobs %}
+    <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+        <div>
+          <h3 style="color: #0a3836; margin: 0 0 4px 0; font-size: 18px;">{{ job.title }}</h3>
+          <p style="color: #666; margin: 0; font-size: 14px;">{{ job.company }} {% if job.location %}• {{ job.location }}{% endif %}</p>
+        </div>
+        {% if job.match_score >= 80 %}
+        <span style="background: #10b981; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">Perfect Match</span>
+        {% elif job.match_score >= 60 %}
+        <span style="background: #3b82f6; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">Great Match</span>
+        {% elif job.match_score >= 40 %}
+        <span style="background: #f59e0b; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">Good Match</span>
+        {% endif %}
+      </div>
+      
+      {% if job.salary_min or job.salary_max %}
+      <p style="color: #666; margin: 8px 0; font-size: 14px;">
+        💰 {{ job.salary_min|default:'Not specified' }} - {{ job.salary_max|default:'Not specified' }} {{ job.salary_currency|default:'USD' }}
+      </p>
+      {% endif %}
+      
+      <p style="color: #666; margin: 8px 0; font-size: 14px;">
+        {% if job.employment_type %}{{ job.employment_type }}{% endif %} {% if job.work_arrangement %}• {{ job.work_arrangement }}{% endif %}
+      </p>
+      
+      <a href="{{ site_url }}{{ job.url }}"
+         style="display: inline-block; margin-top: 12px; padding: 10px 20px; background: #0a3836; color: white; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: bold;">
+        View Job
+      </a>
+    </div>
+    {% endfor %}
+    
+    {% if total_jobs > jobs|length %}
+    <p style="color: #666; font-size: 14px; margin-top: 24px;">
+      There are {{ total_jobs - jobs|length }} more matching jobs available. 
+      <a href="{{ site_url }}/app/jobs" style="color: #0a3836; text-decoration: none;">Browse all jobs</a>
+    </p>
+    {% endif %}
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 32px 0;" />
+    
+    <p style="color: #888; font-size: 13px; text-align: center;">
+      You're receiving this email because you have job alerts enabled on USAM Career Compass.
+    </p>
+    <p style="color: #888; font-size: 13px; text-align: center; margin-top: 8px;">
+      <a href="{{ site_url }}/app/settings/notifications" style="color: #0a3836; text-decoration: none;">Manage your alert preferences</a>
+    </p>
+    
+    <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+    <p style="color: #aaa; font-size: 12px; text-align: center;">USAM Career Compass · <a href="https://usam.jobs" style="color: #0a3836;">usam.jobs</a></p>
+  </div>
+</body>
+</html>

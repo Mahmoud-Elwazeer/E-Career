@@ -186,5 +186,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-rtl") as any, require("tailwindcss-animate") as any],
 } satisfies Config;
