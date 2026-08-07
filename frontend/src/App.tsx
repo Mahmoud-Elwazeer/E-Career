@@ -21,9 +21,11 @@ import Alerts from "./pages/Alerts";
 import ApiDocs from "./pages/ApiDocs";
 import Recommendations from "./pages/Recommendations";
 import RashidChat from "./pages/RashidChat";
+import InterviewPractice from "./pages/InterviewPractice";
 import { EmployerDashboard, EmployerRegister, JobPostingForm } from "./pages/employer";
 import { RashidWidget } from "./components/rashid/RashidWidget";
 import { RashidOnboarding } from "./components/rashid/RashidOnboarding";
+import { useI18nSync } from "@/hooks/use-i18n";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +49,7 @@ function AnimatedRoutes() {
         <Route path="/app/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
         <Route path="/app/recommendations" element={<RequireAuth><Recommendations /></RequireAuth>} />
         <Route path="/app/rashid" element={<RequireAuth><RashidChat /></RequireAuth>} />
+        <Route path="/app/interviews" element={<RequireAuth><InterviewPractice /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
         <Route path="/api-docs" element={<ApiDocs />} />
         
@@ -69,22 +72,27 @@ function AnimatedRoutes() {
   );
 }
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AnimatedRoutes />
-            <RashidWidget />
-            <RashidOnboarding />
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  // Sync i18n with theme language
+  useI18nSync();
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AnimatedRoutes />
+              <RashidWidget />
+              <RashidOnboarding />
+            </BrowserRouter>
+          </TooltipProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;

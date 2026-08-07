@@ -1,16 +1,18 @@
 import { Link, useLocation } from "react-router-dom";
-import { Briefcase, Bookmark, Bell, Info, Menu, Building2, User, MessageSquare } from "lucide-react";
+import { Briefcase, Bookmark, Bell, Info, Menu, Building2, User, MessageSquare, Mic } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { ThemeToggle, LangToggle } from "@/components/ThemeToggle";
 import { useTheme } from "@/hooks/use-theme";
+import { useTranslation } from "react-i18next";
 
 const navItems = [
   { to: "/jobs", label: "Jobs", labelAr: "وظائف", icon: Briefcase },
   { to: "/companies", label: "Companies", labelAr: "الشركات", icon: Building2 },
   { to: "/profile", label: "Profile", labelAr: "الملف", icon: User },
   { to: "/app/rashid", label: "Rashid", labelAr: "راشد", icon: MessageSquare },
+  { to: "/app/interviews", label: "Interview", labelAr: "مقابلة", icon: Mic },
   { to: "/about", label: "About", labelAr: "عن USAM", icon: Info },
 ];
 
@@ -18,6 +20,7 @@ export function Navbar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const { lang } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <header className="sticky top-0 z-50 border-b bg-card/95 glass supports-[backdrop-filter]:bg-card/80">
@@ -40,8 +43,8 @@ export function Navbar() {
                     : "text-foreground/60 hover:text-foreground hover:bg-accent"
                 }`}
               >
-                <item.icon className="h-3.5 w-3.5" />
-                {lang === "ar" ? item.labelAr : item.label}
+                 <item.icon className="h-3.5 w-3.5" />
+                 {lang === "ar" ? t(`nav${item.to.replace('/', '').charAt(0).toUpperCase() + item.to.replace('/', '').slice(1)}`) : t(`nav${item.to.replace('/', '').charAt(0).toUpperCase() + item.to.replace('/', '').slice(1)}`)}
               </Link>
             );
           })}
@@ -80,8 +83,8 @@ export function Navbar() {
                           : "text-foreground/60 hover:text-foreground hover:bg-accent"
                       }`}
                     >
-                      <item.icon className="h-4 w-4" />
-                      {lang === "ar" ? item.labelAr : item.label}
+                       <item.icon className="h-4 w-4" />
+                       {lang === "ar" ? t(`nav${item.to.replace('/', '').charAt(0).toUpperCase() + item.to.replace('/', '').slice(1)}`) : t(`nav${item.to.replace('/', '').charAt(0).toUpperCase() + item.to.replace('/', '').slice(1)}`)}
                     </Link>
                   );
                 })}

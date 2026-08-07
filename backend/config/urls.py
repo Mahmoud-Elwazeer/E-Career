@@ -47,10 +47,12 @@ urlpatterns = [
          path("skills/", include("apps.skills.urls")),
          # Salary Intelligence (Phase 3)
          path("salary/", include("apps.salary.urls")),
-         # Assessment Platform (Phase 3)
-         path("assessment/", include("apps.assessment.urls")),
-         # Monitoring (Phase 3)
-         path("monitoring/", include("apps.monitoring.urls")),
+          # Assessment Platform (Phase 3)
+          path("assessment/", include("apps.assessment.urls")),
+          # Interviews App (Phase 4)
+          path("interviews/", include("apps.interviews.urls")),
+          # Monitoring (Phase 3)
+          path("monitoring/", include("apps.monitoring.urls")),
          # Core (Rule Engine, Feature Flags, GitHub) - Week 13
          path("core/", include("apps.core.urls")),
      ])),

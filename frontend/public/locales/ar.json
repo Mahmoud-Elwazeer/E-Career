@@ -1,0 +1,96 @@
+{
+  "nav": {
+    "jobs": "وظائف",
+    "companies": "الشركات",
+    "profile": "الملف",
+    "rashid": "راشد",
+    "interview": "مقابلة",
+    "about": "عن USAM"
+  },
+  "navJobs": "وظائف",
+  "navCompanies": "الشركات",
+  "navProfile": "الملف",
+  "navRashid": "راشد",
+  "navInterview": "مقابلة",
+  "navAbout": "عن USAM",
+  "home": {
+    "title": "USAM Career Compass",
+    "subtitle": "رفيقك الذكي لتطوير مسيرتك المهنية",
+    "getStarted": "ابدأ الآن",
+    "exploreJobs": "استكشف الوظائف",
+    "features": {
+      "title": "الميزات",
+      "aiMatching": "مطابقة وظائف بالذكاء الاصطناعي",
+      "aiMatchingDesc": "اعثر على وظائف مثالية بناءً على مهاراتك وتفضيلاتك",
+      "careerScoring": "نظام تقييم المهنة",
+      "careerScoringDesc": "احصل على رؤى حول جاهزيتك المهنية وفجوات المهارات",
+      "interviewPractice": "تمرين المقابلات",
+      "interviewPracticeDesc": "تمرن على المقابلات مع ملاحظات وإرشادات من الذكاء الاصطناعي"
+    }
+  },
+  "jobs": {
+    "title": "لوحة الوظائف",
+    "searchPlaceholder": "البحث عن وظائف...",
+    "filterByLocation": "تصفية حسب الموقع",
+    "filterByCompany": "تصفية حسب الشركة",
+    "noJobsFound": "لم يتم العثور على وظائف",
+    "jobTitle": "المسمى الوظيفي",
+    "company": "الشركة",
+    "location": "الموقع",
+    "salary": "الراتب",
+    "apply": "تقدم الآن",
+    "viewDetails": "عرض التفاصيل"
+  },
+  "jobDetail": {
+    "title": "تفاصيل الوظيفة",
+    "companyName": "الشركة",
+    "location": "الموقع",
+    "salaryRange": "نطاق الراتب",
+    "jobType": "نوع الوظيفة",
+    "description": "الوصف",
+    "requirements": "المتطلبات",
+    "applyNow": "تقدم الآن",
+    "backToJobs": "العودة إلى الوظائف"
+  },
+  "profile": {
+    "title": "ملفي الشخصي",
+    "personalInfo": "المعلومات الشخصية",
+    "skills": "المهارات",
+    "experience": "الخبرة",
+    "education": "التعليم",
+    "editProfile": "تعديل الملف",
+    "saveChanges": "حفظ التغييرات"
+  },
+  "about": {
+    "title": "عن USAM",
+    "mission": "رسالتنا",
+    "vision": "رؤيتنا",
+    "team": "فريقنا"
+  },
+  "auth": {
+    "login": "تسجيل الدخول",
+    "register": "تسجيل",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "dontHaveAccount": "ليس لديك حساب؟",
+    "alreadyHaveAccount": "لديك حساب بالفعل؟",
+    "loginSubtitle": "سجّل لدخول لوحة تحكم مسيرتك المهنية"
+  },
+  "buttons": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "submit": "إرسال",
+    "search": "بحث",
+    "filter": "تصفية"
+  },
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "success": "تم بنجاح",
+    "warning": "تحذير",
+    "info": "معلومات"
+  }
+}
