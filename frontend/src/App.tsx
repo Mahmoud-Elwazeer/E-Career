@@ -22,6 +22,8 @@ import ApiDocs from "./pages/ApiDocs";
 import Recommendations from "./pages/Recommendations";
 import RashidChat from "./pages/RashidChat";
 import InterviewPractice from "./pages/InterviewPractice";
+import ResumeBuilder from "./pages/ResumeBuilder";
+import NotificationPreferences from "./pages/NotificationPreferences";
 import { EmployerDashboard, EmployerRegister, JobPostingForm } from "./pages/employer";
 import { RashidWidget } from "./components/rashid/RashidWidget";
 import { RashidOnboarding } from "./components/rashid/RashidOnboarding";
@@ -50,6 +52,8 @@ function AnimatedRoutes() {
         <Route path="/app/recommendations" element={<RequireAuth><Recommendations /></RequireAuth>} />
         <Route path="/app/rashid" element={<RequireAuth><RashidChat /></RequireAuth>} />
         <Route path="/app/interviews" element={<RequireAuth><InterviewPractice /></RequireAuth>} />
+        <Route path="/app/resume" element={<RequireAuth><ResumeBuilder /></RequireAuth>} />
+        <Route path="/app/notifications" element={<RequireAuth><NotificationPreferences /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
         <Route path="/api-docs" element={<ApiDocs />} />
         
