@@ -84,7 +84,7 @@ class Notification(UUIDModel):
     user = models.ForeignKey(
         "accounts.User",
         on_delete=models.CASCADE,
-        related_name="notifications",
+        related_name="legacy_notifications",
         db_index=True,
     )
     title = models.CharField(max_length=300)

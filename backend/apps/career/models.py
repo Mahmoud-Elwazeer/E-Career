@@ -443,7 +443,7 @@ class InterviewSession(UUIDModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='interview_sessions',
+        related_name='career_interview_sessions',
         db_index=True
     )
     
