@@ -34,8 +34,8 @@ def generate_gdpr_export(self, user_id):
         logger.info(f"Starting GDPR export for user {user.email}")
 
         # Generate export using GDPR service
-        service = GDPRService()
-        export_data = service.export_user_data(user_id)
+        service = GDPRService(user)
+        export_data = service.export_user_data()
 
         # Save to file
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -119,8 +119,8 @@ def execute_gdpr_deletion(self, user_id, confirmation_token):
         logger.info(f"Starting GDPR deletion for user {user.email}")
 
         # Execute deletion using GDPR service
-        service = GDPRService()
-        result = service.delete_user_data(user_id, confirmation_token)
+        service = GDPRService(user)
+        result = service.delete_user_data(confirmation_token)
 
         if result['success']:
             logger.info(f"GDPR deletion completed for user {user_id}. Deleted: {result.get('deleted', {})}")
