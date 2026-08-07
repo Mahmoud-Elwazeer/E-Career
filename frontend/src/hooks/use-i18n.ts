@@ -15,6 +15,14 @@ export function useI18nSync() {
     if (i18n.language !== lang) {
       i18n.changeLanguage(lang);
     }
+
+    // Set document direction and language
+    const dir = lang === 'ar' ? 'rtl' : 'ltr';
+    document.documentElement.dir = dir;
+    document.documentElement.lang = lang;
+
+    // Also set on body for compatibility
+    document.body.dir = dir;
   }, [lang]);
 
   return { t: i18n.t, i18n };
