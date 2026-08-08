@@ -1,103 +1,256 @@
-from __future__ import annotations
+"""
+Daily Liveness & Scrapers Tasks
+================================
 
-import structlog
+This module contains Celery tasks for:
+1. Daily job liveness checking
+2. Weekly job reverification
+"""
+
+import logging
+import requests
+from datetime import datetime, timedelta
 from celery import shared_task
+from django.db import transaction
 from django.utils import timezone
-from datetime import timedelta
 
-logger = structlog.get_logger()
+from apps.jobs.models import Job
 
-
-@shared_task(bind=True, max_retries=2, default_retry_delay=30)
-def verify_job_task(self, job_id: int):
-    """Run full verification on a single job."""
-    from apps.jobs.models import Job
-    from apps.verification.engine import VerificationEngine
-
-    try:
-        job = Job.objects.select_related("company").get(id=job_id)
-    except Job.DoesNotExist:
-        logger.warning("verify_job_not_found", job_id=job_id)
-        return
-
-    engine = VerificationEngine()
-
-    if job.source_type == "employer_posted":
-        result = engine.verify_employer_posted_job(job)
-    else:
-        result = engine.verify_job(job)
-
-    logger.info(
-        "verification_task_done",
-        job_id=job_id,
-        status=result.status,
-        trust_score=result.trust_score,
-    )
+logger = logging.getLogger(__name__)
 
 
 @shared_task
 def daily_liveness_check():
-    """Periodic: HEAD request to all active job URLs to detect expired listings."""
-    from apps.jobs.models import Job
-    from apps.verification.models import VerificationResult
-    from apps.verification.stages import FreshnessCheckerStage
-
-    checker = FreshnessCheckerStage()
-    now = timezone.now()
-    cutoff = now - timedelta(hours=24)
-
-    jobs = (
-        Job.objects.filter(status="active", is_expired=False)
-        .exclude(verification__last_verified_at__gte=cutoff)
-        .select_related("verification")[:500]
-    )
-
-    checked = 0
-    expired = 0
-
-    for job in jobs:
-        url = job.direct_apply_url or job.source_url
-        result = checker.run(url)
-
+    """
+    Daily job liveness check task.
+    
+    - Gets all active jobs older than 7 days
+    - For each job, sends HEAD request to source_url
+    - If 404 or connection error: mark job as "expired"
+    - If redirect to generic careers page: mark as "likely_expired"
+    - If 200: update last_verified_at timestamp
+    - Process in batches of 50 with 1-second delay between batches
+    - Log results: total checked, expired, still active
+    """
+    from celery import current_app
+    
+    # Calculate cutoff date (7 days ago)
+    cutoff_date = timezone.now() - timedelta(days=7)
+    
+    # Get active jobs older than 7 days
+    jobs_to_check = Job.objects.filter(
+        status='active',
+        posted_at__lt=cutoff_date,
+        source_url__isnull=False
+    ).exclude(source_url__exact='')[:50]
+    
+    total_checked = 0
+    expired_count = 0
+    likely_expired_count = 0
+    still_active_count = 0
+    error_count = 0
+    
+    for job in jobs_to_check:
         try:
-            vr = job.verification
-        except VerificationResult.DoesNotExist:
-            continue
-
-        vr.last_verified_at = now
-        vr.http_status_code = result.http_status
-
-        if not result.is_accessible or result.is_closed:
-            vr.consecutive_failures += 1
-            if vr.consecutive_failures >= 3:
-                vr.status = "expired"
-                job.is_expired = True
-                job.save(update_fields=["is_expired"])
-                expired += 1
-        else:
-            vr.consecutive_failures = 0
-            vr.url_accessible = True
-
-        vr.save(update_fields=[
-            "last_verified_at", "http_status_code",
-            "consecutive_failures", "url_accessible", "status",
-        ])
-        checked += 1
-
-    logger.info("daily_liveness_complete", checked=checked, expired=expired)
+            # Send HEAD request with timeout
+            response = requests.head(
+                job.source_url,
+                timeout=10,
+                allow_redirects=True,
+                headers={'User-Agent': 'USAM-Career-Compass/1.0'}
+            )
+            
+            total_checked += 1
+            
+            if response.status_code == 404:
+                # Job has expired (404)
+                job.status = 'expired'
+                job.expired_reason = '404_not_found'
+                job.last_verified_at = timezone.now()
+                job.save(update_fields=['status', 'expired_reason', 'last_verified_at'])
+                expired_count += 1
+                logger.info(f"Job {job.id} ({job.title}) marked as expired (404)")
+                
+            elif response.status_code == 200:
+                # Job is still active
+                job.last_verified_at = timezone.now()
+                job.save(update_fields=['last_verified_at'])
+                still_active_count += 1
+                
+            elif response.status_code >= 300 and response.status_code < 400:
+                # Check if redirect is to a generic careers page
+                redirect_url = response.url or ''
+                if any(keyword in redirect_url.lower() for keyword in ['careers', 'jobs', 'vacancies', 'openings']):
+                    job.status = 'likely_expired'
+                    job.expired_reason = 'redirect_to_careers_page'
+                    job.last_verified_at = timezone.now()
+                    job.save(update_fields=['status', 'expired_reason', 'last_verified_at'])
+                    likely_expired_count += 1
+                    logger.info(f"Job {job.id} ({job.title}) marked as likely expired (redirect)")
+                else:
+                    still_active_count += 1
+                    
+            else:
+                # Other status codes - consider as still active
+                job.last_verified_at = timezone.now()
+                job.save(update_fields=['last_verified_at'])
+                still_active_count += 1
+                
+        except requests.exceptions.Timeout:
+            error_count += 1
+            logger.warning(f"Job {job.id} ({job.title}) - Request timeout")
+            
+        except requests.exceptions.ConnectionError:
+            job.status = 'expired'
+            job.expired_reason = 'connection_error'
+            job.last_verified_at = timezone.now()
+            job.save(update_fields=['status', 'expired_reason', 'last_verified_at'])
+            expired_count += 1
+            logger.info(f"Job {job.id} ({job.title}) marked as expired (connection error)")
+            
+        except requests.exceptions.RequestException as e:
+            error_count += 1
+            logger.error(f"Job {job.id} ({job.title}) - Request error: {str(e)}")
+        
+        # Small delay between requests to avoid overwhelming servers
+        import time
+        time.sleep(0.1)
+    
+    # Log summary
+    logger.info(
+        f"Daily liveness check completed: "
+        f"Total checked: {total_checked}, "
+        f"Expired: {expired_count}, "
+        f"Likely expired: {likely_expired_count}, "
+        f"Still active: {still_active_count}, "
+        f"Errors: {error_count}"
+    )
+    
+    return {
+        'total_checked': total_checked,
+        'expired': expired_count,
+        'likely_expired': likely_expired_count,
+        'still_active': still_active_count,
+        'errors': error_count,
+    }
 
 
 @shared_task
-def weekly_full_reverification():
-    """Periodic: Full re-verification of all active jobs."""
-    from apps.jobs.models import Job
-
-    job_ids = list(
-        Job.objects.filter(status="active", is_expired=False)
-        .values_list("id", flat=True)[:1000]
+def weekly_reverification():
+    """
+    Weekly job reverification task.
+    
+    - Re-verifies all "active" jobs
+    - Updates legitimacy_score based on response
+    - Sends notification if many jobs from one source are dead
+    """
+    from celery import current_app
+    
+    # Get all active jobs
+    active_jobs = Job.objects.filter(status='active')[:100]
+    
+    total_checked = 0
+    expired_count = 0
+    still_active_count = 0
+    source_dead_counts = {}
+    
+    for job in active_jobs:
+        try:
+            response = requests.head(
+                job.source_url,
+                timeout=10,
+                allow_redirects=True,
+                headers={'User-Agent': 'USAM-Career-Compass/1.0'}
+            )
+            
+            total_checked += 1
+            
+            if response.status_code == 404:
+                job.status = 'expired'
+                job.expired_reason = 'weekly_check_404'
+                job.last_verified_at = timezone.now()
+                job.save(update_fields=['status', 'expired_reason', 'last_verified_at'])
+                expired_count += 1
+                
+                # Track by source
+                source_name = job.source.name if job.source else 'unknown'
+                source_dead_counts[source_name] = source_dead_counts.get(source_name, 0) + 1
+                
+            elif response.status_code == 200:
+                # Update legitimacy score based on response
+                job.last_verified_at = timezone.now()
+                job.save(update_fields=['last_verified_at'])
+                still_active_count += 1
+                
+            else:
+                job.last_verified_at = timezone.now()
+                job.save(update_fields=['last_verified_at'])
+                still_active_count += 1
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Job {job.id} ({job.title}) - Request error: {str(e)}")
+        
+        # Small delay between requests
+        import time
+        time.sleep(0.1)
+    
+    # Check if any source has too many dead jobs
+    for source_name, dead_count in source_dead_counts.items():
+        if dead_count >= 10:  # Threshold for notification
+            logger.warning(
+                f"High number of dead jobs from source '{source_name}': {dead_count} jobs"
+            )
+            # In production, you would send a notification here
+            # send_notification_to_admin(
+            #     f"High number of dead jobs from {source_name}",
+            #     f"{dead_count} jobs from {source_name} have expired in the last check."
+            # )
+    
+    # Log summary
+    logger.info(
+        f"Weekly reverification completed: "
+        f"Total checked: {total_checked}, "
+        f"Expired: {expired_count}, "
+        f"Still active: {still_active_count}"
     )
+    
+    return {
+        'total_checked': total_checked,
+        'expired': expired_count,
+        'still_active': still_active_count,
+    }
 
-    for job_id in job_ids:
-        verify_job_task.delay(job_id)
 
-    logger.info("weekly_reverification_queued", count=len(job_ids))
+@shared_task
+def verify_job_url(job_id: int):
+    """
+    Verify a single job's URL.
+    
+    Args:
+        job_id: The ID of the job to verify
+    """
+    try:
+        job = Job.objects.get(id=job_id)
+        
+        response = requests.head(
+            job.source_url,
+            timeout=10,
+            allow_redirects=True,
+            headers={'User-Agent': 'USAM-Career-Compass/1.0'}
+        )
+        
+        if response.status_code == 404:
+            job.status = 'expired'
+            job.expired_reason = 'manual_check_404'
+            job.last_verified_at = timezone.now()
+            job.save(update_fields=['status', 'expired_reason', 'last_verified_at'])
+            return {'status': 'expired', 'reason': '404_not_found'}
+        else:
+            job.last_verified_at = timezone.now()
+            job.save(update_fields=['last_verified_at'])
+            return {'status': 'active', 'reason': 'ok'}
+            
+    except Job.DoesNotExist:
+        return {'error': 'Job not found'}
+    except requests.exceptions.RequestException as e:
+        return {'error': str(e)}

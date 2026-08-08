@@ -1,0 +1,11 @@
+conceptUri,preferredLabel,altLabels,description
+http://data.europa.eu/esco/occupation/O1,Software Developer,"Developer,Programmer","Develops software applications"
+http://data.europa.eu/esco/occupation/O2,Frontend Developer,"Frontend Engineer,UI Developer","Develops user interfaces"
+http://data.europa.eu/esco/occupation/O3,Backend Developer,"Backend Engineer,Server Developer","Develops server-side logic"
+http://data.europa.eu/esco/occupation/O4,Full Stack Developer,"Full Stack Engineer","Develops both frontend and backend"
+http://data.europa.eu/esco/occupation/O5,DevOps Engineer,"DevOps,SRE","Manages infrastructure and deployment"
+http://data.europa.eu/esco/occupation/O6,Data Scientist,"Scientist,Analyst","Analyzes data and builds models"
+http://data.europa.eu/esco/occupation/O7,Project Manager,"PM,Manager","Manages projects and teams"
+http://data.europa.eu/esco/occupation/O8,Product Manager,"Product Owner,PM","Manages product development"
+http://data.europa.eu/esco/occupation/O9,UX Designer,"User Experience Designer","Designs user experiences"
+http://data.europa.eu/esco/occupation/O10,QA Engineer,"Quality Assurance,Tester","Tests software quality"
