@@ -17,6 +17,7 @@ from .views import (
     ScoreTrendsViewSet,
     CareerBrainView,
 )
+from .cv_parser_views import cv_upload, cv_status, cv_delete
 from .goal_api import (
     CareerGoalListCreateView,
     CareerGoalDetailView,
@@ -60,4 +61,9 @@ urlpatterns = [
 
     # Skill Gap Analysis endpoints
     path('skill-gap/', get_skill_gap_analysis, name='skill-gap-analysis'),
+    
+    # CV Parser endpoints
+    path('cv/upload/', cv_upload, name='cv-upload'),
+    path('cv/status/', cv_status, name='cv-status'),
+    path('cv/delete/', cv_delete, name='cv-delete'),
 ]

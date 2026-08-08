@@ -136,3 +136,94 @@ def feature_flag(db):
         label="Test Flag",
         is_enabled=True,
     )
+
+
+# ── Mock fixtures for external services ───────────────────────────────────────
+
+@pytest.fixture
+def mock_bedrock_client(mocker):
+    """Mock AWS Bedrock client."""
+    mock = mocker.patch("apps.ai.bedrock.BedrockClient")
+    mock.return_value.generate_text.return_value = "Mocked AI response"
+    mock.return_value.generate_embedding.return_value = [0.1] * 768
+    return mock.return_value
+
+
+@pytest.fixture
+def mock_typesense_client(mocker):
+    """Mock Typesense search client."""
+    mock = mocker.patch("apps.search.typesense_plugin.TypesenseClient")
+    mock.return_value.search.return_value = {"hits": []}
+    return mock.return_value
+
+
+@pytest.fixture
+def mock_qdrant_client(mocker):
+    """Mock Qdrant vector database client."""
+    mock = mocker.patch("apps.search.qdrant_plugin.QdrantClient")
+    mock.return_value.search.return_value = []
+    return mock.return_value
+
+
+@pytest.fixture
+def mock_s3_client(mocker):
+    """Mock AWS S3 client."""
+    mock = mocker.patch("boto3.client")
+    mock.return_value.upload_fileobj.return_value = None
+    mock.return_value.generate_presigned_url.return_value = "https://s3.example.com/file"
+    return mock.return_value
+
+
+@pytest.fixture
+def mock_email_backend(mocker):
+    """Mock email sending."""
+    mock = mocker.patch("django.core.mail.send_mail")
+    mock.return_value = 1
+    return mock
+
+
+@pytest.fixture
+def mock_redis_client(mocker):
+    """Mock Redis client."""
+    mock = mocker.patch("redis.Redis")
+    mock.return_value.get.return_value = None
+    mock.return_value.set.return_value = True
+    return mock.return_value
+
+
+@pytest.fixture
+def mock_celery_task(mocker):
+    """Mock Celery task."""
+    mock = mocker.patch("apps.career.tasks.calculate_talent_score")
+    mock.delay.return_value = None
+    return mock
+
+
+# ── Additional user fixtures ──────────────────────────────────────────────────
+
+@pytest.fixture
+def employer_user(db):
+    """Create an employer user."""
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    return User.objects.create_user(
+        email="employer@example.com",
+        password="EmployerPass123!",
+        first_name="Employer",
+        last_name="User",
+        role="user",
+    )
+
+
+@pytest.fixture
+def verified_company(db):
+    """Create a verified company."""
+    from apps.jobs.models import Company
+    return Company.objects.create(
+        name="Verified Corp",
+        slug="verified-corp",
+        industry="technology",
+        website="https://verifiedcorp.example.com",
+        snippet="A verified tech company.",
+        is_verified=True,
+    )

@@ -6,43 +6,85 @@ from .base import BaseATSScraper
 
 class WorkableScraper(BaseATSScraper):
     """
-    Scrapes jobs from Workable public widget API.
-    API: https://www.workable.com/
+    Scrapes jobs from Workable ATS API.
     
-    Workable provides a public API for job listings through their widget system.
-    The API endpoint is: https://www.workable.com/spi/v1/companies/{company}/jobs
+    Base URL pattern: https://apply.workable.com/j/{job_id}
+    API endpoint: https://{company}.workable.com/spi/v3/jobs
+    
+    Workable uses company subdomain for API access.
     """
     
-    # Workable API endpoint for company jobs
-    API_URL = "https://www.workable.com/spi/v1/companies/{company}/jobs"
+    API_URL = "https://{company_subdomain}.workable.com/spi/v3/jobs"
+    JOB_URL_PATTERN = "https://apply.workable.com/j/{job_id}"
+    HEADERS = {
+        'Accept': 'application/json',
+        'User-Agent': 'USAM-Career-Compass/1.0',
+    }
     
     def get_platform_name(self) -> str:
         return 'workable'
     
     def fetch_jobs(self) -> List[Dict]:
-        """
-        Fetch all jobs from Workable for a company.
-        
-        Workable API returns paginated results with 'next' link.
-        """
+        """Fetch all jobs from Workable API."""
         try:
-            jobs = []
-            url = self.API_URL.format(company=self.company_slug)
+            # Workable uses company subdomain (not company_slug)
+            # Try to use company_slug as subdomain first
+            url = self.API_URL.format(company_subdomain=self.company_slug)
             
-            while url:
-                response = requests.get(url, timeout=15)
-                response.raise_for_status()
+            response = requests.get(url, headers=self.HEADERS, timeout=15)
+            response.raise_for_status()
+            
+            data = response.json()
+            jobs = []
+            
+            for job in data.get('jobs', []):
+                job_id = job.get('shortcode', '')
+                if not job_id:
+                    continue
                 
-                data = response.json()
-                job_list = data.get('jobs', [])
+                # Build direct apply URL
+                apply_url = self.JOB_URL_PATTERN.format(job_id=job_id)
                 
-                for job in job_list:
-                    normalized = self._normalize_job(job)
-                    if normalized.get('direct_apply_url'):
-                        jobs.append(normalized)
+                # Extract location
+                location_data = job.get('location', {})
+                location = location_data.get('city', '') + ', ' + location_data.get('country', '')
+                location = location.strip(', ')
                 
-                # Get next page URL if available
-                url = data.get('next')
+                # Extract department
+                department = ''
+                if job.get('department'):
+                    department = job.get('department', {}).get('name', '')
+                
+                # Extract experience level
+                experience_level = ''
+                if job.get('type'):
+                    experience_level = job.get('type', {}).get('name', '').lower()
+                
+                # Extract salary
+                salary_min = None
+                salary_max = None
+                if job.get('salary'):
+                    salary_range = job.get('salary', {})
+                    salary_min = salary_range.get('min', None)
+                    salary_max = salary_range.get('max', None)
+                
+                normalized = {
+                    'title': job.get('title', ''),
+                    'apply_url': apply_url,
+                    'description': job.get('description', ''),
+                    'location': location,
+                    'id': job_id,
+                    'posted_at': job.get('created_at', ''),
+                    'departments': [department] if department else [],
+                    'employment_type': job.get('type', {}).get('name', ''),
+                    'experience_level': experience_level,
+                    'remote_type': self._get_remote_type(job),
+                    'salary_min': salary_min,
+                    'salary_max': salary_max,
+                    'salary_currency': job.get('salary', {}).get('currency', 'USD'),
+                }
+                
+                jobs.append(self.normalize_job(normalized))
             
             return jobs
             
@@ -50,98 +92,28 @@ class WorkableScraper(BaseATSScraper):
             print(f"Workable scrape failed for {self.company_slug}: {e}")
             return []
     
-    def _normalize_job(self, job: Dict) -> Dict:
-        """Normalize a Workable job posting to our standard format."""
-        # Workable provides direct apply URL
-        apply_url = job.get('url', '')
+    def _get_remote_type(self, job: Dict) -> str:
+        """Determine remote type from job data."""
+        job_type = job.get('type', {}).get('name', '').lower()
+        location = job.get('location', {})
         
-        # Get location
-        location_data = job.get('location', {})
-        location = location_data.get('city', '') + ', ' + location_data.get('country', '')
-        location = location.strip(', ')
-        
-        # Parse employment type
-        employment_type = self._parse_employment_type(job)
-        
-        # Parse salary if available
-        salary_info = job.get('salary', {})
-        salary_min = salary_info.get('min') if isinstance(salary_info, dict) else None
-        salary_max = salary_info.get('max') if isinstance(salary_info, dict) else None
-        salary_currency = salary_info.get('currency', 'USD') if isinstance(salary_info, dict) else 'USD'
-        
-        # Get department
-        department = job.get('department', {})
-        department_name = department.get('name', '') if department else ''
-        
-        return {
-            'title': job.get('title', ''),
-            'apply_url': apply_url,
-            'direct_apply_url': apply_url,
-            'description': job.get('description', ''),
-            'location': location,
-            'employment_type': employment_type,
-            'experience_level': self._parse_experience_level(job),
-            'remote_type': self._parse_remote_type(job),
-            'salary_min': salary_min,
-            'salary_max': salary_max,
-            'salary_currency': salary_currency,
-            'id': job.get('id'),
-            'ats_job_id': job.get('id'),
-            'posted_at': job.get('created_at'),
-            'departments': [department_name] if department_name else [],
-            'raw_data': job,
-        }
-    
-    def _parse_employment_type(self, job: Dict) -> str:
-        """Parse employment type from Workable job data."""
-        employment_type = job.get('type', '').lower()
-        
-        if 'full' in employment_type:
-            return 'full_time'
-        elif 'part' in employment_type:
-            return 'part_time'
-        elif 'contract' in employment_type:
-            return 'contract'
-        elif 'intern' in employment_type:
-            return 'internship'
-        elif 'temporary' in employment_type:
-            return 'temporary'
-        
-        return None
-    
-    def _parse_experience_level(self, job: Dict) -> str:
-        """Parse experience level from Workable job data."""
-        experience_level = job.get('experience_level', '').lower()
-        
-        if 'entry' in experience_level or 'junior' in experience_level:
-            return 'entry'
-        elif 'mid' in experience_level or 'intermediate' in experience_level:
-            return 'mid'
-        elif 'senior' in experience_level:
-            return 'senior'
-        elif 'lead' in experience_level or 'principal' in experience_level:
-            return 'lead'
-        
-        return None
-    
-    def _parse_remote_type(self, job: Dict) -> str:
-        """Parse remote type from Workable job data."""
-        work_location = job.get('work_location', '').lower()
-        
-        if 'remote' in work_location or 'virtual' in work_location:
+        # Check for remote keywords in job type
+        if 'remote' in job_type or 'virtual' in job_type:
             return 'remote'
         
-        # Check location object for remote indicators
-        location_data = job.get('location', {})
-        location_name = location_data.get('name', '').lower()
+        # Check for hybrid keywords
+        if 'hybrid' in job_type or 'flexible' in job_type:
+            return 'hybrid'
         
-        if 'remote' in location_name or 'virtual' in location_name:
+        # Check location for remote indicators
+        city = location.get('city', '').lower()
+        if 'remote' in city or 'virtual' in city:
             return 'remote'
         
         return 'onsite'
 
 
-def fetch_workable_jobs(company_slug: str) -> List[Dict]:
+def fetch_workable_jobs(company_subdomain: str) -> List[Dict]:
     """Convenience function to fetch Workable jobs."""
-    scraper = WorkableScraper(company_slug)
+    scraper = WorkableScraper(company_subdomain)
     return scraper.fetch_jobs()
