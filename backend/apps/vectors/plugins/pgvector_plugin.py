@@ -1,4 +1,5 @@
 """
+import json
 PgVector Plugin
 
 Fallback implementation of VectorPlugin using PostgreSQL with pgvector extension.
@@ -194,17 +195,20 @@ class PgVectorPlugin(VectorPlugin):
 
             where_sql = " AND ".join(where_clauses) if where_clauses else "TRUE"
 
-            params.append(query.limit)
-
             with connection.cursor() as cursor:
                 # Cosine similarity search
+                # Params order: vector_str (for SELECT), filters, vector_str (for ORDER BY), limit
+                final_params = params + [vector_str, query.limit]
+                print(f"DEBUG SQL Params count: {len(final_params)}")
+                print(f"DEBUG WHERE: {where_sql}")
+                print(f"DEBUG Limit: {query.limit}")
                 cursor.execute(f"""
                     SELECT id, payload, 1 - (vector <=> %s::vector) as score
                     FROM {table_name}
                     WHERE {where_sql}
                     ORDER BY vector <=> %s::vector
                     LIMIT %s;
-                """, params + [vector_str])
+                """, final_params)
 
                 rows = cursor.fetchall()
 
@@ -217,7 +221,7 @@ class PgVectorPlugin(VectorPlugin):
                             VectorSearchResult(
                                 id=doc_id,
                                 score=score,
-                                payload=payload or {},
+                                payload=json.loads(payload) if isinstance(payload, str) else (payload or {}),
                             )
                         )
 
@@ -272,7 +276,7 @@ class PgVectorPlugin(VectorPlugin):
                 return VectorDocument(
                     id=doc_id,
                     vector=vector,
-                    payload=payload or {},
+                    payload=json.loads(payload) if isinstance(payload, str) else (payload or {}),
                 )
 
         except Exception as e:
