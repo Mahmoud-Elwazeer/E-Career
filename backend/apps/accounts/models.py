@@ -16,8 +16,11 @@ class User(AbstractUser):
     """
 
     class Role(models.TextChoices):
-        USER = "user", "User"
+        JOBSEEKER = "jobseeker", "Job Seeker"
+        EMPLOYER = "employer", "Employer"
         ADMIN = "admin", "Admin"
+        # Legacy
+        USER = "user", "User"  # Deprecated: default to jobseeker
 
     class Status(models.TextChoices):
         ACTIVE = "active", "Active"
@@ -32,7 +35,7 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=150)
     last_name = models.CharField(max_length=150)
     avatar = models.ImageField(upload_to=avatar_upload_path, null=True, blank=True)
-    role = models.CharField(max_length=20, choices=Role.choices, default=Role.USER, db_index=True)
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.JOBSEEKER, db_index=True)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE, db_index=True)
 
     # Soft delete

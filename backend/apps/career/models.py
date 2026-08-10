@@ -1022,3 +1022,88 @@ class CareerGoalAction(UUIDModel):
             from django.utils import timezone
             self.completed_at = timezone.now()
         super().save(*args, **kwargs)
+
+
+class OnboardingProgress(UUIDModel):
+    """
+    Track user onboarding completion status.
+    
+    Stores which onboarding steps a user has completed and relevant
+    choices made during onboarding (career stage, primary interest, etc.)
+    """
+    
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='onboarding_progress',
+        db_index=True
+    )
+    
+    # Steps completed (list of step identifiers)
+    steps_completed = models.JSONField(
+        default=list,
+        help_text="List of completed step IDs: ['role', 'basic_info', 'career_stage', 'cv_upload', 'preferences', 'goals']"
+    )
+    
+    # Onboarding data captured
+    career_stage = models.CharField(
+        max_length=50,
+        blank=True,
+        choices=[
+            ('student', 'Student'),
+            ('junior', 'Junior (0-2 years)'),
+            ('mid', 'Mid-level (3-5 years)'),
+            ('senior', 'Senior (6-10 years)'),
+            ('exec', 'Executive (10+ years)'),
+            ('career_change', 'Career Change'),
+        ],
+        help_text="Career stage selected during onboarding"
+    )
+    
+    primary_interest = models.CharField(
+        max_length=50,
+        blank=True,
+        choices=[
+            ('find_job', 'Find a Job'),
+            ('explore', 'Explore Opportunities'),
+            ('improve_skills', 'Improve Skills'),
+            ('prepare_interviews', 'Prepare for Interviews'),
+        ],
+        help_text="Primary reason for using the platform"
+    )
+    
+    # Timestamps
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When user completed full onboarding"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = "career_onboarding_progress"
+        verbose_name = "Onboarding Progress"
+        verbose_name_plural = "Onboarding Progress"
+    
+    def __str__(self):
+        return f"{self.user.email} - {len(self.steps_completed)}/6 steps"
+    
+    @property
+    def is_complete(self) -> bool:
+        """Check if all onboarding steps are completed."""
+        required_steps = {'role', 'basic_info', 'career_stage', 'preferences'}
+        completed_set = set(self.steps_completed)
+        return required_steps.issubset(completed_set)
+    
+    def mark_step_complete(self, step_id: str) -> None:
+        """Mark a step as completed."""
+        if step_id not in self.steps_completed:
+            self.steps_completed.append(step_id)
+            
+            # Auto-complete onboarding if all required steps done
+            if self.is_complete and not self.completed_at:
+                self.completed_at = timezone.now()
+            
+            self.save()

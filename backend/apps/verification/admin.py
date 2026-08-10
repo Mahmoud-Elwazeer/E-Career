@@ -1,7 +1,7 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from .models import VerificationResult
+from .models import VerificationResult, BlockedDomain, ApprovedATS
 
 
 @admin.register(VerificationResult)
@@ -14,6 +14,7 @@ class VerificationResultAdmin(ModelAdmin):
         "domain_trust",
         "url_accessible",
         "is_duplicate",
+        "admin_override",
         "verified_at",
     ]
     list_filter = ["status", "ats_platform_detected", "url_accessible", "is_duplicate"]
@@ -47,8 +48,27 @@ class VerificationResultAdmin(ModelAdmin):
         ("Stage 6: Deduplication", {
             "fields": ("is_duplicate", "duplicate_of", "content_hash"),
         }),
+        ("Admin Override", {
+            "fields": ("admin_override", "override_by", "override_reason", "override_at"),
+        }),
         ("Metadata", {
             "fields": ("uuid", "verified_at", "verification_duration_ms", "created_at", "updated_at"),
             "classes": ("collapse",),
         }),
     )
+
+
+@admin.register(BlockedDomain)
+class BlockedDomainAdmin(ModelAdmin):
+    list_display = ['domain', 'reason', 'is_active', 'added_by', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['domain', 'reason']
+    ordering = ['domain']
+
+
+@admin.register(ApprovedATS)
+class ApprovedATSAdmin(ModelAdmin):
+    list_display = ['name', 'domain', 'url_pattern', 'is_active', 'added_by', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['name', 'domain', 'url_pattern']
+    ordering = ['name']

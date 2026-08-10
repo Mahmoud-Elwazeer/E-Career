@@ -18,6 +18,7 @@ from .views import (
     CareerBrainView,
 )
 from .cv_parser_views import cv_upload, cv_status, cv_delete
+from .views_onboarding import onboarding_progress
 from .goal_api import (
     CareerGoalListCreateView,
     CareerGoalDetailView,
@@ -66,4 +67,7 @@ urlpatterns = [
     path('cv/upload/', cv_upload, name='cv-upload'),
     path('cv/status/', cv_status, name='cv-status'),
     path('cv/delete/', cv_delete, name='cv-delete'),
+
+    # Onboarding endpoints
+    path('onboarding/', onboarding_progress, name='onboarding-progress'),
 ]

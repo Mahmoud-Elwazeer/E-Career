@@ -7,14 +7,15 @@ from rest_framework import permissions
 
 class IsEmployer(permissions.BasePermission):
     """
-    Check if user has employer profile.
+    Check if user has employer role and profile.
     Used for basic employer access.
     """
     message = "You must have an employer profile to access this resource."
-    
+
     def has_permission(self, request, view):
         return (
             request.user.is_authenticated and
+            request.user.role in ['employer', 'admin'] and  # Role check
             hasattr(request.user, 'employer_profile')
         )
 
@@ -25,10 +26,11 @@ class IsVerifiedEmployer(permissions.BasePermission):
     Used for job posting and applicant management.
     """
     message = "Your employer account must be verified to perform this action."
-    
+
     def has_permission(self, request, view):
         return (
             request.user.is_authenticated and
+            request.user.role in ['employer', 'admin'] and  # Role check
             hasattr(request.user, 'employer_profile') and
             request.user.employer_profile.is_verified
         )
@@ -57,20 +59,24 @@ class CanPostJobs(permissions.BasePermission):
     Additional check beyond verification if needed.
     """
     message = "You do not have permission to post jobs."
-    
+
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
-        
+
+        # Role check
+        if request.user.role not in ['employer', 'admin']:
+            return False
+
         if not hasattr(request.user, 'employer_profile'):
             return False
-        
+
         employer = request.user.employer_profile
-        
+
         # Must be verified
         if not employer.is_verified:
             return False
-        
+
         # Additional checks can be added here (e.g., subscription status)
         return True
 
@@ -80,13 +86,17 @@ class CanViewApplicants(permissions.BasePermission):
     Check if employer can view applicants for a job.
     """
     message = "You do not have permission to view these applicants."
-    
+
     def has_object_permission(self, request, view, obj):
         # obj is a JobPosting
         if not request.user.is_authenticated:
             return False
-        
+
+        # Role check
+        if request.user.role not in ['employer', 'admin']:
+            return False
+
         if not hasattr(request.user, 'employer_profile'):
             return False
-        
+
         return obj.employer.user == request.user
