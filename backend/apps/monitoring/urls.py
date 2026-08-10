@@ -29,3 +29,9 @@ urlpatterns = [
     # Uptime records
     path('uptime/', views.uptime_records, name='uptime-records'),
 ]
+
+# AI Cost Dashboard
+from .views_ai_costs import ai_cost_dashboard
+urlpatterns += [
+    path('ai-costs/', ai_cost_dashboard, name='ai-cost-dashboard'),
+]
