@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Weekly Career Digest</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; }
+        .content { padding: 30px 20px; }
+        .section { margin-bottom: 30px; }
+        .section h2 { color: #667eea; font-size: 20px; margin-bottom: 15px; border-bottom: 2px solid #667eea; padding-bottom: 8px; }
+        .job-item { background: #f9f9f9; border-left: 4px solid #667eea; padding: 15px; margin-bottom: 15px; border-radius: 4px; }
+        .job-item h3 { margin: 0 0 8px 0; color: #333; font-size: 18px; }
+        .job-item p { margin: 5px 0; color: #666; font-size: 14px; }
+        .job-item a { display: inline-block; margin-top: 10px; color: #667eea; text-decoration: none; font-weight: bold; }
+        .stats { display: flex; justify-content: space-around; text-align: center; background: #f0f4ff; padding: 20px; border-radius: 8px; }
+        .stat-item { flex: 1; }
+        .stat-number { font-size: 32px; font-weight: bold; color: #667eea; display: block; }
+        .stat-label { font-size: 14px; color: #666; margin-top: 5px; }
+        .tip-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 4px; }
+        .tip-box strong { color: #856404; }
+        .footer { background: #333; color: #fff; padding: 20px; text-align: center; font-size: 12px; }
+        .footer a { color: #667eea; text-decoration: none; }
+        .cta-button { display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; margin-top: 15px; font-weight: bold; }
+        .cta-button:hover { background: #5568d3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Your Weekly Career Digest</h1>
+            <p>Hi {{ user_name }}, here's what we found for you this week!</p>
+        </div>
+
+        <div class="content">
+            <!-- New Matching Jobs -->
+            <div class="section">
+                <h2>💼 New Jobs Matching Your Profile</h2>
+                {% if matching_jobs %}
+                    {% for job in matching_jobs %}
+                    <div class="job-item">
+                        <h3>{{ job.title }}</h3>
+                        <p><strong>Company:</strong> {{ job.company }}</p>
+                        <p><strong>Location:</strong> {{ job.location }}</p>
+                        <p><strong>Match Score:</strong> {{ job.match_score }}%</p>
+                        <a href="{{ platform_url }}/jobs/{{ job.id }}/">View Job &rarr;</a>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <p>No new jobs matched your profile this week. We'll keep looking!</p>
+                {% endif %}
+            </div>
+
+            <!-- Career Progress -->
+            <div class="section">
+                <h2>📊 Your Progress This Week</h2>
+                <div class="stats">
+                    <div class="stat-item">
+                        <span class="stat-number">{{ progress.applications_this_week }}</span>
+                        <span class="stat-label">Applications</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ progress.interviews_completed }}</span>
+                        <span class="stat-label">Interviews</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">{{ progress.profile_completeness }}%</span>
+                        <span class="stat-label">Profile Complete</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skill Tip -->
+            <div class="section">
+                <h2>💡 Career Tip of the Week</h2>
+                <div class="tip-box">
+                    <strong>Tip:</strong> {{ skill_tip }}
+                </div>
+            </div>
+
+            <!-- Interview Reminder -->
+            <div class="section">
+                <h2>🎯 Keep Practicing</h2>
+                <p>Practice makes perfect! Try our AI-powered interview practice to prepare for your next opportunity.</p>
+                <a href="{{ platform_url }}/interviews/start/" class="cta-button">Start Interview Practice</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2026 E-Career Platform. All rights reserved.</p>
+            <p><a href="{{ platform_url }}/settings/notifications/">Manage email preferences</a></p>
+        </div>
+    </div>
+</body>
+</html>

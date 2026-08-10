@@ -332,3 +332,68 @@ def send_re_engagement_emails():
             logger.error(f"Error sending re-engagement email: {e}")
     
     logger.info(f"Re-engagement emails sent: {emails_sent}")
+
+@shared_task
+def send_weekly_career_digest():
+    """
+    F6: Send weekly career digest with matching jobs, progress, tips.
+    Runs every Sunday at 9 AM.
+    """
+    logger.info("Starting weekly career digest task (F6)")
+    
+    # Get active job seekers
+    users = User.objects.filter(
+        role__in=['jobseeker', 'user'],
+        is_active=True
+    ).select_related('career_profile')
+    
+    digests_sent = 0
+    week_start = timezone.now() - timedelta(days=7)
+    
+    for user in users:
+        try:
+            # Skip if no career profile
+            if not hasattr(user, 'career_profile'):
+                continue
+            
+            # Fetch new matching jobs this week
+            from apps.vectors.matching_service import matching_service
+            matching_jobs = matching_service.find_matching_jobs(user, limit=5)
+            
+            # Career progress stats
+            progress_data = {
+                'applications_this_week': user.applications.filter(applied_at__gte=week_start).count() if hasattr(user, 'applications') else 0,
+                'interviews_completed': user.interview_sessions.filter(completed_at__gte=week_start).count() if hasattr(user, 'interview_sessions') else 0,
+                'profile_completeness': user.career_profile.completeness_score if hasattr(user.career_profile, 'completeness_score') else 50,
+            }
+            
+            # AI-generated skill tips
+            from apps.intelligence.service import ai_service
+            user_skills = [s.skill.name for s in user.career_profile.career_user_skills.all()[:10]] if hasattr(user.career_profile, 'career_user_skills') else []
+            tip_prompt = f"Give 1 short career tip (max 2 sentences) for someone with skills: {', '.join(user_skills) or 'entry-level'}."
+            tip_result = ai_service.generate(prompt=tip_prompt, model="haiku", max_tokens=100)
+            tip = tip_result.get("text", "Keep learning and applying to jobs regularly!")
+            
+            # Send digest
+            context = {
+                'user_name': user.get_full_name() or user.email.split('@')[0],
+                'matching_jobs': matching_jobs[:5],
+                'progress': progress_data,
+                'skill_tip': tip,
+                'platform_url': 'https://usam.com'
+            }
+            
+            success, _ = email_service.send_template_email(
+                user=user,
+                template_type='weekly_career_digest',
+                context_data=context
+            )
+            
+            if success:
+                digests_sent += 1
+        
+        except Exception as e:
+            logger.error(f"Error sending career digest to {user.id}: {e}")
+    
+    logger.info(f"Weekly career digests sent: {digests_sent}")
+    return digests_sent

@@ -20,7 +20,7 @@ class InterviewSessionSerializer(serializers.ModelSerializer):
 
 class StartInterviewSerializer(serializers.Serializer):
     """Serializer for starting a new interview session."""
-    
+
     interview_type = serializers.ChoiceField(
         choices=['technical', 'behavioral', 'coding', 'system_design', 'case_study']
     )
@@ -33,6 +33,7 @@ class StartInterviewSerializer(serializers.Serializer):
         choices=['text', 'voice'],
         default='text'
     )
+    job_id = serializers.UUIDField(required=False, allow_null=True)
 
 
 class AnswerQuestionSerializer(serializers.Serializer):

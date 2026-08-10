@@ -19,6 +19,8 @@ from .views import (
 )
 from .cv_parser_views import cv_upload, cv_status, cv_delete
 from .views_onboarding import onboarding_progress
+from .views_cover_letter import generate_cover_letter, cover_letter_detail, list_cover_letters
+from .views_cv_tailor import cv_tailor_suggestions
 from .goal_api import (
     CareerGoalListCreateView,
     CareerGoalDetailView,
@@ -70,4 +72,12 @@ urlpatterns = [
 
     # Onboarding endpoints
     path('onboarding/', onboarding_progress, name='onboarding-progress'),
+
+    # Cover Letter endpoints
+    path('cover-letters/', list_cover_letters, name='cover-letters-list'),
+    path('cover-letter/<uuid:job_id>/', generate_cover_letter, name='cover-letter-generate'),
+    path('cover-letter/<uuid:cover_letter_id>/detail/', cover_letter_detail, name='cover-letter-detail'),
+
+    # CV Tailoring
+    path('cv-tailor/<uuid:job_id>/', cv_tailor_suggestions, name='cv-tailor'),
 ]

@@ -17,16 +17,17 @@ class InterviewService:
     def __init__(self):
         self.bedrock = bedrock_service
     
-    def generate_questions(self, interview_type, target_role, difficulty, user_context=None):
+    def generate_questions(self, interview_type, target_role, difficulty, user_context=None, job_context=None):
         """
         Generate 5 interview questions using Bedrock Haiku.
-        
+
         Args:
             interview_type: technical, behavioral, coding, system_design, case_study
             target_role: The job title/role being interviewed for
             difficulty: easy, medium, hard
             user_context: Optional user profile context
-        
+            job_context: Optional specific job context (F5 enhancement)
+
         Returns:
             list: List of 5 question dictionaries
         """
@@ -53,6 +54,7 @@ Type: {type_prompts.get(interview_type, 'General')}
 Difficulty: {difficulty_desc.get(difficulty, 'Medium')}
 
 User Context: {user_context or 'No user context available'}
+{'Job Context: ' + job_context if job_context else ''}
 
 Format your response as a JSON array with exactly 5 questions. Each question should have:
 - "question": The question text

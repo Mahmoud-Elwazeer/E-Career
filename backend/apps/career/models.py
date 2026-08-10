@@ -1107,3 +1107,75 @@ class OnboardingProgress(UUIDModel):
                 self.completed_at = timezone.now()
             
             self.save()
+
+
+class CoverLetter(UUIDModel):
+    """
+    Generated cover letters for job applications.
+    
+    Stores AI-generated cover letters tailored to specific jobs,
+    allowing users to refine and reuse them.
+    """
+    
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='cover_letters',
+        db_index=True
+    )
+    
+    job = models.ForeignKey(
+        'jobs.Job',
+        on_delete=models.CASCADE,
+        related_name='cover_letters',
+        db_index=True
+    )
+    
+    content = models.TextField(
+        help_text="Cover letter text"
+    )
+    
+    version = models.IntegerField(
+        default=1,
+        help_text="Version number if user regenerates"
+    )
+    
+    tone = models.CharField(
+        max_length=20,
+        default='professional',
+        choices=[
+            ('professional', 'Professional'),
+            ('enthusiastic', 'Enthusiastic'),
+            ('formal', 'Formal'),
+        ]
+    )
+    
+    confidence = models.FloatField(
+        default=0.0,
+        help_text="AI confidence score (0-1)"
+    )
+    
+    word_count = models.IntegerField(
+        default=0
+    )
+    
+    is_edited = models.BooleanField(
+        default=False,
+        help_text="User manually edited this version"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = "career_cover_letter"
+        ordering = ["-created_at"]
+        verbose_name = "Cover Letter"
+        verbose_name_plural = "Cover Letters"
+        indexes = [
+            models.Index(fields=['user', 'job']),
+            models.Index(fields=['-created_at']),
+        ]
+    
+    def __str__(self):
+        return f"Cover Letter: {self.user.email} → {self.job.title} (v{self.version})"

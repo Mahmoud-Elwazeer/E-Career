@@ -59,21 +59,30 @@ class InterviewViewSet(viewsets.ModelViewSet):
         """
         serializer = StartInterviewSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         interview_type = serializer.validated_data['interview_type']
         target_role = serializer.validated_data['target_role']
         difficulty = serializer.validated_data.get('difficulty', 'medium')
         mode = serializer.validated_data.get('mode', 'text')
-        
+        job_id = serializer.validated_data.get('job_id')
+
         # Build user context
         user_context = self._build_user_context(request.user)
-        
+
+        # If job_id provided, add job context (F5)
+        job_context = None
+        if job_id:
+            from apps.jobs.models import Job
+            job = get_object_or_404(Job, id=job_id)
+            job_context = f"Job: {job.title} at {job.company.name}\nRequirements: {job.requirements[:300] if job.requirements else job.description[:300]}"
+
         # Generate questions
         questions = interview_service.generate_questions(
             interview_type=interview_type,
             target_role=target_role,
             difficulty=difficulty,
-            user_context=user_context
+            user_context=user_context,
+            job_context=job_context
         )
         
         # Create session
