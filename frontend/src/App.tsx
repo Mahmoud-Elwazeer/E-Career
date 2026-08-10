@@ -24,10 +24,14 @@ import RashidChat from "./pages/RashidChat";
 import InterviewPractice from "./pages/InterviewPractice";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import NotificationPreferences from "./pages/NotificationPreferences";
+import Applications from "./pages/Applications";
 import { EmployerDashboard, EmployerRegister, JobPostingForm } from "./pages/employer";
 import { RashidWidget } from "./components/rashid/RashidWidget";
 import { RashidOnboarding } from "./components/rashid/RashidOnboarding";
+import { OnboardingFlow } from "./components/landing/OnboardingFlow";
 import { useI18nSync } from "@/hooks/use-i18n";
+import { useAuth } from "@/hooks/use-auth";
+import { useState, useEffect } from "react";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +58,7 @@ function AnimatedRoutes() {
         <Route path="/app/interviews" element={<RequireAuth><InterviewPractice /></RequireAuth>} />
         <Route path="/app/resume" element={<RequireAuth><ResumeBuilder /></RequireAuth>} />
         <Route path="/app/notifications" element={<RequireAuth><NotificationPreferences /></RequireAuth>} />
+        <Route path="/app/applications" element={<RequireAuth><Applications /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
         <Route path="/api-docs" element={<ApiDocs />} />
         
@@ -76,6 +81,30 @@ function AnimatedRoutes() {
   );
 }
 
+function OnboardingWrapper() {
+  const { user } = useAuth();
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    // Show onboarding for new authenticated users
+    if (user) {
+      const hasCompletedOnboarding = localStorage.getItem("usam_onboarding_complete");
+      if (!hasCompletedOnboarding) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [user]);
+
+  const handleOnboardingComplete = (preferences: { track: string; mode: string; location: string }) => {
+    console.log("User preferences:", preferences);
+    // TODO: Send preferences to backend API
+    setShowOnboarding(false);
+  };
+
+  if (!showOnboarding) return null;
+  return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+}
+
 function AppContent() {
   useI18nSync();
 
@@ -88,6 +117,7 @@ function AppContent() {
           <AnimatedRoutes />
           <RashidWidget />
           <RashidOnboarding />
+          <OnboardingWrapper />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
