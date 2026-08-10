@@ -6,7 +6,7 @@ Generates personalized cover letters using AI based on user profile and job requ
 import logging
 from typing import Optional
 from django.conf import settings
-from apps.intelligence.service import ai_service
+from ai.bedrock import bedrock_service
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +43,10 @@ class CoverLetterService:
             # Generate cover letter via AI
             prompt = self._build_prompt(context, job_context, tone)
 
-            response = ai_service.generate(
+            response = bedrock_service.invoke_model(
                 prompt=prompt,
-                model="sonnet",  # Use Sonnet for quality
                 max_tokens=1500,
+                temperature=0.7,
                 system_prompt=(
                     "You are an expert career coach writing personalized cover letters. "
                     "Write in first person. Be specific, genuine, and compelling. "
@@ -54,8 +54,8 @@ class CoverLetterService:
                 )
             )
 
-            # Parse response (expecting structured format)
-            content = response.get("text", "")
+            # Parse response
+            content = response if isinstance(response, str) else response.get("text", "")
 
             return {
                 "content": content,

@@ -368,11 +368,14 @@ def send_weekly_career_digest():
             }
             
             # AI-generated skill tips
-            from apps.intelligence.service import ai_service
+            from ai.bedrock import bedrock_service
             user_skills = [s.skill.name for s in user.career_profile.career_user_skills.all()[:10]] if hasattr(user.career_profile, 'career_user_skills') else []
             tip_prompt = f"Give 1 short career tip (max 2 sentences) for someone with skills: {', '.join(user_skills) or 'entry-level'}."
-            tip_result = ai_service.generate(prompt=tip_prompt, model="haiku", max_tokens=100)
-            tip = tip_result.get("text", "Keep learning and applying to jobs regularly!")
+            try:
+                tip_result = bedrock_service.invoke_model(prompt=tip_prompt, max_tokens=100, temperature=0.7)
+                tip = tip_result if isinstance(tip_result, str) else "Keep learning and applying to jobs regularly!"
+            except Exception:
+                tip = "Keep learning and applying to jobs regularly!"
             
             # Send digest
             context = {

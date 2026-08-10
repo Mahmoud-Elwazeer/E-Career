@@ -1,5 +1,5 @@
 """CV Tailoring Service - Suggests improvements for specific jobs"""
-from apps.intelligence.service import ai_service
+from ai.bedrock import bedrock_service
 
 class CVTailorService:
     def analyze(self, user, job):
@@ -23,10 +23,13 @@ Provide 3-5 specific suggestions to tailor the CV:
 
 Format as bullet points."""
 
-        result = ai_service.generate(prompt=prompt, model="haiku", max_tokens=500)
+        result = bedrock_service.invoke_model(prompt=prompt, max_tokens=500, temperature=0.5)
+
+        # Handle response (invoke_model returns string directly)
+        content = result if isinstance(result, str) else result.get("text", "")
 
         return {
-            "suggestions": result.get("text", "").split("\n"),
+            "suggestions": [s.strip() for s in content.split("\n") if s.strip()],
             "missing_skills": list(missing)[:10],
             "match_score": len(set(user_skills) & set(job_skills)) / len(job_skills) if job_skills else 0
         }
