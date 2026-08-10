@@ -209,14 +209,39 @@ class JobPostingAdmin(ModelAdmin):
         )
         self.message_user(request, f'{count} job(s) rejected.', messages.WARNING)
     
-    @admin.action(description="Verify apply URLs")
+    @admin.action(description="Verify apply URLs (automated)")
     def verify_apply_urls(self, request, queryset):
-        """Mark apply URLs as verified"""
-        count = queryset.update(
-            apply_url_verified=True,
-            apply_url_checked_at=timezone.now()
+        """Run automated domain verification on selected job postings"""
+        from .domain_verification import verify_job_posting_url
+
+        verified = 0
+        failed = 0
+        manual_review = 0
+
+        for job_posting in queryset:
+            result = verify_job_posting_url(job_posting)
+
+            if result['is_valid']:
+                verified += 1
+            elif result['requires_manual_review']:
+                manual_review += 1
+            else:
+                failed += 1
+
+        # Build message
+        msg_parts = []
+        if verified > 0:
+            msg_parts.append(f'{verified} verified')
+        if failed > 0:
+            msg_parts.append(f'{failed} blocked (aggregators)')
+        if manual_review > 0:
+            msg_parts.append(f'{manual_review} need manual review')
+
+        self.message_user(
+            request,
+            f'Domain verification complete: {", ".join(msg_parts)}',
+            messages.SUCCESS if failed == 0 else messages.WARNING
         )
-        self.message_user(request, f'{count} job(s) apply URL verified.', messages.SUCCESS)
 
 
 @admin.register(JobApplication)

@@ -224,12 +224,20 @@ class JobPostingViewSet(viewsets.ModelViewSet):
         return JobPostingDetailSerializer
     
     def perform_create(self, serializer):
+        from .domain_verification import verify_job_posting_url
+
         employer = self.request.user.employer_profile
         job_post = serializer.save(
             employer=employer,
             company=employer.company
         )
-        
+
+        # Run domain verification
+        verification_result = verify_job_posting_url(job_post)
+
+        # Store verification result in job posting metadata (if you have JSONField)
+        # For now, it's just logged
+
         # Emit EMPLOYER_JOB_POSTED event
         try:
             emit(
@@ -238,7 +246,11 @@ class JobPostingViewSet(viewsets.ModelViewSet):
                 user=employer.user,
                 target_type="job_posting",
                 target_id=str(job_post.id),
-                data={"job_title": job_post.title, "company": job_post.company.name},
+                data={
+                    "job_title": job_post.title,
+                    "company": job_post.company.name,
+                    "url_verified": verification_result['is_valid']
+                },
                 request=None,
             )
         except Exception:
