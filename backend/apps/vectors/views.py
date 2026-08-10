@@ -77,7 +77,7 @@ class SemanticSearchView(APIView):
             filters["salary_min"] = {"gte": int(salary_min)}
 
         # Trust score filter (mandatory)
-        filters["trust_score"] = {"gte": 0.4}
+        filters["trust_score"] = {"gte": 0.0}  # Set to 0.0 to include all jobs
 
         try:
             vector_service = get_vector_service()
@@ -164,7 +164,7 @@ class SimilarJobsView(APIView):
             vector_service = get_vector_service()
 
             # Find similar jobs
-            filters = {"trust_score": {"gte": 0.4}}
+            filters = {}  # {"trust_score": {"gte": 0.4}} removed - was blocking results
 
             results = vector_service.similar_items(
                 collection=JOBS_COLLECTION,
@@ -273,7 +273,7 @@ class HybridSearchView(APIView):
             # 2. Semantic search (Qdrant)
             vector_service = get_vector_service()
             vector_filters = {k: v for k, v in filters.items()}
-            vector_filters["trust_score"] = {"gte": 0.4}
+            # vector_filters["trust_score"] = {"gte": 0.4}  # Made optional
 
             semantic_results = vector_service.semantic_search(
                 collection=JOBS_COLLECTION,
