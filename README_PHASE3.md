@@ -212,8 +212,8 @@ ssh ubuntu@13.49.245.174
 cd /var/www/usam/backend
 
 # Add credentials
-echo "AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXXXX" >> .env
-echo "AWS_SECRET_ACCESS_KEY=<aws-secret-key-redacted>" >> .env
+echo "AWS_ACCESS_KEY_ID=<your-access-key>" >> .env
+echo "AWS_SECRET_ACCESS_KEY=<your-secret-key>" >> .env
 echo "AWS_REGION=eu-north-1" >> .env
 
 # Restart services

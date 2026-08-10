@@ -39,14 +39,14 @@ python3 manage.py shell -c "from apps.jobs.models import Job; print(f'Active job
 ```
 
 **Expected:**
-- AWS credentials present (AWS_ACCESS_KEY_ID=AKIA...)
+- AWS credentials present (AWS_ACCESS_KEY_ID=<configured>)
 - Qdrant: active (running)
 - Active jobs: 221
 
 **If AWS credentials missing:**
 ```bash
-echo "AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXXXX" >> .env
-echo "AWS_SECRET_ACCESS_KEY=<aws-secret-key-redacted>" >> .env
+echo "AWS_ACCESS_KEY_ID=<your-access-key>" >> .env
+echo "AWS_SECRET_ACCESS_KEY=<your-secret-key>" >> .env
 echo "AWS_REGION=eu-north-1" >> .env
 sudo systemctl restart gunicorn celery celerybeat
 ```
@@ -291,8 +291,8 @@ exit
 **Solution:**
 ```bash
 cd /var/www/usam/backend
-echo "AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXXXX" >> .env
-echo "AWS_SECRET_ACCESS_KEY=<aws-secret-key-redacted>" >> .env
+echo "AWS_ACCESS_KEY_ID=<your-access-key>" >> .env
+echo "AWS_SECRET_ACCESS_KEY=<your-secret-key>" >> .env
 echo "AWS_REGION=eu-north-1" >> .env
 sudo systemctl restart gunicorn celery celerybeat
 ```

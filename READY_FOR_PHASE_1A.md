@@ -206,8 +206,8 @@ DATABASE_URL=postgresql://postgres:ecareer@@WWQ2@localhost:5432/ecareer_dev
 SECRET_KEY=^n8vk+s_5d0$gqbm=3ul#cxp&e&u!8sbog^(_c)e5gim0q0su)
 FIELD_ENCRYPTION_KEY=HytCx18zekR9WoYfiBpOvzYIGvkOAIAiODhjnAqs5E0=
 
-AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXXXX
-AWS_SECRET_ACCESS_KEY=<aws-secret-key-redacted>
+AWS_ACCESS_KEY_ID=<your-access-key>
+AWS_SECRET_ACCESS_KEY=<your-secret-key>
 BEDROCK_MODEL_PRIMARY=meta.llama4-scout-17b-instruct-v1:0
 BEDROCK_MODEL_SECONDARY=google.gemma-4-e2b
 

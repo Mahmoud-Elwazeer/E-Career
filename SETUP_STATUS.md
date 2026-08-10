@@ -50,7 +50,7 @@ Your `.env` file has been configured with:
 ✅ ALLOWED_HOSTS: localhost,127.0.0.1,jobs.usamif.com
 
 AWS Bedrock:
-✅ AWS_ACCESS_KEY_ID: AKIAXXXXXXXXXXXXXXXXXX
+✅ AWS_ACCESS_KEY_ID: <your-access-key>
 ✅ BEDROCK_MODEL_PRIMARY: meta.llama4-scout-17b-instruct-v1:0
 ✅ BEDROCK_MODEL_SECONDARY: google.gemma-4-e2b
 

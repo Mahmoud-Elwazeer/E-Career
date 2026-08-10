@@ -5,8 +5,8 @@
 Please provide the following information to complete the implementation plan:
 
 ### 1. AWS Bedrock Configuration
-- [x] AWS Access Key ID: `AKIAXXXXXXXXXXXXXXXXXX`
-- [x] AWS Secret Access Key: `<aws-secret-key-redacted>`
+- [x] AWS Access Key ID: `<your-access-key>`
+- [x] AWS Secret Access Key: `<your-secret-key>`
 - [x] AWS Region: `us-east-1`
 - [x] Preferred Bedrock Model ID: `anthropic.claude-sonnet-4-20250514-v1:0`
 

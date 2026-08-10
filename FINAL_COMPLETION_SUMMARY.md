@@ -416,8 +416,8 @@ Run `DEPLOYMENT_SCRIPT.sh` to:
 ## 🔐 Security Note
 
 **IMPORTANT:** AWS credentials were exposed in previous chat:
-- `AWS_ACCESS_KEY_ID`: AKIAXXXXXXXXXXXXXXXXXX
-- `AWS_SECRET_ACCESS_KEY`: <aws-secret-key-redacted>
+- `AWS_ACCESS_KEY_ID`: <your-access-key>
+- `AWS_SECRET_ACCESS_KEY`: <your-secret-key>
 
 **Action Required:** Rotate these credentials ASAP via AWS IAM Console.
 

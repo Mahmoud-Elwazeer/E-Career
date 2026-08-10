@@ -154,16 +154,16 @@ cat .env | grep AWS
 
 Should show:
 ```
-AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXXXX
-AWS_SECRET_ACCESS_KEY=<aws-secret-key-redacted>
+AWS_ACCESS_KEY_ID=<your-access-key>
+AWS_SECRET_ACCESS_KEY=<your-secret-key>
 AWS_REGION=eu-north-1
 ```
 
 If missing, add them:
 
 ```bash
-echo "AWS_ACCESS_KEY_ID=AKIAXXXXXXXXXXXXXXXXXX" >> .env
-echo "AWS_SECRET_ACCESS_KEY=<aws-secret-key-redacted>" >> .env
+echo "AWS_ACCESS_KEY_ID=<your-access-key>" >> .env
+echo "AWS_SECRET_ACCESS_KEY=<your-secret-key>" >> .env
 echo "AWS_REGION=eu-north-1" >> .env
 ```
 

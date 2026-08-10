@@ -18,7 +18,7 @@ Cost Savings: ~60% vs single model = $800/month saved! 💰
 ### **Your Credentials**
 
 ```
-✅ AWS Bedrock:    AKIAXXXXXXXXXXXXXXXXXX
+✅ AWS Bedrock:    <your-access-key>
 ✅ Email:          career@usamif.com
 ✅ Domain:         jobs.usamif.com
 ✅ Course Platform: edu.usamif.com
