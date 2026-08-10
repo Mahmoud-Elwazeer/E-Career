@@ -1,6 +1,7 @@
 """
 Admin configuration for User model using django-unfold.
 Phase 3C: Admin Dashboard Extensions
+Phase G4: GDPR Compliance Models
 """
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
@@ -9,6 +10,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 
 from apps.accounts.models import User
+from apps.accounts.models_gdpr import DataExportRequest, AccountDeletionRequest
 
 
 @admin.register(User)
@@ -91,3 +93,149 @@ class UserAdmin(ModelAdmin, BaseUserAdmin):
         self.message_user(request, f"{count} users restored.")
     
     actions = ["make_admin", "ban_users", "restore_users"]
+
+
+# ============================================================================
+# GDPR Compliance Admin (Phase G4)
+# ============================================================================
+
+
+@admin.register(DataExportRequest)
+class DataExportRequestAdmin(ModelAdmin):
+    """
+    Admin interface for GDPR data export requests.
+    Article 15 - Right to Access
+    """
+    list_display = [
+        "user_email",
+        "status_badge",
+        "file_size_mb",
+        "requested_at",
+        "completed_at",
+        "expires_at",
+    ]
+    list_filter = ["status", "requested_at", "completed_at"]
+    search_fields = ["user__email", "ip_address"]
+    readonly_fields = [
+        "id", "user", "file_path", "file_size_bytes",
+        "requested_at", "completed_at", "expires_at", "ip_address"
+    ]
+
+    fieldsets = (
+        ("Request Info", {
+            "fields": ("id", "user", "status", "ip_address")
+        }),
+        ("Export File", {
+            "fields": ("file_path", "file_size_bytes", "expires_at")
+        }),
+        ("Timestamps", {
+            "fields": ("requested_at", "completed_at")
+        }),
+        ("Error Details", {
+            "fields": ("error_message",),
+            "classes": ("collapse",)
+        }),
+    )
+
+    @display(description="User", ordering="user__email")
+    def user_email(self, obj):
+        return obj.user.email
+
+    @display(
+        description="Status",
+        label={
+            "pending": "gray",
+            "processing": "blue",
+            "completed": "green",
+            "failed": "red",
+            "expired": "gray",
+        }
+    )
+    def status_badge(self, obj):
+        return obj.get_status_display()
+
+    @display(description="File Size")
+    def file_size_mb(self, obj):
+        if obj.file_size_bytes > 0:
+            return f"{obj.file_size_bytes / 1024 / 1024:.2f} MB"
+        return "-"
+
+    def has_add_permission(self, request):
+        """Prevent manual creation - only via API"""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Allow deletion of expired exports"""
+        return True
+
+
+@admin.register(AccountDeletionRequest)
+class AccountDeletionRequestAdmin(ModelAdmin):
+    """
+    Admin interface for GDPR account deletion requests.
+    Article 17 - Right to Erasure
+    """
+    list_display = [
+        "user_email",
+        "status_badge",
+        "requested_at",
+        "scheduled_for",
+        "days_remaining",
+        "completed_at",
+    ]
+    list_filter = ["status", "requested_at", "scheduled_for"]
+    search_fields = ["user__email", "reason", "ip_address"]
+    readonly_fields = [
+        "id", "user", "requested_at", "scheduled_for",
+        "completed_at", "ip_address"
+    ]
+
+    fieldsets = (
+        ("Request Info", {
+            "fields": ("id", "user", "status", "reason", "ip_address")
+        }),
+        ("Schedule", {
+            "fields": ("requested_at", "scheduled_for", "completed_at")
+        }),
+        ("Error Details", {
+            "fields": ("error_message",),
+            "classes": ("collapse",)
+        }),
+    )
+
+    @display(description="User", ordering="user__email")
+    def user_email(self, obj):
+        return obj.user.email
+
+    @display(
+        description="Status",
+        label={
+            "pending": "yellow",
+            "cancelled": "gray",
+            "processing": "blue",
+            "completed": "green",
+            "failed": "red",
+        }
+    )
+    def status_badge(self, obj):
+        return obj.get_status_display()
+
+    @display(description="Days Until Deletion")
+    def days_remaining(self, obj):
+        if obj.status == "pending":
+            from django.utils import timezone
+            delta = obj.scheduled_for - timezone.now()
+            days = delta.days
+            if days > 0:
+                return f"{days} days"
+            else:
+                return "Due now"
+        return "-"
+
+    def has_add_permission(self, request):
+        """Prevent manual creation - only via API"""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Prevent deletion - audit trail required"""
+        return False
