@@ -25,6 +25,9 @@ import RashidChat from "./pages/RashidChat";
 import InterviewPractice from "./pages/InterviewPractice";
 import ResumeBuilder from "./pages/ResumeBuilder";
 import NotificationPreferences from "./pages/NotificationPreferences";
+import Notifications from "./pages/Notifications";
+import Settings from "./pages/Settings";
+import CareerDashboard from "./pages/CareerDashboard";
 import Applications from "./pages/Applications";
 import { EmployerDashboard, EmployerRegister, JobPostingForm } from "./pages/employer";
 import { RashidWidget } from "./components/rashid/RashidWidget";
@@ -52,13 +55,16 @@ function AnimatedRoutes() {
         <Route path="/app/jobs/:id" element={<RequireAuth><JobDetail /></RequireAuth>} />
         <Route path="/app/companies/:id" element={<RequireAuth><CompanyProfile /></RequireAuth>} />
         <Route path="/app/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+        <Route path="/app/career" element={<RequireAuth><CareerDashboard /></RequireAuth>} />
         <Route path="/app/saved" element={<RequireAuth><Profile /></RequireAuth>} />
         <Route path="/app/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
         <Route path="/app/recommendations" element={<RequireAuth><Recommendations /></RequireAuth>} />
         <Route path="/app/rashid" element={<RequireAuth><RashidChat /></RequireAuth>} />
         <Route path="/app/interviews" element={<RequireAuth><InterviewPractice /></RequireAuth>} />
         <Route path="/app/resume" element={<RequireAuth><ResumeBuilder /></RequireAuth>} />
-        <Route path="/app/notifications" element={<RequireAuth><NotificationPreferences /></RequireAuth>} />
+        <Route path="/app/notification-preferences" element={<RequireAuth><NotificationPreferences /></RequireAuth>} />
+        <Route path="/app/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
+        <Route path="/app/settings" element={<RequireAuth><Settings /></RequireAuth>} />
         <Route path="/app/applications" element={<RequireAuth><Applications /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
         <Route path="/api-docs" element={<ApiDocs />} />

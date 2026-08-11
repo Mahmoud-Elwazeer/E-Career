@@ -3,25 +3,27 @@ import { Briefcase, Bookmark, Bell, Info, Menu, Building2, User, MessageSquare, 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
 import { ThemeToggle, LangToggle } from "@/components/ThemeToggle";
+import { UserMenu } from "@/components/UserMenu";
 import { useTheme } from "@/hooks/use-theme";
-import { useTranslation } from "react-i18next";
+import { useAuth } from "@/hooks/use-auth";
 
+// Primary navigation items (always visible)
 const navItems = [
-  { to: "/jobs", label: "Jobs", labelAr: "وظائف", icon: Briefcase },
-  { to: "/app/applications", label: "Applications", labelAr: "طلباتي", icon: ClipboardList },
-  { to: "/profile", label: "Profile", labelAr: "الملف", icon: User },
-  { to: "/app/rashid", label: "Rashid", labelAr: "راشد", icon: MessageSquare },
-  { to: "/app/interviews", label: "Interview", labelAr: "مقابلة", icon: Mic },
-  // Note: Companies directory page to be implemented in future phase
-  // { to: "/companies", label: "Companies", labelAr: "الشركات", icon: Building2 },
+  { to: "/app/jobs", label: "Jobs", labelAr: "وظائف", icon: Briefcase },
+  { to: "/app/applications", label: "Applications", labelAr: "طلباتي", icon: ClipboardList, badge: true },
+  { to: "/app/career", label: "Career", labelAr: "مساري", icon: User },
 ];
 
 export function Navbar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
   const { lang } = useTheme();
-  const { t } = useTranslation();
+  const { isAuthenticated } = useAuth();
+
+  // TODO: Fetch actual notification count from API
+  const unreadNotifications = 0;
 
   return (
     <header className="sticky top-0 z-50 border-b bg-card/95 glass supports-[backdrop-filter]:bg-card/80">
@@ -38,26 +40,33 @@ export function Navbar() {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-body font-medium transition-all duration-fast ${
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-body font-medium transition-all duration-fast relative ${
                   active
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-foreground/60 hover:text-foreground hover:bg-accent"
                 }`}
               >
-                 <item.icon className="h-3.5 w-3.5" />
-                 {lang === "ar" ? t(`nav${item.to.replace('/', '').charAt(0).toUpperCase() + item.to.replace('/', '').slice(1)}`) : t(`nav${item.to.replace('/', '').charAt(0).toUpperCase() + item.to.replace('/', '').slice(1)}`)}
+                <item.icon className="h-3.5 w-3.5" />
+                {lang === "ar" ? item.labelAr : item.label}
+                {item.badge && unreadNotifications > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-4 px-1 text-[10px] min-w-[16px] rounded-full">
+                    {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                  </Badge>
+                )}
               </Link>
             );
           })}
-          <div className="flex items-center gap-0.5 ms-2 border-s ps-2 border-border">
+          <div className="flex items-center gap-1.5 ms-2 border-s ps-2 border-border">
             <LangToggle />
             <ThemeToggle />
+            {isAuthenticated && <UserMenu unreadNotifications={unreadNotifications} />}
           </div>
         </nav>
 
         {/* Mobile nav */}
         <div className="flex items-center gap-1 md:hidden">
           <ThemeToggle />
+          {isAuthenticated && <UserMenu unreadNotifications={unreadNotifications} />}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" aria-label="Open menu" className="h-9 w-9">
@@ -78,14 +87,21 @@ export function Navbar() {
                       key={item.to}
                       to={item.to}
                       onClick={() => setOpen(false)}
-                      className={`flex items-center gap-2.5 px-4 py-3 rounded-lg text-body font-medium transition-all duration-fast ${
+                      className={`flex items-center justify-between gap-2.5 px-4 py-3 rounded-lg text-body font-medium transition-all duration-fast ${
                         active
                           ? "bg-primary text-primary-foreground"
                           : "text-foreground/60 hover:text-foreground hover:bg-accent"
                       }`}
                     >
-                       <item.icon className="h-4 w-4" />
-                       {lang === "ar" ? t(`nav${item.to.replace('/', '').charAt(0).toUpperCase() + item.to.replace('/', '').slice(1)}`) : t(`nav${item.to.replace('/', '').charAt(0).toUpperCase() + item.to.replace('/', '').slice(1)}`)}
+                      <div className="flex items-center gap-2.5">
+                        <item.icon className="h-4 w-4" />
+                        {lang === "ar" ? item.labelAr : item.label}
+                      </div>
+                      {item.badge && unreadNotifications > 0 && (
+                        <Badge variant="destructive" className="h-5 px-1.5 text-[10px] min-w-[20px] rounded-full">
+                          {unreadNotifications > 9 ? "9+" : unreadNotifications}
+                        </Badge>
+                      )}
                     </Link>
                   );
                 })}
