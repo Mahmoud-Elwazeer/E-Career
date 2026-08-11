@@ -10,11 +10,11 @@ import { useTranslation } from "react-i18next";
 const navItems = [
   { to: "/jobs", label: "Jobs", labelAr: "وظائف", icon: Briefcase },
   { to: "/app/applications", label: "Applications", labelAr: "طلباتي", icon: ClipboardList },
-  { to: "/companies", label: "Companies", labelAr: "الشركات", icon: Building2 },
   { to: "/profile", label: "Profile", labelAr: "الملف", icon: User },
   { to: "/app/rashid", label: "Rashid", labelAr: "راشد", icon: MessageSquare },
   { to: "/app/interviews", label: "Interview", labelAr: "مقابلة", icon: Mic },
-  { to: "/about", label: "About", labelAr: "عن USAM", icon: Info },
+  // Note: Companies directory page to be implemented in future phase
+  // { to: "/companies", label: "Companies", labelAr: "الشركات", icon: Building2 },
 ];
 
 export function Navbar() {

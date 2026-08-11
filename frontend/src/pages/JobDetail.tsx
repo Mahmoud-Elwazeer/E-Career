@@ -20,6 +20,7 @@ import { useSavedJobs } from "@/hooks/use-saved-jobs";
 import { useTheme } from "@/hooks/use-theme";
 import { useJobStructuredData, usePageMeta, useBreadcrumbStructuredData } from "@/hooks/use-seo";
 import { AskRashidCard } from "@/components/rashid/AskRashidButton";
+import { DirectApplyBadge, DirectApplyText } from "@/components/DirectApplyBadge";
 import { formatDistanceToNow } from "date-fns";
 import type { Job } from "@/services/jobs";
 
@@ -57,6 +58,12 @@ function JobHeader({ job, isAr, reduced, expired }: any) {
         </div>
       </div>
       <div className="flex flex-wrap gap-2 mt-5">
+        <DirectApplyBadge
+          isVerified={job.apply_url_verified}
+          sourceUrl={job.source_url}
+          sourceName={job.source_name}
+          size="md"
+        />
         <Badge variant="secondary" className="gap-1 rounded-lg px-3 py-1">
           <MapPin className="h-3 w-3" />{job.location}
         </Badge>
@@ -255,6 +262,7 @@ function SidebarCard({ job, expired, saved, isAr, onToggleSave, onApplyClick }: 
     <div className="hidden lg:block sticky top-20">
       <Card className="shadow-lg border-primary/10">
         <CardContent className="p-6 space-y-4">
+          <DirectApplyText isVerified={job.apply_url_verified} className="mb-2" />
           <ApplyNowButton
             href={job.source_url}
             disabled={expired}

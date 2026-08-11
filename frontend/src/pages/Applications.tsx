@@ -21,6 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/use-theme";
 import api from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
+import { ApplicationCardSkeleton, StatCardSkeleton } from "@/components/Skeletons";
+import { EmptyStates } from "@/components/EmptyState";
 
 interface Application {
   id: string;
@@ -89,44 +91,53 @@ export default function Applications() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-caption text-muted-foreground mb-1">
-                    {isAr ? "الإجمالي" : "Total"}
-                  </p>
-                  <p className="text-2xl font-bold">{stats.total}</p>
-                </div>
-                <Briefcase className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
+          {isLoading ? (
+            <>
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+            </>
+          ) : (
+            <>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-caption text-muted-foreground mb-1">
+                        {isAr ? "الإجمالي" : "Total"}
+                      </p>
+                      <p className="text-2xl font-bold">{stats.total}</p>
+                    </div>
+                    <Briefcase className="h-8 w-8 text-primary" />
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-caption text-muted-foreground mb-1">
-                    {isAr ? "قيد الانتظار" : "Pending"}
-                  </p>
-                  <p className="text-2xl font-bold">{stats.pending}</p>
-                </div>
-                <Clock className="h-8 w-8 text-yellow-600" />
-              </div>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-caption text-muted-foreground mb-1">
+                        {isAr ? "قيد الانتظار" : "Pending"}
+                      </p>
+                      <p className="text-2xl font-bold">{stats.pending}</p>
+                    </div>
+                    <Clock className="h-8 w-8 text-yellow-600" />
+                  </div>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-caption text-muted-foreground mb-1">
-                    {isAr ? "قيد المراجعة" : "Reviewing"}
-                  </p>
-                  <p className="text-2xl font-bold">{stats.reviewing}</p>
-                </div>
-                <Mail className="h-8 w-8 text-blue-600" />
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-caption text-muted-foreground mb-1">
+                        {isAr ? "قيد المراجعة" : "Reviewing"}
+                      </p>
+                      <p className="text-2xl font-bold">{stats.reviewing}</p>
+                    </div>
+                    <Mail className="h-8 w-8 text-blue-600" />
               </div>
             </CardContent>
           </Card>
@@ -144,6 +155,22 @@ export default function Applications() {
               </div>
             </CardContent>
           </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-caption text-muted-foreground mb-1">
+                        {isAr ? "مقابلات" : "Interviews"}
+                      </p>
+                      <p className="text-2xl font-bold">{stats.interview}</p>
+                    </div>
+                    <Calendar className="h-8 w-8 text-purple-600" />
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
         {/* Filters */}
@@ -190,27 +217,13 @@ export default function Applications() {
         {/* Applications List */}
         <div className="space-y-4">
           {isLoading ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">
-                  {isAr ? "جاري التحميل..." : "Loading..."}
-                </p>
-              </CardContent>
-            </Card>
+            <>
+              <ApplicationCardSkeleton />
+              <ApplicationCardSkeleton />
+              <ApplicationCardSkeleton />
+            </>
           ) : filteredApplications.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Briefcase className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <p className="text-muted-foreground mb-4">
-                  {isAr ? "لا توجد طلبات" : "No applications found"}
-                </p>
-                <Button asChild>
-                  <a href="/app/jobs">
-                    {isAr ? "تصفح الوظائف" : "Browse Jobs"}
-                  </a>
-                </Button>
-              </CardContent>
-            </Card>
+            <EmptyStates.NoApplications />
           ) : (
             filteredApplications.map((app, idx) => {
               const statusInfo = STATUS_CONFIG[app.status];
