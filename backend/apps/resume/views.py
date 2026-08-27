@@ -234,32 +234,48 @@ def delete_resume(request, resume_id):
 @permission_classes([IsAuthenticated])
 def export_resume(request):
     """
-    Export a resume to a specific format.
+    Export a resume to a specific format. Returns the file directly.
     """
+    from django.http import HttpResponse
+    from .export_service import resume_export_service
+
     try:
         serializer = ResumeExportRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         resume_id = request.data.get('resume_id')
         resume = Resume.objects.get(id=resume_id, user=request.user)
-        
-        # Create export record
-        export = ResumeExport.objects.create(
+        export_format = serializer.validated_data['format']
+
+        if export_format == 'pdf':
+            content = resume_export_service.export_pdf(resume)
+            if content is None:
+                return Response({'success': False, 'error': 'PDF generation failed'}, status=500)
+            response = HttpResponse(content, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="{resume.title}.pdf"'
+            return response
+
+        elif export_format == 'html':
+            content = resume_export_service.export_html(resume)
+            response = HttpResponse(content, content_type='text/html')
+            response['Content-Disposition'] = f'attachment; filename="{resume.title}.html"'
+            return response
+
+        elif export_format == 'json':
+            content = resume_export_service.export_json(resume)
+            response = HttpResponse(content, content_type='application/json')
+            response['Content-Disposition'] = f'attachment; filename="{resume.title}.json"'
+            return response
+
+        # Record the export
+        ResumeExport.objects.create(
             resume=resume,
-            format=serializer.validated_data['format'],
-            status='pending',
+            format=export_format,
+            status='completed',
+            completed_at=timezone.now(),
         )
-        
-        # In production, this would trigger a background task
-        # For now, mark as completed
-        export.status = 'completed'
-        export.completed_at = timezone.now()
-        export.save()
-        
-        return Response({
-            'success': True,
-            'data': ResumeExportSerializer(export).data,
-        })
+
+        return Response({'success': True, 'message': f'Export as {export_format} complete'})
     except Resume.DoesNotExist:
         return Response({
             'success': False,
