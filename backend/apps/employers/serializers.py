@@ -4,7 +4,7 @@ Phase 3A: Employer self-service portal
 """
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import EmployerProfile, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery
+from .models import EmployerProfile, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery, TalentPool, TalentPoolCandidate
 from apps.jobs.serializers import CompanySerializer
 
 User = get_user_model()
@@ -374,9 +374,62 @@ class EmployerRankingRequestSerializer(serializers.Serializer):
 
 class EmployerRankingResponseSerializer(serializers.Serializer):
     """Serializer for ranking response."""
-    
+
     job_id = serializers.IntegerField()
     candidates_ranked = serializers.IntegerField()
     rankings = serializers.ListField(
         child=serializers.DictField()
+    )
+
+
+# ============================================================================
+# Talent Pool Serializers
+# ============================================================================
+
+
+class TalentPoolCandidateSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+
+    class Meta:
+        model = TalentPoolCandidate
+        fields = [
+            'id', 'user', 'user_name', 'user_email',
+            'tags', 'notes', 'rating', 'source', 'added_at',
+        ]
+        read_only_fields = ['id', 'added_at', 'user_name', 'user_email']
+
+
+class TalentPoolSerializer(serializers.ModelSerializer):
+    candidate_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = TalentPool
+        fields = [
+            'id', 'name', 'description', 'is_active',
+            'candidate_count', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'candidate_count', 'created_at', 'updated_at']
+
+
+class TalentPoolDetailSerializer(serializers.ModelSerializer):
+    candidates = TalentPoolCandidateSerializer(many=True, read_only=True)
+    candidate_count = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = TalentPool
+        fields = [
+            'id', 'name', 'description', 'is_active',
+            'candidate_count', 'candidates', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'candidate_count', 'created_at', 'updated_at']
+
+
+class AddCandidateSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
+    tags = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    notes = serializers.CharField(required=False, default='')
+    source = serializers.ChoiceField(
+        choices=['manual', 'search', 'application', 'recommendation'],
+        default='manual'
     )

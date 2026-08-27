@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Sum, Q
 
-from .models import EmployerProfile, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery
+from .models import EmployerProfile, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery, TalentPool, TalentPoolCandidate
 from .serializers import (
     EmployerProfileSerializer,
     EmployerProfileWriteSerializer,
@@ -28,6 +28,10 @@ from .serializers import (
     TalentDiscoveryCreateSerializer,
     EmployerRankingRequestSerializer,
     EmployerRankingResponseSerializer,
+    TalentPoolSerializer,
+    TalentPoolDetailSerializer,
+    TalentPoolCandidateSerializer,
+    AddCandidateSerializer,
 )
 from .permissions import (
     IsEmployer,
@@ -670,6 +674,108 @@ class TalentDiscoveryViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return TalentDiscoveryCreateSerializer
         return TalentDiscoverySerializer
-    
+
     def perform_create(self, serializer):
         serializer.save(employer=self.request.user.employer_profile)
+
+
+class TalentPoolViewSet(viewsets.ModelViewSet):
+    """
+    Talent Pool management for employers.
+
+    list: GET /api/v1/employer/talent-pools/
+    create: POST /api/v1/employer/talent-pools/
+    retrieve: GET /api/v1/employer/talent-pools/{id}/
+    update: PUT /api/v1/employer/talent-pools/{id}/
+    destroy: DELETE /api/v1/employer/talent-pools/{id}/
+    """
+    permission_classes = [IsAuthenticated, IsVerifiedEmployer]
+
+    def get_queryset(self):
+        return TalentPool.objects.filter(
+            employer=self.request.user.employer_profile
+        ).annotate(candidate_count=Count('candidates'))
+
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return TalentPoolDetailSerializer
+        return TalentPoolSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(employer=self.request.user.employer_profile)
+
+    @action(detail=True, methods=['post'])
+    def add_candidate(self, request, pk=None):
+        """Add a candidate to this pool."""
+        pool = self.get_object()
+        serializer = AddCandidateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = get_object_or_404(User, id=serializer.validated_data['user_id'])
+
+        candidate, created = TalentPoolCandidate.objects.get_or_create(
+            pool=pool,
+            user=user,
+            defaults={
+                'tags': serializer.validated_data.get('tags', []),
+                'notes': serializer.validated_data.get('notes', ''),
+                'source': serializer.validated_data.get('source', 'manual'),
+            }
+        )
+
+        if not created:
+            return Response(
+                {'error': 'Candidate already in this pool'},
+                status=status.HTTP_409_CONFLICT
+            )
+
+        return Response(
+            TalentPoolCandidateSerializer(candidate).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    @action(detail=True, methods=['delete'], url_path='remove-candidate/(?P<user_id>[0-9]+)')
+    def remove_candidate(self, request, pk=None, user_id=None):
+        """Remove a candidate from this pool."""
+        pool = self.get_object()
+        deleted, _ = TalentPoolCandidate.objects.filter(pool=pool, user_id=user_id).delete()
+        if deleted == 0:
+            return Response({'error': 'Candidate not in pool'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['patch'], url_path='update-candidate/(?P<user_id>[0-9]+)')
+    def update_candidate(self, request, pk=None, user_id=None):
+        """Update candidate notes/tags/rating in this pool."""
+        pool = self.get_object()
+        candidate = get_object_or_404(TalentPoolCandidate, pool=pool, user_id=user_id)
+
+        if 'tags' in request.data:
+            candidate.tags = request.data['tags']
+        if 'notes' in request.data:
+            candidate.notes = request.data['notes']
+        if 'rating' in request.data:
+            candidate.rating = request.data['rating']
+        candidate.save()
+
+        return Response(TalentPoolCandidateSerializer(candidate).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsVerifiedEmployer])
+def ats_gap_analysis(request, posting_id):
+    """
+    Analyze a job posting for ATS quality gaps.
+
+    GET /api/v1/employer/postings/{id}/ats-analysis/
+    """
+    from .ats_gap_service import ats_gap_analyzer
+
+    posting = get_object_or_404(
+        JobPosting,
+        id=posting_id,
+        employer=request.user.employer_profile
+    )
+    analysis = ats_gap_analyzer.analyze(posting)
+    return Response({'success': True, 'data': analysis})

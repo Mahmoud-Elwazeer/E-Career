@@ -138,18 +138,27 @@ class JobPosting(UUIDModel):
     expires_at = models.DateTimeField(null=True, blank=True)
     rejected_reason = models.TextField(blank=True)
     
+    # Dynamic application form fields (JSON schema)
+    # Each field: {id, type, label, required, options?, placeholder?, validation?}
+    # Types: text, textarea, select, multiselect, yes_no, number, date, file, url
+    custom_form_fields = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Custom application form fields as JSON schema"
+    )
+
     # Analytics
     views_count = models.IntegerField(default=0)
     clicks_count = models.IntegerField(default=0)
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'Job Posting'
         verbose_name_plural = 'Job Postings'
-    
+
     def __str__(self):
         return f"{self.title} @ {self.company.name} ({self.status})"
 
@@ -189,13 +198,20 @@ class JobApplication(models.Model):
             ('rejected', 'Rejected'),
         ]
     )
-    
+
+    # Responses to custom form fields (keyed by field id)
+    custom_form_responses = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Candidate responses to custom application form fields"
+    )
+
     class Meta:
         ordering = ['-applied_at']
         unique_together = ('user', 'job')
         verbose_name = 'Job Application'
         verbose_name_plural = 'Job Applications'
-    
+
     def __str__(self):
         return f"{self.user.email} → {self.job.title}"
 
@@ -383,3 +399,67 @@ class TalentDiscovery(models.Model):
     
     def __str__(self):
         return f"{self.employer} discovered {self.user.email}"
+
+
+class TalentPool(UUIDModel):
+    """
+    A named collection of candidates curated by an employer.
+    Used for building hiring pipelines across multiple roles.
+    """
+    employer = models.ForeignKey(
+        EmployerProfile,
+        on_delete=models.CASCADE,
+        related_name='talent_pools'
+    )
+    name = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ('employer', 'name')
+
+    def __str__(self):
+        return f"{self.name} ({self.employer})"
+
+    @property
+    def candidate_count(self):
+        return self.candidates.count()
+
+
+class TalentPoolCandidate(models.Model):
+    """A candidate in a talent pool with notes and tags."""
+    pool = models.ForeignKey(
+        TalentPool,
+        on_delete=models.CASCADE,
+        related_name='candidates'
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='talent_pool_memberships'
+    )
+    tags = models.JSONField(default=list, help_text="Employer-defined tags")
+    notes = models.TextField(blank=True)
+    rating = models.IntegerField(
+        null=True, blank=True,
+        help_text="Employer rating 1-5"
+    )
+    source = models.CharField(
+        max_length=30,
+        choices=[
+            ('manual', 'Manual Add'),
+            ('search', 'From Search'),
+            ('application', 'From Application'),
+            ('recommendation', 'AI Recommendation'),
+        ],
+        default='manual'
+    )
+    added_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-added_at']
+        unique_together = ('pool', 'user')
+
+    def __str__(self):
+        return f"{self.user.email} in {self.pool.name}"

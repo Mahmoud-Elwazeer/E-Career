@@ -12,7 +12,9 @@ from .views import (
     KnockoutQuestionViewSet,
     CandidateRankingViewSet,
     TalentDiscoveryViewSet,
+    TalentPoolViewSet,
     company_search,
+    ats_gap_analysis,
 )
 
 # Create router
@@ -23,6 +25,7 @@ router.register(r'applications', JobApplicationViewSet, basename='employer-appli
 router.register(r'knockout-questions', KnockoutQuestionViewSet, basename='employer-knockout-questions')
 router.register(r'rankings', CandidateRankingViewSet, basename='employer-rankings')
 router.register(r'talent-discoveries', TalentDiscoveryViewSet, basename='employer-talent-discoveries')
+router.register(r'talent-pools', TalentPoolViewSet, basename='employer-talent-pools')
 
 urlpatterns = [
     # Registration
@@ -31,6 +34,9 @@ urlpatterns = [
     # Company search (for registration)
     path('companies/search/', company_search, name='company-search'),
     
+    # ATS gap analysis
+    path('postings/<uuid:posting_id>/ats-analysis/', ats_gap_analysis, name='ats-gap-analysis'),
+
     # Router URLs
     path('', include(router.urls)),
 ]
