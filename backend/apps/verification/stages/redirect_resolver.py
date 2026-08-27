@@ -24,7 +24,7 @@ class RedirectResult:
 
 
 class RedirectResolverStage:
-    """Stage 2: Follow redirects to find final destination URL."""
+    """Stage 2: Follow redirects to find final destination URL (SSRF-safe)."""
 
     MAX_REDIRECTS = 10
     TIMEOUT = 15
@@ -33,53 +33,43 @@ class RedirectResolverStage:
         if not url:
             return RedirectResult(final_url="", error="empty_url")
 
-        chain = []
-        current_url = url
+        from apps.core.safe_fetch import safe_fetch, SSRFBlockedError
 
         try:
-            with httpx.Client(
-                follow_redirects=False,
+            result = safe_fetch(
+                url,
+                method="HEAD",
                 timeout=self.TIMEOUT,
-                verify=False,
-            ) as client:
-                for i in range(self.MAX_REDIRECTS):
-                    try:
-                        response = client.head(current_url, follow_redirects=False)
-                    except httpx.RequestError:
-                        response = client.get(current_url, follow_redirects=False)
+                allow_http=True,
+                max_redirects=self.MAX_REDIRECTS,
+            )
 
-                    chain.append({
-                        "url": current_url,
-                        "status": response.status_code,
-                    })
+            final_url = self._strip_tracking_params(result.final_url)
 
-                    if response.status_code in (301, 302, 303, 307, 308):
-                        location = response.headers.get("location", "")
-                        if not location:
-                            break
-                        if location.startswith("/"):
-                            parsed = urlparse(current_url)
-                            location = f"{parsed.scheme}://{parsed.netloc}{location}"
-                        current_url = location
-                    else:
-                        break
+            return RedirectResult(
+                final_url=final_url,
+                chain=result.redirect_chain,
+                redirect_count=max(0, len(result.redirect_chain) - 1),
+                error=result.error,
+            )
+
+        except SSRFBlockedError as e:
+            logger.warning("redirect_resolver_ssrf_blocked", url=url, reason=e.reason)
+            return RedirectResult(
+                final_url="",
+                chain=[],
+                redirect_count=0,
+                error=f"SSRF blocked: {e.reason}",
+            )
 
         except Exception as e:
             logger.warning("redirect_resolver_error", url=url, error=str(e))
             return RedirectResult(
-                final_url=current_url,
-                chain=chain,
-                redirect_count=len(chain) - 1,
+                final_url=url,
+                chain=[],
+                redirect_count=0,
                 error=str(e),
             )
-
-        final_url = self._strip_tracking_params(current_url)
-
-        return RedirectResult(
-            final_url=final_url,
-            chain=chain,
-            redirect_count=max(0, len(chain) - 1),
-        )
 
     def _strip_tracking_params(self, url: str) -> str:
         parsed = urlparse(url)
