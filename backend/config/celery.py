@@ -72,4 +72,23 @@ app.conf.beat_schedule = {
         'task': 'apps.core.tasks.cleanup_old_gdpr_exports',
         'schedule': crontab(hour=4, minute=0),  # 4 AM daily
     },
+    # Intelligence Layer tasks
+    'detect-skill-trends': {
+        'task': 'intelligence.detect_skill_trends',
+        'schedule': crontab(hour=5, minute=0, day_of_week=1),  # Monday 5 AM weekly
+    },
+    'run-topic-modeling': {
+        'task': 'intelligence.run_topic_modeling',
+        'schedule': crontab(hour=6, minute=0, day_of_week=1),  # Monday 6 AM weekly
+    },
+    # Career page change detection
+    'process-career-page-changes': {
+        'task': 'apps.scraper.tasks.process_career_page_changes',
+        'schedule': crontab(minute=0, hour='*/1'),  # Every hour
+    },
+    # ESCO skill embedding computation (weekly)
+    'compute-esco-embeddings': {
+        'task': 'apps.skills.tasks.compute_esco_embeddings',
+        'schedule': crontab(hour=4, minute=0, day_of_week=0),  # Sunday 4 AM
+    },
 }

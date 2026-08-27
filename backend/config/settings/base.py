@@ -317,6 +317,14 @@ AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
 AWS_DEFAULT_REGION = config('AWS_DEFAULT_REGION', default='us-east-1')
 BEDROCK_MODEL_ID = config('BEDROCK_MODEL_ID', default='us.anthropic.claude-3-5-haiku-20241022-v1:0')
 
+# ── Intelligence Layer Configuration ─────────────────────────────────────────
+AI_USER_DAILY_TOKEN_LIMIT = config('AI_USER_DAILY_TOKEN_LIMIT', default=50000, cast=int)
+AI_MODEL_OVERRIDES = {}  # Override model routing per task type
+
+# Change Detection (career page monitoring)
+CHANGE_DETECTION_URL = config('CHANGE_DETECTION_URL', default='http://localhost:5000')
+CHANGE_DETECTION_API_KEY = config('CHANGE_DETECTION_API_KEY', default='')
+
 # ── AWS Billing Alerts Configuration ───────────────────────────────────────────
 # CloudWatch billing alarm thresholds (in USD)
 AWS_BILLING_ALERT_THRESHOLD = config('AWS_BILLING_ALERT_THRESHOLD', default=100, cast=float)

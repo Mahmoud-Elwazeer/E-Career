@@ -39,6 +39,44 @@ django-encrypted-model-fields==0.6.5
 # AWS Bedrock
 boto3==1.34.0
 
+# AI Agent Framework
+pydantic-ai-slim[bedrock]==0.2.35
+mcp==1.9.0
+
+# Document Processing
+docling==2.31.0
+pdfplumber==0.11.0
+python-docx==1.1.0
+
+# Email Verification
+email-validator==2.3.0
+disposable-email-domains==0.0.103
+
+# Skills Intelligence
+bertopic==0.16.4
+
+# Scraping Enhancement
+scrapling==0.4.15
+
+# Structured Logging
+structlog==24.1.0
+
+# ESCO Embedding Matching (Phase 2)
+sentence-transformers==3.0.1
+numpy>=1.24.0
+
+# Web Extraction (Phase 3)
+crawl4ai==0.3.7
+
+# Research Engine (Phase 3)
+gpt-researcher==0.9.1
+
+# Workflow Orchestration (Phase 3 - optional)
+prefect==3.0.0
+
+# Change Detection Client (Phase 2)
+# changedetection.io is self-hosted Docker, no pip package needed
+
 # Admin Dashboard
 django-unfold==0.40.0
 django-import-export==4.1.1

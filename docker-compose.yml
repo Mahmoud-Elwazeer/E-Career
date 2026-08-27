@@ -145,6 +145,21 @@ services:
       - ecareer_network
     restart: unless-stopped
 
+  # Change Detection (career page monitoring)
+  changedetection:
+    image: ghcr.io/dgtlmoon/changedetection.io:latest
+    container_name: ecareer_changedetection
+    volumes:
+      - changedetection_data:/datastore
+    ports:
+      - "5000:5000"
+    environment:
+      - BASE_URL=http://localhost:5000
+      - HIDE_REFERER=true
+    networks:
+      - ecareer_network
+    restart: unless-stopped
+
 volumes:
   postgres_data:
     name: ecareer_postgres_data
@@ -156,6 +171,8 @@ volumes:
     name: ecareer_media
   static_files:
     name: ecareer_static
+  changedetection_data:
+    name: ecareer_changedetection_data
 
 networks:
   ecareer_network:

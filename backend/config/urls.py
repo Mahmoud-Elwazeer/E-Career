@@ -59,6 +59,8 @@ urlpatterns = [
           path("monitoring/", include("apps.monitoring.urls")),
          # Core (Rule Engine, Feature Flags, GitHub) - Week 13
          path("core/", include("apps.core.urls")),
+         # Intelligence Layer (Phase 6 - Unified AI)
+         path("intelligence/", include("apps.intelligence.urls")),
      ])),
 
     # Email tracking (Phase 2D)

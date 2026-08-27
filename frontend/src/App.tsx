@@ -29,6 +29,7 @@ import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import CareerDashboard from "./pages/CareerDashboard";
 import Applications from "./pages/Applications";
+import IntelligenceDashboard from "./pages/IntelligenceDashboard";
 import { EmployerDashboard, EmployerRegister, JobPostingForm } from "./pages/employer";
 import { RashidWidget } from "./components/rashid/RashidWidget";
 import { RashidOnboarding } from "./components/rashid/RashidOnboarding";
@@ -67,6 +68,7 @@ function AnimatedRoutes() {
         <Route path="/app/settings" element={<RequireAuth><Settings /></RequireAuth>} />
         <Route path="/app/applications" element={<RequireAuth><Applications /></RequireAuth>} />
         <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
+        <Route path="/admin/intelligence" element={<RequireAuth><IntelligenceDashboard /></RequireAuth>} />
         <Route path="/api-docs" element={<ApiDocs />} />
         
         {/* Employer routes */}
