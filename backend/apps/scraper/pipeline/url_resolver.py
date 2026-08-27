@@ -88,33 +88,11 @@ def is_direct_company_url(url: str) -> bool:
 
 def verify_url_live(url: str, timeout: int = 10) -> Tuple[bool, int]:
     """
-    Checks if URL is accessible.
+    Checks if URL is accessible (SSRF-safe).
     Returns (is_live, status_code).
     """
-    try:
-        response = requests.head(
-            url,
-            timeout=timeout,
-            allow_redirects=True,
-            headers={
-                'User-Agent': 'Mozilla/5.0 (compatible; JobsBot/1.0; +https://jobs.usamif.com)'
-            }
-        )
-        return response.status_code < 400, response.status_code
-    except requests.RequestException:
-        # Try GET if HEAD fails
-        try:
-            response = requests.get(
-                url,
-                timeout=timeout,
-                allow_redirects=True,
-                headers={
-                    'User-Agent': 'Mozilla/5.0 (compatible; JobsBot/1.0; +https://jobs.usamif.com)'
-                }
-            )
-            return response.status_code < 400, response.status_code
-        except Exception:
-            return False, 0
+    from apps.core.safe_fetch import verify_url_is_live
+    return verify_url_is_live(url, timeout=timeout, allow_http=True)
 
 
 def extract_domain(url: str) -> str:

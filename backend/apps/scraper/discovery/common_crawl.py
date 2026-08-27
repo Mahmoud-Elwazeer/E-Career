@@ -93,26 +93,33 @@ class CommonCrawlDiscovery:
     
     def download_warc_file(self, warc_url: str, output_path: str) -> bool:
         """
-        Download a WARC file from Common Crawl.
-        
-        Args:
-            warc_url: URL of the WARC file
-            output_path: Path to save the downloaded file
-            
-        Returns:
-            True if successful, False otherwise
+        Download a WARC file from Common Crawl (SSRF-safe).
+        Only allows downloads from commoncrawl.s3.amazonaws.com.
         """
+        from urllib.parse import urlparse
+
+        parsed = urlparse(warc_url)
+        allowed_hosts = {"commoncrawl.s3.amazonaws.com", "data.commoncrawl.org"}
+        if parsed.hostname not in allowed_hosts:
+            logger.error(f"Blocked WARC download from non-CC host: {parsed.hostname}")
+            return False
+
+        from apps.core.safe_fetch import safe_fetch, SSRFBlockedError
         try:
-            response = requests.get(warc_url, timeout=120, stream=True)
-            response.raise_for_status()
-            
-            with open(output_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            
-            logger.info(f"Downloaded WARC file: {output_path}")
-            return True
-            
+            result = safe_fetch(
+                warc_url, method="GET", timeout=120,
+                allow_http=True, read_body=True,
+                max_size=100 * 1024 * 1024,
+            )
+            if result.status_code == 200 and result.content:
+                with open(output_path, 'wb') as f:
+                    f.write(result.content)
+                logger.info(f"Downloaded WARC file: {output_path}")
+                return True
+            return False
+        except SSRFBlockedError as e:
+            logger.error(f"SSRF blocked WARC download: {e.reason}")
+            return False
         except Exception as e:
             logger.error(f"Failed to download WARC file: {e}")
             return False
@@ -293,23 +300,15 @@ class CommonCrawlDiscovery:
     
     def validate_company(self, company: Dict) -> bool:
         """
-        Validate that a company has an active career page.
-        
-        Args:
-            company: Company dictionary
-            
-        Returns:
-            True if valid, False otherwise
+        Validate that a company has an active career page (SSRF-safe).
         """
         career_url = company.get('career_page_url', '')
         if not career_url:
             return False
-        
-        try:
-            response = requests.head(career_url, timeout=10, allow_redirects=True)
-            return response.status_code == 200
-        except Exception:
-            return False
+
+        from apps.core.safe_fetch import verify_url_is_live
+        is_live, _ = verify_url_is_live(career_url, timeout=10, allow_http=True)
+        return is_live
     
     def save_to_database(self, companies: List[Dict]) -> Dict[str, int]:
         """

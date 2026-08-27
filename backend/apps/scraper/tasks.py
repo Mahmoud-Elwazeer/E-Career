@@ -380,3 +380,58 @@ def scrape_single_source(source_id: str):
         'found': len(jobs),
         'added': added,
     }
+
+
+@shared_task
+def scrape_single_url(url: str):
+    """
+    Scrape jobs from a single URL using the adaptive scraper.
+    Triggered by changedetection.io when a career page changes.
+    """
+    try:
+        from apps.intelligence.adaptive_scraper import get_adaptive_scraper
+
+        scraper = get_adaptive_scraper()
+        jobs = scraper.scrape_career_page(url)
+
+        if not jobs:
+            return {'url': url, 'found': 0, 'added': 0}
+
+        source = Source.objects.filter(url__icontains=url[:100]).first()
+        if not source:
+            return {'url': url, 'found': len(jobs), 'added': 0, 'note': 'No matching source'}
+
+        added = process_and_store_jobs(jobs, source)
+        return {'url': url, 'found': len(jobs), 'added': added}
+
+    except Exception as e:
+        return {'url': url, 'error': str(e)}
+
+
+@shared_task
+def process_career_page_changes():
+    """
+    Process all detected career page changes from changedetection.io.
+    Scheduled to run every hour.
+    """
+    from .change_detection import get_career_page_monitor
+
+    monitor = get_career_page_monitor()
+    if not monitor.is_available:
+        return {'status': 'skipped', 'reason': 'changedetection.io not available'}
+
+    result = monitor.process_changes()
+    return result
+
+
+@shared_task
+def register_career_pages_for_monitoring():
+    """Register all active sources for career page monitoring."""
+    from .change_detection import get_career_page_monitor
+
+    monitor = get_career_page_monitor()
+    if not monitor.is_available:
+        return {'status': 'skipped', 'reason': 'changedetection.io not available'}
+
+    registered = monitor.register_source_pages()
+    return {'registered': registered}
