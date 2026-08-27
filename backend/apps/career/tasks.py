@@ -158,3 +158,20 @@ def batch_recalculate_talent_scores() -> dict:
         "success": success_count,
         "failed": fail_count,
     }
+
+
+@shared_task(bind=True, max_retries=1)
+def train_recommendation_model(self) -> dict:
+    """
+    Train the LightFM collaborative filtering model.
+    Scheduled daily via Celery Beat.
+    """
+    from apps.career.recommendation_engine import recommendation_engine
+
+    try:
+        recommendation_engine.train_model()
+        logger.info("recommendation_model_trained")
+        return {"status": "success", "trained_at": str(timezone.now())}
+    except Exception as exc:
+        logger.error("recommendation_model_training_failed", error=str(exc))
+        raise self.retry(exc=exc, countdown=300)

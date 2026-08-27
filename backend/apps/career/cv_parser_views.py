@@ -56,19 +56,14 @@ def cv_upload(request):
         }, status=status.HTTP_400_BAD_REQUEST)
     
     cv_file = request.FILES['cv_file']
-    
-    # Validate file extension
-    if not validate_file_extension(cv_file.name):
+
+    # Validate file (extension + size + magic bytes)
+    from apps.core.upload_security import upload_validator
+    is_valid, error_msg = upload_validator.validate(cv_file)
+    if not is_valid:
         return Response({
             'success': False,
-            'error': f'Invalid file type. Allowed types: {", ".join(ALLOWED_EXTENSIONS)}',
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Validate file size
-    if not validate_file_size(cv_file.size):
-        return Response({
-            'success': False,
-            'error': f'File too large. Maximum size: {MAX_FILE_SIZE / (1024*1024)}MB',
+            'error': error_msg,
         }, status=status.HTTP_400_BAD_REQUEST)
     
     try:

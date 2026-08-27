@@ -11,7 +11,6 @@ from django.conf import settings
 
 from .plugins.vector_plugin import VectorPlugin, VectorSearchQuery, VectorSearchResponse
 from .plugins.embedding_plugin import EmbeddingPlugin, EmbeddingRequest, EmbeddingResponse
-from .plugins.qdrant_plugin import QdrantVectorPlugin
 from .plugins.pgvector_plugin import PgVectorPlugin
 from .plugins.cohere_embed_plugin import CohereEmbedPlugin
 
@@ -35,22 +34,10 @@ class VectorService:
 
     @property
     def vector_plugin(self) -> VectorPlugin:
-        """Get vector plugin with automatic fallback."""
+        """Get vector plugin — pgvector is the canonical store."""
         if self._vector_plugin is None:
-            # Try Qdrant first
-            try:
-                plugin = QdrantVectorPlugin()
-                if plugin.health_check()["healthy"]:
-                    self._vector_plugin = plugin
-                    logger.info("vector_plugin_selected", plugin="qdrant")
-                else:
-                    raise Exception("Qdrant unhealthy")
-            except Exception as e:
-                logger.warning("qdrant_unavailable", error=str(e))
-                # Fallback to pgvector
-                self._vector_plugin = PgVectorPlugin()
-                logger.info("vector_plugin_selected", plugin="pgvector")
-
+            self._vector_plugin = PgVectorPlugin()
+            logger.info("vector_plugin_selected", plugin="pgvector")
         return self._vector_plugin
 
     @property
