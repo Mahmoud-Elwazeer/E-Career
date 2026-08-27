@@ -323,8 +323,10 @@ class CVParser:
         if file_ext not in self.SUPPORTED_FORMATS:
             raise ValueError(f"Unsupported file format. Supported: {', '.join(self.SUPPORTED_FORMATS)}")
         
-        # Save to temporary file
-        temp_path = f"/tmp/cv_upload_{file.name}"
+        # Save to temporary file with randomized name (prevents path traversal/collision)
+        import uuid
+        safe_ext = file_ext  # already validated against SUPPORTED_FORMATS
+        temp_path = f"/tmp/cv_upload_{uuid.uuid4().hex}{safe_ext}"
         try:
             with open(temp_path, 'wb') as f:
                 for chunk in file.chunks():

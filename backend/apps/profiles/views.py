@@ -1,5 +1,7 @@
 """
-Profile views for API endpoints
+Profile views for API endpoints.
+
+Uses CareerProfile as the canonical model (UserProfile is deprecated).
 """
 
 import logging
@@ -9,7 +11,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
-from apps.users.models import UserProfile, JobMatchScore
+from apps.career.models import CareerProfile
+from apps.users.models import JobMatchScore
 from apps.jobs.models import Job
 from apps.jobs.serializers import JobListSerializer
 from .serializers import (
@@ -27,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class ProfileViewSet(viewsets.ModelViewSet):
     """
-    User profile management
+    User profile management (backed by CareerProfile).
 
     GET /api/profile/ - Get current user profile
     PUT /api/profile/ - Update profile
@@ -43,21 +46,18 @@ class ProfileViewSet(viewsets.ModelViewSet):
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_queryset(self):
-        return UserProfile.objects.filter(user=self.request.user)
+        return CareerProfile.objects.filter(user=self.request.user)
 
     def get_object(self):
-        """Get or create profile for current user"""
-        profile, created = UserProfile.objects.get_or_create(user=self.request.user)
+        profile, created = CareerProfile.objects.get_or_create(user=self.request.user)
         return profile
 
     def list(self, request, *args, **kwargs):
-        """Get current user's profile"""
         profile = self.get_object()
         serializer = self.get_serializer(profile)
         return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
-        """Update profile"""
         profile = self.get_object()
         serializer = UserProfileUpdateSerializer(
             profile,
@@ -65,15 +65,14 @@ class ProfileViewSet(viewsets.ModelViewSet):
             partial=kwargs.get('partial', False)
         )
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        # Emit USER_PROFILE_UPDATED event
+        serializer.update(profile, serializer.validated_data)
         try:
             emit(
                 event_type=USER_PROFILE_UPDATED,
                 category="user",
                 user=request.user,
                 target_type="user",
-                target_id=str(profile.id),
+                target_id=str(profile.uuid),
                 data={"source": "profile_view", "fields": list(request.data.keys())},
                 request=request,
             )
@@ -83,9 +82,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser])
     def upload_cv(self, request):
-        """Upload and parse CV"""
         serializer = CVUploadSerializer(data=request.data)
-
         if serializer.is_valid():
             try:
                 profile = serializer.save(user=request.user)
@@ -100,15 +97,11 @@ class ProfileViewSet(viewsets.ModelViewSet):
                     {'error': str(e)},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
     def completion(self, request):
-        """Get profile completion status"""
         profile = self.get_object()
-
-        # Calculate completion by section
         sections = {
             'cv': {
                 'complete': bool(profile.cv_file),
@@ -132,8 +125,8 @@ class ProfileViewSet(viewsets.ModelViewSet):
             },
             'preferences': {
                 'complete': bool(
-                    (profile.desired_roles and len(profile.desired_roles) > 0) or
-                    (profile.desired_locations and len(profile.desired_locations) > 0)
+                    (profile.target_roles and len(profile.target_roles) > 0) or
+                    (profile.target_locations and len(profile.target_locations) > 0)
                 ),
                 'weight': 10,
                 'label': 'Job Preferences'
@@ -149,11 +142,9 @@ class ProfileViewSet(viewsets.ModelViewSet):
                 'label': 'Languages'
             }
         }
-
         total_score = sum(
             section['weight'] for section in sections.values() if section['complete']
         )
-
         return Response({
             'total_score': min(total_score, 100),
             'is_complete': total_score >= 60,
@@ -162,21 +153,18 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def skills(self, request):
-        """Update skills manually"""
         profile = self.get_object()
         serializer = SkillsUpdateSerializer(data=request.data)
-
         if serializer.is_valid():
             profile.skills = serializer.validated_data['skills']
             profile.save(update_fields=['skills', 'updated_at'])
-            # Emit USER_PROFILE_UPDATED event
             try:
                 emit(
                     event_type=USER_PROFILE_UPDATED,
                     category="user",
                     user=request.user,
                     target_type="user",
-                    target_id=str(profile.id),
+                    target_id=str(profile.uuid),
                     data={"source": "profile_skills_view", "fields": ["skills"]},
                     request=request,
                 )
@@ -186,18 +174,14 @@ class ProfileViewSet(viewsets.ModelViewSet):
                 'status': 'success',
                 'skills': profile.skills
             })
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
     def preferences(self, request):
-        """Update job preferences"""
         profile = self.get_object()
         serializer = PreferencesUpdateSerializer(data=request.data)
-
         if serializer.is_valid():
             data = serializer.validated_data
-
             if 'desired_roles' in data:
                 profile.desired_roles = data['desired_roles'] or []
             if 'desired_locations' in data:
@@ -210,64 +194,50 @@ class ProfileViewSet(viewsets.ModelViewSet):
                 profile.min_salary = data.get('min_salary')
             if 'salary_currency' in data:
                 profile.salary_currency = data.get('salary_currency', 'EGP')
-
             profile.save()
-            # Emit USER_PROFILE_UPDATED event
             try:
                 emit(
                     event_type=USER_PROFILE_UPDATED,
                     category="user",
                     user=request.user,
                     target_type="user",
-                    target_id=str(profile.id),
+                    target_id=str(profile.uuid),
                     data={"source": "profile_preferences_view", "fields": list(data.keys())},
                     request=request,
                 )
             except Exception:
                 pass
             return Response(UserProfileSerializer(profile).data)
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
     def matches(self, request):
-        """Get job matches for profile"""
         profile = self.get_object()
-
-        # Get limit from query params
         limit = int(request.query_params.get('limit', 20))
         min_score = int(request.query_params.get('min_score', 50))
-
-        # Get existing match scores
         matches = JobMatchScore.objects.filter(
             user=request.user,
             score__gte=min_score
         ).select_related('job', 'job__company').order_by('-score')[:limit]
-
         serializer = JobMatchScoreSerializer(matches, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
     def calculate_matches(self, request):
-        """Calculate match scores for all active jobs"""
         profile = self.get_object()
-
         if not profile.skills:
             return Response({
                 'error': 'Profile must have skills to calculate matches'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        # Get active jobs
         jobs = Job.objects.filter(is_active=True).select_related('company')
-
-        matching_service = MatchingService()
+        matching_svc = MatchingService()
         matches_created = 0
 
-        for job in jobs[:100]:  # Limit to 100 jobs for performance
+        for job in jobs[:100]:
             try:
-                score = matching_service.calculate_match_score(profile, job)
-                breakdown = matching_service.get_match_breakdown(profile, job)
-
+                score = matching_svc.calculate_match_score(profile, job)
+                breakdown = matching_svc.get_match_breakdown(profile, job)
                 JobMatchScore.objects.update_or_create(
                     user=request.user,
                     job=job,
@@ -287,8 +257,6 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
 
 class JobMatchViewSet(viewsets.ReadOnlyModelViewSet):
-    """View job match scores"""
-
     serializer_class = JobMatchScoreSerializer
     permission_classes = [IsAuthenticated]
 
@@ -298,89 +266,55 @@ class JobMatchViewSet(viewsets.ReadOnlyModelViewSet):
         ).select_related('job', 'job__company').order_by('-score')
 
     def retrieve(self, request, *args, **kwargs):
-        """Get detailed match for a specific job"""
         match = self.get_object()
-
-        # Get full breakdown
-        profile = request.user.profile
-        matching_service = MatchingService()
-        breakdown = matching_service.get_match_breakdown(profile, match.job)
-
+        profile, _ = CareerProfile.objects.get_or_create(user=request.user)
+        matching_svc = MatchingService()
+        breakdown = matching_svc.get_match_breakdown(profile, match.job)
         return Response({
             'match': JobMatchScoreSerializer(match).data,
             'breakdown': breakdown
         })
 
 
-# ============================================================
-# RECOMMENDATION API ENDPOINTS
-# ============================================================
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_job_recommendations(request):
-    """
-    Get personalized job recommendations
-    
-    GET /api/recommendations/?limit=20&min_score=60
-    
-    Returns:
-        {
-            'count': int,
-            'recommendations': [
-                {
-                    'job': JobSerializer data,
-                    'match_score': float,
-                    'reasoning': str
-                }
-            ]
-        }
-    """
+    """GET /api/recommendations/?limit=20&min_score=60"""
     try:
-        profile = request.user.userprofile
-        
-        # Check if profile is complete enough
+        profile, _ = CareerProfile.objects.get_or_create(user=request.user)
+
         if not profile.skills or len(profile.skills) < 3:
             return Response({
                 'error': 'Please add at least 3 skills to your profile to get recommendations',
                 'completion_url': '/app/profile'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Get parameters
+
         limit = int(request.query_params.get('limit', 20))
         min_score = float(request.query_params.get('min_score', 60))
-        
-        # Get recommendations
+
         recommendations = matching_service.get_recommended_jobs(
             profile=profile,
             limit=limit,
             min_score=min_score
         )
-        
-        # Serialize
+
         results = []
         for rec in recommendations:
             job_data = JobListSerializer(
                 rec['job'],
                 context={'request': request}
             ).data
-            
             results.append({
                 'job': job_data,
                 'match_score': rec['score'],
                 'reasoning': rec['reasoning']
             })
-        
+
         return Response({
             'count': len(results),
             'recommendations': results
         })
-    
-    except UserProfile.DoesNotExist:
-        return Response({
-            'error': 'Please create a profile first',
-            'profile_url': '/app/profile'
-        }, status=status.HTTP_404_NOT_FOUND)
+
     except Exception as e:
         logger.error(f"Error getting recommendations: {e}")
         return Response({
@@ -391,33 +325,14 @@ def get_job_recommendations(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_job_match_breakdown(request, job_id):
-    """
-    Get detailed match breakdown for a specific job
-    
-    GET /api/jobs/{job_id}/match-breakdown/
-    
-    Returns:
-        {
-            'overall_score': float,
-            'breakdown': {...},
-            'strengths': [...],
-            'gaps': [...],
-            'recommendation': str,
-            'improvement_tips': [...]
-        }
-    """
+    """GET /api/jobs/{job_id}/match-breakdown/"""
     try:
-        profile = request.user.userprofile
+        profile, _ = CareerProfile.objects.get_or_create(user=request.user)
         job = Job.objects.get(id=job_id)
-        
         breakdown = matching_service.get_match_breakdown(profile, job)
-        
         return Response(breakdown)
-    
     except Job.DoesNotExist:
         return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
-    except UserProfile.DoesNotExist:
-        return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
         logger.error(f"Error getting match breakdown: {e}")
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -426,33 +341,19 @@ def get_job_match_breakdown(request, job_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_similar_jobs(request, job_id):
-    """
-    Get jobs similar to a specific job
-    
-    GET /api/jobs/{job_id}/similar/
-    
-    Returns:
-        {
-            'count': int,
-            'jobs': [JobSerializer data]
-        }
-    """
+    """GET /api/jobs/{job_id}/similar/"""
     try:
         job = Job.objects.get(id=job_id)
-        
         similar_jobs = matching_service.get_similar_jobs(job, limit=5)
-        
         jobs_data = JobListSerializer(
             similar_jobs,
             many=True,
             context={'request': request}
         ).data
-        
         return Response({
             'count': len(jobs_data),
             'jobs': jobs_data
         })
-    
     except Job.DoesNotExist:
         return Response({'error': 'Job not found'}, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:

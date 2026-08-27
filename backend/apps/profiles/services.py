@@ -7,7 +7,7 @@ from typing import Dict, List, Optional
 from django.db.models import Q
 
 from apps.jobs.models import Job
-from apps.users.models import UserProfile
+from apps.career.models import CareerProfile as UserProfile
 
 logger = logging.getLogger(__name__)
 

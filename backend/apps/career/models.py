@@ -106,6 +106,33 @@ class CareerProfile(UUIDModel):
         help_text="User-provided LinkedIn export data"
     )
     
+    # Extracted CV fields (flat, for quick access and API responses)
+    skills = models.JSONField(
+        default=list,
+        help_text="Flat skill name list extracted from CV"
+    )
+    education = models.JSONField(
+        default=list,
+        help_text="Education entries [{degree, institution, year}]"
+    )
+    languages = models.JSONField(
+        default=list,
+        help_text="Languages spoken [{language, level}]"
+    )
+    certifications = models.JSONField(
+        default=list,
+        help_text="Professional certifications [{name, issuer, year}]"
+    )
+
+    # Job preferences
+    preferred_type = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="full-time, part-time, contract, freelance"
+    )
+    email_alerts = models.BooleanField(default=True)
+    cv_uploaded_at = models.DateTimeField(null=True, blank=True)
+
     # Preferences
     alert_frequency = models.CharField(
         max_length=20,
@@ -120,7 +147,7 @@ class CareerProfile(UUIDModel):
         default=0.6,
         help_text="Only alert for jobs scoring above this threshold (0-1)"
     )
-    
+
     # Metadata
     completeness_score = models.FloatField(
         default=0.0,
@@ -136,9 +163,46 @@ class CareerProfile(UUIDModel):
     
     def __str__(self):
         return f"Career Profile: {self.user.email}"
-    
+
+    # Compatibility properties for code that uses UserProfile field names
+    @property
+    def desired_roles(self):
+        return [r.get('role', r) if isinstance(r, dict) else r for r in self.target_roles]
+
+    @desired_roles.setter
+    def desired_roles(self, value):
+        self.target_roles = [{'role': v, 'priority': 'medium'} if isinstance(v, str) else v for v in (value or [])]
+
+    @property
+    def desired_locations(self):
+        return [loc.get('city', loc) if isinstance(loc, dict) else loc for loc in self.target_locations]
+
+    @desired_locations.setter
+    def desired_locations(self, value):
+        self.target_locations = [{'city': v, 'country': ''} if isinstance(v, str) else v for v in (value or [])]
+
+    @property
+    def min_salary(self):
+        return int(self.target_salary_min) if self.target_salary_min else None
+
+    @min_salary.setter
+    def min_salary(self, value):
+        from decimal import Decimal
+        self.target_salary_min = Decimal(str(value)) if value else None
+
+    @property
+    def salary_currency(self):
+        return self.target_salary_currency
+
+    @salary_currency.setter
+    def salary_currency(self, value):
+        self.target_salary_currency = value or 'EGP'
+
+    @property
+    def cv_file_url(self):
+        return self.cv_file.url if self.cv_file else None
+
     def save(self, *args, **kwargs):
-        # Update last_active_at on save
         self.last_active_at = timezone.now()
         super().save(*args, **kwargs)
     

@@ -17,7 +17,8 @@ except ImportError:
         BLUE = "blue"
         PURPLE = "purple"
 
-from apps.users.models import SavedJob, Alert, Notification, UserProfile, JobMatchScore
+from apps.users.models import SavedJob, Alert, Notification, JobMatchScore
+from apps.career.models import CareerProfile as UserProfile
 
 
 @admin.register(SavedJob)
