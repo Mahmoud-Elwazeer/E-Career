@@ -7,7 +7,7 @@ much more accurate skill extraction and taxonomy mapping than keyword matching.
 Dependencies:
 - sentence-transformers (for local embedding generation)
 - numpy (for cosine similarity)
-- Qdrant (optional, for large-scale vector search)
+- pgvector (integrated vector search)
 """
 import logging
 from typing import List, Dict, Optional, Tuple

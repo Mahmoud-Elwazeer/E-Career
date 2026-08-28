@@ -14,7 +14,6 @@ from apps.jobs.serializers import (
 from apps.jobs.filters import JobFilter
 from apps.core.permissions import IsAdminRole
 from apps.core.pagination import StandardPagination
-from apps.core.utils import get_client_ip
 from apps.events.emitter import emit
 from apps.events.types import (
     JOB_VIEWED, JOB_SAVED, JOB_UNSAVED, JOB_APPLIED, JOB_DISMISSED,
@@ -306,22 +305,6 @@ class JobListView(generics.ListCreateAPIView):
         return [AllowAny()]
 
     def list(self, request, *args, **kwargs):
-        # Emit SEARCH_PERFORMED event
-        try:
-            q = request.query_params.get("q", "")
-            emit(
-                event_type=SEARCH_PERFORMED,
-                category="search",
-                user=request.user if request.user.is_authenticated else None,
-                target_type="search",
-                target_id="job_search",
-                data={"query": q, "filters": {k: v for k, v in request.query_params.items() if k != "q"}},
-                request=request,
-            )
-        except Exception:
-            pass
-        
-        # Log search analytics
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
         serializer = self.get_serializer(page or queryset, many=True)
@@ -330,18 +313,21 @@ class JobListView(generics.ListCreateAPIView):
         else:
             response = Response({"success": True, "data": serializer.data, "message": "", "errors": None})
 
-        # Async-safe analytics log (fire and forget)
         try:
             q = request.query_params.get("q", "")
-            if q:
-                from apps.analytics.models import SearchLog
-                SearchLog.objects.create(
-                    user=request.user if request.user.is_authenticated else None,
-                    query=q,
-                    filters={k: v for k, v in request.query_params.items() if k != "q"},
-                    results_count=queryset.count(),
-                    session_key=request.session.session_key or "",
-                )
+            emit(
+                event_type=SEARCH_PERFORMED,
+                category="search",
+                user=request.user if request.user.is_authenticated else None,
+                target_type="search",
+                target_id="job_search",
+                data={
+                    "query": q,
+                    "filters": {k: v for k, v in request.query_params.items() if k != "q"},
+                    "results_count": queryset.count(),
+                },
+                request=request,
+            )
         except Exception:
             pass
 
@@ -392,16 +378,8 @@ class JobDetailView(generics.RetrieveUpdateDestroyAPIView):
             )
         except Exception:
             pass
-        # Track view
+        # Increment denormalized counter
         try:
-            from apps.analytics.models import JobView
-            JobView.objects.create(
-                job=instance,
-                user=request.user if request.user.is_authenticated else None,
-                session_key=request.session.session_key or "",
-                ip_address=get_client_ip(request),
-                user_agent=request.META.get("HTTP_USER_AGENT", "")[:500],
-            )
             Job.objects.filter(pk=instance.pk).update(view_count=instance.view_count + 1)
         except Exception:
             pass
@@ -446,16 +424,8 @@ class JobApplyView(APIView):
             )
         except Exception:
             pass
-        # Track click
+        # Increment denormalized counter
         try:
-            from apps.analytics.models import JobClick
-            JobClick.objects.create(
-                job=job,
-                source=job.source,
-                user=request.user if request.user.is_authenticated else None,
-                session_key=request.session.session_key or "",
-                ip_address=get_client_ip(request),
-            )
             Job.objects.filter(pk=job.pk).update(click_count=job.click_count + 1)
         except Exception:
             pass
@@ -508,6 +478,150 @@ class SimilarJobsView(generics.ListAPIView):
             .select_related("company", "source")
             .prefetch_related("tags", "saves")[:6]
         )
+
+@extend_schema(tags=["Jobs"])
+class JobSubmitApplicationView(APIView):
+    """POST /api/v1/jobs/<slug>/submit-application/ — Submit an on-platform application with custom form responses."""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug):
+        try:
+            job = Job.objects.select_related("source").get(slug=slug, status="active")
+        except Job.DoesNotExist:
+            return Response(
+                {"success": False, "data": None, "message": "Job not found.", "errors": None},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Check if already applied
+        from apps.employers.models import JobApplication
+        if JobApplication.objects.filter(user=request.user, job=job).exists():
+            return Response(
+                {"success": False, "data": None, "message": "You have already applied to this job.", "errors": None},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        custom_form_responses = request.data.get("custom_form_responses", {})
+        # Handle case where responses are sent as JSON string (multipart/form-data)
+        if isinstance(custom_form_responses, str):
+            import json
+            try:
+                custom_form_responses = json.loads(custom_form_responses)
+            except (json.JSONDecodeError, TypeError):
+                custom_form_responses = {}
+
+        # Get custom form fields schema from the linked employer posting
+        custom_form_fields = []
+        try:
+            if hasattr(job, 'employer_posting') and job.employer_posting:
+                custom_form_fields = job.employer_posting.custom_form_fields or []
+        except Exception:
+            pass
+
+        # Validate required fields (knockout fields are implicitly required)
+        validation_errors = {}
+        for field in custom_form_fields:
+            field_id = field.get("id")
+            is_required = field.get("required") or field.get("knockout_value") is not None
+            if is_required and field_id:
+                val = custom_form_responses.get(field_id)
+                if val is None or val == "" or (isinstance(val, list) and len(val) == 0):
+                    validation_errors[field_id] = f"{field.get('label', field_id)} is required"
+
+        if validation_errors:
+            return Response(
+                {"success": False, "data": None, "message": "Validation failed.", "errors": validation_errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Evaluate knockout rules
+        application_status = "applied"
+        knockout_reason = ""
+        knockout_results = []
+
+        for field in custom_form_fields:
+            knockout_value = field.get("knockout_value")
+            if knockout_value is None:
+                continue
+
+            field_id = field.get("id")
+            user_answer = custom_form_responses.get(field_id)
+
+            # Normalize comparison: convert both to strings for comparison
+            user_answer_str = str(user_answer).lower().strip() if user_answer is not None else ""
+            knockout_value_str = str(knockout_value).lower().strip()
+
+            # For yes_no fields, handle boolean values
+            if field.get("type") == "yes_no":
+                # True/true/"true" -> "yes", False/false/"false" -> "no"
+                if isinstance(user_answer, bool):
+                    user_answer_str = "yes" if user_answer else "no"
+                elif user_answer_str in ("true", "1"):
+                    user_answer_str = "yes"
+                elif user_answer_str in ("false", "0"):
+                    user_answer_str = "no"
+
+            if user_answer_str == knockout_value_str:
+                application_status = "rejected"
+                knockout_reason = f"Auto-rejected: answer to '{field.get('label', field_id)}' matched knockout value"
+                knockout_results.append({
+                    "field_id": field_id,
+                    "field_label": field.get("label", ""),
+                    "user_answer": str(user_answer),
+                    "knockout_value": str(knockout_value),
+                })
+
+        # Handle CV file upload
+        cv_file = request.FILES.get("cv_file")
+
+        # Create the application
+        application = JobApplication.objects.create(
+            user=request.user,
+            job=job,
+            custom_form_responses=custom_form_responses,
+            status=application_status,
+            cv_snapshot=cv_file,
+        )
+
+        # Emit JOB_APPLIED event
+        try:
+            emit(
+                event_type=JOB_APPLIED,
+                category="job",
+                user=request.user,
+                target_type="job",
+                target_id=str(job.id),
+                data={
+                    "source": "submit_application",
+                    "application_id": application.id,
+                    "knockout_results": knockout_results,
+                },
+                request=request,
+            )
+        except Exception:
+            pass
+
+        response_data = {
+            "application_id": application.id,
+            "status": application_status,
+            "applied_at": application.applied_at.isoformat() if application.applied_at else None,
+        }
+
+        if application_status == "rejected":
+            response_data["knockout_reason"] = knockout_reason
+            response_data["knockout_results"] = knockout_results
+
+        return Response(
+            {
+                "success": True,
+                "data": response_data,
+                "message": "Application submitted successfully.",
+                "errors": None,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response

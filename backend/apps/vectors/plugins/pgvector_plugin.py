@@ -3,7 +3,7 @@ import json
 PgVector Plugin
 
 Fallback implementation of VectorPlugin using PostgreSQL with pgvector extension.
-Used when Qdrant is unavailable.
+Canonical vector store for the platform.
 """
 
 import time

@@ -65,17 +65,37 @@ class EmployerProfileAdmin(ModelAdmin):
     @admin.action(description="Approve selected employers")
     def approve_employers(self, request, queryset):
         """Approve selected employers"""
-        count = queryset.filter(is_verified=False).update(
+        from apps.core.models import ActivityLog
+        to_approve = queryset.filter(is_verified=False)
+        for emp in to_approve:
+            ActivityLog.objects.create(
+                user=request.user,
+                action="approve_employer",
+                target_type="EmployerProfile",
+                target_id=str(emp.pk),
+                metadata={"company": str(emp)},
+            )
+        count = to_approve.update(
             is_verified=True,
             verified_at=timezone.now(),
             verified_by=request.user
         )
         self.message_user(request, f'{count} employer(s) approved.', messages.SUCCESS)
-    
+
     @admin.action(description="Reject/unverify selected employers")
     def reject_employers(self, request, queryset):
         """Reject/unverify selected employers"""
-        count = queryset.filter(is_verified=True).update(
+        from apps.core.models import ActivityLog
+        to_reject = queryset.filter(is_verified=True)
+        for emp in to_reject:
+            ActivityLog.objects.create(
+                user=request.user,
+                action="reject_employer",
+                target_type="EmployerProfile",
+                target_id=str(emp.pk),
+                metadata={"company": str(emp)},
+            )
+        count = to_reject.update(
             is_verified=False,
             verified_at=None,
             verified_by=None
@@ -161,7 +181,8 @@ class JobPostingAdmin(ModelAdmin):
         """Approve and publish selected jobs"""
         from apps.jobs.models import Job
         from apps.core.utils import make_unique_slug
-        
+        from apps.core.models import ActivityLog
+
         approved_count = 0
         for job_post in queryset.filter(status='pending_review'):
             # Create Job from JobPosting
@@ -186,15 +207,22 @@ class JobPostingAdmin(ModelAdmin):
                 is_legitimate=True,
                 legitimacy_score=1.0,
             )
-            
+
             # Link the job posting to the job
             job_post.mirrored_job = job
             job_post.status = 'published'
             job_post.published_at = timezone.now()
             job_post.save()
-            
+
+            ActivityLog.objects.create(
+                user=request.user,
+                action="approve_job",
+                target_type="JobPosting",
+                target_id=str(job_post.pk),
+                metadata={"title": job_post.title, "job_id": str(job.pk)},
+            )
             approved_count += 1
-        
+
         self.message_user(
             request,
             f'{approved_count} job(s) approved and published.',
@@ -204,9 +232,17 @@ class JobPostingAdmin(ModelAdmin):
     @admin.action(description="Reject selected job postings")
     def reject_jobs(self, request, queryset):
         """Reject selected job postings"""
-        count = queryset.filter(status='pending_review').update(
-            status='rejected'
-        )
+        from apps.core.models import ActivityLog
+        to_reject = queryset.filter(status='pending_review')
+        for job_post in to_reject:
+            ActivityLog.objects.create(
+                user=request.user,
+                action="reject_job",
+                target_type="JobPosting",
+                target_id=str(job_post.pk),
+                metadata={"title": job_post.title},
+            )
+        count = to_reject.update(status='rejected')
         self.message_user(request, f'{count} job(s) rejected.', messages.WARNING)
     
     @admin.action(description="Verify apply URLs (automated)")

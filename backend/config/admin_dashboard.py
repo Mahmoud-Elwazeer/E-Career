@@ -20,7 +20,7 @@ def dashboard_callback(request, context):
     from apps.rashid.models import RashidConversation, RashidUsage
     from apps.emails.models import EmailLog
     from apps.employers.models import EmployerProfile, JobPosting
-    from apps.analytics.models import JobView, JobClick
+    from apps.events.models import EventLog
     
     # Calculate time ranges
     today = timezone.now()
@@ -63,8 +63,8 @@ def dashboard_callback(request, context):
         open_rate = (email_stats['opened'] / email_stats['total']) * 100
     
     # Analytics stats
-    views_this_week = JobView.objects.filter(viewed_at__gte=week_ago).count()
-    clicks_this_week = JobClick.objects.filter(clicked_at__gte=week_ago).count()
+    views_this_week = EventLog.objects.filter(event_type="job_viewed", created_at__gte=week_ago).count()
+    clicks_this_week = EventLog.objects.filter(event_type="job_applied", created_at__gte=week_ago).count()
     
     # Company stats
     total_companies = Company.objects.filter(is_active=True).count()

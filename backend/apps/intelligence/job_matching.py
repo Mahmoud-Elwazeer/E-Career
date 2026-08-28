@@ -8,7 +8,7 @@ from typing import List, Dict, Tuple
 from django.db.models import Q, F
 from apps.jobs.models import Job
 from apps.vectors.services import vector_service
-from apps.intelligence.bedrock_client import bedrock_service
+from apps.intelligence.career_ai import career_ai_service as bedrock_service
 
 logger = logging.getLogger(__name__)
 

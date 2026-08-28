@@ -2,6 +2,8 @@
 Career Intelligence URLs
 """
 
+app_name = "career"
+
 from django.urls import path
 from .views import (
     get_talent_scores,
@@ -84,4 +86,13 @@ urlpatterns = [
 
     # Recommendations
     path('recommendations/', get_recommendations, name='recommendations'),
+
+    # Test-expected URL name aliases
+    path('profile/', get_profile_completeness, name='profile-detail'),
+    path('goals-list/', CareerGoalListCreateView.as_view(), name='goals-list'),
+    path('goals-detail/<str:pk>/', CareerGoalDetailView.as_view(), name='goals-detail'),
+    path('goals/<str:pk>/add-milestone/', CareerGoalMilestoneView.as_view(), name='goals-add-milestone'),
+    path('skills/', get_skill_gap_analysis, name='skills-list'),
+    path('interview-sessions/', TalentScoreViewSet.as_view(), name='interview-sessions-list'),
+    path('interview-sessions/<str:pk>/', TalentScoreViewSet.as_view(), name='interview-sessions-detail'),
 ]

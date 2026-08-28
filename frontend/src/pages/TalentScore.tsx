@@ -43,7 +43,6 @@ import {
   Bar,
   Cell
 } from 'recharts';
-import api from '../services/api';
 import scoresApi, { calculateGrade, getGradeColor, getTrendColor } from '../services/scores';
 
 // Score dimension configuration

@@ -209,37 +209,52 @@ def reset_email_account_counters():
 def send_employer_application_notification(application_id):
     """
     Send notification to employer when new application received.
-    
+    Also creates a UserNotification record and triggers delivery.
+
     Args:
         application_id: Application ID
     """
     try:
         from apps.employers.models import JobApplication
-        
+
         application = JobApplication.objects.select_related('job', 'job__employer').get(id=application_id)
-        
+
         # Get employer
         employer = application.job.employer
-        
+
         if not employer or not employer.user.email:
             logger.warning(f"No employer email for application {application_id}")
             return False
-        
+
         context = {
             'job_title': application.job.title,
             'applicant_name': application.applicant.get_full_name() if hasattr(application, 'applicant') else 'Applicant',
             'application_date': application.applied_at.strftime('%Y-%m-%d'),
             'application_url': f"/employer/applications/{application.id}/"
         }
-        
+
         success, _ = email_service.send_template_email(
             user=employer.user,
             template_type='employer_application',
             context_data=context
         )
-        
+
+        # Also create a UserNotification for the employer (notification delivery system)
+        from apps.notifications.service import create_and_deliver_notification
+        applicant_name = context['applicant_name']
+        create_and_deliver_notification(
+            user=employer.user,
+            notification_type='application_update',
+            title=f"New application for {application.job.title}",
+            message=f"{applicant_name} applied for {application.job.title} on {context['application_date']}.",
+            related_id=str(application.id),
+            related_type='application',
+            related_url=context['application_url'],
+            priority='high',
+        )
+
         return success
-    
+
     except Exception as e:
         logger.error(f"Error sending employer application notification: {e}")
         return False
@@ -368,7 +383,7 @@ def send_weekly_career_digest():
             }
             
             # AI-generated skill tips
-            from ai.bedrock import bedrock_service
+            from apps.intelligence.career_ai import career_ai_service as bedrock_service
             user_skills = [s.skill.name for s in user.career_profile.career_user_skills.all()[:10]] if hasattr(user.career_profile, 'career_user_skills') else []
             tip_prompt = f"Give 1 short career tip (max 2 sentences) for someone with skills: {', '.join(user_skills) or 'entry-level'}."
             try:

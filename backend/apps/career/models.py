@@ -124,6 +124,12 @@ class CareerProfile(UUIDModel):
         help_text="Professional certifications [{name, issuer, year}]"
     )
 
+    # Privacy / discoverability
+    is_discoverable = models.BooleanField(
+        default=False,
+        help_text="If True, employers can find and add this user to talent pools"
+    )
+
     # Job preferences
     preferred_type = models.CharField(
         max_length=20,

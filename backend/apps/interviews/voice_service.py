@@ -111,15 +111,27 @@ class VoiceInterviewService:
                 OutputKey=f"{self.aws_media_prefix}/transcripts/"
             )
             
-            # Wait for job completion (simplified - in production use polling)
+            # Poll for job completion (max 30s, check every 2s)
             import time
-            time.sleep(5)  # Wait for transcription
-            
-            # Get transcription result
-            job_response = self.transcribe_client.get_transcription_job(
-                TranscriptionJobName=job_name
-            )
-            
+            max_wait = 30
+            poll_interval = 2
+            elapsed = 0
+            job_response = None
+
+            while elapsed < max_wait:
+                time.sleep(poll_interval)
+                elapsed += poll_interval
+                job_response = self.transcribe_client.get_transcription_job(
+                    TranscriptionJobName=job_name
+                )
+                job_status = job_response['TranscriptionJob']['TranscriptionJobStatus']
+                if job_status in ('COMPLETED', 'FAILED'):
+                    break
+
+            if not job_response or job_response['TranscriptionJob']['TranscriptionJobStatus'] != 'COMPLETED':
+                logger.error(f"Transcription job {job_name} did not complete in time or failed")
+                return None
+
             # Download transcript from S3
             transcript_key = f"{self.aws_media_prefix}/transcripts/{job_name}.json"
             transcript_obj = self.s3_client.get_object(
@@ -142,37 +154,35 @@ class VoiceInterviewService:
     def process_voice_answer(self, session_id: str, audio_bytes: bytes) -> Dict[str, Any]:
         """
         Process a voice answer in an interview session.
-        
+
         1. Transcribe audio to text
         2. Feed to existing interview evaluation service
-        3. Generate next question
+        3. Find next unanswered question
         4. Convert to speech
         5. Return response
-        
+
         Args:
             session_id: Interview session ID
             audio_bytes: User's audio response
-            
+
         Returns:
             Response dict with transcript, evaluation, next question audio
         """
-        from apps.interviews.service import InterviewService
-        
+        from apps.interviews.service import interview_service
+        from apps.interviews.models import InterviewSession
+        from django.utils import timezone
+
         # Step 1: Transcribe audio
         transcript = self.speech_to_text(audio_bytes)
-        
+
         if not transcript:
             return {
                 'success': False,
                 'error': 'Failed to transcribe audio',
                 'transcript': None,
             }
-        
-        # Step 2: Get interview service and evaluate
-        interview_service = InterviewService()
-        
-        # Get current question from session
-        from apps.interviews.models import InterviewSession
+
+        # Step 2: Get session and current question
         try:
             session = InterviewSession.objects.get(id=session_id)
         except InterviewSession.DoesNotExist:
@@ -181,33 +191,58 @@ class VoiceInterviewService:
                 'error': 'Session not found',
                 'transcript': transcript,
             }
-        
-        # Evaluate the answer
-        evaluation = interview_service._evaluate_answer(
-            question=session.questions[-1] if session.questions else {},
+
+        # Get current unanswered question
+        current_question = session.questions.filter(answer_text='').first()
+        if not current_question:
+            return {
+                'success': False,
+                'error': 'All questions already answered',
+                'transcript': transcript,
+            }
+
+        # Save the transcribed answer
+        current_question.answer_text = transcript
+        current_question.answered_at = timezone.now()
+        current_question.save()
+
+        # Evaluate the answer using the correct public method
+        evaluation = interview_service.evaluate_answer(
+            question=current_question.question_text,
             answer=transcript,
-            user=session.user
+            interview_type=session.interview_type,
+            target_role=session.target_role
         )
-        
-        # Step 3: Generate next question
-        next_question = interview_service._generate_next_question(
-            session=session,
-            current_question_index=len(session.questions)
-        )
-        
-        # Step 4: Convert next question to speech
+
+        # Update question with evaluation scores
+        current_question.score = evaluation.get('score', 0)
+        current_question.feedback = evaluation.get('feedback', '')
+        current_question.score_details = evaluation
+        current_question.save()
+
+        # Step 3: Find the next unanswered question
+        next_question_obj = session.questions.filter(answer_text='').first()
+
+        next_question = None
         next_question_audio = None
-        if next_question:
-            next_question_text = next_question.get('question', '')
-            next_question_audio = self.text_to_speech(
-                next_question_text,
-                language='en' if session.mode != 'voice_arabic' else 'ar'
+
+        if next_question_obj:
+            next_question = {
+                'id': next_question_obj.id,
+                'index': next_question_obj.question_index,
+                'question': next_question_obj.question_text,
+            }
+
+            # Step 4: Convert next question to speech
+            audio_bytes_tts = self.text_to_speech(
+                next_question_obj.question_text,
+                language='en'
             )
-            
+
             # Convert to base64 for API response
-            if next_question_audio:
-                next_question_audio = base64.b64encode(next_question_audio).decode('utf-8')
-        
+            if audio_bytes_tts:
+                next_question_audio = base64.b64encode(audio_bytes_tts).decode('utf-8')
+
         return {
             'success': True,
             'transcript': transcript,

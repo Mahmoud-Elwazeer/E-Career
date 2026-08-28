@@ -12,7 +12,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 from apps.jobs.models import Job
 from apps.skills.models import Skill
-from ai.bedrock import bedrock_service
+from apps.intelligence.career_ai import career_ai_service as bedrock_service
 
 logger = logging.getLogger(__name__)
 

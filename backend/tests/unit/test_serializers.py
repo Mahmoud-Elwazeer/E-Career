@@ -76,7 +76,9 @@ class TestRegisterSerializer:
     def test_password_confirm_not_stored(self, db):
         s = RegisterSerializer(data=self._valid_data())
         assert s.is_valid()
-        assert "password_confirm" not in s.validated_data
+        user = s.save()
+        # password_confirm is consumed during create, not stored on the user
+        assert not hasattr(user, "password_confirm")
 
 
 @pytest.mark.django_db

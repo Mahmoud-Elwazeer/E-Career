@@ -5,7 +5,7 @@ import logging
 import json
 import time
 from django.utils import timezone
-from ai.bedrock import bedrock_service
+from apps.intelligence.career_ai import career_ai_service as bedrock_service
 from .models import InterviewSession, InterviewQuestion
 
 logger = logging.getLogger(__name__)

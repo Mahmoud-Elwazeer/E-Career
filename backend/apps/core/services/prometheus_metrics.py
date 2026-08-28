@@ -220,89 +220,75 @@ class PrometheusMetrics:
         self._start_time = time.time()
 
 
+_metrics_instance = None
+
+
+def get_prometheus_metrics() -> PrometheusMetrics:
+    global _metrics_instance
+    if _metrics_instance is None:
+        _metrics_instance = PrometheusMetrics()
+    return _metrics_instance
+
+
 def track_http_request(func):
-    """
-    Decorator to track HTTP request metrics.
-    
-    Usage:
-        @track_http_request
-        def my_view(request):
-            ...
-    """
     @wraps(func)
     def wrapper(request, *args, **kwargs):
         start_time = time.time()
-        
+
         try:
             response = func(request, *args, **kwargs)
             duration = time.time() - start_time
-            
-            # Track metrics
-            metrics = PrometheusMetrics()
-            metrics.increment_http_requests(
+
+            get_prometheus_metrics().increment_http_requests(
                 method=request.method,
                 path=request.path,
                 status_code=response.status_code,
                 duration=duration,
             )
-            
+
             return response
         except Exception as e:
             duration = time.time() - start_time
-            
-            # Track error metrics
-            metrics = PrometheusMetrics()
-            metrics.increment_http_requests(
+
+            get_prometheus_metrics().increment_http_requests(
                 method=request.method,
                 path=request.path,
                 status_code=500,
                 duration=duration,
             )
-            
+
             raise
-    
+
     return wrapper
 
 
 def track_ai_request(func):
-    """
-    Decorator to track AI request metrics.
-    
-    Usage:
-        @track_ai_request
-        def generate_recommendations(user_id):
-            ...
-    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.time()
-        
+
         try:
             result = func(*args, **kwargs)
             duration = time.time() - start_time
-            
-            # Track metrics (you would extract model and tokens from result)
-            metrics = PrometheusMetrics()
-            metrics.increment_ai_requests(
-                model='claude-3-5-sonnet',
-                duration=duration,
-                input_tokens=0,  # Extract from actual request
-                output_tokens=0,  # Extract from actual response
-            )
-            
-            return result
-        except Exception as e:
-            duration = time.time() - start_time
-            
-            # Track error metrics
-            metrics = PrometheusMetrics()
-            metrics.increment_ai_requests(
-                model='claude-3-5-sonnet',
+
+            get_prometheus_metrics().increment_ai_requests(
+                model='claude-sonnet',
                 duration=duration,
                 input_tokens=0,
                 output_tokens=0,
             )
-            
+
+            return result
+        except Exception as e:
+            duration = time.time() - start_time
+
+            get_prometheus_metrics().increment_ai_requests(
+                model='claude-sonnet',
+                duration=duration,
+                input_tokens=0,
+                output_tokens=0,
+            )
+
             raise
-    
+
     return wrapper

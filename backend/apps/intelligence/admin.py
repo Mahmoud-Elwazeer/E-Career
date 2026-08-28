@@ -52,15 +52,32 @@ class PromptVersionAdmin(admin.ModelAdmin):
     feature_badge.short_description = 'Feature'
 
     def activate_selected(self, request, queryset):
+        from apps.core.models import ActivityLog
         for prompt in queryset:
             PromptVersion.objects.filter(name=prompt.name, is_active=True).update(is_active=False)
             prompt.is_active = True
             prompt.save()
+            ActivityLog.objects.create(
+                user=request.user,
+                action="activate_prompt",
+                target_type="PromptVersion",
+                target_id=str(prompt.pk),
+                metadata={"name": prompt.name, "version": prompt.version},
+            )
         self.message_user(request, f"{queryset.count()} prompts activated")
     activate_selected.short_description = "✅ Activate selected prompts"
 
     def deactivate_selected(self, request, queryset):
+        from apps.core.models import ActivityLog
         queryset.update(is_active=False)
+        for prompt in queryset:
+            ActivityLog.objects.create(
+                user=request.user,
+                action="deactivate_prompt",
+                target_type="PromptVersion",
+                target_id=str(prompt.pk),
+                metadata={"name": prompt.name, "version": prompt.version},
+            )
         self.message_user(request, f"{queryset.count()} prompts deactivated")
     deactivate_selected.short_description = "❌ Deactivate selected prompts"
 

@@ -2,7 +2,7 @@
  * Scores service for talent scoring and career intelligence
  */
 
-import api from './api';
+import { apiRequest } from './client';
 
 // Types
 export interface ScoreBreakdown {
@@ -116,53 +116,32 @@ export interface AllScoresWithActions {
 
 // Scores API functions
 export const scoresApi = {
-  /**
-   * Get all talent scores for the authenticated user
-   */
   getScores: async (): Promise<{ success: boolean; data: TalentScore }> => {
-    const response = await api.get('/career/scores/');
-    return response.data;
+    return apiRequest<{ success: boolean; data: TalentScore }>('/career/scores/');
   },
 
-  /**
-   * Get detailed breakdown for a specific score dimension
-   */
   getScoreBreakdown: async (dimension: string): Promise<{ success: boolean; data: ScoreBreakdown }> => {
-    const response = await api.get(`/career/scores/breakdown/${dimension}/`);
-    return response.data;
+    return apiRequest<{ success: boolean; data: ScoreBreakdown }>(`/career/scores/breakdown/${dimension}/`);
   },
 
-  /**
-   * Get score trends over time
-   */
   getScoreTrends: async (): Promise<{ success: boolean; data: ScoreTrendsResponse }> => {
-    const response = await api.get('/career/scores/trends/');
-    return response.data;
+    return apiRequest<{ success: boolean; data: ScoreTrendsResponse }>('/career/scores/trends/');
   },
 
-  /**
-   * Trigger recalculation of all talent scores
-   */
   recalculateScores: async (): Promise<{ success: boolean; message: string }> => {
-    const response = await api.post('/career/scores/recalculate/');
-    return response.data;
+    return apiRequest<{ success: boolean; message: string }>('/career/scores/recalculate/', {
+      method: 'POST'
+    });
   },
 
-  /**
-   * Get all scores with recommended actions
-   */
   getAllScoresWithActions: async (): Promise<{ success: boolean; data: AllScoresWithActions }> => {
-    const response = await api.get('/career/scores/with-actions/');
-    return response.data;
+    return apiRequest<{ success: boolean; data: AllScoresWithActions }>('/career/scores/with-actions/');
   },
 
-  /**
-   * Get composite career score
-   */
   getCompositeScore: async (): Promise<{ overall_score: number; overall_grade: string; dimensions: { [key: string]: number } }> => {
-    const response = await api.get('/career/scores/');
-    if (response.data.success) {
-      const data = response.data.data;
+    const result = await apiRequest<{ success: boolean; data: TalentScore }>('/career/scores/');
+    if (result.success) {
+      const data = result.data;
       return {
         overall_score: data.overall_score,
         overall_grade: calculateGrade(data.overall_score),
@@ -181,9 +160,6 @@ export const scoresApi = {
   },
 };
 
-/**
- * Calculate letter grade from score
- */
 export const calculateGrade = (score: number): string => {
   if (score >= 0.8) return 'A';
   if (score >= 0.65) return 'B';
@@ -192,28 +168,22 @@ export const calculateGrade = (score: number): string => {
   return 'F';
 };
 
-/**
- * Get color for grade
- */
 export const getGradeColor = (grade: string): string => {
   const colors: { [key: string]: string } = {
-    A: '#10b981', // emerald-500
-    B: '#3b82f6', // blue-500
-    C: '#f59e0b', // amber-500
-    D: '#f97316', // orange-500
-    F: '#ef4444', // red-500
+    A: '#10b981',
+    B: '#3b82f6',
+    C: '#f59e0b',
+    D: '#f97316',
+    F: '#ef4444',
   };
-  return colors[grade] || '#6b7280'; // gray-500
+  return colors[grade] || '#6b7280';
 };
 
-/**
- * Get trend color
- */
 export const getTrendColor = (trend: string): string => {
   const colors: { [key: string]: string } = {
-    improving: '#10b981', // emerald-500
-    stable: '#6b7280', // gray-500
-    declining: '#ef4444', // red-500
+    improving: '#10b981',
+    stable: '#6b7280',
+    declining: '#ef4444',
   };
   return colors[trend] || '#6b7280';
 };

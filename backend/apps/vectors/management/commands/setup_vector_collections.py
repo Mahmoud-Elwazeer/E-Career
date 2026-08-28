@@ -1,7 +1,7 @@
 """
 Management Command: setup_vector_collections
 
-Set up Qdrant collections for jobs, users, and skills.
+Set up vector collections for jobs, users, and skills.
 
 Usage:
     python manage.py setup_vector_collections
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     """Set up vector collections."""
 
-    help = "Set up Qdrant collections for vectors"
+    help = "Set up pgvector collections for vectors"
 
     def add_arguments(self, parser):
         parser.add_argument(

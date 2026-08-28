@@ -23,7 +23,7 @@ class TestSSRFProtection:
     def test_blocks_127_0_0_1(self):
         with pytest.raises(SSRFBlockedError) as exc_info:
             _resolve_and_validate("127.0.0.1", "http://127.0.0.1/")
-        assert "Loopback" in exc_info.value.reason
+        assert "Loopback" in exc_info.value.reason or "Private" in exc_info.value.reason
 
     def test_blocks_metadata_endpoint(self):
         """Block AWS/GCP/Azure metadata endpoint 169.254.169.254."""

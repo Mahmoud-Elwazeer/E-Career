@@ -6,7 +6,7 @@ import logging
 import time
 from django.conf import settings
 from django.utils import timezone
-from ai.bedrock import bedrock_service
+from apps.intelligence.career_ai import career_ai_service as bedrock_service
 from .models import RashidConfig, RashidConversation, RashidMessage, RashidProfile, RashidUsage
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,13 @@ class RashidService:
     """Core Rashid AI service"""
 
     def __init__(self):
-        self.config = self._get_config()
+        self._config = None
+
+    @property
+    def config(self):
+        if self._config is None:
+            self._config = self._get_config()
+        return self._config
 
     def _get_config(self):
         """Get or create Rashid configuration"""

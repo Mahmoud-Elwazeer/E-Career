@@ -167,9 +167,9 @@ class UserProfile(models.Model):
             ('weekly', 'Weekly'),
         ]
     )
-    min_match_score = models.IntegerField(
-        default=70,
-        help_text="Only alert for jobs scoring above this threshold"
+    min_match_score = models.FloatField(
+        default=0.7,
+        help_text="Only alert for jobs scoring above this threshold (0-1)"
     )
     
     created_at = models.DateTimeField(auto_now_add=True)

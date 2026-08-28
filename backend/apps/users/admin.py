@@ -18,7 +18,6 @@ except ImportError:
         PURPLE = "purple"
 
 from apps.users.models import SavedJob, Alert, Notification, JobMatchScore
-from apps.career.models import CareerProfile as UserProfile
 
 
 @admin.register(SavedJob)
@@ -79,28 +78,6 @@ class NotificationAdmin(ModelAdmin):
     def is_read_badge(self, obj):
         return "Read" if obj.is_read else "Unread"
 
-
-@admin.register(UserProfile)
-class UserProfileAdmin(ModelAdmin):
-    """
-    Enhanced UserProfile admin with unfold styling.
-    """
-    list_display = ["user", "cv_parse_status_badge", "experience_years", "open_to_remote", "created_at"]
-    list_filter = ["cv_parse_status", "open_to_remote", "email_alerts"]
-    search_fields = ["user__email", "current_role"]
-    ordering = ["-created_at"]
-    readonly_fields = ["cv_uploaded_at", "cv_parsed_at", "created_at", "updated_at"]
-    
-    @display(
-        description="CV Status",
-        label={
-            "pending": Color.YELLOW,
-            "parsed": Color.GREEN,
-            "failed": Color.RED,
-        }
-    )
-    def cv_parse_status_badge(self, obj):
-        return obj.get_cv_parse_status_display()
 
 
 @admin.register(JobMatchScore)

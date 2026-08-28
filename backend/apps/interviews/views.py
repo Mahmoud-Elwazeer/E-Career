@@ -1,11 +1,14 @@
 """
 Interviews API Views
 """
+import base64
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -19,6 +22,7 @@ from .serializers import (
     InterviewQuestionSerializer
 )
 from .service import interview_service
+from .voice_service import voice_interview_service
 
 logger = logging.getLogger(__name__)
 
@@ -104,9 +108,24 @@ class InterviewViewSet(viewsets.ModelViewSet):
                 score_details={'evaluation_criteria': q_data.get('evaluation_criteria', '')}
             )
         
+        # Notify user that their interview session has started
+        try:
+            from apps.notifications.service import create_and_deliver_notification
+            create_and_deliver_notification(
+                user=request.user,
+                notification_type='system',
+                title='Interview Session Started',
+                message=f'Your {interview_type} interview for {target_role} ({difficulty}) has started. Good luck!',
+                related_id=str(session.id),
+                related_type='interview_session',
+                priority='medium',
+            )
+        except Exception as notif_err:
+            logger.warning(f"Failed to create interview start notification: {notif_err}")
+
         # Get first question
         first_question = session.questions.first()
-        
+
         return Response({
             'session_id': session.id,
             'interview_type': session.interview_type,
@@ -207,11 +226,153 @@ class InterviewViewSet(viewsets.ModelViewSet):
             'feedback_summary': result['feedback_summary']
         })
     
+    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser], url_path='voice-answer')
+    def voice_answer(self, request, pk=None):
+        """
+        Submit a voice answer for the current question.
+
+        POST /api/v1/interviews/{id}/voice-answer/
+        Multipart form with 'audio' file field.
+        """
+        session = self.get_object()
+
+        audio_file = request.FILES.get('audio')
+        if not audio_file:
+            return Response(
+                {'error': 'No audio file provided. Send as "audio" in multipart form.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        MAX_AUDIO_SIZE = 25 * 1024 * 1024  # 25MB
+        if audio_file.size > MAX_AUDIO_SIZE:
+            return Response(
+                {'error': 'Audio file too large. Maximum 25MB.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        ALLOWED_AUDIO_TYPES = {
+            'audio/webm', 'audio/wav', 'audio/wave', 'audio/x-wav',
+            'audio/mpeg', 'audio/mp3', 'audio/ogg', 'audio/flac',
+            'audio/mp4', 'audio/x-m4a', 'video/webm',
+        }
+        content_type = getattr(audio_file, 'content_type', '')
+        if content_type and content_type not in ALLOWED_AUDIO_TYPES:
+            return Response(
+                {'error': f'Unsupported audio format: {content_type}. Use webm, wav, mp3, or ogg.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        audio_bytes = audio_file.read()
+
+        AUDIO_MAGIC = {
+            b'RIFF': 'wav', b'ID3': 'mp3', b'\xff\xfb': 'mp3',
+            b'\xff\xf3': 'mp3', b'OggS': 'ogg', b'fLaC': 'flac',
+            b'\x1aE\xdf\xa3': 'webm',
+        }
+        detected = False
+        for magic in AUDIO_MAGIC:
+            if audio_bytes[:len(magic)] == magic:
+                detected = True
+                break
+        if not detected and len(audio_bytes) > 4:
+            return Response(
+                {'error': 'File does not appear to be a valid audio format.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Transcribe audio
+        transcript = voice_interview_service.speech_to_text(audio_bytes)
+        if not transcript:
+            return Response(
+                {'error': 'Failed to transcribe audio. Please try again.'},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+
+        # Get current unanswered question
+        current_question = session.questions.filter(answer_text='').first()
+        if not current_question:
+            return Response({
+                'error': 'All questions answered. Complete the session.',
+                'session_id': session.id
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Save transcribed answer
+        current_question.answer_text = transcript
+        current_question.answered_at = timezone.now()
+        current_question.save()
+
+        # Evaluate answer (same logic as text answer action)
+        evaluation = interview_service.evaluate_answer(
+            question=current_question.question_text,
+            answer=transcript,
+            interview_type=session.interview_type,
+            target_role=session.target_role
+        )
+
+        # Update question with score
+        current_question.score = evaluation.get('score', 0)
+        current_question.feedback = evaluation.get('feedback', '')
+        current_question.score_details = evaluation
+        current_question.save()
+
+        # Get next question
+        next_question = session.questions.filter(answer_text='').first()
+
+        # Generate TTS for next question
+        next_question_audio = None
+        if next_question:
+            audio_data = voice_interview_service.text_to_speech(next_question.question_text)
+            if audio_data:
+                next_question_audio = base64.b64encode(audio_data).decode('utf-8')
+
+        return Response({
+            'session_id': session.id,
+            'question_index': current_question.question_index,
+            'transcript': transcript,
+            'score': evaluation.get('score', 0),
+            'feedback': evaluation.get('feedback', ''),
+            'dimensions': evaluation.get('dimensions', {}),
+            'next_question': {
+                'id': next_question.id,
+                'index': next_question.question_index,
+                'question': next_question.question_text
+            } if next_question else None,
+            'next_question_audio': next_question_audio,
+        })
+
+    @action(detail=True, methods=['get'], url_path='question-audio/(?P<question_index>[0-9]+)')
+    def question_audio(self, request, pk=None, question_index=None):
+        """
+        Get TTS audio for a specific question.
+
+        GET /api/v1/interviews/{id}/question-audio/{question_index}/
+        Returns audio/mpeg content.
+        """
+        session = self.get_object()
+
+        # Find the question
+        question = session.questions.filter(question_index=int(question_index)).first()
+        if not question:
+            return Response(
+                {'error': f'Question {question_index} not found in session.'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Generate TTS audio
+        audio_data = voice_interview_service.text_to_speech(question.question_text)
+        if not audio_data:
+            return Response(
+                {'error': 'Failed to generate audio.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        return HttpResponse(audio_data, content_type='audio/mpeg')
+
     @action(detail=False, methods=['get'])
     def history(self, request):
         """
         Get user's interview history.
-        
+
         GET /api/v1/interviews/history/
         """
         sessions = self.get_queryset()

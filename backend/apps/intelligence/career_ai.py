@@ -1,12 +1,8 @@
 """
-AWS Bedrock integration — COMPATIBILITY SHIM.
+Career AI Service — business logic for AI-powered career features.
 
-This module delegates all AI calls to the centralized intelligence service at
-apps.intelligence. It preserves the BedrockService interface so existing
-callers continue working without modification during the migration period.
-
-New code should import from apps.intelligence directly:
-    from apps.intelligence import get_ai_service
+Provides CV parsing, job matching, salary guidance, interview questions,
+and candidate ranking using the centralized intelligence service.
 """
 
 import json
@@ -17,12 +13,11 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
-class BedrockService:
-    """Compatibility wrapper that delegates to apps.intelligence.AIService."""
+class CareerAIService:
+    """AI-powered career services backed by apps.intelligence."""
 
     def __init__(self):
         self._service = None
-        self._model_id = getattr(settings, 'BEDROCK_MODEL_ID', 'anthropic.claude-sonnet-4-20250514-v1:0')
 
     @property
     def _ai(self):
@@ -30,10 +25,6 @@ class BedrockService:
             from apps.intelligence.service import get_ai_service
             self._service = get_ai_service()
         return self._service
-
-    @property
-    def client(self):
-        return self._ai.plugin._client if hasattr(self._ai.plugin, '_client') else None
 
     @property
     def is_available(self):
@@ -497,6 +488,106 @@ Provide rankings with detailed explanations."""
             logger.error(f"Error ranking candidates: {e}")
             return self._basic_candidate_ranking(job_data, candidate_profiles)
 
+    def generate_assessment_feedback(self, answers: dict, scores: dict,
+                                       coding_details: dict = None, passed: bool = False,
+                                       overall_score: int = 0) -> dict:
+        """
+        Generate AI-powered feedback for an assessment submission.
+
+        Args:
+            answers: Dict of question_id -> user answer
+            scores: Dict of question_id -> score (0-100)
+            coding_details: Dict of question_id -> grading result for coding questions
+            passed: Whether the user passed the assessment
+            overall_score: Overall percentage score
+
+        Returns:
+            Dict with strengths, weaknesses, recommendations, and summary.
+        """
+        # Build a summary of performance for the prompt
+        total_questions = len(scores)
+        high_scores = [qid for qid, s in scores.items() if s >= 80]
+        low_scores = [qid for qid, s in scores.items() if s < 50]
+        coding_summary = ""
+        if coding_details:
+            for qid, detail in coding_details.items():
+                coding_summary += (
+                    f"\n- Question {qid}: {detail.get('tests_passed', 0)}/{detail.get('tests_total', 0)} tests passed"
+                )
+
+        prompt = f"""You are an assessment evaluator. Analyze the following assessment results and provide feedback.
+
+Assessment Results:
+- Overall Score: {overall_score}%
+- Passed: {passed}
+- Total Questions: {total_questions}
+- High-scoring questions (>=80%): {len(high_scores)}
+- Low-scoring questions (<50%): {len(low_scores)}
+{f"Coding question results:{coding_summary}" if coding_summary else ""}
+
+Provide feedback as JSON with this structure:
+{{
+    "strengths": ["strength 1", "strength 2"],
+    "weaknesses": ["weakness 1", "weakness 2"],
+    "recommendations": ["recommendation 1", "recommendation 2"],
+    "summary": "A brief overall summary of performance"
+}}
+
+Return ONLY the JSON object."""
+
+        try:
+            if not self.is_available:
+                raise RuntimeError("AI service unavailable")
+
+            response = self.invoke_model(
+                prompt=prompt,
+                max_tokens=800,
+                temperature=0.3,
+            )
+
+            json_start = response.find('{')
+            json_end = response.rfind('}') + 1
+            if json_start >= 0 and json_end > json_start:
+                return json.loads(response[json_start:json_end])
+
+            # Could not parse JSON, return basic feedback
+            raise ValueError("Could not parse AI response as JSON")
+
+        except Exception as e:
+            logger.warning(f"generate_assessment_feedback AI call failed: {e}")
+            # Fallback feedback
+            strengths = []
+            weaknesses = []
+            recommendations = []
+
+            if len(high_scores) > 0:
+                strengths.append(f"Strong performance on {len(high_scores)} question(s)")
+            if passed:
+                strengths.append("Met the passing threshold")
+            else:
+                weaknesses.append("Did not meet the passing threshold")
+
+            if len(low_scores) > 0:
+                weaknesses.append(f"Struggled with {len(low_scores)} question(s)")
+                recommendations.append("Review the topics of missed questions")
+
+            if coding_details:
+                any_failed = any(not d.get('passed') for d in coding_details.values())
+                if any_failed:
+                    recommendations.append("Practice coding challenges with test-driven approaches")
+                else:
+                    strengths.append("All coding challenges passed")
+
+            if not recommendations:
+                recommendations.append("Keep practicing to maintain skills")
+
+            return {
+                'strengths': strengths or ['Completed the assessment'],
+                'weaknesses': weaknesses,
+                'recommendations': recommendations,
+                'summary': f"Score: {overall_score}%. {'Passed' if passed else 'Did not pass the assessment'}.",
+            }
+
     def _basic_candidate_ranking(self, job_data, candidate_profiles):
         rankings = []
         for i, profile in enumerate(candidate_profiles):
@@ -526,5 +617,18 @@ Provide rankings with detailed explanations."""
         }
 
 
-# Singleton instance — delegates to apps.intelligence
-bedrock_service = BedrockService()
+_career_ai: CareerAIService | None = None
+
+
+def get_career_ai_service() -> CareerAIService:
+    global _career_ai
+    if _career_ai is None:
+        _career_ai = CareerAIService()
+    return _career_ai
+
+
+career_ai_service = get_career_ai_service()
+
+# Backward-compat aliases
+BedrockService = CareerAIService
+bedrock_service = career_ai_service

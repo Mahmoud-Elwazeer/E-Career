@@ -8,8 +8,9 @@ import re
 import logging
 from urllib.parse import urlparse
 from typing import Tuple
-import requests
 from django.utils import timezone
+
+from apps.core.safe_fetch import verify_url_is_live, SSRFBlockedError
 
 logger = logging.getLogger(__name__)
 
@@ -110,16 +111,20 @@ def check_url_accessibility(url: str, timeout: int = 5) -> Tuple[bool, str]:
     companies might have geo-restrictions or auth requirements.
     """
     try:
-        response = requests.head(url, timeout=timeout, allow_redirects=True)
-        if response.status_code == 200:
+        is_live, status_code = verify_url_is_live(url, timeout=timeout, allow_http=True)
+        if status_code == 200:
             return True, "URL is accessible"
-        elif response.status_code in [301, 302, 307, 308]:
-            return True, f"URL redirects to {response.headers.get('Location', 'unknown')}"
-        elif response.status_code == 403:
+        elif status_code in (301, 302, 307, 308):
+            return True, "URL redirects (accessible)"
+        elif status_code == 403:
             return True, "URL exists but access restricted (likely geo-fenced)"
+        elif status_code:
+            return False, f"URL returned status code {status_code}"
         else:
-            return False, f"URL returned status code {response.status_code}"
-    except requests.RequestException as e:
+            return False, "Could not access URL"
+    except SSRFBlockedError:
+        return False, "URL blocked by SSRF protection (private/internal IP)"
+    except Exception as e:
         logger.warning(f"URL accessibility check failed for {url}: {e}")
         return False, f"Could not access URL: {str(e)}"
 

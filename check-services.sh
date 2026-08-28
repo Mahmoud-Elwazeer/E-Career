@@ -61,7 +61,7 @@ echo "[9] Checking .env file..."
 if [ -f "/var/www/usam/backend/.env" ]; then
     echo "  ✓ .env file exists"
     echo "  Configuration:"
-    cat /var/www/usam/backend/.env | grep -E "TYPESENSE_API_KEY|QDRANT_API_KEY|AWS_ACCESS_KEY_ID" | sed 's/=.*/=***/' || echo "  (No API keys set)"
+    cat /var/www/usam/backend/.env | grep -E "TYPESENSE_API_KEY|AWS_ACCESS_KEY_ID" | sed 's/=.*/=***/' || echo "  (No API keys set)"
 else
     echo "  ✗ .env file not found"
 fi

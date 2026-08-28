@@ -52,23 +52,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Qdrant Vector Database
-  qdrant:
-    image: qdrant/qdrant:v1.11.3
-    container_name: ecareer_qdrant
-    environment:
-      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:-ecareer_qdrant_dev_key}
-      QDRANT__SERVICE__ENABLE_CORS: "true"
-    ports:
-      - "${QDRANT_PORT:-6333}:6333"
-      - "${QDRANT_GRPC_PORT:-6334}:6334"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:6333/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   # Backend Django Application
   backend:
@@ -90,8 +73,6 @@ services:
       redis:
         condition: service_healthy
       typesense:
-        condition: service_healthy
-      qdrant:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]
@@ -131,6 +112,21 @@ services:
       - redis
       - backend
 
+  # ClamAV Antivirus Daemon
+  clamav:
+    image: clamav/clamav:stable
+    container_name: ecareer_clamav
+    ports:
+      - "3310:3310"
+    volumes:
+      - clamav_data:/var/lib/clamav
+    healthcheck:
+      test: ["CMD", "clamdcheck"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
   # Frontend React Application
   frontend:
     build:
@@ -152,5 +148,5 @@ volumes:
   postgres_data:
   redis_data:
   typesense_data:
-  qdrant_data:
   media_files:
+  clamav_data:

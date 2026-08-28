@@ -1,12 +1,12 @@
 """
 Tests for the jobs app models.
 """
+import datetime
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from django.utils import timezone
-from datetime import timedelta
 
-from apps.jobs.models import Job, Company, JobTag, JobApplication
+from apps.jobs.models import Job, Company, Tag, JobTag, Source
+from apps.employers.models import JobApplication
 
 User = get_user_model()
 
@@ -22,84 +22,66 @@ class JobModelTest(TestCase):
             first_name='Test',
             last_name='User'
         )
-        
+
         self.company = Company.objects.create(
             name='Test Company',
-            slug='test-company',
+            slug='test-company-model',
             description='A test company',
             website='https://testcompany.com',
-            logo='https://testcompany.com/logo.png',
+            logo_url='https://testcompany.com/logo.png',
             size='1-10',
-            industry='Technology',
+            industry='technology',
             is_verified=True,
-            created_by=self.user
         )
-        
+
+        self.source = Source.objects.create(
+            name='Test Source',
+            slug='test-source-model',
+            url='https://testsource.com',
+        )
+
         self.job = Job.objects.create(
             company=self.company,
             title='Software Engineer',
+            slug='software-engineer-model-test',
             description='We are looking for a software engineer',
             location='Cairo, Egypt',
+            location_type='hybrid',
+            industry='technology',
             employment_type='full_time',
             experience_level='mid',
-            remote_type='hybrid',
+            work_arrangement='hybrid',
             salary_min=50000,
             salary_max=80000,
             salary_currency='USD',
-            is_active=True,
-            posted_at=timezone.now() - timedelta(days=1)
+            source_url='https://testsource.com/jobs/1',
+            source=self.source,
+            status='active',
+            posted_at=datetime.date.today(),
         )
 
     def test_job_creation(self):
         """Test that a job can be created."""
         self.assertEqual(self.job.title, 'Software Engineer')
         self.assertEqual(self.job.company, self.company)
-        self.assertTrue(self.job.is_active)
+        self.assertEqual(self.job.status, 'active')
         self.assertIsNotNone(self.job.uuid)
 
     def test_job_str(self):
         """Test the string representation of a job."""
-        self.assertEqual(str(self.job), f"{self.job.title} at {self.job.company.name}")
+        self.assertEqual(str(self.job), f"{self.job.title} @ {self.job.company.name}")
 
-    def test_job_get_absolute_url(self):
-        """Test the get_absolute_url method."""
-        url = self.job.get_absolute_url()
-        self.assertIn('/jobs/', url)
-        self.assertIn(str(self.job.uuid), url)
+    def test_job_fields(self):
+        """Test that job fields are set correctly."""
+        self.assertEqual(self.job.employment_type, 'full_time')
+        self.assertEqual(self.job.experience_level, 'mid')
+        self.assertEqual(self.job.work_arrangement, 'hybrid')
+        self.assertEqual(self.job.salary_min, 50000)
+        self.assertEqual(self.job.salary_max, 80000)
 
-    def test_job_is_expired(self):
-        """Test the is_expired method."""
-        # Job posted 1 day ago, not expired (90 day threshold)
-        self.assertFalse(self.job.is_expired())
-        
-        # Create a job that is 91 days old
-        old_job = Job.objects.create(
-            company=self.company,
-            title='Old Job',
-            description='An old job',
-            location='Cairo, Egypt',
-            employment_type='full_time',
-            experience_level='mid',
-            remote_type='onsite',
-            salary_min=50000,
-            salary_max=80000,
-            salary_currency='USD',
-            is_active=True,
-            posted_at=timezone.now() - timedelta(days=91)
-        )
-        self.assertTrue(old_job.is_expired())
-
-    def test_job_manager_active(self):
-        """Test the active manager."""
-        active_jobs = Job.objects.active()
-        self.assertIn(self.job, active_jobs)
-        
-        # Deactivate the job
-        self.job.is_active = False
-        self.job.save()
-        
-        active_jobs = Job.objects.active()
-        self.assertNotIn(self.job, active_jobs)
+    def test_job_company_relationship(self):
+        """Test the company-job relationship."""
+        self.assertIn(self.job, self.company.jobs.all())
 
 
 class CompanyModelTest(TestCase):
@@ -107,93 +89,49 @@ class CompanyModelTest(TestCase):
 
     def setUp(self):
         """Set up test data."""
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            password='testpass123',
-            first_name='Test',
-            last_name='User'
-        )
-        
         self.company = Company.objects.create(
             name='Test Company',
-            slug='test-company',
+            slug='test-company-comp',
             description='A test company',
             website='https://testcompany.com',
-            logo='https://testcompany.com/logo.png',
+            logo_url='https://testcompany.com/logo.png',
             size='1-10',
-            industry='Technology',
+            industry='technology',
             is_verified=True,
-            created_by=self.user
         )
 
     def test_company_creation(self):
         """Test that a company can be created."""
         self.assertEqual(self.company.name, 'Test Company')
-        self.assertEqual(self.company.slug, 'test-company')
+        self.assertEqual(self.company.slug, 'test-company-comp')
         self.assertTrue(self.company.is_verified)
 
     def test_company_str(self):
         """Test the string representation of a company."""
         self.assertEqual(str(self.company), self.company.name)
 
-    def test_company_get_absolute_url(self):
-        """Test the get_absolute_url method."""
-        url = self.company.get_absolute_url()
-        self.assertIn('/companies/', url)
-        self.assertIn(self.company.slug, url)
+    def test_company_fields(self):
+        """Test company fields are set correctly."""
+        self.assertEqual(self.company.industry, 'technology')
+        self.assertEqual(self.company.website, 'https://testcompany.com')
+        self.assertTrue(self.company.is_verified)
 
 
-class JobTagModelTest(TestCase):
-    """Tests for the JobTag model."""
+class TagModelTest(TestCase):
+    """Tests for the Tag model."""
 
     def setUp(self):
         """Set up test data."""
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            password='testpass123',
-            first_name='Test',
-            last_name='User'
-        )
-        
-        self.company = Company.objects.create(
-            name='Test Company',
-            slug='test-company',
-            description='A test company',
-            website='https://testcompany.com',
-            logo='https://testcompany.com/logo.png',
-            size='1-10',
-            industry='Technology',
-            is_verified=True,
-            created_by=self.user
-        )
-        
-        self.job = Job.objects.create(
-            company=self.company,
-            title='Software Engineer',
-            description='We are looking for a software engineer',
-            location='Cairo, Egypt',
-            employment_type='full_time',
-            experience_level='mid',
-            remote_type='hybrid',
-            salary_min=50000,
-            salary_max=80000,
-            salary_currency='USD',
-            is_active=True,
-            posted_at=timezone.now() - timedelta(days=1)
-        )
-        
-        self.tag = JobTag.objects.create(
+        self.tag = Tag.objects.create(
             name='Python',
-            slug='python',
-            description='Python programming language'
+            slug='python-model-test',
+            category='language',
         )
-        
-        self.job.tags.add(self.tag)
 
     def test_tag_creation(self):
         """Test that a tag can be created."""
         self.assertEqual(self.tag.name, 'Python')
-        self.assertEqual(self.tag.slug, 'python')
+        self.assertEqual(self.tag.slug, 'python-model-test')
 
     def test_tag_str(self):
         """Test the string representation of a tag."""
@@ -201,8 +139,32 @@ class JobTagModelTest(TestCase):
 
     def test_job_tags(self):
         """Test the many-to-many relationship between jobs and tags."""
-        self.assertIn(self.tag, self.job.tags.all())
-        self.assertEqual(self.job.tags.count(), 1)
+        company = Company.objects.create(
+            name='Tag Test Co',
+            slug='tag-test-co',
+            industry='technology',
+        )
+        source = Source.objects.create(
+            name='Tag Source',
+            slug='tag-source',
+            url='https://tagsource.com',
+        )
+        job = Job.objects.create(
+            company=company,
+            title='Tag Test Job',
+            slug='tag-test-job',
+            description='A job to test tags',
+            location='Cairo',
+            location_type='remote',
+            industry='technology',
+            experience_level='mid',
+            source_url='https://tagsource.com/jobs/1',
+            source=source,
+            posted_at=datetime.date.today(),
+        )
+        JobTag.objects.create(job=job, tag=self.tag)
+        self.assertIn(self.tag, job.tags.all())
+        self.assertEqual(job.tags.count(), 1)
 
 
 class JobApplicationModelTest(TestCase):
@@ -216,59 +178,58 @@ class JobApplicationModelTest(TestCase):
             first_name='Test',
             last_name='User'
         )
-        
+
         self.company = Company.objects.create(
             name='Test Company',
-            slug='test-company',
+            slug='test-company-app',
             description='A test company',
             website='https://testcompany.com',
-            logo='https://testcompany.com/logo.png',
-            size='1-10',
-            industry='Technology',
+            industry='technology',
             is_verified=True,
-            created_by=self.user
         )
-        
+
+        self.source = Source.objects.create(
+            name='App Source',
+            slug='app-source',
+            url='https://appsource.com',
+        )
+
         self.job = Job.objects.create(
             company=self.company,
             title='Software Engineer',
+            slug='software-engineer-app-test',
             description='We are looking for a software engineer',
             location='Cairo, Egypt',
+            location_type='hybrid',
+            industry='technology',
             employment_type='full_time',
             experience_level='mid',
-            remote_type='hybrid',
-            salary_min=50000,
-            salary_max=80000,
-            salary_currency='USD',
-            is_active=True,
-            posted_at=timezone.now() - timedelta(days=1)
+            source_url='https://appsource.com/jobs/1',
+            source=self.source,
+            posted_at=datetime.date.today(),
         )
-        
+
         self.application = JobApplication.objects.create(
             user=self.user,
             job=self.job,
-            status='submitted',
-            cover_letter='I am interested in this position.',
-            resume='path/to/resume.pdf'
+            status='applied',
         )
 
     def test_application_creation(self):
         """Test that an application can be created."""
         self.assertEqual(self.application.user, self.user)
         self.assertEqual(self.application.job, self.job)
-        self.assertEqual(self.application.status, 'submitted')
+        self.assertEqual(self.application.status, 'applied')
 
     def test_application_str(self):
         """Test the string representation of an application."""
-        self.assertEqual(
-            str(self.application),
-            f"{self.user.email} - {self.job.title}"
-        )
+        expected = f"{self.user.email} → {self.job.title}"
+        self.assertEqual(str(self.application), expected)
 
     def test_application_status_choices(self):
         """Test the status choices."""
-        valid_statuses = ['submitted', 'reviewed', 'interviewed', 'offered', 'accepted', 'rejected']
-        for status in valid_statuses:
-            self.application.status = status
+        valid_statuses = ['applied', 'viewed', 'shortlisted', 'rejected']
+        for status_val in valid_statuses:
+            self.application.status = status_val
             self.application.save()
-            self.assertEqual(self.application.status, status)
+            self.assertEqual(self.application.status, status_val)

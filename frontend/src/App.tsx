@@ -13,7 +13,9 @@ import Login from "./pages/Login";
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
 import CompanyProfile from "./pages/CompanyProfile";
-import Profile from "./pages/Profile";
+import ProfilePage from "./pages/ProfilePage";
+import SavedJobs from "./pages/SavedJobs";
+import TalentScore from "./pages/TalentScore";
 import AdminDashboard from "./pages/AdminDashboard";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
@@ -27,10 +29,9 @@ import ResumeBuilder from "./pages/ResumeBuilder";
 import NotificationPreferences from "./pages/NotificationPreferences";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
-import CareerDashboard from "./pages/CareerDashboard";
 import Applications from "./pages/Applications";
 import IntelligenceDashboard from "./pages/IntelligenceDashboard";
-import { EmployerDashboard, EmployerRegister, JobPostingForm } from "./pages/employer";
+import { EmployerDashboard, EmployerRegister, JobPostingForm, TalentSearch } from "./pages/employer";
 import { RashidWidget } from "./components/rashid/RashidWidget";
 import { RashidOnboarding } from "./components/rashid/RashidOnboarding";
 import { OnboardingFlow } from "./components/landing/OnboardingFlow";
@@ -55,9 +56,10 @@ function AnimatedRoutes() {
         <Route path="/app/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />
         <Route path="/app/jobs/:id" element={<RequireAuth><JobDetail /></RequireAuth>} />
         <Route path="/app/companies/:id" element={<RequireAuth><CompanyProfile /></RequireAuth>} />
-        <Route path="/app/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-        <Route path="/app/career" element={<RequireAuth><CareerDashboard /></RequireAuth>} />
-        <Route path="/app/saved" element={<RequireAuth><Profile /></RequireAuth>} />
+        <Route path="/app/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+        <Route path="/app/career" element={<RequireAuth><TalentScore /></RequireAuth>} />
+        <Route path="/app/talent-score" element={<RequireAuth><TalentScore /></RequireAuth>} />
+        <Route path="/app/saved" element={<RequireAuth><SavedJobs /></RequireAuth>} />
         <Route path="/app/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
         <Route path="/app/recommendations" element={<RequireAuth><Recommendations /></RequireAuth>} />
         <Route path="/app/rashid" element={<RequireAuth><RashidChat /></RequireAuth>} />
@@ -75,14 +77,15 @@ function AnimatedRoutes() {
         <Route path="/app/employer/dashboard" element={<RequireAuth><EmployerDashboard /></RequireAuth>} />
         <Route path="/app/employer/register" element={<RequireAuth><EmployerRegister /></RequireAuth>} />
         <Route path="/app/employer/post-job" element={<RequireAuth><JobPostingForm /></RequireAuth>} />
+        <Route path="/app/employer/talent-search" element={<RequireAuth><TalentSearch /></RequireAuth>} />
 
         {/* Legacy redirects */}
         <Route path="/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />
         <Route path="/jobs/:id" element={<RequireAuth><JobDetail /></RequireAuth>} />
         <Route path="/companies/:id" element={<RequireAuth><CompanyProfile /></RequireAuth>} />
-        <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
-        <Route path="/saved" element={<RequireAuth><Profile /></RequireAuth>} />
-        <Route path="/alerts" element={<RequireAuth><Profile /></RequireAuth>} />
+        <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+        <Route path="/saved" element={<RequireAuth><SavedJobs /></RequireAuth>} />
+        <Route path="/alerts" element={<RequireAuth><Alerts /></RequireAuth>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>

@@ -13,8 +13,9 @@ from typing import List, Dict, Optional, Tuple
 from urllib.parse import urlparse
 from datetime import datetime
 
-import requests
 from django.core.cache import cache
+
+from apps.core.safe_fetch import safe_fetch
 
 logger = logging.getLogger(__name__)
 
@@ -74,19 +75,21 @@ class CommonCrawlDiscovery:
             return cached
         
         try:
-            # Get crawl IDs from Common Crawl API
-            response = requests.get(
+            result = safe_fetch(
                 'https://index.commoncrawl.org/collisions.json',
-                timeout=30
+                method="GET", timeout=30, read_body=True
             )
-            response.raise_for_status()
-            
-            data = response.json()
+            if result.status_code == 0 or result.status_code >= 400:
+                logger.error(f"Failed to get crawl IDs: HTTP {result.status_code}")
+                return []
+
+            import json as _json
+            data = _json.loads(result.content)
             crawl_ids = [item['id'] for item in data.get('items', [])[:limit]]
-            
+
             cache.set(cache_key, crawl_ids, self.CACHE_TIMEOUT)
             return crawl_ids
-            
+
         except Exception as e:
             logger.error(f"Failed to get crawl IDs: {e}")
             return []
@@ -269,18 +272,22 @@ class CommonCrawlDiscovery:
             return cached
         
         try:
-            # Get WARC files from Common Crawl index
             index_url = f"https://index.commoncrawl.org/CC-MAIN-{crawl_id}-index"
-            response = requests.get(f"{index_url}/collisions.json", timeout=30)
-            response.raise_for_status()
-            
-            data = response.json()
-            warc_files = [item.get('warc', {}).get('filename', '') 
+            result = safe_fetch(
+                f"{index_url}/collisions.json", method="GET", timeout=30, read_body=True
+            )
+            if result.status_code == 0 or result.status_code >= 400:
+                logger.error(f"Failed to get WARC files for {crawl_id}: HTTP {result.status_code}")
+                return []
+
+            import json as _json
+            data = _json.loads(result.content)
+            warc_files = [item.get('warc', {}).get('filename', '')
                          for item in data.get('items', [])[:limit]]
-            
+
             cache.set(cache_key, warc_files, self.CACHE_TIMEOUT)
             return warc_files
-            
+
         except Exception as e:
             logger.error(f"Failed to get WARC files for {crawl_id}: {e}")
             return []

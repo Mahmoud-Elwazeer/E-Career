@@ -12,6 +12,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.code_execution import execute_and_grade
+
 from .models import (
     Assessment,
     AssessmentQuestion,
@@ -126,10 +128,12 @@ def submit_assessment(request, attempt_id):
         answers = serializer.validated_data['answers']
         time_spent = serializer.validated_data.get('time_spent_minutes', 0)
         
-        # Calculate score (placeholder - would need proper scoring logic)
+        # Calculate score with real grading
         total_questions = attempt.assessment.questions.count()
         correct_answers = 0
-        
+        question_scores = {}
+        coding_details = {}
+
         for question in attempt.assessment.questions.all():
             question_id = str(question.id)
             if question_id in answers:
@@ -137,10 +141,37 @@ def submit_assessment(request, attempt_id):
                 if question.question_type == 'multiple_choice':
                     if user_answer == question.correct_answer:
                         correct_answers += 1
+                        question_scores[question_id] = 100
+                    else:
+                        question_scores[question_id] = 0
                 elif question.question_type == 'coding':
-                    # Would need to run test cases
-                    correct_answers += 1  # Placeholder
-        
+                    # Real code execution and grading via Judge0
+                    code = user_answer if isinstance(user_answer, str) else user_answer.get('code', '')
+                    language = (
+                        user_answer.get('language', 'python')
+                        if isinstance(user_answer, dict)
+                        else 'python'
+                    )
+                    test_cases = question.test_cases or []
+                    try:
+                        grading_result = execute_and_grade(code, language, test_cases)
+                        coding_details[question_id] = grading_result
+                        # Award full point if all tests pass, partial otherwise
+                        question_scores[question_id] = int(grading_result['score'] * 100)
+                        if grading_result['passed']:
+                            correct_answers += 1
+                        else:
+                            # Partial credit: count as correct if >= 50% tests pass
+                            if grading_result['score'] >= 0.5:
+                                correct_answers += grading_result['score']
+                    except Exception as grading_err:
+                        logger.error(f"Coding grading failed for question {question_id}: {grading_err}")
+                        question_scores[question_id] = 0
+                else:
+                    question_scores[question_id] = 0
+            else:
+                question_scores[question_id] = 0
+
         score = int((correct_answers / total_questions) * 100) if total_questions > 0 else 0
         passed = score >= attempt.assessment.passing_score
         
@@ -153,18 +184,33 @@ def submit_assessment(request, attempt_id):
         attempt.time_spent_minutes = time_spent
         attempt.save()
         
+        # Generate AI-powered analysis of the submission
+        try:
+            from apps.intelligence.career_ai import career_ai_service
+            ai_analysis = career_ai_service.generate_assessment_feedback(
+                answers=answers,
+                scores=question_scores,
+                coding_details=coding_details,
+                passed=passed,
+                overall_score=score,
+            )
+        except Exception as ai_err:
+            logger.warning(f"AI analysis generation failed, using fallback: {ai_err}")
+            ai_analysis = {
+                'strengths': ['Problem solving', 'Technical knowledge'] if passed else ['Attempted all questions'],
+                'weaknesses': ['Time management'] if time_spent > 60 else [],
+                'recommendations': ['Practice more coding challenges'] if not passed else ['Keep up the good work'],
+                'summary': f"Score: {score}%. {'Passed' if passed else 'Did not pass'}.",
+            }
+
         # Create result
         AssessmentResult.objects.create(
             attempt=attempt,
             total_score=score,
             max_score=100,
-            question_scores={str(q.id): 100 if q.id in answers else 0 for q in attempt.assessment.questions.all()},
+            question_scores=question_scores,
             time_per_question={str(q.id): time_spent // max(total_questions, 1) for q in attempt.assessment.questions.all()},
-            ai_analysis={
-                'strengths': ['Problem solving', 'Technical knowledge'] if passed else ['Need more practice'],
-                'weaknesses': ['Time management'] if time_spent > 60 else [],
-                'recommendations': ['Practice more coding challenges'] if not passed else ['Keep up the good work'],
-            },
+            ai_analysis=ai_analysis,
         )
         
         return Response({

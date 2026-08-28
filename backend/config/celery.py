@@ -91,4 +91,9 @@ app.conf.beat_schedule = {
         'task': 'apps.skills.tasks.compute_esco_embeddings',
         'schedule': crontab(hour=4, minute=0, day_of_week=0),  # Sunday 4 AM
     },
+    # Daily analytics aggregation from EventLog
+    'aggregate-daily-analytics': {
+        'task': 'apps.events.tasks.aggregate_daily_analytics',
+        'schedule': crontab(hour=1, minute=0),  # 1 AM daily
+    },
 }

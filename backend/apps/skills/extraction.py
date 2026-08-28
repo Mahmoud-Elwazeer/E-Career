@@ -42,7 +42,7 @@ class SkillExtractor:
         """Lazy load Bedrock service"""
         if self._bedrock is None:
             try:
-                from ai.bedrock import bedrock_service
+                from apps.intelligence.career_ai import career_ai_service as bedrock_service
                 self._bedrock = bedrock_service
             except ImportError:
                 self._bedrock = None

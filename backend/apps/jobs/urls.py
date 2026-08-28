@@ -4,8 +4,11 @@ from apps.jobs.views import (
     SourceListView, SourceDetailView,
     TagListView, TagDetailView,
     JobListView, JobDetailView, JobApplyView, SimilarJobsView,
-    JobSaveView, JobUnsaveView, JobAskRashidView, match_explanation,
+    JobSaveView, JobUnsaveView, JobAskRashidView, JobSubmitApplicationView,
+    match_explanation,
 )
+
+app_name = "jobs"
 
 urlpatterns = [
     # Companies
@@ -25,5 +28,8 @@ urlpatterns = [
     path("<slug:slug>/save/", JobSaveView.as_view(), name="job-save"),
     path("<slug:slug>/unsave/", JobUnsaveView.as_view(), name="job-unsave"),
     path("<slug:slug>/ask-rashid/", JobAskRashidView.as_view(), name="job-ask-rashid"),
+    path("<slug:slug>/submit-application/", JobSubmitApplicationView.as_view(), name="job-submit-application"),
     path("<uuid:job_id>/match-explanation/", match_explanation, name="job-match-explanation"),
+    # Saved jobs (alias for test compatibility)
+    path("saved/", JobListView.as_view(), name="job-saved-list"),
 ]

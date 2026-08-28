@@ -5,8 +5,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ArrowLeft, Save, Send, AlertCircle } from 'lucide-react';
-import { createJobPosting, getJobPosting, updateJobPosting, publishJobPosting, CreateJobPostingData } from '../../services/employer';
+import { ArrowLeft, Save, Send, AlertCircle, Plus, Trash2 } from 'lucide-react';
+import { createJobPosting, getJobPosting, updateJobPosting, publishJobPosting, CreateJobPostingData, CustomFormField } from '../../services/employer';
 
 interface JobPostingFormProps {
   jobId?: number; // If provided, we're editing an existing job
@@ -28,6 +28,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
     salary_max: undefined,
     salary_currency: 'EGP',
     apply_url: '',
+    custom_form_fields: [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -37,7 +38,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
     queryKey: ['job-posting', jobId],
     queryFn: () => getJobPosting(jobId!),
     enabled: !!jobId,
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       setFormData({
         title: data.title,
         description: data.description || '',
@@ -50,6 +51,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
         salary_max: data.salary_max || undefined,
         salary_currency: data.salary_currency || 'EGP',
         apply_url: data.apply_url || '',
+        custom_form_fields: data.custom_form_fields || [],
       });
     },
   });
@@ -57,8 +59,8 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
   // Create mutation
   const createMutation = useMutation({
     mutationFn: createJobPosting,
-    onSuccess: (data) => {
-      navigate(`/employer/jobs/${data.id}`);
+    onSuccess: () => {
+      navigate('/app/employer/dashboard');
     },
   });
 
@@ -67,7 +69,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
     mutationFn: (data: { id: number; data: Partial<CreateJobPostingData> }) =>
       updateJobPosting(data.id, data.data),
     onSuccess: () => {
-      navigate(`/employer/jobs/${jobId}`);
+      navigate('/app/employer/dashboard');
     },
   });
 
@@ -75,7 +77,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
   const publishMutation = useMutation({
     mutationFn: publishJobPosting,
     onSuccess: () => {
-      navigate(`/employer/jobs/${jobId}`);
+      navigate('/app/employer/dashboard');
     },
   });
 
@@ -364,7 +366,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
             {/* Application URL */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Application</h2>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Apply URL *
@@ -385,6 +387,153 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                   <AlertCircle className="w-4 h-4 inline mr-1" />
                   URL must be on your company's official domain
                 </p>
+              </div>
+            </div>
+
+            {/* Screening Questions */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Screening Questions</h2>
+              <p className="text-sm text-gray-500 mb-4">
+                Add custom questions for candidates. You can set knockout values to auto-reject applicants.
+              </p>
+
+              <div className="space-y-4">
+                {(formData.custom_form_fields || []).map((field, index) => (
+                  <div key={field.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <span className="text-sm font-medium text-gray-500">Question {index + 1}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = [...(formData.custom_form_fields || [])];
+                          updated.splice(index, 1);
+                          setFormData({ ...formData, custom_form_fields: updated });
+                        }}
+                        className="text-red-500 hover:text-red-700 p-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Label</label>
+                        <input
+                          type="text"
+                          value={field.label}
+                          onChange={(e) => {
+                            const updated = [...(formData.custom_form_fields || [])];
+                            updated[index] = { ...updated[index], label: e.target.value };
+                            setFormData({ ...formData, custom_form_fields: updated });
+                          }}
+                          placeholder="e.g., Do you have a valid work permit?"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                        <select
+                          value={field.type}
+                          onChange={(e) => {
+                            const updated = [...(formData.custom_form_fields || [])];
+                            updated[index] = { ...updated[index], type: e.target.value as CustomFormField['type'] };
+                            setFormData({ ...formData, custom_form_fields: updated });
+                          }}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="text">Short Text</option>
+                          <option value="textarea">Long Text</option>
+                          <option value="yes_no">Yes / No</option>
+                          <option value="select">Single Select</option>
+                          <option value="multiselect">Multi Select</option>
+                          <option value="number">Number</option>
+                          <option value="date">Date</option>
+                          <option value="url">URL</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {(field.type === 'select' || field.type === 'multiselect') && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Options (comma-separated)
+                        </label>
+                        <input
+                          type="text"
+                          value={(field.options || []).join(', ')}
+                          onChange={(e) => {
+                            const updated = [...(formData.custom_form_fields || [])];
+                            updated[index] = {
+                              ...updated[index],
+                              options: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                            };
+                            setFormData({ ...formData, custom_form_fields: updated });
+                          }}
+                          placeholder="e.g., Option A, Option B, Option C"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`required-${field.id}`}
+                          checked={field.required}
+                          onChange={(e) => {
+                            const updated = [...(formData.custom_form_fields || [])];
+                            updated[index] = { ...updated[index], required: e.target.checked };
+                            setFormData({ ...formData, custom_form_fields: updated });
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                        <label htmlFor={`required-${field.id}`} className="text-xs text-gray-600">Required</label>
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          Knockout Value (auto-reject if matched)
+                        </label>
+                        <input
+                          type="text"
+                          value={field.knockout_value || ''}
+                          onChange={(e) => {
+                            const updated = [...(formData.custom_form_fields || [])];
+                            updated[index] = {
+                              ...updated[index],
+                              knockout_value: e.target.value || undefined,
+                            };
+                            setFormData({ ...formData, custom_form_fields: updated });
+                          }}
+                          placeholder={field.type === 'yes_no' ? 'e.g., no' : 'Leave empty to disable'}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newField: CustomFormField = {
+                      id: `field_${Date.now()}`,
+                      type: 'yes_no',
+                      label: '',
+                      required: true,
+                    };
+                    setFormData({
+                      ...formData,
+                      custom_form_fields: [...(formData.custom_form_fields || []), newField],
+                    });
+                  }}
+                  className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600 transition flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Screening Question
+                </button>
               </div>
             </div>
           </div>

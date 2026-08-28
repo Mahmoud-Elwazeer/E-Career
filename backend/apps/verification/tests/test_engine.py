@@ -1,4 +1,5 @@
 """Tests for the verification engine and all 6 stages."""
+import datetime
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.utils import timezone
@@ -291,12 +292,19 @@ class TestDeduplicatorStage(TestCase):
     def test_duplicate_detection(self):
         """Test duplicate job detection."""
         # Create a job first
-        company = Company.objects.create(name="Google", slug="google")
+        company = Company.objects.create(name="Google", slug="google-dedup")
         job1 = Job.objects.create(
             company=company,
             title="Software Engineer",
+            slug="dedup-test-job",
             location="Remote",
+            location_type="remote",
+            industry="technology",
+            experience_level="mid",
+            description="Test job",
+            source_url="https://google.com/jobs/1",
             direct_apply_url="https://google.com/jobs/1",
+            posted_at=datetime.date.today(),
         )
         
         # Run deduplication with same data
@@ -308,86 +316,82 @@ class TestDeduplicatorStage(TestCase):
 
 class TestVerificationEngine(TestCase):
     """Test the full verification engine."""
-    
+
     def setUp(self):
         self.engine = VerificationEngine()
-        self.company = Company.objects.create(name="Google", slug="google", domain="google.com")
-    
+        self.company = Company.objects.create(name="Google", slug="google-engine", domain="google.com")
+        self._job_counter = 0
+
+    def _make_job(self, **kwargs):
+        """Helper to create a Job with all required fields."""
+        self._job_counter += 1
+        defaults = {
+            "company": self.company,
+            "title": "Software Engineer",
+            "slug": f"verify-engine-job-{self._job_counter}",
+            "location": "Remote",
+            "location_type": "remote",
+            "industry": "technology",
+            "experience_level": "mid",
+            "description": "Test job for verification",
+            "source_url": "https://google.com/careers/job/test",
+            "posted_at": datetime.date.today(),
+        }
+        defaults.update(kwargs)
+        return Job.objects.create(**defaults)
+
     def test_verify_blocked_aggregator(self):
         """Test that blocked aggregator jobs are rejected."""
-        job = Job.objects.create(
-            company=self.company,
-            title="Software Engineer",
-            location="Remote",
-            direct_apply_url="https://linkedin.com/jobs/123",
-        )
-        
+        job = self._make_job(direct_apply_url="https://linkedin.com/jobs/123")
+
         result = self.engine.verify_job(job)
-        
+
         self.assertEqual(result.status, "rejected")
         self.assertEqual(result.trust_score, 0.0)
         self.assertIn("BLOCKED", result.notes)
-    
+
     def test_verify_employer_posted_verified(self):
         """Test auto-verification for verified employer."""
         self.company.is_verified = True
         self.company.save()
-        
-        job = Job.objects.create(
-            company=self.company,
-            title="Software Engineer",
-            location="Remote",
+
+        job = self._make_job(
             direct_apply_url="https://google.com/jobs/1",
             source_type="employer_posted",
         )
-        
+
         result = self.engine.verify_employer_posted_job(job)
-        
+
         self.assertEqual(result.status, "verified")
         self.assertGreater(result.trust_score, 0.8)
-    
+
     def test_trust_score_calculation(self):
         """Test trust score is within valid range."""
-        job = Job.objects.create(
-            company=self.company,
-            title="Software Engineer",
-            location="Remote",
-            direct_apply_url="https://google.com/careers/job/123",
-        )
-        
+        job = self._make_job(direct_apply_url="https://google.com/careers/job/123")
+
         result = self.engine.verify_job(job)
-        
+
         self.assertGreaterEqual(result.trust_score, 0.0)
         self.assertLessEqual(result.trust_score, 1.0)
-    
+
     def test_verification_result_created(self):
         """Test that VerificationResult is created."""
-        job = Job.objects.create(
-            company=self.company,
-            title="Software Engineer",
-            location="Remote",
-            direct_apply_url="https://google.com/careers/job/123",
-        )
-        
+        job = self._make_job(direct_apply_url="https://google.com/careers/job/123")
+
         result = self.engine.verify_job(job)
-        
+
         self.assertIsNotNone(result.id)
         self.assertEqual(result.job, job)
-    
+
     def test_job_model_updated(self):
         """Test that job model is updated with verification results."""
-        job = Job.objects.create(
-            company=self.company,
-            title="Software Engineer",
-            location="Remote",
-            direct_apply_url="https://google.com/careers/job/123",
-        )
-        
+        job = self._make_job(direct_apply_url="https://google.com/careers/job/123")
+
         result = self.engine.verify_job(job)
-        
+
         # Refresh from database
         job.refresh_from_db()
-        
+
         self.assertIsNotNone(job.legitimacy_score)
         self.assertIsNotNone(job.apply_url_checked_at)
         self.assertIn(job.ats_platform, ["google", "unknown", ""])

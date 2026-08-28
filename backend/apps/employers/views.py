@@ -596,13 +596,20 @@ class CandidateRankingViewSet(viewsets.ModelViewSet):
         
         # Get candidates to rank
         if rank_all:
-            # Rank all applicants for this job
+            # Rank all applicants for this job (applicants have implicitly consented)
             from apps.jobs.models import JobApplication
             candidates = JobApplication.objects.filter(
                 job=job
             ).select_related('user').values_list('user_id', flat=True)
         else:
-            candidates = candidate_ids
+            # Filter to only discoverable users
+            from apps.career.models import CareerProfile
+            discoverable_ids = set(
+                CareerProfile.objects.filter(
+                    user_id__in=candidate_ids, is_discoverable=True
+                ).values_list('user_id', flat=True)
+            )
+            candidates = [uid for uid in candidate_ids if uid in discoverable_ids]
         
         # Calculate rankings (placeholder - would use AI service in production)
         rankings = []
@@ -706,14 +713,21 @@ class TalentPoolViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def add_candidate(self, request, pk=None):
-        """Add a candidate to this pool."""
+        """Add a candidate to this pool (only discoverable users)."""
         pool = self.get_object()
         serializer = AddCandidateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         from django.contrib.auth import get_user_model
+        from apps.career.models import CareerProfile
         User = get_user_model()
         user = get_object_or_404(User, id=serializer.validated_data['user_id'])
+
+        if not CareerProfile.objects.filter(user=user, is_discoverable=True).exists():
+            return Response(
+                {'error': 'This user has not opted in to employer discovery.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         candidate, created = TalentPoolCandidate.objects.get_or_create(
             pool=pool,

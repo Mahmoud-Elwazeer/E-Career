@@ -20,7 +20,7 @@ class TestUserModel:
         )
         assert user.email == "alice@gmail.com"
         assert user.check_password("SecurePass1!")
-        assert user.role == "user"
+        assert user.role == "jobseeker"
         assert user.status == "active"
         assert user.is_active is True
         assert user.is_deleted is False

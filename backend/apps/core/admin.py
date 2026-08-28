@@ -57,12 +57,30 @@ class RuleAdmin(admin.ModelAdmin):
     actions = ['activate_rules', 'deactivate_rules']
     
     def activate_rules(self, request, queryset):
+        from apps.core.models import ActivityLog
         queryset.update(is_active=True)
+        for rule in queryset:
+            ActivityLog.objects.create(
+                user=request.user,
+                action="activate_rule",
+                target_type="Rule",
+                target_id=str(rule.pk),
+                metadata={"name": rule.name},
+            )
         self.message_user(request, f"Activated {queryset.count()} rules")
     activate_rules.short_description = "Activate selected rules"
-    
+
     def deactivate_rules(self, request, queryset):
+        from apps.core.models import ActivityLog
         queryset.update(is_active=False)
+        for rule in queryset:
+            ActivityLog.objects.create(
+                user=request.user,
+                action="deactivate_rule",
+                target_type="Rule",
+                target_id=str(rule.pk),
+                metadata={"name": rule.name},
+            )
         self.message_user(request, f"Deactivated {queryset.count()} rules")
     deactivate_rules.short_description = "Deactivate selected rules"
 

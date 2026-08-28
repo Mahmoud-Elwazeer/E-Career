@@ -24,7 +24,7 @@ class MatchingService:
         """
         # Try AI-powered matching first
         try:
-            from ai.bedrock import bedrock_service
+            from apps.intelligence.career_ai import career_ai_service as bedrock_service
             
             profile_data = self._serialize_profile(profile)
             job_data = self._serialize_job(job)
@@ -44,7 +44,7 @@ class MatchingService:
             dict: Detailed breakdown with scores and recommendations
         """
         try:
-            from ai.bedrock import bedrock_service
+            from apps.intelligence.career_ai import career_ai_service as bedrock_service
             
             profile_data = self._serialize_profile(profile)
             job_data = self._serialize_job(job)

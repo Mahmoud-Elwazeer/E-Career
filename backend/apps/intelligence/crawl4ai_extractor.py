@@ -184,16 +184,15 @@ class Crawl4AIExtractor:
     ) -> ExtractionResult:
         """Fallback: fetch page, convert to text, then use AI to extract."""
         import json
-        import requests
         from bs4 import BeautifulSoup
+        from apps.core.safe_fetch import safe_fetch, SSRFBlockedError
 
         try:
-            resp = requests.get(url, timeout=30, headers={
-                'User-Agent': 'Mozilla/5.0 (compatible; E-Career Bot/1.0)'
-            })
-            resp.raise_for_status()
+            result = safe_fetch(url, method="GET", timeout=30, allow_http=True, read_body=True)
+            if result.status_code == 0 or result.status_code >= 400:
+                return ExtractionResult(url=url, success=False, error=f"HTTP {result.status_code}")
 
-            soup = BeautifulSoup(resp.text, 'html.parser')
+            soup = BeautifulSoup(result.content.decode("utf-8", errors="replace"), 'html.parser')
             for tag in soup(['script', 'style', 'nav', 'footer', 'header']):
                 tag.decompose()
             text = soup.get_text(separator='\n', strip=True)[:8000]
@@ -236,16 +235,16 @@ Return ONLY valid JSON."""
 
     def _fallback_markdown(self, url: str) -> ExtractionResult:
         """Fallback: simple HTML to text conversion."""
-        import requests
         from bs4 import BeautifulSoup
+        from apps.core.safe_fetch import safe_fetch
 
         try:
-            resp = requests.get(url, timeout=30, headers={
-                'User-Agent': 'Mozilla/5.0 (compatible; E-Career Bot/1.0)'
-            })
-            resp.raise_for_status()
+            result = safe_fetch(url, method="GET", timeout=30, allow_http=True, read_body=True)
+            if result.status_code == 0 or result.status_code >= 400:
+                return ExtractionResult(url=url, success=False, error=f"HTTP {result.status_code}")
 
-            soup = BeautifulSoup(resp.text, 'html.parser')
+            html_text = result.content.decode("utf-8", errors="replace")
+            soup = BeautifulSoup(html_text, 'html.parser')
             for tag in soup(['script', 'style']):
                 tag.decompose()
             text = soup.get_text(separator='\n', strip=True)
@@ -253,7 +252,7 @@ Return ONLY valid JSON."""
             return ExtractionResult(
                 url=url,
                 markdown=text,
-                raw_html=resp.text,
+                raw_html=html_text,
                 success=True,
                 extraction_method="beautifulsoup",
             )

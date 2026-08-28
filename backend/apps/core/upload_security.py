@@ -111,3 +111,119 @@ class UploadValidator:
 
 
 upload_validator = UploadValidator()
+
+
+class MalwareScanResult:
+    """Result of a malware scan."""
+
+    def __init__(self, clean: bool, threat: str = "", error: str = ""):
+        self.clean = clean
+        self.threat = threat
+        self.error = error
+
+
+def _get_clamd_connection():
+    """Get a connection to the ClamAV daemon. Returns (connection, error_msg)."""
+    from django.conf import settings
+
+    try:
+        import pyclamd
+    except ImportError:
+        return None, "pyclamd not installed — skipping malware scan"
+
+    clamd_socket = getattr(settings, "CLAMAV_SOCKET", "/var/run/clamav/clamd.ctl")
+    clamd_host = getattr(settings, "CLAMAV_HOST", None)
+    clamd_port = getattr(settings, "CLAMAV_PORT", 3310)
+
+    try:
+        if clamd_host:
+            cd = pyclamd.ClamdNetworkSocket(host=clamd_host, port=clamd_port)
+        else:
+            cd = pyclamd.ClamdUnixSocket(filename=clamd_socket)
+
+        if not cd.ping():
+            raise ConnectionError("clamd not responding to ping")
+        return cd, None
+    except Exception as e:
+        return None, f"ClamAV daemon unreachable: {e}"
+
+
+def scan_stream_for_malware(file_obj) -> MalwareScanResult:
+    """
+    Scan an in-memory file object using ClamAV's INSTREAM command.
+    Resets file position after scanning.
+    """
+    from django.conf import settings
+    fail_closed = getattr(settings, "CLAMAV_FAIL_CLOSED", True)
+
+    cd, err = _get_clamd_connection()
+    if cd is None:
+        logger.warning(err)
+        if fail_closed:
+            return MalwareScanResult(clean=False, error=err)
+        return MalwareScanResult(clean=True)
+
+    try:
+        pos = file_obj.tell()
+        content = file_obj.read()
+        file_obj.seek(pos)
+        result = cd.scan_stream(content)
+    except Exception as e:
+        msg = f"ClamAV stream scan error: {e}"
+        logger.error(msg)
+        if fail_closed:
+            return MalwareScanResult(clean=False, error=msg)
+        return MalwareScanResult(clean=True)
+
+    if result is None:
+        return MalwareScanResult(clean=True)
+
+    # result format: {'stream': ('FOUND', 'ThreatName')}
+    status_tuple = result.get("stream")
+    if status_tuple and status_tuple[0] == "FOUND":
+        threat = status_tuple[1]
+        logger.critical("MALWARE DETECTED in uploaded stream: %s", threat)
+        return MalwareScanResult(clean=False, threat=threat)
+
+    return MalwareScanResult(clean=True)
+
+
+def scan_file_for_malware(file_path: str) -> MalwareScanResult:
+    """
+    Scan a file on disk using ClamAV daemon (clamd).
+
+    Requires clamd running and pyclamd installed. If the daemon is
+    unreachable, behavior is controlled by CLAMAV_FAIL_CLOSED setting:
+      True  → reject upload (safe default for production)
+      False → allow upload with a logged warning (for dev/CI)
+    """
+    from django.conf import settings
+    fail_closed = getattr(settings, "CLAMAV_FAIL_CLOSED", True)
+
+    cd, err = _get_clamd_connection()
+    if cd is None:
+        logger.warning(err)
+        if fail_closed:
+            return MalwareScanResult(clean=False, error=err)
+        return MalwareScanResult(clean=True)
+
+    try:
+        result = cd.scan_file(file_path)
+    except Exception as e:
+        msg = f"ClamAV scan error: {e}"
+        logger.error(msg)
+        if fail_closed:
+            return MalwareScanResult(clean=False, error=msg)
+        return MalwareScanResult(clean=True)
+
+    if result is None:
+        return MalwareScanResult(clean=True)
+
+    # result format: {'/path/to/file': ('FOUND', 'ThreatName')}
+    status_tuple = result.get(file_path)
+    if status_tuple and status_tuple[0] == "FOUND":
+        threat = status_tuple[1]
+        logger.critical("MALWARE DETECTED in %s: %s", file_path, threat)
+        return MalwareScanResult(clean=False, threat=threat)
+
+    return MalwareScanResult(clean=True)

@@ -1,7 +1,7 @@
 """
 Management Command: embed_skills
 
-Generate embeddings for all ESCO skills and index them in Qdrant.
+Generate embeddings for all ESCO skills and index them via pgvector.
 
 Usage:
     python manage.py embed_skills

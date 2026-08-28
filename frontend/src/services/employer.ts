@@ -2,7 +2,7 @@
  * Employer API Service
  * Phase 3A: Employer Portal
  */
-import api from './api';
+import { apiRequest } from './client';
 
 // Types
 export interface EmployerProfile {
@@ -104,8 +104,7 @@ export interface Company {
 
 // Employer Profile APIs
 export const getEmployerProfile = async (): Promise<EmployerProfile> => {
-  const response = await api.get('/api/v1/employer/profile/');
-  return response.data;
+  return apiRequest<EmployerProfile>('/employer/profile/');
 };
 
 export const createEmployerProfile = async (data: {
@@ -113,46 +112,52 @@ export const createEmployerProfile = async (data: {
   job_title: string;
   phone?: string;
 }): Promise<{ message: string; employer: EmployerProfile }> => {
-  const response = await api.post('/api/v1/employer/register/', data);
-  return response.data;
+  return apiRequest('/employer/register/', { method: 'POST', body: data });
 };
 
 export const updateEmployerProfile = async (data: {
   job_title?: string;
   phone?: string;
 }): Promise<EmployerProfile> => {
-  const response = await api.put('/api/v1/employer/profile/', data);
-  return response.data;
+  return apiRequest('/employer/profile/', { method: 'PUT', body: data });
 };
 
 export const requestVerification = async (): Promise<{ message: string; status: string }> => {
-  const response = await api.post('/api/v1/employer/profile/request_verification/');
-  return response.data;
+  return apiRequest('/employer/profile/request_verification/', { method: 'POST' });
 };
 
 export const getEmployerStats = async (): Promise<EmployerStats> => {
-  const response = await api.get('/api/v1/employer/profile/stats/');
-  return response.data;
+  return apiRequest<EmployerStats>('/employer/profile/stats/');
 };
 
 // Company Search
 export const searchCompanies = async (query: string): Promise<{ companies: Company[] }> => {
-  const response = await api.get('/api/v1/employer/companies/search/', {
-    params: { q: query }
-  });
-  return response.data;
+  return apiRequest('/employer/companies/search/', { params: { q: query } });
 };
 
 // Job Posting APIs
 export const getJobPostings = async (): Promise<JobPosting[]> => {
-  const response = await api.get('/api/v1/employer/jobs/');
-  return response.data;
+  return apiRequest<JobPosting[]>('/employer/jobs/');
 };
 
 export const getJobPosting = async (id: number): Promise<JobPosting> => {
-  const response = await api.get(`/api/v1/employer/jobs/${id}/`);
-  return response.data;
+  return apiRequest<JobPosting>(`/employer/jobs/${id}/`);
 };
+
+export interface CustomFormField {
+  id: string;
+  type: 'text' | 'textarea' | 'select' | 'multiselect' | 'yes_no' | 'number' | 'date' | 'url';
+  label: string;
+  required: boolean;
+  placeholder?: string;
+  options?: string[];
+  validation?: {
+    min_length?: number;
+    max_length?: number;
+    pattern?: string;
+  };
+  knockout_value?: string;
+}
 
 export interface CreateJobPostingData {
   title: string;
@@ -166,35 +171,31 @@ export interface CreateJobPostingData {
   salary_max?: number;
   salary_currency?: string;
   apply_url: string;
+  custom_form_fields?: CustomFormField[];
 }
 
 export const createJobPosting = async (data: CreateJobPostingData): Promise<JobPosting> => {
-  const response = await api.post('/api/v1/employer/jobs/', data);
-  return response.data;
+  return apiRequest<JobPosting>('/employer/jobs/', { method: 'POST', body: data });
 };
 
 export const updateJobPosting = async (id: number, data: Partial<CreateJobPostingData>): Promise<JobPosting> => {
-  const response = await api.put(`/api/v1/employer/jobs/${id}/`, data);
-  return response.data;
+  return apiRequest<JobPosting>(`/employer/jobs/${id}/`, { method: 'PUT', body: data });
 };
 
 export const deleteJobPosting = async (id: number): Promise<void> => {
-  await api.delete(`/api/v1/employer/jobs/${id}/`);
+  return apiRequest(`/employer/jobs/${id}/`, { method: 'DELETE' });
 };
 
 export const publishJobPosting = async (id: number): Promise<{ message: string; status: string }> => {
-  const response = await api.post(`/api/v1/employer/jobs/${id}/publish/`);
-  return response.data;
+  return apiRequest(`/employer/jobs/${id}/publish/`, { method: 'POST' });
 };
 
 export const closeJobPosting = async (id: number): Promise<{ message: string; status: string }> => {
-  const response = await api.post(`/api/v1/employer/jobs/${id}/close/`);
-  return response.data;
+  return apiRequest(`/employer/jobs/${id}/close/`, { method: 'POST' });
 };
 
 export const reopenJobPosting = async (id: number): Promise<{ message: string; status: string }> => {
-  const response = await api.post(`/api/v1/employer/jobs/${id}/reopen/`);
-  return response.data;
+  return apiRequest(`/employer/jobs/${id}/reopen/`, { method: 'POST' });
 };
 
 export const getJobApplicants = async (jobId: number): Promise<{
@@ -202,8 +203,7 @@ export const getJobApplicants = async (jobId: number): Promise<{
   total_applicants: number;
   applicants: JobApplication[];
 }> => {
-  const response = await api.get(`/api/v1/employer/jobs/${jobId}/applicants/`);
-  return response.data;
+  return apiRequest(`/employer/jobs/${jobId}/applicants/`);
 };
 
 // Application Management APIs
@@ -211,30 +211,106 @@ export const getApplications = async (filters?: {
   status?: string;
   job_id?: number;
 }): Promise<JobApplication[]> => {
-  const response = await api.get('/api/v1/employer/applications/', {
-    params: filters
-  });
-  return response.data;
+  return apiRequest<JobApplication[]>('/employer/applications/', { params: filters as any });
 };
 
 export const getApplication = async (id: number): Promise<JobApplication> => {
-  const response = await api.get(`/api/v1/employer/applications/${id}/`);
-  return response.data;
+  return apiRequest<JobApplication>(`/employer/applications/${id}/`);
 };
 
 export const updateApplicationStatus = async (id: number, status: string): Promise<JobApplication> => {
-  const response = await api.patch(`/api/v1/employer/applications/${id}/`, { status });
-  return response.data;
+  return apiRequest<JobApplication>(`/employer/applications/${id}/`, { method: 'PATCH', body: { status } });
 };
 
 export const shortlistApplication = async (id: number): Promise<{ message: string; status: string }> => {
-  const response = await api.post(`/api/v1/employer/applications/${id}/shortlist/`);
-  return response.data;
+  return apiRequest(`/employer/applications/${id}/shortlist/`, { method: 'POST' });
 };
 
 export const rejectApplication = async (id: number): Promise<{ message: string; status: string }> => {
-  const response = await api.post(`/api/v1/employer/applications/${id}/reject/`);
-  return response.data;
+  return apiRequest(`/employer/applications/${id}/reject/`, { method: 'POST' });
+};
+
+// Talent Pool Types
+export interface TalentPool {
+  id: number;
+  name: string;
+  description: string;
+  candidate_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TalentPoolCandidate {
+  id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  tags: string[];
+  notes: string;
+  source: string;
+  added_at: string;
+}
+
+export interface TalentPoolDetail extends TalentPool {
+  candidates: TalentPoolCandidate[];
+}
+
+export interface CreateTalentPoolData {
+  name: string;
+  description?: string;
+}
+
+export interface AddCandidateData {
+  user_id: number;
+  tags?: string[];
+  notes?: string;
+  source?: string;
+}
+
+export interface CandidateRanking {
+  id: number;
+  job_title: string;
+  user_name: string;
+  user_email: string;
+  overall_score: number;
+  skill_match_score: number;
+  experience_score: number;
+  education_score: number;
+  salary_expectation_score: number;
+  knockout_passed: boolean;
+  knockout_failures: string[];
+  explanations: Record<string, string>;
+  status: 'pending' | 'ranked' | 'shortlisted' | 'rejected';
+}
+
+// Talent Pool APIs
+export const listTalentPools = async (): Promise<TalentPool[]> => {
+  return apiRequest<TalentPool[]>('/employer/talent-pools/');
+};
+
+export const createTalentPool = async (data: CreateTalentPoolData): Promise<TalentPool> => {
+  return apiRequest<TalentPool>('/employer/talent-pools/', { method: 'POST', body: data });
+};
+
+export const getTalentPoolDetail = async (id: number): Promise<TalentPoolDetail> => {
+  return apiRequest<TalentPoolDetail>(`/employer/talent-pools/${id}/`);
+};
+
+export const addCandidateToPool = async (poolId: number, data: AddCandidateData): Promise<TalentPoolCandidate> => {
+  return apiRequest<TalentPoolCandidate>(`/employer/talent-pools/${poolId}/add_candidate/`, { method: 'POST', body: data });
+};
+
+export const rankCandidates = async (jobId: number, candidateIds?: number[], rankAll?: boolean): Promise<CandidateRanking[]> => {
+  return apiRequest<CandidateRanking[]>('/employer/rankings/rank/', {
+    method: 'POST',
+    body: { job_id: jobId, candidate_ids: candidateIds, rank_all: rankAll },
+  });
+};
+
+export const listRankings = async (jobId?: number): Promise<CandidateRanking[]> => {
+  return apiRequest<CandidateRanking[]>('/employer/rankings/', {
+    params: jobId ? { job_id: jobId } : undefined,
+  });
 };
 
 // Export all as named exports
@@ -262,4 +338,11 @@ export default {
   updateApplicationStatus,
   shortlistApplication,
   rejectApplication,
+  // Talent Pools
+  listTalentPools,
+  createTalentPool,
+  getTalentPoolDetail,
+  addCandidateToPool,
+  rankCandidates,
+  listRankings,
 };

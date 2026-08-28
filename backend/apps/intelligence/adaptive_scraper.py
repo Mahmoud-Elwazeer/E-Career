@@ -186,16 +186,17 @@ class AdaptiveScraperService:
         return jobs
 
     def _fallback_scrape(self, url: str, company_name: str) -> list[ScrapedJob]:
-        """Fallback when Scrapling is not available — use requests + BeautifulSoup."""
+        """Fallback when Scrapling is not available — use safe_fetch + BeautifulSoup."""
         try:
-            import requests
             from bs4 import BeautifulSoup
+            from apps.core.safe_fetch import safe_fetch, SSRFBlockedError
 
-            headers = {"User-Agent": "Mozilla/5.0 (compatible; USAMBot/1.0)"}
-            response = requests.get(url, headers=headers, timeout=30)
-            response.raise_for_status()
+            result = safe_fetch(url, method="GET", timeout=30, allow_http=True, read_body=True)
+            if result.status_code == 0 or result.status_code >= 400:
+                logger.warning("fallback_scrape_failed", url=url, status=result.status_code)
+                return []
 
-            soup = BeautifulSoup(response.text, "html.parser")
+            soup = BeautifulSoup(result.content.decode("utf-8", errors="replace"), "html.parser")
             jobs = []
 
             for link in soup.find_all("a", href=True):

@@ -1,12 +1,12 @@
 """
-Management command to index all jobs into Qdrant vector database.
+Management command to index all jobs into pgvector.
 
 This command:
-1. Connects to Qdrant
+1. Connects to pgvector
 2. Creates the collection if it doesn't exist
 3. Fetches all active jobs from the database
 4. Generates embeddings using AWS Bedrock (Cohere)
-5. Upserts vectors into Qdrant
+5. Upserts vectors via pgvector
 """
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -16,7 +16,7 @@ from apps.vectors.service import get_vector_service
 
 
 class Command(BaseCommand):
-    help = 'Index all active jobs into Qdrant vector database'
+    help = 'Index all active jobs into pgvector'
     
     def add_arguments(self, parser):
         parser.add_argument(
@@ -107,7 +107,7 @@ class Command(BaseCommand):
                 for doc, embedding in zip(documents, embeddings):
                     doc['vector'] = embedding
                 
-                # Upsert into Qdrant
+                # Upsert into pgvector
                 success = vector_service.vector_plugin.upsert(collection, documents)
                 
                 if success:

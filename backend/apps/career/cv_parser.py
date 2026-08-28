@@ -14,7 +14,9 @@ from django.conf import settings
 
 from apps.skills.models import Skill
 from apps.career.models import CareerUserSkill
-from apps.core.models import User
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ class CVParserService:
         """Lazy initialization of Bedrock client."""
         if self._bedrock is None:
             try:
-                from apps.ai.bedrock import BedrockService
+                from apps.intelligence.career_ai import CareerAIService as BedrockService
                 self._bedrock = BedrockService()
             except Exception as e:
                 logger.warning(f"Failed to initialize Bedrock client: {e}")

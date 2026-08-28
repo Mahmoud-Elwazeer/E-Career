@@ -6,7 +6,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import Sum, Count, Avg, Q
 from django.utils import timezone
 from datetime import timedelta
-from apps.events.models import Event
+from apps.events.models import EventLog as Event
 from apps.rashid.models import RashidUsage
 
 

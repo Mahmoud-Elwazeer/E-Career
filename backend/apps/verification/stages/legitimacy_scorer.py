@@ -3,8 +3,9 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-import httpx
 import structlog
+
+from apps.core.safe_fetch import verify_url_is_live, SSRFBlockedError
 
 logger = structlog.get_logger()
 
@@ -91,9 +92,9 @@ class LegitimacyScorerStage:
 
     def _check_url_accessibility(self, url: str) -> tuple[bool, int | None]:
         try:
-            response = httpx.head(url, timeout=10, follow_redirects=True, verify=False)
-            return response.status_code < 400, response.status_code
-        except httpx.TimeoutException:
-            return False, 408
+            is_live, status_code = verify_url_is_live(url, timeout=10, allow_http=True)
+            return is_live, status_code
+        except SSRFBlockedError:
+            return False, None
         except Exception:
             return False, None

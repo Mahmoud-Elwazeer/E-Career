@@ -23,7 +23,7 @@ class TestUserJourney:
         data = {
             "email": "journeyuser@example.com",
             "password": "TestPass123!",
-            "password2": "TestPass123!",
+            "password_confirm": "TestPass123!",
             "first_name": "Journey",
             "last_name": "User",
         }

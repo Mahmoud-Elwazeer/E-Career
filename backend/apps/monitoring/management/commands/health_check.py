@@ -50,18 +50,6 @@ class Command(BaseCommand):
             checks['typesense'] = f'FAIL: {e}'
             degraded_services += 1
         
-        # Qdrant
-        try:
-            resp = requests.get('http://localhost:6333', timeout=5)
-            if resp.status_code == 200:
-                checks['qdrant'] = 'OK'
-            else:
-                checks['qdrant'] = f'FAIL: HTTP {resp.status_code}'
-                degraded_services += 1
-        except Exception as e:
-            checks['qdrant'] = f'FAIL: {e}'
-            degraded_services += 1
-        
         # Print results
         self.stdout.write("=" * 50)
         self.stdout.write("E-Career Health Check Report")

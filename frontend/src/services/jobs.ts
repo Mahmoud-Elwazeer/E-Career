@@ -96,6 +96,16 @@ export interface Job {
   also_on_sources?: Source[];
   view_count?: number;
   click_count?: number;
+  custom_form_fields?: Array<{
+    id: string;
+    type: 'text' | 'textarea' | 'select' | 'multiselect' | 'yes_no' | 'number' | 'date' | 'url';
+    label: string;
+    required: boolean;
+    placeholder?: string;
+    options?: string[];
+    validation?: { min_length?: number; max_length?: number; pattern?: string };
+    knockout_value?: string;
+  }>;
 }
 
 export interface PaginatedJobs {
@@ -191,4 +201,32 @@ export async function askRashidAboutJob(slug: string): Promise<{
   skills_required: string[];
 }> {
   return apiRequest(`/jobs/${slug}/ask-rashid/`, { auth: true });
+}
+
+// Feature 2: Submit application with custom form responses
+export async function submitApplication(slug: string, data: {
+  custom_form_responses: Record<string, any>;
+  cv_file?: File;
+}): Promise<{
+  application_id: number;
+  status: string;
+  applied_at: string;
+  knockout_reason?: string;
+  knockout_results?: Array<{ field_id: string; field_label: string; user_answer: string; knockout_value: string }>;
+}> {
+  if (data.cv_file) {
+    const formData = new FormData();
+    formData.append("custom_form_responses", JSON.stringify(data.custom_form_responses));
+    formData.append("cv_file", data.cv_file);
+    return apiRequest(`/jobs/${slug}/submit-application/`, {
+      method: "POST",
+      formData,
+      auth: true,
+    });
+  }
+  return apiRequest(`/jobs/${slug}/submit-application/`, {
+    method: "POST",
+    body: { custom_form_responses: data.custom_form_responses },
+    auth: true,
+  });
 }

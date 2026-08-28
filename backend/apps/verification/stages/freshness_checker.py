@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-import httpx
 import structlog
-from django.utils import timezone
+
+from apps.core.safe_fetch import safe_fetch, SSRFBlockedError
 
 logger = structlog.get_logger()
 
@@ -41,36 +41,48 @@ class FreshnessCheckerStage:
 
         notes = []
         try:
-            response = httpx.get(
-                url, timeout=self.TIMEOUT, follow_redirects=True, verify=False
+            result = safe_fetch(
+                url,
+                method="GET",
+                timeout=self.TIMEOUT,
+                allow_http=True,
+                read_body=True,
             )
-        except httpx.TimeoutException:
+        except SSRFBlockedError as e:
             return FreshnessResult(
-                is_accessible=False, http_status=408, is_closed=False, notes=["timeout"]
+                is_accessible=False, http_status=None, is_closed=False,
+                notes=[f"ssrf_blocked:{e.reason}"]
             )
         except Exception as e:
             return FreshnessResult(
-                is_accessible=False, http_status=None, is_closed=False, notes=[f"error:{str(e)[:100]}"]
+                is_accessible=False, http_status=None, is_closed=False,
+                notes=[f"error:{str(e)[:100]}"]
             )
 
-        if response.status_code in (404, 410):
+        if result.status_code == 0:
+            return FreshnessResult(
+                is_accessible=False, http_status=None, is_closed=False,
+                notes=[f"fetch_error:{result.error[:100]}"]
+            )
+
+        if result.status_code in (404, 410):
             return FreshnessResult(
                 is_accessible=False,
-                http_status=response.status_code,
+                http_status=result.status_code,
                 is_closed=True,
                 notes=["page_gone"],
             )
 
-        if response.status_code >= 400:
+        if result.status_code >= 400:
             return FreshnessResult(
                 is_accessible=False,
-                http_status=response.status_code,
+                http_status=result.status_code,
                 is_closed=False,
-                notes=[f"http_error:{response.status_code}"],
+                notes=[f"http_error:{result.status_code}"],
             )
 
         is_closed = False
-        content_lower = response.content[:5000].lower()
+        content_lower = result.content[:5000].lower()
         for signal in CLOSED_SIGNALS:
             if signal in content_lower:
                 is_closed = True
@@ -79,7 +91,7 @@ class FreshnessCheckerStage:
 
         return FreshnessResult(
             is_accessible=True,
-            http_status=response.status_code,
+            http_status=result.status_code,
             is_closed=is_closed,
             notes=notes,
         )

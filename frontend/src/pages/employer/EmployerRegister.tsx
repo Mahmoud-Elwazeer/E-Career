@@ -33,7 +33,7 @@ const EmployerRegister: React.FC = () => {
   const registerMutation = useMutation({
     mutationFn: createEmployerProfile,
     onSuccess: () => {
-      navigate('/employer/dashboard');
+      navigate('/app/employer/dashboard');
     },
   });
 

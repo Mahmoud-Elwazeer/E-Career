@@ -1,8 +1,6 @@
 """
-AI services module for E-Career
-Includes AWS Bedrock integration for CV parsing and job matching
+DEPRECATED — import from apps.intelligence.career_ai instead.
 """
-
-from .bedrock import bedrock_service
+from apps.intelligence.career_ai import career_ai_service as bedrock_service  # noqa: F401
 
 __all__ = ['bedrock_service']

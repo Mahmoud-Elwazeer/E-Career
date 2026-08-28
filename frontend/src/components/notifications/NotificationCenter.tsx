@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import api from '@/services/api';
+import { apiRequest } from '@/services/client';
 
 export interface Notification {
   id: number;
@@ -32,8 +32,8 @@ export function NotificationCenter() {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/core/notifications/');
-      setNotifications(response.data.data || []);
+      const data = await apiRequest<Notification[]>('/users/me/notifications/');
+      setNotifications(data || []);
     } catch (err) {
       setError('Failed to load notifications');
     } finally {
@@ -41,12 +41,15 @@ export function NotificationCenter() {
     }
   };
 
-  const markAsRead = async (notificationId: number) => {
+  const markAsRead = async (notificationUuid: string) => {
     try {
-      await api.patch(`/core/notifications/${notificationId}/read/`);
+      await apiRequest(`/users/me/notifications/${notificationUuid}/`, {
+        method: 'PATCH',
+        body: { is_read: true }
+      });
       setNotifications(prev =>
         prev.map(n =>
-          n.id === notificationId ? { ...n, is_read: true } : n
+          n.uuid === notificationUuid ? { ...n, is_read: true } : n
         )
       );
     } catch (err) {
@@ -56,7 +59,7 @@ export function NotificationCenter() {
 
   const markAllAsRead = async () => {
     try {
-      await api.post('/core/notifications/read-all/');
+      await apiRequest('/users/me/notifications/mark-all-read/', { method: 'POST' });
       setNotifications(prev =>
         prev.map(n => ({ ...n, is_read: true }))
       );
@@ -65,10 +68,12 @@ export function NotificationCenter() {
     }
   };
 
-  const deleteNotification = async (notificationId: number) => {
+  const deleteNotification = async (notificationUuid: string) => {
     try {
-      await api.delete(`/core/notifications/${notificationId}/`);
-      setNotifications(prev => prev.filter(n => n.id !== notificationId));
+      await apiRequest(`/users/me/notifications/${notificationUuid}/`, {
+        method: 'DELETE'
+      });
+      setNotifications(prev => prev.filter(n => n.uuid !== notificationUuid));
     } catch (err) {
       console.error('Failed to delete notification');
     }
@@ -128,7 +133,7 @@ export function NotificationCenter() {
         ) : (
           getFilteredNotifications().map(notification => (
             <div
-              key={notification.id}
+              key={notification.uuid}
               className={`notification-item ${notification.is_read ? 'read' : 'unread'}`}
             >
               <div className="notification-content">
@@ -146,14 +151,14 @@ export function NotificationCenter() {
               <div className="notification-actions">
                 {!notification.is_read && (
                   <button
-                    onClick={() => markAsRead(notification.id)}
+                    onClick={() => markAsRead(notification.uuid)}
                     className="mark-read-btn"
                   >
                     ✓
                   </button>
                 )}
                 <button
-                  onClick={() => deleteNotification(notification.id)}
+                  onClick={() => deleteNotification(notification.uuid)}
                   className="delete-btn"
                 >
                   ×
@@ -179,9 +184,19 @@ export function NotificationBadge() {
   const [count, setCount] = useState(0);
 
   useEffect(() => {
-    // In production, this would fetch from the API
-    // const fetchCount = async () => { ... }
-    setCount(0);
+    const fetchCount = async () => {
+      try {
+        const data = await apiRequest<{ unread_count: number }>('/users/me/notifications/', {
+          params: { is_read: false }
+        });
+        if (Array.isArray(data)) {
+          setCount(data.length);
+        }
+      } catch {
+        // Silently fail for badge
+      }
+    };
+    fetchCount();
   }, []);
 
   if (count === 0) return null;

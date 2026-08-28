@@ -70,15 +70,26 @@ def cv_upload(request):
         # Save file temporarily
         temp_path = Path('temp_cvs') / f"{request.user.id}_{cv_file.name}"
         temp_full_path = default_storage.path(str(temp_path))
-        
+
         # Ensure directory exists
         Path(temp_full_path).parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Save the file
         with default_storage.open(str(temp_path), 'wb+') as destination:
             for chunk in cv_file.chunks():
                 destination.write(chunk)
-        
+
+        # Malware scan
+        from apps.core.upload_security import scan_file_for_malware
+        scan_result = scan_file_for_malware(temp_full_path)
+        if not scan_result.clean:
+            default_storage.delete(str(temp_path))
+            detail = scan_result.threat or scan_result.error or "scan failed"
+            return Response({
+                'success': False,
+                'error': f'File rejected by malware scanner: {detail}',
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         # Parse the file based on extension
         ext = Path(cv_file.name).suffix.lower()
         

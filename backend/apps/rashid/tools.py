@@ -4,7 +4,7 @@ Rashid specialized tools
 
 from typing import Dict, Any
 from django.conf import settings
-from ai.bedrock import bedrock_service
+from apps.intelligence.career_ai import career_ai_service as bedrock_service
 import logging
 
 logger = logging.getLogger(__name__)

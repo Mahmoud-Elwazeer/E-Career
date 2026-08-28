@@ -20,7 +20,7 @@ class AdminStatsView(APIView):
     def get(self, request):
         from apps.jobs.models import Job, Source
         from apps.accounts.models import User
-        from apps.analytics.models import JobView, JobClick
+        from apps.events.models import EventLog
         from apps.users.models import SavedJob
 
         now = timezone.now()
@@ -31,8 +31,8 @@ class AdminStatsView(APIView):
             "pending_review": Job.objects.filter(status="pending").count(),
             "active_sources": Source.objects.filter(is_active=True).count(),
             "total_saves": SavedJob.objects.count(),
-            "total_clicks": JobClick.objects.count(),
-            "total_views": JobView.objects.count(),
+            "total_clicks": EventLog.objects.filter(event_type="job_applied").count(),
+            "total_views": EventLog.objects.filter(event_type="job_viewed").count(),
             "total_users": User.objects.filter(is_deleted=False).count(),
             "jobs_this_week": Job.objects.filter(created_at__gte=week_ago).count(),
         }
@@ -95,40 +95,28 @@ class AdminChartsView(APIView):
     ],
 )
 class ClickAnalyticsView(APIView):
-    """GET /api/v1/analytics/clicks/ — Apply-click analytics."""
+    """GET /api/v1/analytics/clicks/ — Apply-click analytics (reads from EventLog)."""
 
     permission_classes = [IsAdminRole]
 
     def get(self, request):
-        from apps.analytics.models import JobClick
+        from apps.events.models import EventLog
 
         days = int(request.query_params.get("days", 30))
         since = timezone.now() - timedelta(days=days)
 
-        total = JobClick.objects.filter(clicked_at__gte=since).count()
+        qs = EventLog.objects.filter(event_type="job_applied", created_at__gte=since)
+        total = qs.count()
 
         by_job = list(
-            JobClick.objects.filter(clicked_at__gte=since)
-            .values("job__slug", "job__title")
+            qs.values("target_id")
             .annotate(count=Count("id"))
             .order_by("-count")[:20]
         )
-        for item in by_job:
-            item["slug"] = item.pop("job__slug")
-            item["title"] = item.pop("job__title")
-
-        by_source = list(
-            JobClick.objects.filter(clicked_at__gte=since)
-            .values("source__name")
-            .annotate(count=Count("id"))
-            .order_by("-count")
-        )
-        for item in by_source:
-            item["name"] = item.pop("source__name") or "Unknown"
 
         return Response({
             "success": True,
-            "data": {"total": total, "by_job": by_job, "by_source": by_source},
+            "data": {"total": total, "by_job": by_job, "by_source": []},
             "message": "",
             "errors": None,
         })
@@ -141,28 +129,32 @@ class ClickAnalyticsView(APIView):
     ],
 )
 class SearchAnalyticsView(APIView):
-    """GET /api/v1/analytics/searches/ — Search query analytics."""
+    """GET /api/v1/analytics/searches/ — Search query analytics (reads from EventLog)."""
 
     permission_classes = [IsAdminRole]
 
     def get(self, request):
-        from apps.analytics.models import SearchLog
+        from apps.events.models import EventLog
 
         days = int(request.query_params.get("days", 30))
         since = timezone.now() - timedelta(days=days)
 
-        total_searches = SearchLog.objects.filter(searched_at__gte=since).count()
+        qs = EventLog.objects.filter(event_type="search_performed", created_at__gte=since)
+        total_searches = qs.count()
 
         top_queries = list(
-            SearchLog.objects.filter(searched_at__gte=since, query__gt="")
-            .values("query")
+            qs.exclude(data__query="")
+            .values("data__query")
             .annotate(count=Count("id"))
             .order_by("-count")[:20]
         )
+        for item in top_queries:
+            item["query"] = item.pop("data__query", "")
 
         zero_result_queries = list(
-            SearchLog.objects.filter(searched_at__gte=since, results_count=0, query__gt="")
-            .values_list("query", flat=True)
+            qs.filter(data__results_count=0)
+            .exclude(data__query="")
+            .values_list("data__query", flat=True)
             .distinct()[:20]
         )
 
@@ -190,13 +182,13 @@ class ConversionAnalyticsView(APIView):
     permission_classes = [IsAdminRole]
 
     def get(self, request):
-        from apps.analytics.models import JobView, JobClick
+        from apps.events.models import EventLog
 
         days = int(request.query_params.get("days", 30))
         since = timezone.now() - timedelta(days=days)
 
-        total_views = JobView.objects.filter(viewed_at__gte=since).count()
-        total_clicks = JobClick.objects.filter(clicked_at__gte=since).count()
+        total_views = EventLog.objects.filter(event_type="job_viewed", created_at__gte=since).count()
+        total_clicks = EventLog.objects.filter(event_type="job_applied", created_at__gte=since).count()
         conversion_rate = (
             f"{(total_clicks / total_views * 100):.1f}%"
             if total_views > 0
@@ -204,14 +196,11 @@ class ConversionAnalyticsView(APIView):
         )
 
         per_job = list(
-            JobClick.objects.filter(clicked_at__gte=since)
-            .values("job__slug", "job__title")
+            EventLog.objects.filter(event_type="job_applied", created_at__gte=since)
+            .values("target_id")
             .annotate(clicks=Count("id"))
             .order_by("-clicks")[:10]
         )
-        for item in per_job:
-            item["slug"] = item.pop("job__slug")
-            item["title"] = item.pop("job__title")
 
         return Response({
             "success": True,
@@ -227,24 +216,4 @@ class ConversionAnalyticsView(APIView):
         })
 
 
-@extend_schema(tags=["Analytics"])
-class ActivityLogListView(APIView):
-    """GET /api/v1/analytics/activity-logs/ — Admin activity log."""
-
-    permission_classes = [IsAdminRole]
-
-    def get(self, request):
-        from apps.core.models import ActivityLog
-        from apps.core.serializers import ActivityLogSerializer
-        from apps.core.pagination import StandardPagination
-
-        qs = ActivityLog.objects.select_related("user").order_by("-created_at")
-
-        action_filter = request.query_params.get("action")
-        if action_filter:
-            qs = qs.filter(action=action_filter)
-
-        paginator = StandardPagination()
-        page = paginator.paginate_queryset(qs, request)
-        serializer = ActivityLogSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+from apps.core.admin_views import ActivityLogListView  # noqa: F401

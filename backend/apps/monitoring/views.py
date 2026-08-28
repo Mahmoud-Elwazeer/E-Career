@@ -14,18 +14,39 @@ from apps.core.monitoring_service import get_monitoring_service
 @permission_classes([AllowAny])
 def health_check(request):
     """
-    Basic health check endpoint.
-    
-    Returns 200 OK if the service is running.
+    Health check endpoint — performs real DB and Redis connectivity checks.
+    Returns 503 when a critical component is down.
     """
-    monitoring_service = get_monitoring_service()
-    health_status = monitoring_service.get_health_status()
-    
+    from django.db import connection
+    from django.utils import timezone
+
+    components = {}
+    all_healthy = True
+
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        components["database"] = "healthy"
+    except Exception as e:
+        components["database"] = f"unhealthy: {str(e)[:100]}"
+        all_healthy = False
+
+    try:
+        import redis as _redis
+        r = _redis.from_url(os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0'))
+        r.ping()
+        components["redis"] = "healthy"
+    except Exception as e:
+        components["redis"] = f"unhealthy: {str(e)[:100]}"
+        all_healthy = False
+
+    http_status = status.HTTP_200_OK if all_healthy else status.HTTP_503_SERVICE_UNAVAILABLE
     return Response({
-        "status": "healthy",
+        "status": "healthy" if all_healthy else "unhealthy",
         "service": "ecareer-backend",
-        "timestamp": health_status["monitoring_service"]["timestamp"],
-    }, status=status.HTTP_200_OK)
+        "timestamp": timezone.now().isoformat(),
+        "components": components,
+    }, status=http_status)
 
 
 @api_view(['GET'])
@@ -37,7 +58,6 @@ def detailed_health_check(request):
     Returns comprehensive health status including:
     - Database connection
     - Redis connection
-    - Qdrant connection
     - Celery workers
     - Sentry status
     """
@@ -61,19 +81,6 @@ def detailed_health_check(request):
     except Exception as e:
         redis_status = f"unhealthy: {str(e)}"
     
-    # Add Qdrant status
-    try:
-        from qdrant_client import QdrantClient
-        q = QdrantClient(
-            host=os.getenv('QDRANT_HOST', 'localhost'),
-            port=int(os.getenv('QDRANT_PORT', 6333)),
-            api_key=os.getenv('QDRANT_API_KEY'),
-        )
-        q.get_collections()
-        qdrant_status = "healthy"
-    except Exception as e:
-        qdrant_status = f"unhealthy: {str(e)}"
-    
     return Response({
         "status": "healthy" if db_status == "healthy" and redis_status == "healthy" else "degraded",
         "service": "ecareer-backend",
@@ -81,7 +88,6 @@ def detailed_health_check(request):
         "components": {
             "database": db_status,
             "redis": redis_status,
-            "qdrant": qdrant_status,
             "sentry": "enabled" if monitoring_service.sentry_enabled else "disabled",
         },
     }, status=status.HTTP_200_OK)
@@ -91,30 +97,12 @@ def detailed_health_check(request):
 @permission_classes([AllowAny])
 def metrics(request):
     """
-    Metrics endpoint.
-    
-    Returns system metrics including:
-    - Request counts
-    - Error rates
-    - Response times
-    - Resource usage
+    Metrics endpoint — returns real accumulated metrics from the singleton.
     """
-    monitoring_service = get_monitoring_service()
-    
-    return Response({
-        "metrics": {
-            "uptime_seconds": 0,  # Would need to track this
-            "requests_total": 0,  # Would need to track this
-            "requests_error": 0,  # Would need to track this
-            "requests_success": 0,  # Would need to track this
-        },
-        "system": {
-            "cpu_percent": 0,  # Would need psutil
-            "memory_percent": 0,  # Would need psutil
-            "disk_percent": 0,  # Would need psutil
-        },
-        "monitoring": monitoring_service.get_health_status(),
-    }, status=status.HTTP_200_OK)
+    from apps.core.services.prometheus_metrics import get_prometheus_metrics
+
+    prom = get_prometheus_metrics()
+    return Response(prom.get_metrics(), status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])

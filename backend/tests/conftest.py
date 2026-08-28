@@ -142,8 +142,8 @@ def feature_flag(db):
 
 @pytest.fixture
 def mock_bedrock_client(mocker):
-    """Mock AWS Bedrock client."""
-    mock = mocker.patch("apps.ai.bedrock.BedrockClient")
+    """Mock AWS Bedrock / CareerAI service."""
+    mock = mocker.patch("apps.intelligence.career_ai.CareerAIService")
     mock.return_value.generate_text.return_value = "Mocked AI response"
     mock.return_value.generate_embedding.return_value = [0.1] * 768
     return mock.return_value
@@ -156,13 +156,6 @@ def mock_typesense_client(mocker):
     mock.return_value.search.return_value = {"hits": []}
     return mock.return_value
 
-
-@pytest.fixture
-def mock_qdrant_client(mocker):
-    """Mock Qdrant vector database client."""
-    mock = mocker.patch("apps.search.qdrant_plugin.QdrantClient")
-    mock.return_value.search.return_value = []
-    return mock.return_value
 
 
 @pytest.fixture

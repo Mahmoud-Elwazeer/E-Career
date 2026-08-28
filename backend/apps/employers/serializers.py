@@ -91,24 +91,25 @@ class JobPostingDetailSerializer(JobPostingListSerializer):
     """Detailed serializer for job posting"""
     company = CompanySerializer(read_only=True)
     employer = EmployerProfileSerializer(read_only=True)
-    
+
     class Meta(JobPostingListSerializer.Meta):
         fields = JobPostingListSerializer.Meta.fields + [
             'company', 'employer', 'description', 'requirements',
-            'apply_url', 'apply_url_verified', 'rejected_reason'
+            'apply_url', 'apply_url_verified', 'rejected_reason',
+            'custom_form_fields'
         ]
 
 
 class JobPostingWriteSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating job postings"""
-    
+
     class Meta:
         model = JobPosting
         fields = [
             'title', 'description', 'requirements',
             'employment_type', 'experience_level', 'remote_type', 'location',
             'salary_min', 'salary_max', 'salary_currency',
-            'apply_url'
+            'apply_url', 'custom_form_fields'
         ]
     
     def validate_apply_url(self, value):
@@ -155,15 +156,15 @@ class JobApplicationSerializer(serializers.ModelSerializer):
     job_id = serializers.IntegerField(source='job.id', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     cv_url = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = JobApplication
         fields = [
             'id', 'user_name', 'user_email', 'job_title', 'job_id',
             'status', 'status_display', 'cv_snapshot', 'cv_url',
-            'applied_at'
+            'custom_form_responses', 'applied_at'
         ]
-        read_only_fields = ['id', 'applied_at', 'cv_snapshot']
+        read_only_fields = ['id', 'applied_at', 'cv_snapshot', 'custom_form_responses']
     
     def get_cv_url(self, obj):
         """Get CV URL if available"""

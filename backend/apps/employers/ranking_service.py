@@ -14,7 +14,7 @@ from django.db.models import Q
 from apps.jobs.models import Job
 from apps.career.models import CareerUserSkill, CareerBrain
 from apps.employers.models import JobApplication, CandidateRanking, KnockoutQuestion
-from apps.ai.bedrock import bedrock_service
+from apps.intelligence.career_ai import career_ai_service as bedrock_service
 
 logger = logging.getLogger(__name__)
 

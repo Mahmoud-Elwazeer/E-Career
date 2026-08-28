@@ -5,7 +5,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Navigate } from 'react-router-dom';
-import { Plus, Briefcase, Users, Eye, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Plus, Briefcase, Users, Eye, Clock, CheckCircle, XCircle, AlertCircle, Search } from 'lucide-react';
 import { getEmployerProfile, getEmployerStats, getJobPostings } from '../../services/employer';
 
 const EmployerDashboard: React.FC = () => {
@@ -41,7 +41,7 @@ const EmployerDashboard: React.FC = () => {
 
   // If no employer profile, redirect to registration
   if (profileError) {
-    return <Navigate to="/employer/register" />;
+    return <Navigate to="/app/employer/register" />;
   }
 
   // If not verified, show pending verification message
@@ -76,13 +76,22 @@ const EmployerDashboard: React.FC = () => {
             <p className="text-gray-600 mt-2">{profile?.company?.name}</p>
           </div>
           
-          <Link
-            to="/employer/jobs/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition"
-          >
-            <Plus className="w-5 h-5" />
-            Post New Job
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/app/employer/talent-search"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 transition"
+            >
+              <Search className="w-5 h-5" />
+              Talent Search
+            </Link>
+            <Link
+              to="/app/employer/post-job"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 transition"
+            >
+              <Plus className="w-5 h-5" />
+              Post New Job
+            </Link>
+          </div>
         </div>
 
         {/* Stats */}
@@ -148,19 +157,15 @@ const EmployerDashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">Your Job Postings</h2>
-            <Link
-              to="/employer/jobs"
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-            >
+            <span className="text-gray-400 text-sm font-medium cursor-not-allowed" title="Coming soon">
               View All
-            </Link>
+            </span>
           </div>
           
           <div className="divide-y">
             {jobs?.slice(0, 5).map((job) => (
-              <Link
+              <div
                 key={job.id}
-                to={`/employer/jobs/${job.id}`}
                 className="block p-6 hover:bg-gray-50 transition"
               >
                 <div className="flex items-center justify-between">
@@ -174,7 +179,7 @@ const EmployerDashboard: React.FC = () => {
                       <span>{job.views_count} views</span>
                     </div>
                   </div>
-                  
+
                   <div className="text-right">
                     <span className={`
                       px-3 py-1 rounded-full text-sm font-medium
@@ -188,7 +193,7 @@ const EmployerDashboard: React.FC = () => {
                     </span>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
             
             {(!jobs || jobs.length === 0) && (
@@ -196,7 +201,7 @@ const EmployerDashboard: React.FC = () => {
                 <Briefcase className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-500 mb-4">No jobs posted yet</p>
                 <Link
-                  to="/employer/jobs/new"
+                  to="/app/employer/post-job"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   <Plus className="w-5 h-5" />
@@ -212,24 +217,21 @@ const EmployerDashboard: React.FC = () => {
           <div className="mt-8 bg-white rounded-lg shadow">
             <div className="p-6 border-b flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">Recent Applications</h2>
-              <Link
-                to="/employer/applications"
-                className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-              >
+              <span className="text-gray-400 text-sm font-medium cursor-not-allowed" title="Coming soon">
                 View All
-              </Link>
+              </span>
             </div>
-            
+
             <div className="p-6">
               <p className="text-gray-600">
                 You have <span className="font-semibold text-orange-600">{stats.applications.new_applications} new applications</span> waiting for review.
               </p>
-              <Link
-                to="/employer/applications?status=applied"
-                className="inline-block mt-4 px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition"
+              <span
+                className="inline-block mt-4 px-4 py-2 bg-gray-100 text-gray-400 rounded-lg cursor-not-allowed"
+                title="Coming soon"
               >
                 Review New Applications
-              </Link>
+              </span>
             </div>
           </div>
         )}

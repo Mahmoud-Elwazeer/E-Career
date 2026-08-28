@@ -150,6 +150,17 @@ class CVUploadSerializer(serializers.Serializer):
     cv_file = serializers.FileField()
 
     def validate_cv_file(self, value):
+        from apps.core.upload_security import upload_validator, scan_stream_for_malware
+
+        is_valid, error_msg = upload_validator.validate(value)
+        if not is_valid:
+            raise serializers.ValidationError(error_msg)
+
+        scan_result = scan_stream_for_malware(value)
+        if not scan_result.clean:
+            detail = scan_result.threat or scan_result.error or "scan failed"
+            raise serializers.ValidationError(f"File rejected by malware scanner: {detail}")
+
         try:
             CVParser.extract_text(value)
             value.seek(0)
@@ -185,7 +196,7 @@ class CVUploadSerializer(serializers.Serializer):
 
         parsed_data = None
         try:
-            from ai.bedrock import bedrock_service
+            from apps.intelligence.career_ai import career_ai_service as bedrock_service
             if bedrock_service.is_available:
                 parsed_data = bedrock_service.parse_cv(cv_text)
         except Exception as e:

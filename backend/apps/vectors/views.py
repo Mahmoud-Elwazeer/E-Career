@@ -23,7 +23,7 @@ class SemanticSearchView(APIView):
     GET /api/v1/search/semantic/
 
     Semantic job search using natural language queries.
-    Powered by Cohere Embed v3 + Qdrant vector database.
+    Powered by Cohere Embed v3 + pgvector.
     """
 
     permission_classes = [AllowAny]
@@ -212,7 +212,7 @@ class HybridSearchView(APIView):
     """
     GET /api/v1/search/hybrid/
 
-    Hybrid search combining keyword (Typesense) and semantic (Qdrant) search.
+    Hybrid search combining keyword (Typesense) and semantic (pgvector) search.
     Uses Reciprocal Rank Fusion (RRF) to merge results.
     """
 
@@ -270,7 +270,7 @@ class HybridSearchView(APIView):
                 page_size=limit,
             )
 
-            # 2. Semantic search (Qdrant)
+            # 2. Semantic search (pgvector)
             vector_service = get_vector_service()
             vector_filters = {k: v for k, v in filters.items()}
             # vector_filters["trust_score"] = {"gte": 0.4}  # Made optional

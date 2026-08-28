@@ -84,12 +84,30 @@ class UserAdmin(ModelAdmin, BaseUserAdmin):
     
     @admin.action(description="Ban selected users")
     def ban_users(self, request, queryset):
+        from apps.core.models import ActivityLog
         count = queryset.update(status="banned", is_active=False)
+        for user in queryset:
+            ActivityLog.objects.create(
+                user=request.user,
+                action="ban_user",
+                target_type="User",
+                target_id=str(user.pk),
+                metadata={"email": user.email},
+            )
         self.message_user(request, f"{count} users banned.")
-    
+
     @admin.action(description="Restore selected users")
     def restore_users(self, request, queryset):
+        from apps.core.models import ActivityLog
         count = queryset.update(status="active", is_active=True, is_deleted=False, deleted_at=None)
+        for user in queryset:
+            ActivityLog.objects.create(
+                user=request.user,
+                action="restore_user",
+                target_type="User",
+                target_id=str(user.pk),
+                metadata={"email": user.email},
+            )
         self.message_user(request, f"{count} users restored.")
     
     actions = ["make_admin", "ban_users", "restore_users"]

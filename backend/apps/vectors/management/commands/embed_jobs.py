@@ -1,7 +1,7 @@
 """
 Management Command: embed_jobs
 
-Generate embeddings for all jobs and index them in Qdrant.
+Generate embeddings for all jobs and index them via pgvector.
 
 Usage:
     python manage.py embed_jobs

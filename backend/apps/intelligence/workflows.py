@@ -35,7 +35,7 @@ if PREFECT_AVAILABLE:
 
     @task(name="parse_cv_with_ai")
     def parse_cv_task(text: str) -> Dict:
-        from ai.bedrock import bedrock_service
+        from apps.intelligence.career_ai import career_ai_service as bedrock_service
         return bedrock_service.parse_cv(text)
 
     @task(name="extract_skills")
@@ -122,7 +122,7 @@ else:
     def cv_processing_flow(file_path: str, user_id: int) -> Dict:
         """Fallback: run sequentially without Prefect."""
         from .document_processor import get_document_processor
-        from ai.bedrock import bedrock_service
+        from apps.intelligence.career_ai import career_ai_service as bedrock_service
         from apps.skills.esco_embeddings import get_esco_matcher
 
         processor = get_document_processor()

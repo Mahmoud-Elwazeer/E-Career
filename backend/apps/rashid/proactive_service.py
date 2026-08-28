@@ -16,7 +16,7 @@ from apps.career.models import CareerBrain, CareerGoal
 from apps.jobs.models import JobSave, JobSearch
 from apps.interviews.models import InterviewSession
 from apps.notifications.models import Notification
-from apps.ai.bedrock import bedrock_service
+from apps.intelligence.career_ai import career_ai_service as bedrock_service
 
 logger = logging.getLogger(__name__)
 

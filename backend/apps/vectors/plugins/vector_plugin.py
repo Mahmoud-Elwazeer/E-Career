@@ -1,7 +1,7 @@
 """
 Vector Plugin Abstraction
 
-Abstract base class for vector database plugins (Qdrant, pgvector, etc.).
+Abstract base class for vector database plugins.
 """
 
 from abc import ABC, abstractmethod

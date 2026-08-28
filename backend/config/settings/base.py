@@ -311,6 +311,12 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'UTC'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
 
+# ── ClamAV Malware Scanning ───────────────────────────────────────────────────
+CLAMAV_HOST = config('CLAMAV_HOST', default=None)
+CLAMAV_PORT = config('CLAMAV_PORT', default=3310, cast=int)
+CLAMAV_SOCKET = config('CLAMAV_SOCKET', default='/var/run/clamav/clamd.ctl')
+CLAMAV_FAIL_CLOSED = config('CLAMAV_FAIL_CLOSED', default=True, cast=bool)
+
 # ── AWS Bedrock Configuration ─────────────────────────────────────────────────
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
@@ -350,10 +356,6 @@ TYPESENSE_PROTOCOL = config('TYPESENSE_PROTOCOL', default='http')
 TYPESENSE_API_KEY = config('TYPESENSE_API_KEY', default='ecareer_typesense_dev_key')
 SEARCH_TRUST_SCORE_THRESHOLD = config('SEARCH_TRUST_SCORE_THRESHOLD', default=0.4, cast=float)
 
-# ── Qdrant Configuration ─────────────────────────────────────────────────────
-QDRANT_HOST = config('QDRANT_HOST', default='localhost')
-QDRANT_PORT = config('QDRANT_PORT', default='6333', cast=int)
-QDRANT_API_KEY = config('QDRANT_API_KEY', default='ecareer_qdrant_dev_key')
 
 # ── Rashid AI Configuration ───────────────────────────────────────────────────
 RASHID_CONFIG = {

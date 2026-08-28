@@ -2,7 +2,7 @@
  * Recommendations API service
  */
 
-import api from './api';
+import { apiRequest } from './client';
 
 export interface RecommendedJob {
   job: {
@@ -58,33 +58,21 @@ export interface SimilarJobsResponse {
   }>;
 }
 
-/**
- * Get personalized job recommendations
- */
 export async function getRecommendations(
   limit: number = 20,
   minScore: number = 60
 ): Promise<RecommendationsResponse> {
-  const response = await api.get('/recommendations/', {
-    params: { limit, min_score: minScore }
+  return apiRequest<RecommendationsResponse>('/career/recommendations/', {
+    params: { limit: limit, min_score: minScore }
   });
-  return response.data;
 }
 
-/**
- * Get detailed match breakdown for a specific job
- */
 export async function getMatchBreakdown(jobId: number): Promise<MatchBreakdown> {
-  const response = await api.get(`/jobs/${jobId}/match-breakdown/`);
-  return response.data;
+  return apiRequest<MatchBreakdown>(`/career/jobs/${jobId}/match-breakdown/`);
 }
 
-/**
- * Get similar jobs to a specific job
- */
 export async function getSimilarJobs(jobId: number): Promise<SimilarJobsResponse> {
-  const response = await api.get(`/jobs/${jobId}/similar/`);
-  return response.data;
+  return apiRequest<SimilarJobsResponse>(`/career/jobs/${jobId}/similar/`);
 }
 
 const recommendationsService = {

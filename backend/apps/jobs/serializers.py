@@ -133,6 +133,7 @@ class JobDetailSerializer(serializers.ModelSerializer):
     legitimacy_flags = serializers.JSONField(read_only=True)
     direct_apply_url = serializers.URLField(read_only=True)
     apply_url_verified = serializers.BooleanField(read_only=True)
+    custom_form_fields = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -146,6 +147,7 @@ class JobDetailSerializer(serializers.ModelSerializer):
             "view_count", "click_count", "is_saved",
             "match_score", "match_breakdown", "similar_jobs",
             "employment_type", "legitimacy_score", "legitimacy_flags",
+            "custom_form_fields",
             "created_at", "updated_at",
         ]
         read_only_fields = fields
@@ -221,12 +223,21 @@ class JobDetailSerializer(serializers.ModelSerializer):
         ).select_related(
             "company", "source"
         ).prefetch_related("tags")[:5]
-        
+
         return JobListSerializer(
             similar,
             many=True,
             context=self.context
         ).data
+
+    def get_custom_form_fields(self, obj):
+        """Get custom application form fields from linked employer posting."""
+        try:
+            if hasattr(obj, 'employer_posting') and obj.employer_posting:
+                return obj.employer_posting.custom_form_fields or []
+        except Exception:
+            pass
+        return []
 
 
 class JobWriteSerializer(serializers.ModelSerializer):

@@ -77,6 +77,9 @@ prefect==3.0.0
 # Change Detection Client (Phase 2)
 # changedetection.io is self-hosted Docker, no pip package needed
 
+# Malware Scanning
+pyclamd==0.4.0
+
 # Admin Dashboard
 django-unfold==0.40.0
 django-import-export==4.1.1

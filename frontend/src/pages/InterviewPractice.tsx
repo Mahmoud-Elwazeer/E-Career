@@ -3,20 +3,22 @@
  * AI-powered mock interview practice with scoring and feedback
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Mic, 
-  CheckCircle, 
-  XCircle, 
-  ChevronRight, 
-  ChevronLeft, 
-  Loader2, 
+import {
+  Mic,
+  MicOff,
+  CheckCircle,
+  XCircle,
+  ChevronRight,
+  ChevronLeft,
+  Loader2,
   BarChart3,
   Award,
   Target,
   MessageSquare,
-  ArrowRight
+  ArrowRight,
+  Volume2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
@@ -109,6 +111,14 @@ export default function InterviewPractice() {
   const [targetRole, setTargetRole] = useState('');
   const [selectedType, setSelectedType] = useState<InterviewType>('technical');
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('medium');
+  const [mode, setMode] = useState<'text' | 'voice'>('text');
+
+  // Voice mode state
+  const [isRecording, setIsRecording] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -127,13 +137,13 @@ export default function InterviewPractice() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
         },
         body: JSON.stringify({
           interview_type: selectedType,
           target_role: targetRole,
           difficulty: selectedDifficulty,
-          mode: 'text',
+          mode,
         }),
       });
 
@@ -170,7 +180,7 @@ export default function InterviewPractice() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
         },
         body: JSON.stringify({ answer }),
       });
@@ -227,7 +237,7 @@ export default function InterviewPractice() {
       const response = await fetch(`${API_BASE_URL}/interviews/${session.id}/complete/`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
         },
       });
 
@@ -246,6 +256,126 @@ export default function InterviewPractice() {
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  // Voice recording controls
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        stream.getTracks().forEach(track => track.stop());
+        submitVoiceAnswer(audioBlob);
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setVoiceTranscript('');
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const submitVoiceAnswer = async (audioBlob: Blob) => {
+    if (!session) return;
+
+    setIsProcessing(true);
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+
+      const response = await fetch(`${API_BASE_URL}/interviews/${session.id}/voice-answer/`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
+        },
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Show transcript
+        setVoiceTranscript(data.transcript || '');
+
+        // Update current question with score
+        const updatedQuestions = [...session.questions];
+        updatedQuestions[currentQuestionIndex] = {
+          ...updatedQuestions[currentQuestionIndex],
+          answer: data.transcript,
+          score: data.score,
+          feedback: data.feedback,
+          dimensions: data.dimensions,
+        };
+
+        setSession({
+          ...session,
+          questions: updatedQuestions,
+        });
+
+        // Play next question audio
+        if (data.next_question_audio) {
+          playBase64Audio(data.next_question_audio);
+        }
+
+        if (data.next_question) {
+          // Add next question
+          const nextQuestion = {
+            id: data.next_question.id,
+            index: data.next_question.index,
+            question: data.next_question.question,
+          };
+          setSession({
+            ...session,
+            questions: [...updatedQuestions, nextQuestion],
+          });
+          setCurrentQuestionIndex(currentQuestionIndex + 1);
+          setVoiceTranscript('');
+        } else {
+          // All questions answered, go to results
+          await completeInterview();
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting voice answer:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const playBase64Audio = (base64Audio: string) => {
+    const binaryString = atob(base64Audio);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: 'audio/mpeg' });
+    const url = URL.createObjectURL(blob);
+
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+    }
+    const audio = new Audio(url);
+    audioPlayerRef.current = audio;
+    audio.play();
+    audio.onended = () => URL.revokeObjectURL(url);
   };
 
   // Render step 1: Configuration
@@ -326,6 +456,37 @@ export default function InterviewPractice() {
             </div>
           </div>
 
+          {/* Mode Selector */}
+          <div className="space-y-2">
+            <Label>{isAr ? 'وضع المقابلة' : 'Interview Mode'}</Label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setMode('text')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-all',
+                  mode === 'text'
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                )}
+              >
+                <MessageSquare className="w-4 h-4" />
+                {isAr ? 'نصي' : 'Text'}
+              </button>
+              <button
+                onClick={() => setMode('voice')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-all',
+                  mode === 'voice'
+                    ? 'border-blue-600 bg-blue-600 text-white'
+                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                )}
+              >
+                <Mic className="w-4 h-4" />
+                {isAr ? 'صوتي' : 'Voice'}
+              </button>
+            </div>
+          </div>
+
           <Button
             onClick={startInterview}
             disabled={!targetRole.trim() || isProcessing}
@@ -396,42 +557,117 @@ export default function InterviewPractice() {
               {isAr ? 'إجابتك' : 'Your Answer'}
             </CardTitle>
             <CardDescription>
-              {isAr 
-                ? 'اكتب إجابتك بتفصيل كافٍ لتقييمها بدقة'
-                : 'Write your answer with enough detail for accurate evaluation'}
+              {mode === 'voice'
+                ? (isAr
+                  ? 'اضغط على الميكروفون للتسجيل ثم اضغط مرة أخرى لإيقافه'
+                  : 'Press the microphone to record, then press again to stop')
+                : (isAr
+                  ? 'اكتب إجابتك بتفصيل كافٍ لتقييمها بدقة'
+                  : 'Write your answer with enough detail for accurate evaluation')}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Textarea
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              placeholder={isAr 
-                ? 'اكتب إجابتك هنا...' 
-                : 'Type your answer here...'}
-              className={cn(
-                'min-h-[200px] resize-y',
-                isAr ? 'text-right' : ''
-              )}
-            />
-            <div className="mt-4 flex justify-end">
-              <Button
-                onClick={submitAnswer}
-                disabled={!answer.trim() || isProcessing}
-                size="lg"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    {isAr ? 'جاري التقييم...' : 'Evaluating...'}
-                  </>
-                ) : (
-                  <>
-                    {isAr ? 'إرسال الإجابة' : 'Submit Answer'}
-                    <ChevronRight className="w-5 h-5 mr-2" />
-                  </>
+            {mode === 'voice' ? (
+              <div className="flex flex-col items-center space-y-4">
+                {/* Microphone Button */}
+                <button
+                  onClick={isRecording ? stopRecording : startRecording}
+                  disabled={isProcessing}
+                  className={cn(
+                    'w-24 h-24 rounded-full flex items-center justify-center transition-all',
+                    isRecording
+                      ? 'bg-red-500 hover:bg-red-600 animate-pulse'
+                      : 'bg-blue-600 hover:bg-blue-700',
+                    isProcessing && 'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  {isProcessing ? (
+                    <Loader2 className="w-10 h-10 text-white animate-spin" />
+                  ) : isRecording ? (
+                    <MicOff className="w-10 h-10 text-white" />
+                  ) : (
+                    <Mic className="w-10 h-10 text-white" />
+                  )}
+                </button>
+                <p className="text-sm text-gray-500">
+                  {isProcessing
+                    ? (isAr ? 'جاري المعالجة...' : 'Processing...')
+                    : isRecording
+                    ? (isAr ? 'جاري التسجيل... اضغط لإيقاف' : 'Recording... Click to stop')
+                    : (isAr ? 'اضغط للتسجيل' : 'Click to record')}
+                </p>
+
+                {/* Transcript Display */}
+                {voiceTranscript && (
+                  <div className="w-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <p className="text-sm font-medium text-gray-500 mb-1">
+                      {isAr ? 'النص المستخرج:' : 'Transcript:'}
+                    </p>
+                    <p className="text-gray-900 dark:text-gray-100">{voiceTranscript}</p>
+                  </div>
                 )}
-              </Button>
-            </div>
+
+                {/* Play Question Audio Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (session && currentQuestion) {
+                      fetch(`${API_BASE_URL}/interviews/${session.id}/question-audio/${currentQuestion.index}/`, {
+                        headers: {
+                          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
+                        },
+                      })
+                        .then(res => res.blob())
+                        .then(blob => {
+                          const url = URL.createObjectURL(blob);
+                          const audio = new Audio(url);
+                          audioPlayerRef.current = audio;
+                          audio.play();
+                          audio.onended = () => URL.revokeObjectURL(url);
+                        })
+                        .catch(err => console.error('Error playing question audio:', err));
+                    }
+                  }}
+                >
+                  <Volume2 className="w-4 h-4 mr-2" />
+                  {isAr ? 'استمع للسؤال' : 'Listen to Question'}
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Textarea
+                  value={answer}
+                  onChange={(e) => setAnswer(e.target.value)}
+                  placeholder={isAr
+                    ? 'اكتب إجابتك هنا...'
+                    : 'Type your answer here...'}
+                  className={cn(
+                    'min-h-[200px] resize-y',
+                    isAr ? 'text-right' : ''
+                  )}
+                />
+                <div className="mt-4 flex justify-end">
+                  <Button
+                    onClick={submitAnswer}
+                    disabled={!answer.trim() || isProcessing}
+                    size="lg"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        {isAr ? 'جاري التقييم...' : 'Evaluating...'}
+                      </>
+                    ) : (
+                      <>
+                        {isAr ? 'إرسال الإجابة' : 'Submit Answer'}
+                        <ChevronRight className="w-5 h-5 mr-2" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

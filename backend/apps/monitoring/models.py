@@ -14,13 +14,12 @@ class HealthCheck(models.Model):
     Health check record for system components.
     
     Tracks the health status of various system components
-    including database, Redis, Qdrant, and Celery workers.
+    including database, Redis, and Celery workers.
     """
     
     COMPONENT_CHOICES = [
         ('database', 'Database'),
         ('redis', 'Redis'),
-        ('qdrant', 'Qdrant'),
         ('celery', 'Celery'),
         ('sentry', 'Sentry'),
         ('api', 'API'),

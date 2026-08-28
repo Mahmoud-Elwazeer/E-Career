@@ -22,7 +22,7 @@ class TestUserRegistration:
         data = {
             "email": "newuser@example.com",
             "password": "TestPass123!",
-            "password2": "TestPass123!",
+            "password_confirm": "TestPass123!",
             "first_name": "New",
             "last_name": "User",
         }
@@ -38,7 +38,7 @@ class TestUserRegistration:
         data = {
             "email": "newuser@example.com",
             "password": "TestPass123!",
-            "password2": "DifferentPass123!",
+            "password_confirm": "DifferentPass123!",
             "first_name": "New",
             "last_name": "User",
         }
@@ -53,7 +53,7 @@ class TestUserRegistration:
         data = {
             "email": user.email,
             "password": "TestPass123!",
-            "password2": "TestPass123!",
+            "password_confirm": "TestPass123!",
             "first_name": "New",
             "last_name": "User",
         }
@@ -68,7 +68,7 @@ class TestUserRegistration:
         data = {
             "email": "newuser@example.com",
             "password": "password",
-            "password2": "password",
+            "password_confirm": "password",
             "first_name": "New",
             "last_name": "User",
         }
@@ -231,7 +231,7 @@ class TestPasswordManagement:
         data = {
             "token": "test-token",
             "password": "NewPass123!",
-            "password2": "NewPass123!",
+            "password_confirm": "NewPass123!",
         }
         response = api_client.post(url, data)
 

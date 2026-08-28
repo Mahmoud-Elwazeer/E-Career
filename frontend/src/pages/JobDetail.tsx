@@ -3,7 +3,7 @@ import { useRef, useEffect, useState } from "react";
 import {
   ArrowLeft, ArrowRight, MapPin, Clock, Bookmark, BookmarkCheck,
   Building2, Globe, DollarSign, Briefcase, Calendar, Share2, Loader2,
-  MessageCircle, Star, AlertTriangle, CheckCircle, XCircle,
+  MessageCircle, Star, AlertTriangle, CheckCircle, XCircle, X,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +15,13 @@ import { JobCard } from "@/components/JobCard";
 import { EmptyState } from "@/components/EmptyState";
 import { ApplyNowButton } from "@/components/ApplyNowButton";
 import { ReadingProgress, SectionReveal, JobCardMotion } from "@/components/motion";
-import { fetchJobBySlug, fetchSimilarJobs, logApplyClick } from "@/services/jobs";
+import { fetchJobBySlug, fetchSimilarJobs, logApplyClick, submitApplication } from "@/services/jobs";
 import { useSavedJobs } from "@/hooks/use-saved-jobs";
 import { useTheme } from "@/hooks/use-theme";
 import { useJobStructuredData, usePageMeta, useBreadcrumbStructuredData } from "@/hooks/use-seo";
 import { AskRashidCard } from "@/components/rashid/AskRashidButton";
 import { DirectApplyBadge, DirectApplyText } from "@/components/DirectApplyBadge";
+import DynamicFormFields, { validateDynamicFields } from "@/components/application/DynamicFormFields";
 import { formatDistanceToNow } from "date-fns";
 import type { Job } from "@/services/jobs";
 
@@ -401,12 +402,55 @@ export default function JobDetail() {
   const saved = isSaved(job.id);
   const tags = job.tags ?? [];
 
+  // Application modal state
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [applicationValues, setApplicationValues] = useState<Record<string, any>>({});
+  const [applicationErrors, setApplicationErrors] = useState<Record<string, string>>({});
+  const [submittingApplication, setSubmittingApplication] = useState(false);
+  const [applicationResult, setApplicationResult] = useState<{ status: string; message: string } | null>(null);
+
+  const hasCustomForm = job.custom_form_fields && job.custom_form_fields.length > 0;
+
   const handleApplyClick = async () => {
+    if (hasCustomForm) {
+      setShowApplicationModal(true);
+      return;
+    }
+    // Default: redirect to external URL
     try {
       const result = await logApplyClick(job.slug);
       if (result.source_url) window.open(result.source_url, "_blank", "noopener,noreferrer");
     } catch {
       window.open(job.source_url, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const handleSubmitApplication = async () => {
+    if (!job.custom_form_fields) return;
+
+    // Validate
+    const errors = validateDynamicFields(job.custom_form_fields as any, applicationValues);
+    if (Object.keys(errors).length > 0) {
+      setApplicationErrors(errors);
+      return;
+    }
+    setApplicationErrors({});
+    setSubmittingApplication(true);
+
+    try {
+      const result = await submitApplication(job.slug, {
+        custom_form_responses: applicationValues,
+      });
+      setApplicationResult({
+        status: result.status,
+        message: result.status === 'rejected'
+          ? 'Your application was submitted but did not meet the screening criteria.'
+          : 'Your application has been submitted successfully!',
+      });
+    } catch (err: any) {
+      setApplicationErrors({ _form: err?.message || 'Failed to submit application. Please try again.' });
+    } finally {
+      setSubmittingApplication(false);
     }
   };
 
@@ -507,6 +551,95 @@ export default function JobDetail() {
         </div>
       </div>
       <div className="lg:hidden h-16" />
+
+      {/* Application Modal */}
+      {showApplicationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-card border-b p-4 flex items-center justify-between rounded-t-2xl">
+              <h2 className="text-heading-3 font-semibold">
+                {isAr ? "تقديم طلب" : "Apply to"} {job.title}
+              </h2>
+              <button
+                onClick={() => {
+                  setShowApplicationModal(false);
+                  setApplicationResult(null);
+                  setApplicationErrors({});
+                }}
+                className="p-2 hover:bg-surface-2 rounded-lg transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {applicationResult ? (
+                <div className="text-center py-8 space-y-4">
+                  {applicationResult.status === 'applied' || applicationResult.status === 'shortlisted' ? (
+                    <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto" />
+                  ) : (
+                    <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto" />
+                  )}
+                  <p className="text-body font-medium">{applicationResult.message}</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowApplicationModal(false);
+                      setApplicationResult(null);
+                    }}
+                    className="rounded-xl"
+                  >
+                    {isAr ? "إغلاق" : "Close"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <DynamicFormFields
+                    fields={job.custom_form_fields as any}
+                    values={applicationValues}
+                    onChange={(fieldId, value) => {
+                      setApplicationValues((prev) => ({ ...prev, [fieldId]: value }));
+                      // Clear error for this field on change
+                      if (applicationErrors[fieldId]) {
+                        setApplicationErrors((prev) => {
+                          const next = { ...prev };
+                          delete next[fieldId];
+                          return next;
+                        });
+                      }
+                    }}
+                    errors={applicationErrors}
+                  />
+
+                  {applicationErrors._form && (
+                    <p className="text-sm text-destructive">{applicationErrors._form}</p>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1 rounded-xl"
+                      onClick={() => setShowApplicationModal(false)}
+                    >
+                      {isAr ? "إلغاء" : "Cancel"}
+                    </Button>
+                    <Button
+                      className="flex-1 rounded-xl"
+                      onClick={handleSubmitApplication}
+                      disabled={submittingApplication}
+                    >
+                      {submittingApplication ? (
+                        <Loader2 className="h-4 w-4 animate-spin me-2" />
+                      ) : null}
+                      {isAr ? "إرسال الطلب" : "Submit Application"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 }
