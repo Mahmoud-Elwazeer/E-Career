@@ -322,20 +322,51 @@ def get_all_scores_with_actions(request):
 class TalentScoreViewSet(APIView):
     """
     ViewSet for managing talent scores.
-    
+
     Actions:
     - GET: Retrieve all scores
     - POST: Trigger recalculation
     """
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """Get all talent scores."""
-        return get_talent_scores(request)
-    
+        try:
+            talent_score, created = TalentScore.objects.get_or_create(
+                user=request.user,
+                defaults={
+                    'overall_score': 0.0,
+                    'skill_score': 0.0,
+                    'experience_score': 0.0,
+                    'education_score': 0.0,
+                    'portfolio_score': 0.0,
+                    'interview_score': 0.0,
+                    'growth_score': 0.0,
+                    'communication_score': 0.0,
+                    'ai_confidence': 0.5,
+                }
+            )
+            if created or talent_score.overall_score == 0.0:
+                engine = ScoringEngine(request.user)
+                engine.calculate_and_save()
+                talent_score.refresh_from_db()
+            serializer = TalentScoreSerializer(talent_score)
+            return Response({"success": True, "data": serializer.data})
+        except Exception as e:
+            logger.error("get_talent_scores_failed", error=str(e))
+            return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def post(self, request):
         """Trigger score recalculation."""
-        return recalculate_scores(request)
+        try:
+            engine = ScoringEngine(request.user)
+            engine.calculate_and_save()
+            talent_score = TalentScore.objects.get(user=request.user)
+            serializer = TalentScoreSerializer(talent_score)
+            return Response({"success": True, "data": serializer.data})
+        except Exception as e:
+            logger.error("recalculate_scores_failed", error=str(e))
+            return Response({"success": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class ScoreBreakdownViewSet(APIView):

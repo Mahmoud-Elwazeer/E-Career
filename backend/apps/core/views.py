@@ -452,29 +452,50 @@ def anonymize_user_data(request):
 
 class GDPRDataExportViewSet(APIView):
     """Viewset for GDPR data export."""
-    
+
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """Export user data."""
-        return export_user_data(request)
+        try:
+            from .gdpr_service import GDPRService
+            service = GDPRService(request.user)
+            export_data = service.export_user_data()
+            return Response({'success': True, 'data': export_data})
+        except Exception as e:
+            logger.error("export_user_data_failed", error=str(e))
+            return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GDPRDataDeletionViewSet(APIView):
     """Viewset for GDPR data deletion."""
-    
+
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         """Delete user data."""
-        return delete_user_data(request)
+        try:
+            from .gdpr_service import GDPRService
+            service = GDPRService(request.user)
+            deletion_results = service.delete_user_data()
+            return Response({'success': True, 'message': 'User data deleted successfully', 'data': deletion_results})
+        except Exception as e:
+            logger.error("delete_user_data_failed", error=str(e))
+            return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GDPRDataAnonymizationViewSet(APIView):
     """Viewset for GDPR data anonymization."""
-    
+
     permission_classes = [IsAuthenticated]
-    
+
     def post(self, request):
         """Anonymize user data."""
-        return anonymize_user_data(request)
+        try:
+            from .gdpr_service import GDPRService
+            service = GDPRService(request.user)
+            anonymization_results = service.delete_user_data_anonymized()
+            return Response({'success': True, 'message': 'User data anonymized successfully', 'data': anonymization_results})
+        except Exception as e:
+            logger.error("anonymize_user_data_failed", error=str(e))
+            return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

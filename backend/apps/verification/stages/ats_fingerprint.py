@@ -72,7 +72,7 @@ class ATSFingerprintStage:
             return ATSFingerprint(platform="unknown", confidence=0.0, pattern_matched="")
 
         parsed = urlparse(url)
-        domain = parsed.netloc.lower().lstrip("www.")
+        domain = parsed.netloc.lower().removeprefix("www.")
 
         if any(blocked in domain for blocked in BLOCKED_DOMAINS):
             return ATSFingerprint(
@@ -97,5 +97,5 @@ class ATSFingerprintStage:
 
     def is_blocked(self, url: str) -> bool:
         parsed = urlparse(url)
-        domain = parsed.netloc.lower().lstrip("www.")
+        domain = parsed.netloc.lower().removeprefix("www.")
         return any(blocked in domain for blocked in BLOCKED_DOMAINS)

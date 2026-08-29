@@ -14,6 +14,7 @@ from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.models import Rule, PlatformConfig, ProxyPool
 from apps.career.models import (
@@ -39,7 +40,7 @@ User = get_user_model()
 
 class ProductionHardeningTests(TestCase):
     """Tests for production hardening features."""
-    
+
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
@@ -48,7 +49,9 @@ class ProductionHardeningTests(TestCase):
             first_name='Test',
             last_name='User',
         )
-        self.client.force_login(self.user)
+        CareerProfile.objects.get_or_create(user=self.user, defaults={'experience_years': 3})
+        token = str(RefreshToken.for_user(self.user).access_token)
+        self.client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {token}'
     
     def test_rate_limiting_on_talent_score_endpoint(self):
         """Test that rate limiting is applied to talent score endpoint."""
@@ -79,7 +82,7 @@ class ProductionHardeningTests(TestCase):
         rule = Rule.objects.create(
             name='Test Rule',
             description='A test rule',
-            condition={'operator': 'ALL', 'conditions': []},
+            conditions={'operator': 'ALL', 'conditions': []},
             action_type='recommendation',
             action_params={'message': 'Test recommendation'},
             priority=1,
@@ -256,7 +259,7 @@ class DocumentationTests(TestCase):
         from django.urls import reverse
         
         # Check that schema endpoint exists
-        response = self.client.get('/api/v1/schema/')
+        response = self.client.get('/api/schema/')
         self.assertEqual(response.status_code, 200)
     
     def test_api_versioning(self):
@@ -594,10 +597,11 @@ class PerformanceTests(TestCase):
             )
 
         # Test pagination
-        response = self.client.get('/api/v1/jobs/jobs/?page=1&page_size=10')
+        response = self.client.get('/api/v1/jobs/?page=1&page_size=10')
         self.assertEqual(response.status_code, 200)
 
-        data = response.json()
+        body = response.json()
+        data = body.get('data', body)
         self.assertIn('results', data)
         self.assertIn('count', data)
         self.assertIn('next', data)
@@ -611,13 +615,15 @@ class PerformanceTests(TestCase):
 
 class SecurityTests(TestCase):
     """Tests for security features."""
-    
+
     def setUp(self):
         self.user = User.objects.create_user(
             email='test@example.com',
             password='testpass123',
         )
-        self.client.force_login(self.user)
+        CareerProfile.objects.get_or_create(user=self.user, defaults={'experience_years': 2})
+        token = str(RefreshToken.for_user(self.user).access_token)
+        self.client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {token}'
     
     def test_csrf_protection(self):
         """Test CSRF protection is enabled."""
@@ -669,7 +675,7 @@ class SecurityTests(TestCase):
 
 class IntegrationTests(TestCase):
     """Integration tests for end-to-end flows."""
-    
+
     def setUp(self):
         self.user = User.objects.create_user(
             email='integration@example.com',
@@ -677,7 +683,9 @@ class IntegrationTests(TestCase):
             first_name='Integration',
             last_name='Test',
         )
-        self.client.force_login(self.user)
+        CareerProfile.objects.get_or_create(user=self.user, defaults={'experience_years': 5})
+        token = str(RefreshToken.for_user(self.user).access_token)
+        self.client.defaults['HTTP_AUTHORIZATION'] = f'Bearer {token}'
     
     def test_complete_career_profile_flow(self):
         """Test complete career profile flow."""
@@ -711,8 +719,10 @@ class IntegrationTests(TestCase):
             content_type='application/json',
         )
         self.assertEqual(response.status_code, 201)
-        
-        goal_id = response.json()['id']
+
+        body = response.json()
+        goal_data = body.get('data', body)
+        goal_id = goal_data['id']
         
         # Get goal details
         response = self.client.get(f'/api/v1/career/goals/{goal_id}/')

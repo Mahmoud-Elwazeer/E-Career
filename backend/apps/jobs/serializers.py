@@ -16,15 +16,17 @@ class CompanySerializer(serializers.ModelSerializer):
 
 
 class CompanyWriteSerializer(serializers.ModelSerializer):
+    slug = serializers.SlugField(required=False, allow_blank=True)
+
     class Meta:
         model = Company
         fields = ["name", "slug", "logo_url", "snippet", "about", "industry", "website", "is_active"]
 
-    def validate_name(self, value):
+    def validate(self, attrs):
         from apps.core.utils import make_unique_slug
-        if not self.instance:
-            self.initial_data["slug"] = make_unique_slug(Company, value)
-        return value
+        if not self.instance and not attrs.get("slug"):
+            attrs["slug"] = make_unique_slug(Company, attrs["name"])
+        return attrs
 
 
 class SourceSerializer(serializers.ModelSerializer):
@@ -54,8 +56,8 @@ class JobListSerializer(serializers.ModelSerializer):
     match_score = serializers.SerializerMethodField()
     salary_display = serializers.SerializerMethodField()
     posted_ago = serializers.SerializerMethodField()
-    employment_type = serializers.CharField(read_only=True)
-    legitimacy_score = serializers.FloatField(read_only=True)
+    employment_type = serializers.CharField(read_only=True, allow_null=True)
+    legitimacy_score = serializers.FloatField(read_only=True, allow_null=True)
 
     class Meta:
         model = Job
@@ -67,6 +69,7 @@ class JobListSerializer(serializers.ModelSerializer):
             "tags", "source_name", "source_logo", "source_url",
             "posted_at", "posted_ago", "deadline", "status", "is_saved",
             "match_score", "employment_type", "legitimacy_score",
+            "work_arrangement",
         ]
         read_only_fields = fields
 
@@ -128,10 +131,10 @@ class JobDetailSerializer(serializers.ModelSerializer):
     salary_display = serializers.SerializerMethodField()
     posted_ago = serializers.SerializerMethodField()
     similar_jobs = serializers.SerializerMethodField()
-    employment_type = serializers.CharField(read_only=True)
-    legitimacy_score = serializers.FloatField(read_only=True)
+    employment_type = serializers.CharField(read_only=True, allow_null=True)
+    legitimacy_score = serializers.FloatField(read_only=True, allow_null=True)
     legitimacy_flags = serializers.JSONField(read_only=True)
-    direct_apply_url = serializers.URLField(read_only=True)
+    direct_apply_url = serializers.URLField(read_only=True, allow_blank=True)
     apply_url_verified = serializers.BooleanField(read_only=True)
     custom_form_fields = serializers.SerializerMethodField()
 
@@ -147,7 +150,7 @@ class JobDetailSerializer(serializers.ModelSerializer):
             "view_count", "click_count", "is_saved",
             "match_score", "match_breakdown", "similar_jobs",
             "employment_type", "legitimacy_score", "legitimacy_flags",
-            "custom_form_fields",
+            "custom_form_fields", "work_arrangement",
             "created_at", "updated_at",
         ]
         read_only_fields = fields
@@ -243,6 +246,7 @@ class JobDetailSerializer(serializers.ModelSerializer):
 class JobWriteSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating jobs (admin)."""
 
+    slug = serializers.SlugField(required=False, allow_blank=True)
     tag_ids = serializers.ListField(
         child=serializers.IntegerField(), write_only=True, required=False
     )
@@ -257,14 +261,15 @@ class JobWriteSerializer(serializers.ModelSerializer):
             "industry", "experience_level", "description",
             "salary_min", "salary_max", "salary_currency",
             "source", "source_url", "posted_at", "deadline", "status",
+            "employment_type", "work_arrangement",
             "tag_ids", "also_on_source_ids",
         ]
 
-    def validate_title(self, value):
+    def validate(self, attrs):
         from apps.core.utils import make_unique_slug
-        if not self.instance:
-            self.initial_data["slug"] = make_unique_slug(Job, value)
-        return value
+        if not self.instance and not attrs.get("slug"):
+            attrs["slug"] = make_unique_slug(Job, attrs["title"])
+        return attrs
 
     def create(self, validated_data):
         tag_ids = validated_data.pop("tag_ids", [])

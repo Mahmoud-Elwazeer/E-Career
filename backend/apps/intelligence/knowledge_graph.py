@@ -54,7 +54,7 @@ class KnowledgeGraphService:
     Queries the implicit knowledge graph in the platform data.
 
     Instead of a separate graph DB, we derive graph relationships from:
-    - skills_skillrelationship table
+    - skills_relationship table
     - jobs_jobskill table
     - career_careerpath table
     - job title patterns

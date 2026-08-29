@@ -4,6 +4,7 @@ Test settings — fast, in-memory, no throttling.
 from .base import *  # noqa: F401, F403
 
 DEBUG = True
+ALLOWED_HOSTS = ["*"]
 
 DATABASES = {
     "default": {

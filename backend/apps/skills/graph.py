@@ -33,11 +33,11 @@ class SkillGraph:
         query = """
             WITH RECURSIVE reachable(skill_id, distance) AS (
                 SELECT to_skill_id, 1
-                FROM skills_skillrelationship
+                FROM skills_relationship
                 WHERE from_skill_id = %s
                 UNION
                 SELECT from_skill_id, 1
-                FROM skills_skillrelationship
+                FROM skills_relationship
                 WHERE to_skill_id = %s
 
                 UNION ALL
@@ -47,7 +47,7 @@ class SkillGraph:
                     ELSE r.from_skill_id
                 END,
                 rc.distance + 1
-                FROM skills_skillrelationship r
+                FROM skills_relationship r
                 JOIN reachable rc ON (
                     r.from_skill_id = rc.skill_id OR r.to_skill_id = rc.skill_id
                 )
@@ -119,11 +119,11 @@ class SkillGraph:
         query = """
             WITH RECURSIVE bfs(skill_id, distance) AS (
                 SELECT to_skill_id, 1
-                FROM skills_skillrelationship
+                FROM skills_relationship
                 WHERE from_skill_id = %s
                 UNION
                 SELECT from_skill_id, 1
-                FROM skills_skillrelationship
+                FROM skills_relationship
                 WHERE to_skill_id = %s
 
                 UNION ALL
@@ -133,7 +133,7 @@ class SkillGraph:
                     ELSE r.from_skill_id
                 END,
                 b.distance + 1
-                FROM skills_skillrelationship r
+                FROM skills_relationship r
                 JOIN bfs b ON (
                     r.from_skill_id = b.skill_id OR r.to_skill_id = b.skill_id
                 )

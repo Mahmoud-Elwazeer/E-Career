@@ -841,6 +841,31 @@ class CareerBrain(UUIDModel):
         else:
             return 'lead'
     
+    def _truncate_to_tokens(self, text: str, max_tokens: int) -> str:
+        """
+        Truncate text to approximately max_tokens.
+
+        Uses a simple word-count approximation: ~4 characters per token.
+
+        Args:
+            text: The text to truncate
+            max_tokens: Maximum number of tokens allowed
+
+        Returns:
+            Truncated text that fits within the token budget
+        """
+        if not text:
+            return text
+        max_chars = max_tokens * 4
+        if len(text) <= max_chars:
+            return text
+        # Truncate at the character limit, then back up to the last complete word
+        truncated = text[:max_chars]
+        last_space = truncated.rfind(' ')
+        if last_space > 0:
+            truncated = truncated[:last_space]
+        return truncated + '...'
+
     def _calculate_confidence(self) -> float:
         """Calculate confidence score based on data completeness."""
         score = 0.0

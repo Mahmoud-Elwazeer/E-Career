@@ -44,7 +44,7 @@ class DomainVerifierStage:
             )
 
         parsed = urlparse(url)
-        apply_domain = parsed.netloc.lower().lstrip("www.")
+        apply_domain = parsed.netloc.lower().removeprefix("www.")
         notes = []
         trust = 0.0
 
@@ -55,7 +55,7 @@ class DomainVerifierStage:
 
         domain_matches = False
         if company_domain:
-            company_domain = company_domain.lower().lstrip("www.")
+            company_domain = company_domain.lower().removeprefix("www.")
             if company_domain in apply_domain or apply_domain in company_domain:
                 domain_matches = True
                 trust += 0.3
@@ -63,7 +63,7 @@ class DomainVerifierStage:
 
         if careers_page_url:
             careers_parsed = urlparse(careers_page_url)
-            careers_domain = careers_parsed.netloc.lower().lstrip("www.")
+            careers_domain = careers_parsed.netloc.lower().removeprefix("www.")
             if careers_domain == apply_domain or apply_domain in careers_domain:
                 trust += 0.15
                 notes.append("matches_careers_page")
