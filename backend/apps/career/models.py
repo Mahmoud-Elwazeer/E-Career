@@ -1244,3 +1244,44 @@ class CoverLetter(UUIDModel):
     
     def __str__(self):
         return f"Cover Letter: {self.user.email} → {self.job.title} (v{self.version})"
+
+
+class LearningResource(models.Model):
+    """Catalog of learning resources for skill gap recommendations."""
+
+    PLATFORM_CHOICES = [
+        ('coursera', 'Coursera'),
+        ('udemy', 'Udemy'),
+        ('edx', 'edX'),
+        ('youtube', 'YouTube'),
+        ('linkedin_learning', 'LinkedIn Learning'),
+        ('pluralsight', 'Pluralsight'),
+        ('other', 'Other'),
+    ]
+
+    DIFFICULTY_CHOICES = [
+        ('beginner', 'Beginner'),
+        ('intermediate', 'Intermediate'),
+        ('advanced', 'Advanced'),
+    ]
+
+    title = models.CharField(max_length=300)
+    url = models.URLField(max_length=500)
+    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES)
+    skill_tags = models.JSONField(default=list, help_text="List of skill name strings")
+    difficulty_level = models.CharField(max_length=15, choices=DIFFICULTY_CHOICES)
+    duration_hours = models.FloatField(null=True, blank=True)
+    is_free = models.BooleanField(default=False)
+    rating = models.DecimalField(max_digits=2, decimal_places=1, null=True, blank=True)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "career_learning_resource"
+        ordering = ["-rating", "title"]
+        verbose_name = "Learning Resource"
+        verbose_name_plural = "Learning Resources"
+
+    def __str__(self):
+        return f"{self.title} ({self.platform})"

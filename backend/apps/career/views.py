@@ -535,3 +535,22 @@ def get_skill_gap_analysis(request):
             'success': False,
             'error': str(e),
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ats_score(request):
+    """Score CV text for ATS compatibility."""
+    cv_text = request.data.get('cv_text', '')
+    job_description = request.data.get('job_description', '')
+
+    if not cv_text:
+        return Response({
+            'success': False,
+            'error': 'cv_text is required.',
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    from apps.career.ats_scoring_service import ats_scoring_service
+    result = ats_scoring_service.score(cv_text, job_description)
+    return Response({'success': True, 'data': result})

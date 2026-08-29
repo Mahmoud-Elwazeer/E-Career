@@ -17,6 +17,7 @@ from .models import (
     CareerBrain,
     CareerGoal,
     CareerGoalAction,
+    LearningResource,
 )
 
 
@@ -407,3 +408,14 @@ class CareerGoalActionCreateSerializer(serializers.ModelSerializer):
         user = self.context.get('user')
         goal = self.context.get('goal')
         return CareerGoalAction.objects.create(goal=goal, **validated_data)
+
+
+class LearningResourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LearningResource
+        fields = [
+            'id', 'title', 'url', 'platform', 'skill_tags',
+            'difficulty_level', 'duration_hours', 'is_free',
+            'rating', 'description', 'is_active', 'created_at',
+        ]
+        read_only_fields = ['created_at']
