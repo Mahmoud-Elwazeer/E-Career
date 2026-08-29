@@ -37,8 +37,8 @@ def ai_cost_dashboard(request):
         """Extract cost_usd from event metadata."""
         total = 0
         for event in events:
-            if event.metadata and 'cost_usd' in event.metadata:
-                total += float(event.metadata.get('cost_usd', 0))
+            if event.data and 'cost_usd' in event.data:
+                total += float(event.data.get('cost_usd', 0))
         return total
 
     # Today's costs
@@ -62,24 +62,24 @@ def ai_cost_dashboard(request):
     rashid_month = RashidUsage.objects.filter(created_at__gte=month_start)
 
     rashid_today_cost = sum([
-        (u.input_tokens * 0.003 / 1000) + (u.output_tokens * 0.015 / 1000)
+        u.tokens_used * 0.009 / 1000
         for u in rashid_today
     ])
     rashid_week_cost = sum([
-        (u.input_tokens * 0.003 / 1000) + (u.output_tokens * 0.015 / 1000)
+        u.tokens_used * 0.009 / 1000
         for u in rashid_week
     ])
     rashid_month_cost = sum([
-        (u.input_tokens * 0.003 / 1000) + (u.output_tokens * 0.015 / 1000)
+        u.tokens_used * 0.009 / 1000
         for u in rashid_month
     ])
 
     # Cost by feature (from event metadata - operation field)
     feature_costs = {}
     for event in month_events:
-        if event.metadata:
-            operation = event.metadata.get('operation', 'unknown')
-            cost = float(event.metadata.get('cost_usd', 0))
+        if event.data:
+            operation = event.data.get('operation', 'unknown')
+            cost = float(event.data.get('cost_usd', 0))
             feature_costs[operation] = feature_costs.get(operation, 0) + cost
 
     # Add Rashid
@@ -91,8 +91,8 @@ def ai_cost_dashboard(request):
     # Model breakdown (from event metadata)
     model_usage = {}
     for event in month_events:
-        if event.metadata:
-            model = event.metadata.get('model', 'unknown')
+        if event.data:
+            model = event.data.get('model', 'unknown')
             model_usage[model] = model_usage.get(model, 0) + 1
 
     # Top users by cost (from Rashid + events with user_id)
@@ -101,7 +101,7 @@ def ai_cost_dashboard(request):
     # Rashid users
     for usage in rashid_month:
         if usage.user_id:
-            cost = (usage.input_tokens * 0.003 / 1000) + (usage.output_tokens * 0.015 / 1000)
+            cost = usage.tokens_used * 0.009 / 1000
             user_costs[usage.user.email if usage.user else 'Anonymous'] = \
                 user_costs.get(usage.user.email if usage.user else 'Anonymous', 0) + cost
 
@@ -121,7 +121,7 @@ def ai_cost_dashboard(request):
 
         day_rashid = RashidUsage.objects.filter(created_at__gte=day_start, created_at__lt=day_end)
         day_rashid_cost = sum([
-            (u.input_tokens * 0.003 / 1000) + (u.output_tokens * 0.015 / 1000)
+            u.tokens_used * 0.009 / 1000
             for u in day_rashid
         ])
 

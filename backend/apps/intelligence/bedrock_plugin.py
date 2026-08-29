@@ -26,10 +26,12 @@ MODEL_COSTS = {
     "anthropic.claude-3-5-sonnet-20241022-v2:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
 }
 
-MODEL_ALIASES = {
+_DEFAULT_ALIASES = {
     "haiku": "anthropic.claude-3-haiku-20240307-v1:0",
     "sonnet": "anthropic.claude-sonnet-4-20250514-v1:0",
 }
+
+MODEL_ALIASES = getattr(settings, "BEDROCK_MODEL_ALIASES", _DEFAULT_ALIASES)
 
 
 class BedrockLLMPlugin(LLMPlugin):
