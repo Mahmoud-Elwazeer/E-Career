@@ -223,10 +223,9 @@ class JobApplication(models.Model):
 
 class KnockoutQuestion(models.Model):
     """
-    Auto-reject criteria for job applications.
-    
-    Questions are evaluated against user profile data.
-    If any question fails, application is auto-rejected.
+    DEPRECATED: Use dynamic-form knockout questions on JobPosting.custom_form_fields instead.
+    This model is retained for backward compatibility with existing data.
+    No new KnockoutQuestion records should be created via the API.
     """
     employer = models.ForeignKey(
         EmployerProfile,

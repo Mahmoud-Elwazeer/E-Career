@@ -9,7 +9,6 @@ from .views import (
     EmployerProfileViewSet,
     JobPostingViewSet,
     JobApplicationViewSet,
-    KnockoutQuestionViewSet,
     CandidateRankingViewSet,
     TalentDiscoveryViewSet,
     TalentPoolViewSet,
@@ -22,7 +21,7 @@ router = DefaultRouter()
 router.register(r'profile', EmployerProfileViewSet, basename='employer-profile')
 router.register(r'jobs', JobPostingViewSet, basename='employer-jobs')
 router.register(r'applications', JobApplicationViewSet, basename='employer-applications')
-router.register(r'knockout-questions', KnockoutQuestionViewSet, basename='employer-knockout-questions')
+# KnockoutQuestion API removed — deprecated in favor of dynamic-form knockout
 router.register(r'rankings', CandidateRankingViewSet, basename='employer-rankings')
 router.register(r'talent-discoveries', TalentDiscoveryViewSet, basename='employer-talent-discoveries')
 router.register(r'talent-pools', TalentPoolViewSet, basename='employer-talent-pools')
