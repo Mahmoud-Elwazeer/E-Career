@@ -10,7 +10,9 @@ import { JobCard } from "@/components/JobCard";
 import { EmptyState } from "@/components/EmptyState";
 import { AnimatedFilterChipList, SearchBarMotion, JobCardMotion } from "@/components/motion";
 import { fetchJobs } from "@/services/jobs";
-import { logSearch } from "@/lib/api";
+// NOTE: logSearch is currently a no-op stub kept only for call-site
+// compatibility until search analytics logging is implemented.
+async function logSearch(_query: string, _filters: Record<string, string>, _count: number) {}
 import { useSavedJobs } from "@/hooks/use-saved-jobs";
 import { useTheme } from "@/hooks/use-theme";
 import { usePageMeta } from "@/hooks/use-seo";

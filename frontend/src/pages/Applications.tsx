@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/use-theme";
-import { apiRequest } from "@/lib/api";
+import { apiRequest } from "@/services/client";
 import { formatDistanceToNow } from "date-fns";
 import { ApplicationCardSkeleton, StatCardSkeleton } from "@/components/Skeletons";
 import { EmptyStates } from "@/components/EmptyState";

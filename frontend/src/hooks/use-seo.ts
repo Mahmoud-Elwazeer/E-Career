@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import type { Job } from "@/services/jobs";
-import { getCachedCompany as getCompany } from "@/lib/api";
+// NOTE: getCompany is currently a no-op stub (always returns undefined,
+// see former lib/api.ts) kept only for API-shape compatibility until this
+// hook is wired to a real company cache.
+function getCompany(_id: string): undefined { return undefined; }
 
 export function useBreadcrumbStructuredData(items: { name: string; url: string }[]) {
   useEffect(() => {
