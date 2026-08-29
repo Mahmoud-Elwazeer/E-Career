@@ -372,11 +372,13 @@ class CareerIntelligenceTests(TestCase):
     
     def test_career_brain(self):
         """Test CareerBrain model."""
-        career_brain = CareerBrain.objects.create(
+        career_brain, _ = CareerBrain.objects.update_or_create(
             user=self.user,
-            identity={'professional_title': 'Engineer'},
-            skills={'Python': {'level': 'expert', 'verified': True}},
-            confidence_score=0.8,
+            defaults={
+                'identity': {'professional_title': 'Engineer'},
+                'skills': {'Python': {'level': 'expert', 'verified': True}},
+                'confidence_score': 0.8,
+            },
         )
         
         self.assertEqual(career_brain.confidence_score, 0.8)

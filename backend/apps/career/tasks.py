@@ -175,3 +175,36 @@ def train_recommendation_model(self) -> dict:
     except Exception as exc:
         logger.error("recommendation_model_training_failed", error=str(exc))
         raise self.retry(exc=exc, countdown=300)
+
+
+@shared_task(bind=True, max_retries=3)
+def sync_career_brain(self, user_id: int) -> dict:
+    """
+    Sync CareerBrain from current CareerProfile/skills/learning data.
+
+    Triggered via post_save signals on CareerProfile, CareerUserSkill,
+    CareerLearning, JobApplication, and InterviewSession.
+    """
+    from django.contrib.auth import get_user_model
+    from apps.career.models import CareerProfile, CareerBrain
+
+    User = get_user_model()
+
+    try:
+        user = User.objects.get(id=user_id)
+        profile = CareerProfile.objects.get(user=user)
+        brain, _ = CareerBrain.objects.get_or_create(user=user)
+        brain.update_from_profile(profile)
+
+        logger.info("career_brain_synced", user_id=user_id)
+        return {"success": True, "user_id": user_id}
+
+    except User.DoesNotExist:
+        logger.error("career_brain_sync_user_not_found", user_id=user_id)
+        return {"error": "User not found"}
+    except CareerProfile.DoesNotExist:
+        logger.warning("career_brain_sync_no_profile", user_id=user_id)
+        return {"skipped": True, "reason": "No CareerProfile yet"}
+    except Exception as exc:
+        logger.error("career_brain_sync_failed", user_id=user_id, error=str(exc))
+        raise self.retry(exc=exc, countdown=60)
