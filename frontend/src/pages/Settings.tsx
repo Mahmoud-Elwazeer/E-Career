@@ -1,4 +1,4 @@
-import { AppLayout } from "@/components/layout/AppLayout";
+import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -13,7 +13,7 @@ export default function Settings() {
   const isAr = lang === "ar";
 
   return (
-    <AppLayout>
+    <Layout>
       <div className="container max-w-4xl py-8">
         <div className="mb-8">
           <h1 className="text-heading-1 mb-2">
@@ -144,6 +144,6 @@ export default function Settings() {
           </Card>
         </div>
       </div>
-    </AppLayout>
+    </Layout>
   );
 }

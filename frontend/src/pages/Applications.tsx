@@ -13,7 +13,7 @@ import {
   Filter,
   Search
 } from "lucide-react";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -76,7 +76,7 @@ export default function Applications() {
   };
 
   return (
-    <AppLayout>
+    <Layout>
       <div className="container max-w-6xl py-8">
         {/* Header */}
         <div className="mb-8">
@@ -301,6 +301,6 @@ export default function Applications() {
           )}
         </div>
       </div>
-    </AppLayout>
+    </Layout>
   );
 }

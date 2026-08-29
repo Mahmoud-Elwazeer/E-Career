@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { Layout } from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -95,17 +95,17 @@ export default function Notifications() {
 
   if (loading) {
     return (
-      <AppLayout>
+      <Layout>
         <div className="container max-w-4xl py-8 flex justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
-      </AppLayout>
+      </Layout>
     );
   }
 
   if (notifications.length === 0) {
     return (
-      <AppLayout>
+      <Layout>
         <div className="container max-w-4xl py-8">
           <div className="mb-8 flex items-center justify-between">
             <div>
@@ -126,12 +126,12 @@ export default function Notifications() {
 
           <EmptyStates.NoNotifications />
         </div>
-      </AppLayout>
+      </Layout>
     );
   }
 
   return (
-    <AppLayout>
+    <Layout>
       <div className="container max-w-4xl py-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -199,6 +199,6 @@ export default function Notifications() {
           })}
         </div>
       </div>
-    </AppLayout>
+    </Layout>
   );
 }
