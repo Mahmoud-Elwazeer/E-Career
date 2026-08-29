@@ -181,7 +181,7 @@ def _tool_search_jobs(query: str, location: str = "", remote: bool = False,
 def _tool_get_job_detail(job_id: str) -> dict:
     from apps.jobs.models import Job
     try:
-        job = Job.objects.select_related("company").get(id=job_id, is_active=True)
+        job = Job.objects.select_related("company").get(id=job_id, status='active')
         return {
             "id": str(job.id),
             "title": job.title,
@@ -232,7 +232,7 @@ def _tool_get_skill_demand(skill_name: str) -> dict:
         tags__name__icontains=skill_name
     ).count()
 
-    total_active = Job.objects.filter(is_active=True).count()
+    total_active = Job.objects.filter(status='active').count()
     percentage = (active_jobs_with_skill / total_active * 100) if total_active > 0 else 0
 
     return {
@@ -303,7 +303,7 @@ def _tool_get_company_info(company_id: str = "", company_name: str = "") -> dict
     except Company.DoesNotExist:
         return {"error": "Company not found."}
 
-    active_jobs = Job.objects.filter(company=company, is_active=True).count()
+    active_jobs = Job.objects.filter(company=company, status='active').count()
     return {
         "id": str(company.id),
         "name": company.name,
@@ -358,7 +358,7 @@ def _tool_get_market_trends(topic: str) -> dict:
     last_60_days = now - timedelta(days=60)
 
     recent_count = Job.objects.filter(
-        is_active=True,
+        status='active',
         created_at__gte=last_30_days,
         tags__name__icontains=topic
     ).count()

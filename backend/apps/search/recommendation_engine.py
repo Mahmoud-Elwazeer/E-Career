@@ -101,7 +101,7 @@ class RecommendationEngine:
     def _build_mappings(self):
         """Build job and skill ID mappings."""
         # Get all active jobs
-        jobs = Job.objects.filter(is_active=True).values_list('id', 'uuid')
+        jobs = Job.objects.filter(status='active').values_list('id', 'uuid')
         self._job_mapping = {str(job.uuid): idx for idx, job in enumerate(jobs)}
         
         # Get all skills
@@ -118,7 +118,7 @@ class RecommendationEngine:
             return None
         
         # Get all active jobs
-        jobs = Job.objects.filter(is_active=True)
+        jobs = Job.objects.filter(status='active')
         
         n_jobs = len(jobs)
         n_skills = len(self.skill_mapping)
@@ -228,7 +228,7 @@ class RecommendationEngine:
             return {'error': 'Scipy not installed'}
         
         if jobs is None:
-            jobs = Job.objects.filter(is_active=True)
+            jobs = Job.objects.filter(status='active')
         
         # Build mappings if not already built
         if self._job_mapping is None:
@@ -444,7 +444,7 @@ class RecommendationEngine:
         user_skill_names = [s.skill.name.lower() for s in user_skills]
         
         # Get active jobs
-        jobs = Job.objects.filter(is_active=True).select_related('company')[:100]
+        jobs = Job.objects.filter(status='active').select_related('company')[:100]
         
         # Score jobs
         scored_jobs = []

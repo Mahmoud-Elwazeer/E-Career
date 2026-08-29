@@ -36,7 +36,7 @@ def get_matching_jobs_for_user(user, since_hours=24, limit=5):
     # Get jobs posted in the last N hours
     since = timezone.now() - timedelta(hours=since_hours)
     jobs = Job.objects.filter(
-        is_active=True,
+        status='active',
         posted_at__gte=since
     ).select_related('company', 'source')
     
@@ -138,7 +138,7 @@ def get_weekly_job_summary(user):
     
     # Get all jobs posted this week
     weekly_jobs = Job.objects.filter(
-        is_active=True,
+        status='active',
         posted_at__gte=week_start
     ).select_related('company')
     

@@ -69,7 +69,7 @@ class RecommendationEngine:
         # 3. Recency boost for new postings
         recent_jobs = set(
             Job.objects.filter(
-                is_active=True,
+                status='active',
                 created_at__gte=timezone.now() - timedelta(days=7)
             ).values_list('id', flat=True)[:100]
         )
@@ -114,7 +114,7 @@ class RecommendationEngine:
         target_roles = [r.lower() for r in (profile.target_roles or [])]
         target_locations = [l.lower() for l in (profile.target_locations or [])]
 
-        candidates = Job.objects.filter(is_active=True).exclude(
+        candidates = Job.objects.filter(status='active').exclude(
             id__in=self._get_applied_job_ids(user)
         ).order_by('-created_at')[:500]
 
@@ -279,7 +279,7 @@ class RecommendationEngine:
     def _fallback_recommendations(self, user, limit: int) -> List[Dict]:
         """Fallback: return recent active jobs when no profile exists."""
         from apps.jobs.models import Job
-        jobs = Job.objects.filter(is_active=True).order_by('-created_at')[:limit]
+        jobs = Job.objects.filter(status='active').order_by('-created_at')[:limit]
         return [
             {'job_id': j.id, 'score': 0.5, 'reasons': ['Recently posted'], 'content_score': 0, 'collaborative_score': 0}
             for j in jobs

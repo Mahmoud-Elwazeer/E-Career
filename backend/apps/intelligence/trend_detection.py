@@ -42,7 +42,7 @@ class TrendDetectionService:
         previous_cutoff = recent_cutoff - timedelta(days=days)
 
         recent_skills = (
-            Job.objects.filter(is_active=True, created_at__gte=recent_cutoff)
+            Job.objects.filter(status='active', created_at__gte=recent_cutoff)
             .values("tags__name")
             .annotate(count=Count("id"))
             .order_by("-count")[:50]
@@ -94,7 +94,7 @@ class TrendDetectionService:
         previous_cutoff = recent_cutoff - timedelta(days=days)
 
         recent_skills = (
-            Job.objects.filter(is_active=True, created_at__gte=recent_cutoff)
+            Job.objects.filter(status='active', created_at__gte=recent_cutoff)
             .values("tags__name")
             .annotate(count=Count("id"))
         )
@@ -138,7 +138,7 @@ class TrendDetectionService:
 
         cutoff = timezone.now() - timedelta(days=days)
         jobs = Job.objects.filter(
-            is_active=True,
+            status='active',
             created_at__gte=cutoff,
             description__isnull=False,
         ).values_list("description", "created_at").order_by("created_at")

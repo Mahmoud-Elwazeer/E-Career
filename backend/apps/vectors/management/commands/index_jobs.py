@@ -52,7 +52,7 @@ class Command(BaseCommand):
             vector_service.ensure_collections()
         
         # Get all active jobs
-        jobs = Job.objects.filter(is_active=True)
+        jobs = Job.objects.filter(status='active')
         total_jobs = jobs.count()
         
         self.stdout.write(f"Found {total_jobs} active jobs to index")

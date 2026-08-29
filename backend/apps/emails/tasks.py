@@ -64,7 +64,7 @@ def send_job_alerts():
     
     # Get recent jobs (last 24 hours)
     recent_jobs = Job.objects.filter(
-        is_active=True,
+        status='active',
         posted_at__gte=timezone.now() - timedelta(hours=24)
     ).select_related('company', 'source')
     
@@ -161,10 +161,10 @@ def send_weekly_digest():
         'week_start': week_start.strftime('%Y-%m-%d'),
         'week_end': timezone.now().strftime('%Y-%m-%d'),
         'new_jobs': Job.objects.filter(
-            is_active=True,
+            status='active',
             posted_at__gte=week_start
         ).count(),
-        'total_companies': Job.objects.filter(is_active=True).values('company').distinct().count(),
+        'total_companies': Job.objects.filter(status='active').values('company').distinct().count(),
     }
     
     digests_sent = 0

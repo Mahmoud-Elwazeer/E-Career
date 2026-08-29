@@ -230,7 +230,7 @@ class ProfileViewSet(viewsets.ModelViewSet):
                 'error': 'Profile must have skills to calculate matches'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-        jobs = Job.objects.filter(is_active=True).select_related('company')
+        jobs = Job.objects.filter(status='active').select_related('company')
         matching_svc = MatchingService()
         matches_created = 0
 
