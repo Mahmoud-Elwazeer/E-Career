@@ -241,25 +241,47 @@ Format your response as structured text with clear sections."""
             methodology="platform_ai_internal_data",
         )
 
+    def _semantic_job_search(self, query: str) -> str:
+        """Use VectorService for semantic job search when available."""
+        try:
+            from apps.vectors.service import vector_service
+            result = vector_service.semantic_search(
+                collection="jobs", query_text=query, limit=10, score_threshold=0.5,
+            )
+            if result and result.results:
+                lines = []
+                for r in result.results:
+                    meta = r.metadata or {}
+                    lines.append(f"- {meta.get('title', 'Unknown')} at {meta.get('company', 'Unknown')} (score: {r.score:.2f})")
+                return f"Semantically related jobs ({len(lines)}):\n" + "\n".join(lines)
+        except Exception as e:
+            logger.debug("vector_search_unavailable", error=str(e))
+        return ""
+
     def _gather_platform_context(self, query: str, research_type: ResearchType) -> str:
-        """Gather relevant platform data as context for research."""
+        """Gather relevant platform data as context for research.
+
+        Uses VectorService.semantic_search when available, falls back to ORM.
+        """
         context_parts = []
 
         try:
             if research_type in (ResearchType.SKILL, ResearchType.MARKET, ResearchType.CAREER):
-                from apps.jobs.models import Job
-                from django.db.models import Count
-
-                relevant_jobs = Job.objects.filter(
-                    is_active=True,
-                    description__icontains=query.split()[0] if query else ""
-                ).values("title", "company__name", "location")[:10]
-
-                if relevant_jobs:
-                    context_parts.append(
-                        f"Related active jobs ({relevant_jobs.count()}):\n" +
-                        "\n".join(f"- {j['title']} at {j['company__name']}" for j in relevant_jobs[:10])
-                    )
+                vector_context = self._semantic_job_search(query)
+                if vector_context:
+                    context_parts.append(vector_context)
+                else:
+                    from apps.jobs.models import Job
+                    first_word = query.split()[0] if query else ""
+                    relevant_jobs = Job.objects.filter(
+                        status='active',
+                        description__icontains=first_word,
+                    ).values("title", "company__name", "location")[:10]
+                    if relevant_jobs:
+                        context_parts.append(
+                            f"Related active jobs ({relevant_jobs.count()}):\n" +
+                            "\n".join(f"- {j['title']} at {j['company__name']}" for j in relevant_jobs[:10])
+                        )
 
             if research_type == ResearchType.COMPANY:
                 from apps.jobs.models import Company
@@ -275,6 +297,23 @@ Format your response as structured text with clear sections."""
             logger.warning("context_gathering_failed", error=str(e))
 
         return "\n\n".join(context_parts)
+
+    @staticmethod
+    def _compute_confidence(evidence: list[Evidence], methodology: str) -> float:
+        """Compute confidence based on evidence quality and quantity."""
+        if not evidence:
+            return 0.15
+        quality_weights = {
+            EvidenceQuality.HIGH: 1.0,
+            EvidenceQuality.MEDIUM: 0.6,
+            EvidenceQuality.LOW: 0.3,
+            EvidenceQuality.UNVERIFIED: 0.1,
+        }
+        quality_avg = sum(quality_weights.get(e.quality, 0.1) for e in evidence) / len(evidence)
+        source_factor = min(len(evidence) / 5, 1.0)
+        methodology_bonus = {"gpt_researcher_web_search": 0.15}.get(methodology, 0.0)
+        score = quality_avg * 0.5 + source_factor * 0.35 + methodology_bonus
+        return round(max(0.1, min(0.95, score)), 2)
 
     def _extract_key_findings(self, text: str) -> list[str]:
         """Extract key findings from research text."""
