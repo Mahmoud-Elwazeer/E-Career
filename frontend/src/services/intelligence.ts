@@ -8,7 +8,7 @@
  * - Email verification
  * - Tool registry
  */
-import { apiClient } from "./client";
+import { apiRequest } from "./client";
 
 // Types
 export interface RashidResponse {
@@ -87,21 +87,20 @@ export const intelligenceApi = {
     language: string = "en",
     sessionId: string = ""
   ): Promise<RashidResponse> => {
-    const { data } = await apiClient.post("/intelligence/rashid/chat/", {
-      message,
-      language,
-      session_id: sessionId,
+    return apiRequest<RashidResponse>("/intelligence/rashid/chat/", {
+      method: "POST",
+      body: { message, language, session_id: sessionId },
     });
-    return data;
   },
 
   /**
    * Get emerging skills (trending up in job postings).
    */
   getEmergingSkills: async (days: number = 30): Promise<EmergingSkill[]> => {
-    const { data } = await apiClient.get("/intelligence/trends/emerging/", {
-      params: { days },
-    });
+    const data = await apiRequest<{ emerging_skills: EmergingSkill[] }>(
+      "/intelligence/trends/emerging/",
+      { params: { days } }
+    );
     return data.emerging_skills;
   },
 
@@ -109,9 +108,10 @@ export const intelligenceApi = {
    * Get declining skills (trending down in job postings).
    */
   getDecliningSkills: async (days: number = 30): Promise<DecliningSkill[]> => {
-    const { data } = await apiClient.get("/intelligence/trends/declining/", {
-      params: { days },
-    });
+    const data = await apiRequest<{ declining_skills: DecliningSkill[] }>(
+      "/intelligence/trends/declining/",
+      { params: { days } }
+    );
     return data.declining_skills;
   },
 
@@ -122,28 +122,27 @@ export const intelligenceApi = {
     query: string,
     type: string = "market"
   ): Promise<ResearchTask> => {
-    const { data } = await apiClient.post("/intelligence/research/", {
-      query,
-      type,
+    return apiRequest<ResearchTask>("/intelligence/research/", {
+      method: "POST",
+      body: { query, type },
     });
-    return data;
   },
 
   /**
    * Verify an email address.
    */
   verifyEmail: async (email: string): Promise<EmailVerificationResult> => {
-    const { data } = await apiClient.post("/intelligence/verify-email/", {
-      email,
+    return apiRequest<EmailVerificationResult>("/intelligence/verify-email/", {
+      method: "POST",
+      body: { email },
     });
-    return data;
   },
 
   /**
    * List all available platform tools.
    */
   listTools: async (): Promise<PlatformTool[]> => {
-    const { data } = await apiClient.get("/intelligence/tools/");
+    const data = await apiRequest<{ tools: PlatformTool[] }>("/intelligence/tools/");
     return data.tools;
   },
 
@@ -151,16 +150,14 @@ export const intelligenceApi = {
    * Admin: Get intelligence service health.
    */
   getHealth: async (): Promise<IntelligenceHealth> => {
-    const { data } = await apiClient.get("/intelligence/health/");
-    return data;
+    return apiRequest<IntelligenceHealth>("/intelligence/health/");
   },
 
   /**
    * Admin: Get trends dashboard data.
    */
   getTrendsDashboard: async () => {
-    const { data } = await apiClient.get("/intelligence/admin/trends/");
-    return data;
+    return apiRequest<any>("/intelligence/admin/trends/");
   },
 
   // --- Knowledge Graph ---
@@ -169,41 +166,37 @@ export const intelligenceApi = {
    * Get skill neighborhood graph.
    */
   getSkillGraph: async (skillName: string, depth: number = 2) => {
-    const { data } = await apiClient.get(
+    return apiRequest<any>(
       `/intelligence/graph/skill/${encodeURIComponent(skillName)}/`,
       { params: { depth } }
     );
-    return data;
   },
 
   /**
    * Get skills required for a role.
    */
   getRoleSkillsGraph: async (roleTitle: string) => {
-    const { data } = await apiClient.get(
+    return apiRequest<any>(
       `/intelligence/graph/role/${encodeURIComponent(roleTitle)}/skills/`
     );
-    return data;
   },
 
   /**
    * Get career paths from a role.
    */
   getCareerPathGraph: async (roleTitle: string) => {
-    const { data } = await apiClient.get(
+    return apiRequest<any>(
       `/intelligence/graph/role/${encodeURIComponent(roleTitle)}/paths/`
     );
-    return data;
   },
 
   /**
    * Get skill gaps for a target role.
    */
   getSkillGaps: async (role: string) => {
-    const { data } = await apiClient.get("/intelligence/graph/skill-gaps/", {
+    return apiRequest<any>("/intelligence/graph/skill-gaps/", {
       params: { role },
     });
-    return data;
   },
 
   // --- Content Pipeline ---
@@ -216,12 +209,10 @@ export const intelligenceApi = {
     role: string,
     options: { language?: string; company?: string; days?: number } = {}
   ) => {
-    const { data } = await apiClient.post("/intelligence/content/generate/", {
-      type,
-      role,
-      ...options,
+    return apiRequest<any>("/intelligence/content/generate/", {
+      method: "POST",
+      body: { type, role, ...options },
     });
-    return data;
   },
 
   // --- Marketing Intelligence ---
@@ -230,23 +221,20 @@ export const intelligenceApi = {
    * Admin: Platform metrics.
    */
   getPlatformMetrics: async () => {
-    const { data } = await apiClient.get("/intelligence/admin/metrics/");
-    return data;
+    return apiRequest<any>("/intelligence/admin/metrics/");
   },
 
   /**
    * Admin: Market gaps analysis.
    */
   getMarketGaps: async () => {
-    const { data } = await apiClient.get("/intelligence/admin/market-gaps/");
-    return data;
+    return apiRequest<any>("/intelligence/admin/market-gaps/");
   },
 
   /**
    * Admin: Content opportunities.
    */
   getContentOpportunities: async () => {
-    const { data } = await apiClient.get("/intelligence/admin/content-opportunities/");
-    return data;
+    return apiRequest<any>("/intelligence/admin/content-opportunities/");
   },
 };

@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/hooks/use-theme";
-import api from "@/lib/api";
+import { apiRequest } from "@/lib/api";
 import { formatDistanceToNow } from "date-fns";
 import { ApplicationCardSkeleton, StatCardSkeleton } from "@/components/Skeletons";
 import { EmptyStates } from "@/components/EmptyState";
@@ -57,8 +57,7 @@ export default function Applications() {
   const { data: applications = [], isLoading } = useQuery({
     queryKey: ["applications"],
     queryFn: async () => {
-      const response = await api.get("/applications/");
-      return response.data as Application[];
+      return apiRequest<Application[]>("/applications/");
     },
   });
 

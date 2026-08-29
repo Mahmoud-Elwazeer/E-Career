@@ -2,7 +2,7 @@
  * Profile service for user profile management
  */
 
-import api from './api';
+import { apiRequest } from './client';
 
 // Types
 export interface UserProfile {
@@ -115,16 +115,17 @@ export const profileApi = {
    * Get current user's profile
    */
   getProfile: async (): Promise<UserProfile> => {
-    const response = await api.get('/profile/');
-    return response.data;
+    return apiRequest<UserProfile>('/profile/');
   },
 
   /**
    * Update profile
    */
   updateProfile: async (data: UpdateProfileData): Promise<UserProfile> => {
-    const response = await api.patch('/profile/', data);
-    return response.data;
+    return apiRequest<UserProfile>('/profile/', {
+      method: 'PATCH',
+      body: data,
+    });
   },
 
   /**
@@ -134,54 +135,55 @@ export const profileApi = {
     const formData = new FormData();
     formData.append('cv_file', file);
 
-    const response = await api.post('/profile/upload_cv/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+    return apiRequest<{ status: string; message: string; profile: UserProfile }>('/profile/upload_cv/', {
+      method: 'POST',
+      formData,
     });
-    return response.data;
   },
 
   /**
    * Get profile completion status
    */
   getCompletion: async (): Promise<ProfileCompletion> => {
-    const response = await api.get('/profile/completion/');
-    return response.data;
+    return apiRequest<ProfileCompletion>('/profile/completion/');
   },
 
   /**
    * Update skills manually
    */
   updateSkills: async (skills: string[]): Promise<{ status: string; skills: string[] }> => {
-    const response = await api.post('/profile/skills/', { skills });
-    return response.data;
+    return apiRequest<{ status: string; skills: string[] }>('/profile/skills/', {
+      method: 'POST',
+      body: { skills },
+    });
   },
 
   /**
    * Update job preferences
    */
   updatePreferences: async (data: UpdatePreferencesData): Promise<UserProfile> => {
-    const response = await api.post('/profile/preferences/', data);
-    return response.data;
+    return apiRequest<UserProfile>('/profile/preferences/', {
+      method: 'POST',
+      body: data,
+    });
   },
 
   /**
    * Get job matches
    */
   getMatches: async (limit = 20, minScore = 50): Promise<JobMatch[]> => {
-    const response = await api.get('/profile/matches/', {
+    return apiRequest<JobMatch[]>('/profile/matches/', {
       params: { limit, min_score: minScore },
     });
-    return response.data;
   },
 
   /**
    * Calculate match scores
    */
   calculateMatches: async (): Promise<{ status: string; matches_calculated: number }> => {
-    const response = await api.post('/profile/calculate_matches/');
-    return response.data;
+    return apiRequest<{ status: string; matches_calculated: number }>('/profile/calculate_matches/', {
+      method: 'POST',
+    });
   },
 };
 

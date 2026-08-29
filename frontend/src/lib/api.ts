@@ -10,11 +10,13 @@
  *   const data = await api.post("/api/v1/endpoint", { body });
  */
 
-// Re-export from services/api.ts (axios-based client)
-// This is the canonical HTTP client for the application
-import apiClient from "@/services/api";
-
-export default apiClient;
+// NOTE: services/api.ts (axios-based client) was deleted in commit 35f797b
+// ("Migrated frontend services to apiRequest") — services/client.ts's
+// fetch-based apiRequest() is now the single canonical HTTP client. Re-export
+// it here so any remaining `import api from "@/lib/api"; api.get(...)` call
+// sites can be migrated incrementally without a default export dead-ending
+// on a deleted module.
+export { apiRequest } from "@/services/client";
 
 // Job-specific exports for backwards compatibility
 export {

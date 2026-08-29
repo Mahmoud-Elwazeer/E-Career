@@ -3,7 +3,7 @@
  * Handles GitHub OAuth flow and connection management
  */
 
-import api from './api';
+import { apiRequest } from './client';
 
 export interface GitHubConnection {
   id: number;
@@ -58,46 +58,46 @@ export interface PortfolioAnalyzeRequest {
  * Get all GitHub connections for the current user
  */
 export async function getGitHubConnections(): Promise<GitHubConnection[]> {
-  const response = await api.get('/core/github/');
-  return response.data.data;
+  return apiRequest<GitHubConnection[]>('/core/github/');
 }
 
 /**
  * Connect GitHub account
  */
 export async function connectGitHub(code: string, state: string): Promise<GitHubConnection> {
-  const response = await api.post('/core/github/', { code, state });
-  return response.data.data;
+  return apiRequest<GitHubConnection>('/core/github/', {
+    method: 'POST',
+    body: { code, state },
+  });
 }
 
 /**
  * Get all portfolio analyses for the current user
  */
 export async function getPortfolioAnalyses(): Promise<PortfolioAnalysis[]> {
-  const response = await api.get('/core/portfolio/');
-  return response.data.data;
+  return apiRequest<PortfolioAnalysis[]>('/core/portfolio/');
 }
 
 /**
  * Analyze a portfolio URL
  */
 export async function analyzePortfolio(url: string): Promise<PortfolioAnalysis> {
-  const response = await api.post('/core/portfolio/', { url });
-  return response.data.data;
+  return apiRequest<PortfolioAnalysis>('/core/portfolio/', {
+    method: 'POST',
+    body: { url },
+  });
 }
 
 /**
  * Get GitHub user profile information
  */
 export async function getGitHubProfile(username: string): Promise<any> {
-  const response = await api.get(`/core/github/profile/${username}/`);
-  return response.data;
+  return apiRequest<any>(`/core/github/profile/${username}/`);
 }
 
 /**
  * Get GitHub repository information
  */
 export async function getGitHubRepo(owner: string, repo: string): Promise<any> {
-  const response = await api.get(`/core/github/repo/${owner}/${repo}/`);
-  return response.data;
+  return apiRequest<any>(`/core/github/repo/${owner}/${repo}/`);
 }
