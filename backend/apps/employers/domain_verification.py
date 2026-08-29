@@ -15,12 +15,7 @@ from apps.core.safe_fetch import verify_url_is_live, SSRFBlockedError
 logger = logging.getLogger(__name__)
 
 # Known aggregators and job boards to block
-BLOCKED_DOMAINS = {
-    'linkedin.com', 'indeed.com', 'glassdoor.com', 'monster.com',
-    'bayt.com', 'akhtaboot.com', 'wuzzuf.com', 'tanqeeb.com',
-    'naukrigulf.com', 'dubizzle.com', 'gulftalent.com',
-    'seek.com', 'dice.com', 'ziprecruiter.com', 'careerbuilder.com',
-}
+from apps.verification.models import is_blocked_domain
 
 
 def extract_domain(url: str) -> str:
@@ -84,7 +79,7 @@ def verify_domain_ownership(company_name: str, apply_url: str) -> Tuple[bool, st
         return False, f"Invalid URL format: {str(e)}"
 
     # Check if blocked aggregator
-    if domain in BLOCKED_DOMAINS:
+    if is_blocked_domain(domain):
         return False, f"Cannot use aggregator domain: {domain}"
 
     # Check if domain contains company name

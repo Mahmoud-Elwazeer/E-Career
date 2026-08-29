@@ -178,3 +178,27 @@ class ApprovedATS(UUIDModel):
     
     def __str__(self):
         return f"{self.name} ({self.domain})"
+
+
+_blocked_cache = None
+_blocked_cache_ts = 0
+
+
+def get_blocked_domains():
+    """Return the set of blocked domains, cached for 5 minutes."""
+    import time
+    global _blocked_cache, _blocked_cache_ts
+    now = time.monotonic()
+    if _blocked_cache is None or (now - _blocked_cache_ts) > 300:
+        _blocked_cache = set(
+            BlockedDomain.objects.filter(is_active=True)
+            .values_list('domain', flat=True)
+        )
+        _blocked_cache_ts = now
+    return _blocked_cache
+
+
+def is_blocked_domain(domain: str) -> bool:
+    """Check if a domain (or any of its parents) is in the blocklist."""
+    blocked = get_blocked_domains()
+    return any(b in domain for b in blocked)

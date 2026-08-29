@@ -14,7 +14,7 @@ from apps.verification.stages import (
     FreshnessCheckerStage,
     DeduplicatorStage,
 )
-from apps.verification.stages.ats_fingerprint import BLOCKED_DOMAINS
+from apps.verification.models import get_blocked_domains
 
 
 User = get_user_model()
@@ -412,11 +412,11 @@ class TestVerificationEngine(TestCase):
 
 
 class TestBlockedDomainsList(TestCase):
-    """Test that BLOCKED_DOMAINS contains expected domains."""
+    """Test that get_blocked_domains() contains expected domains."""
     
     def test_blocked_domains_count(self):
         """Test that we have at least 15 blocked domains."""
-        self.assertGreaterEqual(len(BLOCKED_DOMAINS), 15)
+        self.assertGreaterEqual(len(get_blocked_domains()), 15)
     
     def test_expected_blocked_domains(self):
         """Test that expected aggregator domains are blocked."""
@@ -438,4 +438,4 @@ class TestBlockedDomainsList(TestCase):
             "reed.co.uk",
         }
         
-        self.assertTrue(expected.issubset(BLOCKED_DOMAINS))
+        self.assertTrue(expected.issubset(get_blocked_domains()))

@@ -45,23 +45,7 @@ ATS_PATTERNS: list[tuple[str, str, float]] = [
     (r"/jobs/?$", "company_careers_page", 0.55),
 ]
 
-BLOCKED_DOMAINS = {
-    "linkedin.com",
-    "indeed.com",
-    "glassdoor.com",
-    "ziprecruiter.com",
-    "monster.com",
-    "careerbuilder.com",
-    "dice.com",
-    "simplyhired.com",
-    "snagajob.com",
-    "bayt.com",
-    "wuzzuf.net",
-    "gulftalent.com",
-    "naukri.com",
-    "seek.com.au",
-    "reed.co.uk",
-}
+from apps.verification.models import is_blocked_domain
 
 
 class ATSFingerprintStage:
@@ -74,7 +58,7 @@ class ATSFingerprintStage:
         parsed = urlparse(url)
         domain = parsed.netloc.lower().removeprefix("www.")
 
-        if any(blocked in domain for blocked in BLOCKED_DOMAINS):
+        if is_blocked_domain(domain):
             return ATSFingerprint(
                 platform="BLOCKED_AGGREGATOR",
                 confidence=1.0,
@@ -98,4 +82,4 @@ class ATSFingerprintStage:
     def is_blocked(self, url: str) -> bool:
         parsed = urlparse(url)
         domain = parsed.netloc.lower().removeprefix("www.")
-        return any(blocked in domain for blocked in BLOCKED_DOMAINS)
+        return is_blocked_domain(domain)

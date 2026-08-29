@@ -6,48 +6,7 @@ import requests
 from urllib.parse import urlparse
 from typing import Tuple
 
-
-# Blocked domains - NEVER allow these as apply URLs
-BLOCKED_DOMAINS = [
-    # Job aggregators
-    'linkedin.com',
-    'indeed.com',
-    'glassdoor.com',
-    'ziprecruiter.com',
-    'monster.com',
-    'careerbuilder.com',
-    'simplyhired.com',
-    'jobgenie.com',
-    
-    # Regional aggregators
-    'bayt.com',
-    'wuzzuf.net',
-    'gulftalent.com',
-    'tanqeeb.com',
-    'akhtaboot.com',
-    
-    # Social media
-    'facebook.com',
-    'twitter.com',
-    'instagram.com',
-]
-
-# Allowed ATS domains
-ALLOWED_ATS = [
-    'greenhouse.io',
-    'lever.co',
-    'ashbyhq.com',
-    'myworkdayjobs.com',
-    'bamboohr.com',
-    'icims.com',
-    'jobvite.com',
-    'smartrecruiters.com',
-    'workable.com',
-    'breezy.hr',
-    'recruitee.com',
-    'personio.de',
-    'join.com',
-]
+from apps.verification.models import is_blocked_domain
 
 
 def is_direct_company_url(url: str) -> bool:
@@ -69,14 +28,16 @@ def is_direct_company_url(url: str) -> bool:
             domain = domain[4:]
         
         # Check if it's in blocked list
-        for blocked in BLOCKED_DOMAINS:
-            if blocked in domain:
-                return False
-        
+        if is_blocked_domain(domain):
+            return False
+
         # Check if it's an allowed ATS
-        for ats in ALLOWED_ATS:
-            if ats in domain:
-                return True
+        from apps.verification.models import ApprovedATS
+        ats_domains = ApprovedATS.objects.filter(
+            is_active=True
+        ).values_list('domain', flat=True)
+        if any(ats in domain for ats in ats_domains):
+            return True
         
         # If not blocked and not ATS, assume it's company's own domain
         # (We trust companies to use their own domains)
