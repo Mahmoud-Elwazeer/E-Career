@@ -96,4 +96,19 @@ app.conf.beat_schedule = {
         'task': 'apps.events.tasks.aggregate_daily_analytics',
         'schedule': crontab(hour=1, minute=0),  # 1 AM daily
     },
+    # Notification digest (daily at 9 AM)
+    'send-notification-digest': {
+        'task': 'apps.notifications.tasks.send_notification_digest',
+        'schedule': crontab(hour=9, minute=0),
+    },
+    # Weekly career digest (Wednesday 8 AM)
+    'send-weekly-career-digest': {
+        'task': 'apps.emails.tasks.send_weekly_career_digest',
+        'schedule': crontab(hour=8, minute=0, day_of_week=3),
+    },
+    # Proactive Rashid coaching triggers (daily at 11 AM)
+    'check-user-triggers': {
+        'task': 'apps.rashid.tasks.check_all_user_triggers',
+        'schedule': crontab(hour=11, minute=0),
+    },
 }

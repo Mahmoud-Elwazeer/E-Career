@@ -122,6 +122,7 @@ export interface FetchJobsParams {
   work_mode?: string;
   industry?: string;
   seniority?: string;
+  company?: string;
   page?: number;
   page_size?: number;
   ordering?: string;

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollReveal, StaggerContainer, StaggerItem } from "@/components/motion";
 import { intelligenceApi } from "@/services/intelligence";
 import { usePageMeta } from "@/hooks/use-seo";
+import { getAccessToken } from "@/services/client";
 
 export default function IntelligenceDashboard() {
   usePageMeta({ title: "Intelligence Dashboard" });
@@ -26,7 +27,7 @@ export default function IntelligenceDashboard() {
       intelligenceApi.getEmergingSkills(30).catch(() => []),
       intelligenceApi.getDecliningSkills(30).catch(() => []),
       fetch("/api/v1/intelligence/admin/metrics/", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` },
+        headers: { Authorization: `Bearer ${getAccessToken()}` },
       }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([h, em, dec, m]) => {
       setHealth(h);

@@ -34,27 +34,30 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Load existing job if editing
-  useQuery({
+  const { data: existingJob } = useQuery({
     queryKey: ['job-posting', jobId],
     queryFn: () => getJobPosting(jobId!),
     enabled: !!jobId,
-    onSuccess: (data: any) => {
-      setFormData({
-        title: data.title,
-        description: data.description || '',
-        requirements: data.requirements || '',
-        employment_type: data.employment_type,
-        experience_level: data.experience_level,
-        remote_type: data.remote_type,
-        location: data.location,
-        salary_min: data.salary_min || undefined,
-        salary_max: data.salary_max || undefined,
-        salary_currency: data.salary_currency || 'EGP',
-        apply_url: data.apply_url || '',
-        custom_form_fields: data.custom_form_fields || [],
-      });
-    },
   });
+
+  React.useEffect(() => {
+    if (existingJob) {
+      setFormData({
+        title: existingJob.title,
+        description: existingJob.description || '',
+        requirements: existingJob.requirements || '',
+        employment_type: existingJob.employment_type,
+        experience_level: existingJob.experience_level,
+        remote_type: existingJob.remote_type,
+        location: existingJob.location,
+        salary_min: existingJob.salary_min || undefined,
+        salary_max: existingJob.salary_max || undefined,
+        salary_currency: existingJob.salary_currency || 'EGP',
+        apply_url: existingJob.apply_url || '',
+        custom_form_fields: existingJob.custom_form_fields || [],
+      });
+    }
+  }, [existingJob]);
 
   // Create mutation
   const createMutation = useMutation({

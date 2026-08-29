@@ -33,16 +33,14 @@ export default function CompanyProfile() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    Promise.all([
-      fetchCompanyBySlug(id).catch(() => null),
-      fetchJobs({ page_size: 20 }),
-    ]).then(([comp, jobsRes]) => {
+    fetchCompanyBySlug(id).then((comp) => {
       setCompany(comp);
       if (comp) {
-        const filtered = (jobsRes.results ?? []).filter((j) => j.company_slug === comp.slug);
-        setCompanyJobs(filtered);
+        return fetchJobs({ company: comp.slug, page_size: 100 }).then((jobsRes) => {
+          setCompanyJobs(jobsRes.results ?? []);
+        });
       }
-    }).finally(() => setLoading(false));
+    }).catch(() => null).finally(() => setLoading(false));
   }, [id]);
 
   if (loading) {

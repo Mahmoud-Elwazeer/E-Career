@@ -21,10 +21,12 @@ import {
 } from 'lucide-react';
 import ResumePreview from '@/components/resume/ResumePreview';
 
+import { getAccessToken } from '@/services/client';
+
 const API_BASE = '/api/v1/resume';
 
 function getAuthHeaders() {
-  const token = localStorage.getItem('access_token');
+  const token = getAccessToken();
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
