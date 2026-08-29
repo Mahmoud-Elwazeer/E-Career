@@ -284,9 +284,9 @@ class HybridSearchView(APIView):
             rrf_scores = {}
             k = 60  # RRF constant
 
-            # Score keyword results
-            for rank, hit in enumerate(keyword_results.get("hits", []), start=1):
-                job_id = hit.get("id")
+            # Score keyword results (keyword_results is a SearchResponse object)
+            for rank, hit in enumerate(keyword_results.hits, start=1):
+                job_id = hit.id
                 rrf_scores[job_id] = rrf_scores.get(job_id, 0) + keyword_weight / (k + rank)
 
             # Score semantic results
@@ -303,9 +303,9 @@ class HybridSearchView(APIView):
                 # Find job in either result set
                 job_data = None
 
-                for hit in keyword_results.get("hits", []):
-                    if hit.get("id") == job_id:
-                        job_data = hit
+                for hit in keyword_results.hits:
+                    if hit.id == job_id:
+                        job_data = hit.data
                         break
 
                 if not job_data:
@@ -326,7 +326,7 @@ class HybridSearchView(APIView):
                     "jobs": merged_jobs,
                     "total": len(merged_jobs),
                     "search_type": "hybrid",
-                    "keyword_count": len(keyword_results.get("hits", [])),
+                    "keyword_count": len(keyword_results.hits),
                     "semantic_count": len(semantic_results.results),
                 },
                 "message": "",

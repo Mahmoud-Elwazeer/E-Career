@@ -13,6 +13,8 @@ from rest_framework.permissions import AllowAny
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from apps.search.services import search_service
+from apps.search.plugins.base import SearchQuery
+from apps.search.serializers import SearchResponseSerializer
 from apps.jobs.models import Job
 from apps.events.emitter import emit
 from apps.events.types import SEARCH_PERFORMED, SEARCH_RESULT_CLICKED
@@ -109,19 +111,22 @@ class JobSearchView(APIView):
         
         # Execute search
         try:
-            result = search_service.search(
-                query=query,
+            search_query = SearchQuery(
+                q=query,
                 filters=filters,
                 page=page,
-                page_size=page_size,
-                sort_by=sort_by,
-                sort_order=sort_order,
-                facets=facets,
+                per_page=page_size,
+                sort_by=sort_by or "",
+                facets=facets or [],
             )
-            
+            result = search_service.search_jobs(search_query)
+
+            # Serialize the SearchResponse object to dict
+            serializer = SearchResponseSerializer(result)
+
             return Response({
                 "success": True,
-                "data": result,
+                "data": serializer.data,
                 "message": "",
                 "errors": None,
             })
