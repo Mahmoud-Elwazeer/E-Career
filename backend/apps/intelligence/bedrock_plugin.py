@@ -21,14 +21,14 @@ from .llm_plugin import LLMPlugin, LLMRequest, LLMResponse
 logger = structlog.get_logger()
 
 MODEL_COSTS = {
-    "anthropic.claude-3-haiku-20240307-v1:0": {"input_per_1k": 0.00025, "output_per_1k": 0.00125},
-    "anthropic.claude-sonnet-4-20250514-v1:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
-    "anthropic.claude-3-5-sonnet-20241022-v2:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
+    "us.anthropic.claude-3-haiku-20240307-v1:0": {"input_per_1k": 0.00025, "output_per_1k": 0.00125},
+    "us.anthropic.claude-sonnet-4-20250514-v1:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
+    "us.anthropic.claude-3-5-sonnet-20241022-v2:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
 }
 
 _DEFAULT_ALIASES = {
-    "haiku": "anthropic.claude-3-haiku-20240307-v1:0",
-    "sonnet": "anthropic.claude-sonnet-4-20250514-v1:0",
+    "haiku": "us.anthropic.claude-3-haiku-20240307-v1:0",
+    "sonnet": "us.anthropic.claude-sonnet-4-20250514-v1:0",
 }
 
 MODEL_ALIASES = getattr(settings, "BEDROCK_MODEL_ALIASES", _DEFAULT_ALIASES)
