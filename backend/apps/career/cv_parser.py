@@ -30,7 +30,10 @@ class CVParserService:
     
     def __init__(self):
         self._bedrock = None
-        self._model_id = getattr(settings, 'BEDROCK_MODEL_ID', 'anthropic.claude-sonnet-4-20250514-v1:0')
+        from apps.intelligence.bedrock_plugin import MODEL_ALIASES
+        self._model_id = getattr(
+            settings, 'BEDROCK_MODEL_ID', MODEL_ALIASES.get('sonnet')
+        )
     
     @property
     def bedrock(self):

@@ -38,15 +38,11 @@ class AgentResponse(BaseModel):
 
 def get_bedrock_model(model_alias: str = "sonnet") -> str:
     """Resolve model alias to Bedrock model string for Pydantic AI."""
-    aliases = {
-        "haiku": f"bedrock:anthropic.claude-3-haiku-20240307-v1:0",
-        "sonnet": f"bedrock:anthropic.claude-sonnet-4-20250514-v1:0",
-    }
-    if model_alias in aliases:
-        return aliases[model_alias]
+    from apps.intelligence.bedrock_plugin import MODEL_ALIASES
     if model_alias.startswith("bedrock:"):
         return model_alias
-    return aliases["sonnet"]
+    model_id = MODEL_ALIASES.get(model_alias, MODEL_ALIASES.get("sonnet"))
+    return f"bedrock:{model_id}"
 
 
 def create_rashid_agent() -> Agent[PlatformDeps, str]:

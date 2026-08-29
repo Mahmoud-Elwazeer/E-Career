@@ -122,8 +122,10 @@ class Crawl4AIExtractor:
 
             import json
 
+            from apps.intelligence.bedrock_plugin import MODEL_ALIASES
+            haiku_id = MODEL_ALIASES.get("haiku")
             strategy = LLMExtractionStrategy(
-                provider="bedrock/anthropic.claude-haiku-4-20250514-v1:0",
+                provider=f"bedrock/{haiku_id}",
                 schema=schema,
                 instruction=f"Extract {extraction_type} information from this page.",
             )
