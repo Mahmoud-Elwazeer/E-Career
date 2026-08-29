@@ -199,9 +199,6 @@ class PgVectorPlugin(VectorPlugin):
                 # Cosine similarity search
                 # Params order: vector_str (for SELECT), filters, vector_str (for ORDER BY), limit
                 final_params = params + [vector_str, query.limit]
-                print(f"DEBUG SQL Params count: {len(final_params)}")
-                print(f"DEBUG WHERE: {where_sql}")
-                print(f"DEBUG Limit: {query.limit}")
                 cursor.execute(f"""
                     SELECT id, payload, 1 - (vector <=> %s::vector) as score
                     FROM {table_name}
