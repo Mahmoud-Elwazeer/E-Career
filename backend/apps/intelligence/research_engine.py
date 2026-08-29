@@ -180,7 +180,7 @@ class ResearchEngine:
                 summary=research_report if isinstance(research_report, str) else str(research_report),
                 evidence=evidence,
                 key_findings=self._extract_key_findings(research_report),
-                confidence_score=0.7 if evidence else 0.3,
+                confidence_score=self._compute_confidence(evidence, "gpt_researcher_web_search"),
                 methodology="gpt_researcher_web_search",
             )
 
@@ -237,7 +237,7 @@ Format your response as structured text with clear sections."""
             summary=response.content,
             evidence=evidence,
             key_findings=self._extract_key_findings(response.content),
-            confidence_score=0.5,
+            confidence_score=self._compute_confidence(evidence, "platform_ai_internal_data"),
             methodology="platform_ai_internal_data",
         )
 
