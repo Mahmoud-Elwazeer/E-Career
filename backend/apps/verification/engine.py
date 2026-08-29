@@ -51,6 +51,12 @@ class VerificationEngine:
         ats_result = self.ats_stage.run(apply_url)
 
         if ats_result.platform == "BLOCKED_AGGREGATOR":
+            # Update job status to rejected
+            job.status = "rejected"
+            job.quality_state = "rejected"
+            job.last_verified_at = timezone.now()
+            job.save(update_fields=["status", "quality_state", "last_verified_at"])
+
             return self._create_result(
                 job=job,
                 status="rejected",
@@ -68,6 +74,12 @@ class VerificationEngine:
         if redirect_result.final_url:
             ats_recheck = self.ats_stage.run(redirect_result.final_url)
             if ats_recheck.platform == "BLOCKED_AGGREGATOR":
+                # Update job status to rejected
+                job.status = "rejected"
+                job.quality_state = "rejected"
+                job.last_verified_at = timezone.now()
+                job.save(update_fields=["status", "quality_state", "last_verified_at"])
+
                 return self._create_result(
                     job=job,
                     status="rejected",

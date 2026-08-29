@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.jobs.models import Job, Company, Source
 from apps.scraper.orchestrator import ScraperOrchestrator
+from apps.verification.models import VerificationResult
 
 
 class TestScraperIntegration(TestCase):
@@ -67,6 +68,11 @@ class TestScraperIntegration(TestCase):
         self.assertEqual(job.work_arrangement, "hybrid")
         self.assertEqual(job.company.slug, "testcorp")
         self.assertIsNotNone(job.legitimacy_score)
+
+        # Verify a VerificationResult was created for this job
+        vr = VerificationResult.objects.get(job=job)
+        self.assertIn(vr.status, ["verified", "rejected", "pending"])
+        self.assertGreaterEqual(vr.trust_score, 0.0)
 
     @patch("apps.scraper.orchestrator.greenhouse.fetch_greenhouse_jobs")
     def test_blocked_aggregator_url_rejected(self, mock_fetch):
