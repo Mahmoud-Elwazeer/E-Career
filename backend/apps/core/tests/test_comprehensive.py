@@ -264,8 +264,8 @@ class DocumentationTests(TestCase):
     
     def test_api_versioning(self):
         """Test API versioning."""
-        # This test verifies API versioning is configured
-        response = self.client.get('/api/v1/career/talent-score/')
+        # Verify the /api/v1/ prefix is routable (use an unprotected endpoint)
+        response = self.client.get('/api/v1/jobs/')
         self.assertEqual(response.status_code, 200)
     
     def test_api_endpoints_documentation(self):

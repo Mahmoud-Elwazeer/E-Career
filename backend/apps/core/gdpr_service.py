@@ -15,7 +15,7 @@ from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.utils import timezone
 
-from apps.career.models import CareerProfile, CareerUserSkill, CareerLearning, TalentScore, InterviewSession, CareerBrain
+from apps.career.models import CareerProfile, CareerUserSkill, CareerLearning, TalentScore, InterviewSession, CareerBrain, CareerGoal
 
 try:
     from apps.accounts.models import PasswordReset, EmailVerification
@@ -28,7 +28,10 @@ try:
 except ImportError:
     VerificationResult = None
 
-from apps.events.models import Event
+try:
+    from apps.events.models import EventLog as Event
+except ImportError:
+    Event = None
 
 try:
     from apps.jobs.models import JobApplication
@@ -207,7 +210,31 @@ class GDPRService:
             }
         except CareerBrain.DoesNotExist:
             export_data['data_categories']['career_brain'] = None
-        
+
+        # Career goals
+        career_goals = CareerGoal.objects.filter(user=self.user)
+        export_data['data_categories']['career_goals'] = [
+            {
+                'title': goal.title,
+                'description': goal.description,
+                'goal_type': goal.goal_type,
+                'target_role': goal.target_role,
+                'target_skill': goal.target_skill,
+                'target_company': goal.target_company,
+                'status': goal.status,
+                'priority': goal.priority,
+                'progress': goal.progress,
+                'milestones': goal.milestones,
+                'target_date': goal.target_date.isoformat() if goal.target_date else None,
+                'created_at': goal.created_at.isoformat() if goal.created_at else None,
+            }
+            for goal in career_goals
+        ]
+
+        # Ensure job_applications key is always present
+        if 'job_applications' not in export_data['data_categories']:
+            export_data['data_categories']['job_applications'] = []
+
         return export_data
     
     def export_user_data_csv(self) -> HttpResponse:
@@ -340,8 +367,11 @@ class GDPRService:
                 deletion_results['deleted_categories']['verification_results'] = 0
             
             # Delete events
-            deleted_events, _ = Event.objects.filter(user=self.user).delete()
-            deletion_results['deleted_categories']['events'] = deleted_events
+            if Event is not None:
+                deleted_events, _ = Event.objects.filter(user=self.user).delete()
+                deletion_results['deleted_categories']['events'] = deleted_events
+            else:
+                deletion_results['deleted_categories']['events'] = 0
             
             # Delete password resets
             if PasswordReset is not None:

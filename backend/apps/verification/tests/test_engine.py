@@ -297,7 +297,8 @@ class TestDeduplicatorStage(TestCase):
     
     def test_duplicate_detection(self):
         """Test duplicate job detection."""
-        # Create a job first
+        from apps.verification.models import VerificationResult
+
         company = Company.objects.create(name="Google", slug="google-dedup")
         job1 = Job.objects.create(
             company=company,
@@ -312,10 +313,17 @@ class TestDeduplicatorStage(TestCase):
             direct_apply_url="https://google.com/jobs/1",
             posted_at=datetime.date.today(),
         )
-        
-        # Run deduplication with same data
+
+        content_hash = self.stage._compute_hash("Google", "Software Engineer", "Remote")
+        VerificationResult.objects.create(
+            job=job1,
+            status="verified",
+            content_hash=content_hash,
+            trust_score=0.9,
+        )
+
         result = self.stage.run("Google", "Software Engineer", "Remote")
-        
+
         self.assertTrue(result.is_duplicate)
         self.assertEqual(result.duplicate_of_id, job1.id)
 

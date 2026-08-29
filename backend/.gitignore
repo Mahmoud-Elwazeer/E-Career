@@ -23,6 +23,9 @@ staticfiles/
 htmlcov/
 *.egg-info/
 
+# Test databases
+*.db
+
 # IDE
 .idea/
 .vscode/

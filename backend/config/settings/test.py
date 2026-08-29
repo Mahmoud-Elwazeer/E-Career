@@ -29,3 +29,14 @@ PASSWORD_HASHERS = [
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Use in-memory cache (no Redis dependency in tests)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
+# Disable Celery task execution (no Redis/broker needed)
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True

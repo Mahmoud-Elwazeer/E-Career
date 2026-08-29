@@ -51,15 +51,15 @@ urlpatterns = [
     # Career Brain
     path('career-brain/', CareerBrainView.as_view(), name='career-brain'),
 
-    # Career Goal endpoints
+    # Career Goal endpoints (progress/analytics must come before <str:pk> to avoid matching)
     path('goals/', CareerGoalListCreateView.as_view(), name='career-goals-list-create'),
+    path('goals/progress/', CareerGoalProgressView.as_view(), name='career-goals-progress'),
+    path('goals/analytics/', CareerGoalAnalyticsView.as_view(), name='career-goals-analytics'),
     path('goals/<str:pk>/', CareerGoalDetailView.as_view(), name='career-goals-detail'),
     path('goals/<str:goal_id>/actions/', CareerGoalActionListCreateView.as_view(), name='career-goals-actions-list-create'),
     path('goals/<str:goal_id>/actions/<str:action_id>/', CareerGoalActionDetailView.as_view(), name='career-goals-actions-detail'),
     path('goals/<str:goal_id>/milestones/', CareerGoalMilestoneView.as_view(), name='career-goals-milestones'),
     path('goals/<str:goal_id>/milestones/<str:milestone_id>/complete/', CareerGoalCompleteMilestoneView.as_view(), name='career-goals-milestones-complete'),
-    path('goals/progress/', CareerGoalProgressView.as_view(), name='career-goals-progress'),
-    path('goals/analytics/', CareerGoalAnalyticsView.as_view(), name='career-goals-analytics'),
 
     # Profile Completeness endpoints
     path('completeness/', get_profile_completeness, name='profile-completeness'),

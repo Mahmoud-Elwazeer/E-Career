@@ -6,6 +6,7 @@ and talent intelligence features.
 """
 
 import logging
+import uuid
 from datetime import timedelta
 from typing import Dict, Any
 from django.db import models

@@ -419,16 +419,10 @@ class CareerBrainView(APIView):
         """Get career brain for the authenticated user."""
         from apps.career.models import CareerBrain
         from apps.career.serializers import CareerBrainSerializer
-        
-        try:
-            career_brain = CareerBrain.objects.get(user=request.user)
-            serializer = CareerBrainSerializer(career_brain)
-            return Response(serializer.data)
-        except CareerBrain.DoesNotExist:
-            return Response(
-                {'error': 'Career brain not found. Please complete your profile first.'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+
+        career_brain, created = CareerBrain.objects.get_or_create(user=request.user)
+        serializer = CareerBrainSerializer(career_brain)
+        return Response(serializer.data)
     
     def post(self, request):
         """Update career brain for the authenticated user."""

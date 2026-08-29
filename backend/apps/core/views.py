@@ -461,7 +461,29 @@ class GDPRDataExportViewSet(APIView):
             from .gdpr_service import GDPRService
             service = GDPRService(request.user)
             export_data = service.export_user_data()
-            return Response({'success': True, 'data': export_data})
+            # Flatten the response to provide top-level keys expected by clients
+            categories = export_data.get('data_categories', {})
+            user_info = {
+                'id': export_data.get('user_id'),
+                'email': export_data.get('email'),
+                'created_at': export_data.get('created_at'),
+                'last_login': export_data.get('last_login'),
+            }
+            response_data = {
+                'success': True,
+                'data': export_data,
+                'user': user_info,
+                'career_profile': categories.get('career_profile'),
+                'career_goals': categories.get('career_goals', []),
+                'career_learning': categories.get('learning_history', []),
+                'career_brain': categories.get('career_brain'),
+                'talent_scores': categories.get('talent_scores'),
+                'interview_sessions': categories.get('interview_sessions', []),
+                'user_skills': categories.get('user_skills', []),
+                'job_applications': categories.get('job_applications', []),
+                'export_date': export_data.get('export_date'),
+            }
+            return Response(response_data)
         except Exception as e:
             logger.error("export_user_data_failed", error=str(e))
             return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
