@@ -19,7 +19,7 @@ from .views import (
     ScoreTrendsViewSet,
     CareerBrainView,
 )
-from .cv_parser_views import cv_upload, cv_status, cv_delete
+from .cv_parser_views import cv_status, cv_delete
 from .views_onboarding import onboarding_progress
 from .views_cover_letter import generate_cover_letter, cover_letter_detail, list_cover_letters
 from .views_cv_tailor import cv_tailor_suggestions
@@ -68,8 +68,7 @@ urlpatterns = [
     # Skill Gap Analysis endpoints
     path('skill-gap/', get_skill_gap_analysis, name='skill-gap-analysis'),
     
-    # CV Parser endpoints
-    path('cv/upload/', cv_upload, name='cv-upload'),
+    # CV Parser endpoints (upload is via /profile/upload_cv/)
     path('cv/status/', cv_status, name='cv-status'),
     path('cv/delete/', cv_delete, name='cv-delete'),
 
