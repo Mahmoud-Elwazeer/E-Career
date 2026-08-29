@@ -315,10 +315,10 @@ class LinkedInOptimizerTool(RashidTool):
 
 
 class CourseAdvisorTool(RashidTool):
-    """Recommend courses from edu.usamif.com"""
-    
+    """Recommend courses from a curated hardcoded catalog (edu.usamif.com integration pending)."""
+
     name = "course_advisor"
-    description = "ترشيح دورات تدريبية من منصة USAM"
+    description = "ترشيح دورات تدريبية من قائمة محلية مُنسّقة"
     
     def execute(self, context: Dict[str, Any]) -> str:
         user = context['user']
@@ -383,9 +383,7 @@ class CourseAdvisorTool(RashidTool):
             return "عذراً، حصل خطأ في ترشيح الدورات. حاول تاني بعد شوية."
     
     def _get_available_courses(self) -> str:
-        """Get available courses - fallback list"""
-        # This would normally fetch from edu.usamif.com
-        # For now, return a curated list of courses
+        """Return a static curated course catalog. Does NOT fetch from edu.usamif.com yet."""
         return """
 - أساسيات Python للمبتدئين: تعلم البرمجة من الصفر
 - تطوير تطبيقات الويب بـ Django: بناء تطبيقات احترافية

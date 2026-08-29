@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/services/client';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -47,22 +48,17 @@ export default function NotificationPreferences() {
   const { data: preferenceData } = useQuery({
     queryKey: ['notification-preferences'],
     queryFn: async () => {
-      const response = await fetch('/api/v1/notifications/preferences/');
-      if (!response.ok) throw new Error('Failed to fetch preferences');
-      return response.json();
+      return apiRequest<{ data: NotificationPreference }>('/notifications/preferences/');
     },
   });
 
   // Update preference mutation
   const updatePreferenceMutation = useMutation({
     mutationFn: async (data: Partial<NotificationPreference>) => {
-      const response = await fetch('/api/v1/notifications/preferences/', {
+      return apiRequest('/notifications/preferences/', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: data,
       });
-      if (!response.ok) throw new Error('Failed to update preferences');
-      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-preferences'] });

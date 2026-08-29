@@ -7,7 +7,7 @@ from apps.analytics.views import (
     ConversionAnalyticsView,
     ActivityLogListView,
 )
-from apps.analytics.views_dashboard import analytics_dashboard, user_journey_view
+from apps.analytics.views_dashboard import AnalyticsDashboardView, UserJourneyView
 
 urlpatterns = [
     path("stats/", AdminStatsView.as_view(), name="analytics-stats"),
@@ -16,6 +16,6 @@ urlpatterns = [
     path("searches/", SearchAnalyticsView.as_view(), name="analytics-searches"),
     path("conversion/", ConversionAnalyticsView.as_view(), name="analytics-conversion"),
     path("activity-logs/", ActivityLogListView.as_view(), name="analytics-activity-logs"),
-    path("dashboard/", analytics_dashboard, name="analytics-dashboard"),
-    path("user/<int:user_id>/", user_journey_view, name="analytics-user-journey"),
+    path("dashboard/", AnalyticsDashboardView.as_view(), name="analytics-dashboard"),
+    path("user/<int:user_id>/", UserJourneyView.as_view(), name="analytics-user-journey"),
 ]
