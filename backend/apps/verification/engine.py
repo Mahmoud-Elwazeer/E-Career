@@ -159,6 +159,8 @@ class VerificationEngine:
         job.apply_url_verified = status == "verified"
         job.apply_url_checked_at = timezone.now()
         job.apply_url_status_code = legitimacy_result.http_status
+        if status == "rejected":
+            job.status = "rejected"
         if ats_result.platform and ats_result.platform != "unknown":
             job.ats_platform = ats_result.platform
         if final_url and final_url != apply_url:
@@ -166,7 +168,7 @@ class VerificationEngine:
         job.save(update_fields=[
             "legitimacy_score", "legitimacy_flags", "apply_url_verified",
             "apply_url_checked_at", "apply_url_status_code", "ats_platform",
-            "direct_apply_url",
+            "direct_apply_url", "status",
         ])
 
         logger.info(

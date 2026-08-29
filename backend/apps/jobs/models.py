@@ -205,6 +205,7 @@ class Job(UUIDModel):
     STATUS_CHOICES = [
         ("active", "Active"),
         ("pending", "Pending Review"),
+        ("rejected", "Rejected"),
         ("archived", "Archived"),
     ]
 
