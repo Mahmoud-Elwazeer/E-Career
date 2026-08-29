@@ -13,6 +13,8 @@ from datetime import timedelta
 from celery import shared_task
 from django.utils import timezone
 
+from django.db.models import Q
+
 from apps.core.safe_fetch import verify_url_is_live, SSRFBlockedError
 from apps.jobs.models import Job
 
@@ -25,7 +27,7 @@ def daily_liveness_check():
     Daily job liveness check task.
 
     - Gets all active jobs older than 7 days
-    - For each job, sends HEAD request to source_url via safe_fetch
+    - For each job, sends HEAD request to direct_apply_url (or source_url fallback) via safe_fetch
     - If 404 or connection error: mark job as "expired"
     - If 200: update last_verified_at timestamp
     - Process in batches of 50 with 0.1s delay between requests
@@ -35,8 +37,10 @@ def daily_liveness_check():
     jobs_to_check = Job.objects.filter(
         status='active',
         posted_at__lt=cutoff_date,
-        source_url__isnull=False
-    ).exclude(source_url__exact='')[:50]
+    ).filter(
+        Q(direct_apply_url__isnull=False) & ~Q(direct_apply_url='') |
+        Q(source_url__isnull=False) & ~Q(source_url='')
+    )[:50]
 
     total_checked = 0
     expired_count = 0
@@ -45,8 +49,9 @@ def daily_liveness_check():
 
     for job in jobs_to_check:
         try:
+            check_url = job.direct_apply_url or job.source_url
             is_live, status_code = verify_url_is_live(
-                job.source_url, timeout=10, allow_http=True
+                check_url, timeout=10, allow_http=True
             )
 
             total_checked += 1
@@ -116,8 +121,11 @@ def weekly_reverification():
 
     for job in active_jobs:
         try:
+            check_url = job.direct_apply_url or job.source_url
+            if not check_url:
+                continue
             is_live, status_code = verify_url_is_live(
-                job.source_url, timeout=10, allow_http=True
+                check_url, timeout=10, allow_http=True
             )
 
             total_checked += 1
@@ -180,9 +188,10 @@ def verify_job_url(job_id: int):
     """
     try:
         job = Job.objects.get(id=job_id)
+        check_url = job.direct_apply_url or job.source_url
 
         is_live, status_code = verify_url_is_live(
-            job.source_url, timeout=10, allow_http=True
+            check_url, timeout=10, allow_http=True
         )
 
         if status_code == 404:
