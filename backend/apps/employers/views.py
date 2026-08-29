@@ -638,8 +638,13 @@ class TalentDiscoveryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsVerifiedEmployer]
     
     def get_queryset(self):
+        from apps.career.models import CareerProfile
+        discoverable_user_ids = CareerProfile.objects.filter(
+            is_discoverable=True
+        ).values_list('user_id', flat=True)
         return TalentDiscovery.objects.filter(
-            employer=self.request.user.employer_profile
+            employer=self.request.user.employer_profile,
+            user_id__in=discoverable_user_ids
         ).select_related('user')
     
     def get_serializer_class(self):
