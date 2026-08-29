@@ -292,37 +292,46 @@ class CVParser:
         ext = Path(file_path).suffix.lower().lstrip('.')
         return ext if ext else 'unknown'
     
+    MIN_TEXT_LENGTH_FOR_OCR_FALLBACK = 50
+
     def _find_parser(self, file_path: str, file_type: str) -> Optional[ResumeParserPlugin]:
         """Find the appropriate parser for the file."""
         for plugin in self._plugins:
             if plugin.can_handle(file_path, file_type):
                 return plugin
         return None
-    
+
+    def _find_ocr_parser(self, file_path: str, file_type: str) -> Optional[ResumeParserPlugin]:
+        """Find an OCR-capable parser for scanned documents."""
+        for plugin in self._plugins:
+            if isinstance(plugin, EasyOCRParserPlugin) and plugin.can_handle(file_path, file_type):
+                return plugin
+        return None
+
     def extract_text(self, file: UploadedFile) -> str:
         """
         Extract text from uploaded CV file.
-        
+
         Args:
             file: Django UploadedFile instance
-            
+
         Returns:
             str: Extracted text content
-            
+
         Raises:
             ValueError: If file format not supported or file too large
         """
         # Validate file size
         if file.size > self.MAX_FILE_SIZE:
             raise ValueError(f"File too large. Maximum size is {self.MAX_FILE_SIZE / 1024 / 1024}MB")
-        
+
         # Get file extension
         file_ext = Path(file.name).suffix.lower()
         file_type = self._get_file_type(file.name)
-        
+
         if file_ext not in self.SUPPORTED_FORMATS:
             raise ValueError(f"Unsupported file format. Supported: {', '.join(self.SUPPORTED_FORMATS)}")
-        
+
         # Save to temporary file with randomized name (prevents path traversal/collision)
         import uuid
         safe_ext = file_ext  # already validated against SUPPORTED_FORMATS
@@ -331,22 +340,33 @@ class CVParser:
             with open(temp_path, 'wb') as f:
                 for chunk in file.chunks():
                     f.write(chunk)
-            
+
             # Find and use appropriate parser
             parser = self._find_parser(temp_path, file_type)
-            
+
             if parser is None:
                 raise ValueError("No suitable parser found for this file type")
-            
+
             text = parser.extract_text(temp_path)
-            
+
+            # If text-based extraction yielded very little text from a PDF,
+            # fall back to OCR (handles scanned/image-based PDFs).
+            if file_type == 'pdf' and len(text.strip()) < self.MIN_TEXT_LENGTH_FOR_OCR_FALLBACK:
+                ocr_parser = self._find_ocr_parser(temp_path, file_type)
+                if ocr_parser and ocr_parser is not parser:
+                    logger.info("cv_ocr_fallback", file=file.name, primary_parser=parser.name, text_length=len(text))
+                    ocr_text = ocr_parser.extract_text(temp_path)
+                    if len(ocr_text.strip()) > len(text.strip()):
+                        text = ocr_text
+                        parser = ocr_parser
+
             logger.info(
                 "cv_text_extracted",
                 parser=parser.name,
                 file=file.name,
                 text_length=len(text),
             )
-            
+
             return text
             
         finally:
