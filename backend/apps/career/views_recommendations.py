@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .recommendation_engine import recommendation_engine
+from apps.search.recommendation_engine import get_recommendation_engine
 
 
 @api_view(['GET'])
@@ -24,7 +24,8 @@ def get_recommendations(request):
     limit = int(request.query_params.get('limit', 20))
     limit = min(limit, 50)
 
-    recommendations = recommendation_engine.get_recommendations(request.user, limit=limit)
+    engine = get_recommendation_engine(request.user)
+    recommendations = engine.get_recommendations(n_recommendations=limit)
 
     return Response({
         'success': True,
