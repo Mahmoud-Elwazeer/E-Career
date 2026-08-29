@@ -247,27 +247,26 @@ def export_resume(request):
         resume = Resume.objects.get(id=resume_id, user=request.user)
         export_format = serializer.validated_data['format']
 
-        if export_format == 'pdf':
-            content = resume_export_service.export_pdf(resume)
-            if content is None:
-                return Response({'success': False, 'error': 'PDF generation failed'}, status=500)
-            response = HttpResponse(content, content_type='application/pdf')
-            response['Content-Disposition'] = f'attachment; filename="{resume.title}.pdf"'
-            return response
+        format_handlers = {
+            'pdf': ('application/pdf', '.pdf', resume_export_service.export_pdf),
+            'html': ('text/html', '.html', resume_export_service.export_html),
+            'json': ('application/json', '.json', resume_export_service.export_json),
+            'docx': ('application/vnd.openxmlformats-officedocument.wordprocessingml.document', '.docx', resume_export_service.export_docx),
+        }
 
-        elif export_format == 'html':
-            content = resume_export_service.export_html(resume)
-            response = HttpResponse(content, content_type='text/html')
-            response['Content-Disposition'] = f'attachment; filename="{resume.title}.html"'
-            return response
+        handler = format_handlers.get(export_format)
+        if not handler:
+            return Response({'success': False, 'error': f'Unsupported format: {export_format}'}, status=400)
 
-        elif export_format == 'json':
-            content = resume_export_service.export_json(resume)
-            response = HttpResponse(content, content_type='application/json')
-            response['Content-Disposition'] = f'attachment; filename="{resume.title}.json"'
-            return response
+        content_type, ext, export_fn = handler
+        content = export_fn(resume)
 
-        # Record the export
+        if content is None:
+            return Response({'success': False, 'error': f'{export_format.upper()} generation failed'}, status=500)
+
+        if isinstance(content, str):
+            content = content.encode('utf-8')
+
         ResumeExport.objects.create(
             resume=resume,
             format=export_format,
@@ -275,7 +274,9 @@ def export_resume(request):
             completed_at=timezone.now(),
         )
 
-        return Response({'success': True, 'message': f'Export as {export_format} complete'})
+        response = HttpResponse(content, content_type=content_type)
+        response['Content-Disposition'] = f'attachment; filename="{resume.title}{ext}"'
+        return response
     except Resume.DoesNotExist:
         return Response({
             'success': False,

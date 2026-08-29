@@ -40,6 +40,69 @@ class ResumeExportService:
     def export_html(self, resume) -> str:
         return self._render_html(resume)
 
+    def export_docx(self, resume) -> Optional[bytes]:
+        try:
+            from docx import Document
+            from docx.shared import Pt, Inches, RGBColor
+            from docx.enum.text import WD_ALIGN_PARAGRAPH
+        except ImportError:
+            logger.error("python-docx not installed")
+            return None
+
+        doc = Document()
+        style = doc.styles['Normal']
+        style.font.size = Pt(10)
+        style.font.name = 'Calibri'
+
+        info = resume.personal_info or {}
+        if info.get('full_name'):
+            heading = doc.add_heading(info['full_name'], level=0)
+            heading.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        contact_parts = [info.get(k) for k in ('email', 'phone', 'location', 'linkedin') if info.get(k)]
+        if contact_parts:
+            p = doc.add_paragraph(' | '.join(contact_parts))
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p.style.font.size = Pt(9)
+
+        if resume.summary:
+            doc.add_paragraph(resume.summary)
+
+        if resume.experience:
+            doc.add_heading('Experience', level=1)
+            for exp in resume.experience:
+                p = doc.add_paragraph()
+                run = p.add_run(f"{exp.get('title', '')} at {exp.get('company', '')}")
+                run.bold = True
+                date_str = f"{exp.get('start_date', '')} — {'Present' if exp.get('current') else exp.get('end_date', '')}"
+                p.add_run(f"  ({date_str})")
+                if exp.get('description'):
+                    doc.add_paragraph(exp['description'], style='List Bullet')
+
+        if resume.education:
+            doc.add_heading('Education', level=1)
+            for edu in resume.education:
+                degree = edu.get('degree', '')
+                field = f" in {edu.get('field')}" if edu.get('field') else ''
+                doc.add_paragraph(f"{degree}{field} — {edu.get('school', '')}")
+
+        if resume.skills:
+            doc.add_heading('Skills', level=1)
+            doc.add_paragraph(', '.join(resume.skills))
+
+        if resume.certifications:
+            doc.add_heading('Certifications', level=1)
+            for cert in resume.certifications:
+                doc.add_paragraph(cert, style='List Bullet')
+
+        if resume.languages:
+            doc.add_heading('Languages', level=1)
+            doc.add_paragraph(', '.join(resume.languages))
+
+        buffer = io.BytesIO()
+        doc.save(buffer)
+        return buffer.getvalue()
+
     def export_json(self, resume) -> str:
         return json.dumps({
             'personal_info': resume.personal_info,
