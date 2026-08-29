@@ -32,14 +32,15 @@ class CandidateRankingService:
     def __init__(self):
         self.bedrock = bedrock_service
     
-    def rank_candidates(self, job_id: int, candidate_ids: List[int]) -> List[Dict]:
+    def rank_candidates(self, job_id: int, candidate_ids: List[int], employer=None) -> List[Dict]:
         """
         Rank candidates for a job using AI analysis.
-        
+
         Args:
             job_id: The job ID to rank candidates for
             candidate_ids: List of candidate user IDs to rank
-            
+            employer: EmployerProfile instance (required for persisting rankings)
+
         Returns:
             List of ranking results with scores and explanations
         """
@@ -47,12 +48,12 @@ class CandidateRankingService:
             job = Job.objects.get(id=job_id)
         except Job.DoesNotExist:
             return [{'error': f'Job {job_id} not found'}]
-        
+
         results = []
-        
+
         for candidate_id in candidate_ids:
             try:
-                ranking = self._rank_single_candidate(job, candidate_id)
+                ranking = self._rank_single_candidate(job, candidate_id, employer=employer)
                 results.append(ranking)
             except Exception as e:
                 logger.error(f"Error ranking candidate {candidate_id} for job {job_id}: {e}")
@@ -72,7 +73,7 @@ class CandidateRankingService:
         
         return results
     
-    def _rank_single_candidate(self, job: Job, candidate_id: int) -> Dict:
+    def _rank_single_candidate(self, job: Job, candidate_id: int, employer=None) -> Dict:
         """
         Rank a single candidate for a job.
         
@@ -137,6 +138,7 @@ class CandidateRankingService:
         ranking, _ = CandidateRanking.objects.update_or_create(
             job=job,
             user=candidate,
+            employer=employer,
             defaults={
                 'overall_score': overall_score,
                 'skill_match_score': skill_match,
@@ -429,7 +431,7 @@ class CandidateRankingService:
         # based on question type and candidate data
         return True
     
-    def generate_shortlist(self, job_id: int, max_candidates: int = 10) -> List[Dict]:
+    def generate_shortlist(self, job_id: int, max_candidates: int = 10, employer=None) -> List[Dict]:
         """
         Auto-generate a shortlist of top candidates for a job.
         
@@ -455,27 +457,28 @@ class CandidateRankingService:
         candidate_ids = [app.user.id for app in applications]
         
         # Rank all candidates
-        rankings = self.rank_candidates(job_id, candidate_ids)
-        
+        rankings = self.rank_candidates(job_id, candidate_ids, employer=employer)
+
         # Sort by score and limit
         rankings.sort(key=lambda x: x.get('score', 0), reverse=True)
-        
+
         return rankings[:max_candidates]
     
     def compare_candidates(
-        self, job_id: int, candidate_ids: List[int]
+        self, job_id: int, candidate_ids: List[int], employer=None
     ) -> Dict[str, Any]:
         """
         Generate side-by-side comparison of candidates.
-        
+
         Args:
             job_id: The job ID
             candidate_ids: List of candidate user IDs to compare
-            
+            employer: EmployerProfile instance
+
         Returns:
             Comparison dictionary with scores and explanations
         """
-        rankings = self.rank_candidates(job_id, candidate_ids)
+        rankings = self.rank_candidates(job_id, candidate_ids, employer=employer)
         
         # Build comparison summary
         comparison = {

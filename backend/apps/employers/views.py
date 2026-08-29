@@ -612,50 +612,13 @@ class CandidateRankingViewSet(viewsets.ModelViewSet):
             )
             candidates = [uid for uid in candidate_ids if uid in discoverable_ids]
         
-        # Calculate rankings (placeholder - would use AI service in production)
-        rankings = []
-        for user_id in candidates:
-            ranking, created = CandidateRanking.objects.get_or_create(
-                job=job,
-                employer=employer,
-                user_id=user_id,
-                defaults={
-                    'overall_score': 0.5,  # Placeholder
-                    'skill_match_score': 0.5,
-                    'experience_score': 0.5,
-                    'education_score': 0.5,
-                    'salary_expectation_score': 0.5,
-                }
-            )
-            
-            # Evaluate knockout questions
-            knockout_questions = KnockoutQuestion.objects.filter(
-                employer=employer,
-                is_active=True
-            )
-            failed_questions = []
-            knockout_passed = True
-            
-            for question in knockout_questions:
-                # Evaluate question against user profile
-                # This is a placeholder - would use actual evaluation logic
-                if not question.pass_if_matches:
-                    failed_questions.append({
-                        'question': question.question_text,
-                        'reason': 'Answer did not match requirements'
-                    })
-                    knockout_passed = False
-            
-            ranking.knockout_passed = knockout_passed
-            ranking.knockout_failures = failed_questions
-            ranking.save()
-            
-            rankings.append({
-                'id': ranking.id,
-                'user_id': user_id,
-                'overall_score': ranking.overall_score,
-                'knockout_passed': ranking.knockout_passed,
-            })
+        # Use AI ranking service
+        from apps.employers.ranking_service import ranking_service
+        rankings = ranking_service.rank_candidates(
+            job_id=job.id,
+            candidate_ids=list(candidates),
+            employer=employer,
+        )
         
         return Response({
             'job_id': job_id,
@@ -780,6 +743,38 @@ class TalentPoolViewSet(viewsets.ModelViewSet):
         candidate.save()
 
         return Response(TalentPoolCandidateSerializer(candidate).data)
+
+    @action(detail=True, methods=['post'], url_path='rank')
+    def rank_pool(self, request, pk=None):
+        """Rank all candidates in this pool against a job."""
+        pool = self.get_object()
+        job_id = request.data.get('job_id')
+        if not job_id:
+            return Response(
+                {'error': 'job_id is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        candidate_ids = list(
+            TalentPoolCandidate.objects.filter(pool=pool)
+            .values_list('user_id', flat=True)
+        )
+        if not candidate_ids:
+            return Response({'rankings': [], 'candidates_ranked': 0})
+
+        from apps.employers.ranking_service import ranking_service
+        employer = request.user.employer_profile
+        rankings = ranking_service.rank_candidates(
+            job_id=int(job_id),
+            candidate_ids=candidate_ids,
+            employer=employer,
+        )
+        return Response({
+            'pool_id': str(pool.uuid),
+            'job_id': job_id,
+            'candidates_ranked': len(rankings),
+            'rankings': rankings,
+        })
 
 
 @api_view(['GET'])
