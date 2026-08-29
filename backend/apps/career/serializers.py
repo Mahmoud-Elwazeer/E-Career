@@ -69,8 +69,10 @@ class CareerProfileSerializer(serializers.ModelSerializer):
     
     user_email = serializers.EmailField(source='user.email', read_only=True)
     user_id = serializers.UUIDField(source='user.id', read_only=True)
-    skills = CareerUserSkillSerializer(many=True, read_only=True)
-    
+    user_skills = CareerUserSkillSerializer(
+        source='user.career_userskills', many=True, read_only=True
+    )
+
     class Meta:
         model = CareerProfile
         fields = [
@@ -99,6 +101,7 @@ class CareerProfileSerializer(serializers.ModelSerializer):
             'completeness_score',
             'last_active_at',
             'skills',
+            'user_skills',
             'created_at',
             'updated_at',
         ]

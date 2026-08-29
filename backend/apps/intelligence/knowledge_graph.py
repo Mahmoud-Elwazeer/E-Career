@@ -253,9 +253,7 @@ class KnowledgeGraphService:
 
         try:
             profile = CareerProfile.objects.get(user_id=user_id)
-            user_skills = set(
-                profile.skills.values_list('name', flat=True)
-            ) if hasattr(profile, 'skills') else set()
+            user_skills = set(profile.skills) if profile.skills else set()
         except CareerProfile.DoesNotExist:
             user_skills = set()
 

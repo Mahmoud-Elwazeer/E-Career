@@ -151,12 +151,31 @@ class ProfileViewSet(viewsets.ModelViewSet):
             'sections': sections
         })
 
+    @staticmethod
+    def _sync_user_skills(user, skill_names):
+        from apps.skills.models import Skill
+        from apps.career.models import CareerUserSkill
+
+        existing = set(
+            CareerUserSkill.objects.filter(user=user)
+            .values_list('skill__name', flat=True)
+        )
+        for name in skill_names:
+            if name not in existing:
+                skill, _ = Skill.objects.get_or_create(name=name)
+                CareerUserSkill.objects.get_or_create(
+                    user=user, skill=skill,
+                    defaults={'source': 'self_reported'},
+                )
+
     @action(detail=False, methods=['post'])
     def skills(self, request):
         profile = self.get_object()
         serializer = SkillsUpdateSerializer(data=request.data)
         if serializer.is_valid():
-            profile.skills = serializer.validated_data['skills']
+            skill_names = serializer.validated_data['skills']
+            self._sync_user_skills(request.user, skill_names)
+            profile.skills = skill_names
             profile.save(update_fields=['skills', 'updated_at'])
             try:
                 emit(
