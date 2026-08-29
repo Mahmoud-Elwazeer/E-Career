@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
-import { Search, ArrowRight, ArrowLeft, Briefcase, Laptop, Stethoscope, PenTool, DollarSign, GraduationCap, Wrench, Users, TrendingUp, Shield, Zap, Globe, Bell, MousePointerClick, Filter, Send, LogIn } from "lucide-react";
+import { Search, ArrowRight, ArrowLeft, Briefcase, Laptop, Stethoscope, PenTool, DollarSign, GraduationCap, Wrench, Users, TrendingUp, Shield, Zap, Globe, Bell, MousePointerClick, Filter, Send, LogIn, Building2 } from "lucide-react";
 import { StatsStrip, WhyUsamSection } from "@/components/landing/ScrollSections";
 import { CareerGuide } from "@/components/landing/CareerGuide";
 import { Button } from "@/components/ui/button";
@@ -312,6 +312,27 @@ export default function Index() {
 
       {/* ═══ WHY USAM ═══ */}
       <WhyUsamSection isAr={isAr} reduced={reduced} />
+
+      {/* ═══ EMPLOYER CTA ═══ */}
+      <section className="py-16 bg-accent/30">
+        <div className="container text-center max-w-2xl">
+          <Building2 className="h-10 w-10 mx-auto mb-4 text-primary opacity-60" />
+          <h2 className="text-heading-2 mb-3">
+            {isAr ? "هل تبحث عن مواهب؟" : "Looking to hire?"}
+          </h2>
+          <p className="text-body-lg text-muted-foreground mb-6">
+            {isAr
+              ? "انضم كصاحب عمل وابدأ في نشر وظائفك والوصول إلى أفضل المرشحين"
+              : "Join as an employer to post jobs and reach top talent across the region"}
+          </p>
+          <Button asChild size="lg" variant="outline" className="rounded-xl px-8 h-12 font-medium">
+            <Link to="/login">
+              <Building2 className="h-4 w-4 me-2" />
+              {isAr ? "ابدأ التوظيف" : "Start hiring"} <Arrow className="h-4 w-4 ms-1" />
+            </Link>
+          </Button>
+        </div>
+      </section>
 
       {/* ═══ CTA BANNER ═══ */}
       <motion.section

@@ -23,8 +23,13 @@ const publicNavItems = [
 
 const appNavItems = [
   { to: "/app/jobs", label: "Jobs", labelAr: "وظائف", icon: Briefcase },
-  // { to: "/app/companies", label: "Companies", labelAr: "الشركات", icon: Building2 },
   { to: "/app/profile", label: "Profile", labelAr: "الملف", icon: User },
+  { to: "/about", label: "About", labelAr: "عن USAM", icon: Info },
+];
+
+const employerNavItems = [
+  { to: "/app/employer/dashboard", label: "Dashboard", labelAr: "لوحة التحكم", icon: Building2 },
+  { to: "/app/jobs", label: "Jobs", labelAr: "وظائف", icon: Briefcase },
   { to: "/about", label: "About", labelAr: "عن USAM", icon: Info },
 ];
 
@@ -36,7 +41,8 @@ export function AuthNavbar() {
   const isAr = lang === "ar";
   const reduced = useReducedMotion();
 
-  const navItems = isAuthenticated ? appNavItems : publicNavItems;
+  const isEmployer = user?.role === 'employer';
+  const navItems = !isAuthenticated ? publicNavItems : isEmployer ? employerNavItems : appNavItems;
 
   return (
     <header className="sticky top-0 z-50 border-b bg-card/95 glass supports-[backdrop-filter]:bg-card/80">
