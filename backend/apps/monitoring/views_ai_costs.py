@@ -57,9 +57,9 @@ def ai_cost_dashboard(request):
     month_calls = month_events.count()
 
     # Rashid chat costs (separate model)
-    rashid_today = RashidUsage.objects.filter(created_at__gte=today_start)
-    rashid_week = RashidUsage.objects.filter(created_at__gte=week_start)
-    rashid_month = RashidUsage.objects.filter(created_at__gte=month_start)
+    rashid_today = RashidUsage.objects.filter(date=today_start.date())
+    rashid_week = RashidUsage.objects.filter(date__gte=week_start.date())
+    rashid_month = RashidUsage.objects.filter(date__gte=month_start.date())
 
     rashid_today_cost = sum([
         u.tokens_used * 0.009 / 1000
@@ -119,7 +119,7 @@ def ai_cost_dashboard(request):
         day_events = ai_events.filter(created_at__gte=day_start, created_at__lt=day_end)
         day_cost = extract_cost(day_events)
 
-        day_rashid = RashidUsage.objects.filter(created_at__gte=day_start, created_at__lt=day_end)
+        day_rashid = RashidUsage.objects.filter(date=day_start.date())
         day_rashid_cost = sum([
             u.tokens_used * 0.009 / 1000
             for u in day_rashid
