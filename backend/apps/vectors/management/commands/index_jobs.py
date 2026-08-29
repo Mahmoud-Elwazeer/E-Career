@@ -90,11 +90,11 @@ class Command(BaseCommand):
                             'description': job.description,
                             'company': job.company.name if job.company else None,
                             'location': job.location,
-                            'job_type': job.job_type,
+                            'employment_type': job.employment_type,
                             'experience_level': job.experience_level,
                             'salary_min': str(job.salary_min) if job.salary_min else None,
                             'salary_max': str(job.salary_max) if job.salary_max else None,
-                            'is_remote': job.is_remote,
+                            'is_remote': job.work_arrangement == 'remote',
                             'created_at': job.created_at.isoformat() if job.created_at else None,
                         }
                     })

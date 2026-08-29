@@ -146,7 +146,7 @@ class JobMatchingService:
             if filters.get('location'):
                 queryset = queryset.filter(location__icontains=filters['location'])
             if filters.get('remote_type'):
-                queryset = queryset.filter(remote_type=filters['remote_type'])
+                queryset = queryset.filter(work_arrangement=filters['remote_type'])
             if filters.get('experience_level'):
                 queryset = queryset.filter(experience_level=filters['experience_level'])
 
@@ -366,7 +366,7 @@ Format as JSON."""
     def _calculate_location_score(self, user, job) -> float:
         """Calculate location match"""
         # Simple check - can be enhanced with user preferences
-        if job.remote_type == 'remote':
+        if job.work_arrangement == 'remote':
             return 1.0
         return 0.5  # Neutral if no preference data
 

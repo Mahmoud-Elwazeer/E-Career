@@ -13,6 +13,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from apps.vectors.service import get_vector_service, JOBS_COLLECTION
 from apps.search.services import search_service
+from apps.search.plugins.base import SearchQuery
 
 logger = logging.getLogger(__name__)
 
@@ -263,11 +264,8 @@ class HybridSearchView(APIView):
 
         try:
             # 1. Keyword search (Typesense)
-            keyword_results = search_service.search(
-                query=query,
-                filters=filters,
-                page=1,
-                page_size=limit,
+            keyword_results = search_service.search_jobs(
+                SearchQuery(q=query, filters=filters, page=1, per_page=limit)
             )
 
             # 2. Semantic search (pgvector)

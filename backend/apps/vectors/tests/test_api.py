@@ -161,7 +161,7 @@ class TestHybridSearchAPI(TestCase):
     def test_hybrid_search_success(self, mock_search_service, mock_get_vector_service):
         """Test hybrid search combining keyword and semantic."""
         # Mock keyword search
-        mock_search_service.search.return_value = {
+        mock_search_service.search_jobs.return_value = {
             "hits": [
                 {"id": "job-1", "title": "Python Developer", "score": 10.5},
                 {"id": "job-2", "title": "Django Developer", "score": 8.2},
@@ -203,7 +203,7 @@ class TestHybridSearchAPI(TestCase):
         assert "jobs" in data["data"]
 
         # Verify both searches were called
-        mock_search_service.search.assert_called_once()
+        mock_search_service.search_jobs.assert_called_once()
         mock_vector_service.semantic_search.assert_called_once()
 
 

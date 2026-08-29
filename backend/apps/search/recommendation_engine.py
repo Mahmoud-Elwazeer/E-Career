@@ -359,7 +359,7 @@ class RecommendationEngine:
                         'collaborative_score': round(collaborative_score, 3),
                         'content_score': round(content_score, 3),
                         'employment_type': job.employment_type,
-                        'remote_type': job.remote_type,
+                        'work_arrangement': job.work_arrangement,
                         'salary_min': job.salary_min,
                         'salary_max': job.salary_max,
                     })
@@ -407,13 +407,13 @@ class RecommendationEngine:
         # Experience match
         user_profile = getattr(self.user, 'career_profile', None)
         if user_profile and user_profile.experience_years:
-            experience_diff = abs(job.experience_required - user_profile.experience_years)
+            experience_diff = abs({'entry': 1, 'mid': 4, 'senior': 8, 'lead': 12}.get(job.experience_level, 4) - user_profile.experience_years)
             experience_score = max(0, 1 - experience_diff / 10)
             score += experience_score * 0.3
         
         # Location match
         if user_profile and user_profile.open_to_remote:
-            if job.remote_type in ['remote', 'hybrid']:
+            if job.work_arrangement in ['remote', 'hybrid']:
                 score += 0.3
             elif user_profile.target_locations:
                 for loc in user_profile.target_locations:
@@ -464,12 +464,12 @@ class RecommendationEngine:
             
             # Experience match
             if user_profile and user_profile.experience_years:
-                experience_diff = abs(job.experience_required - user_profile.experience_years)
+                experience_diff = abs({'entry': 1, 'mid': 4, 'senior': 8, 'lead': 12}.get(job.experience_level, 4) - user_profile.experience_years)
                 score += max(0, 1 - experience_diff / 10) * 0.2
             
             # Location match
             if user_profile and user_profile.open_to_remote:
-                if job.remote_type in ['remote', 'hybrid']:
+                if job.work_arrangement in ['remote', 'hybrid']:
                     score += 0.2
             
             if score > 0:
@@ -482,7 +482,7 @@ class RecommendationEngine:
                     'collaborative_score': 0.0,
                     'content_score': round(score, 3),
                     'employment_type': job.employment_type,
-                    'remote_type': job.remote_type,
+                    'work_arrangement': job.work_arrangement,
                     'salary_min': job.salary_min,
                     'salary_max': job.salary_max,
                 })
@@ -547,7 +547,7 @@ class RecommendationEngine:
                         'location': job.location,
                         'score': round(scores[idx], 3),
                         'employment_type': job.employment_type,
-                        'remote_type': job.remote_type,
+                        'work_arrangement': job.work_arrangement,
                     })
                 except Job.DoesNotExist:
                     continue

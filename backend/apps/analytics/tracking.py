@@ -263,7 +263,7 @@ class AnalyticsTracker:
 
         # Remote job percentage
         total_jobs = active_jobs.count()
-        remote_jobs = active_jobs.filter(remote_type='remote').count()
+        remote_jobs = active_jobs.filter(work_arrangement='remote').count()
         remote_percentage = (remote_jobs / total_jobs * 100) if total_jobs else 0
 
         # Average salary by experience level

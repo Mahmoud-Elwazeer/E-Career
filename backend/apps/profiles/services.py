@@ -82,8 +82,8 @@ class MatchingService:
             List of {job, score, reasoning} dicts
         """
         # Build query based on profile preferences
-        query = Q(is_active=True)
-        
+        query = Q(status='active')
+
         # Filter by preferred locations
         if hasattr(profile, 'desired_locations') and profile.desired_locations:
             location_query = Q()
@@ -112,7 +112,7 @@ class MatchingService:
                 query &= Q(location_type='hybrid')
         
         # Get candidate jobs
-        jobs = Job.objects.filter(query).select_related('company').order_by('-posted_date')[:100]
+        jobs = Job.objects.filter(query).select_related('company').order_by('-posted_at')[:100]
         
         # Score and rank
         scored_jobs = []
@@ -133,7 +133,7 @@ class MatchingService:
     
     def get_similar_jobs(self, job: Job, limit: int = 5) -> List[Job]:
         """Get jobs similar to the given job"""
-        query = Q(is_active=True)
+        query = Q(status='active')
         query &= ~Q(id=job.id)  # Exclude the job itself
         
         # Same category/industry
@@ -149,7 +149,7 @@ class MatchingService:
         if job.experience_level:
             query &= Q(experience_level=job.experience_level)
         
-        similar_jobs = Job.objects.filter(query).select_related('company').order_by('-posted_date')[:limit]
+        similar_jobs = Job.objects.filter(query).select_related('company').order_by('-posted_at')[:limit]
         
         return list(similar_jobs)
     

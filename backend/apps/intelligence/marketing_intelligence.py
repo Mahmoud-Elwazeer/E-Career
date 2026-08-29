@@ -186,7 +186,7 @@ class MarketingIntelligenceService:
         )
 
         remote_count = Job.objects.filter(
-            is_expired=False, remote_type='remote'
+            is_expired=False, work_arrangement='remote'
         ).count()
         total = Job.objects.filter(is_expired=False).count()
 

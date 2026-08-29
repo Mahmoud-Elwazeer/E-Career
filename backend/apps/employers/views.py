@@ -60,16 +60,19 @@ class EmployerRegistrationView(generics.CreateAPIView):
     
     def perform_create(self, serializer):
         from apps.jobs.models import Company
-        
+
         company = Company.objects.get(id=serializer.validated_data['company_id'])
-        
+
         employer = EmployerProfile.objects.create(
             user=self.request.user,
             company=company,
             job_title=serializer.validated_data.get('job_title', ''),
             phone=serializer.validated_data.get('phone', ''),
         )
-        
+
+        self.request.user.role = 'employer'
+        self.request.user.save(update_fields=['role'])
+
         return employer
     
     def create(self, request, *args, **kwargs):
@@ -175,7 +178,7 @@ class EmployerProfileViewSet(viewsets.ModelViewSet):
         
         # Get application stats
         application_stats = JobApplication.objects.filter(
-            job__employer=employer
+            job__employer_posting__employer=employer
         ).aggregate(
             total_applications=Count('id'),
             new_applications=Count('id', filter=Q(status='applied')),
@@ -262,13 +265,11 @@ class JobPostingViewSet(viewsets.ModelViewSet):
     
     def perform_update(self, serializer):
         """Only allow updates if job is in draft status"""
-        instance = self.get_object()
+        instance = serializer.instance
         if instance.status not in ['draft', 'rejected']:
-            return Response(
-                {'error': 'Can only edit draft or rejected jobs'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        return super().perform_update(serializer)
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError('Can only edit draft or rejected jobs.')
+        serializer.save()
     
     @action(detail=True, methods=['post'])
     def publish(self, request, pk=None):
@@ -683,6 +684,11 @@ class TalentDiscoveryViewSet(viewsets.ModelViewSet):
         return TalentDiscoverySerializer
 
     def perform_create(self, serializer):
+        from apps.career.models import CareerProfile
+        user = serializer.validated_data.get('user')
+        if user and not CareerProfile.objects.filter(user=user, is_discoverable=True).exists():
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError('This user has not opted in to employer discovery.')
         serializer.save(employer=self.request.user.employer_profile)
 
 
