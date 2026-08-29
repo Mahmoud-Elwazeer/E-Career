@@ -1,125 +1,187 @@
 # Phase 0 Completion Report
 
-**Date:** 2026-08-29  
-**Commits:** d06aab6, f64b1a1, a169044, ac2b615  
-**Test suite:** 107 passed, 2 skipped (core/verification/scraper/vectors/skills)
+**Date:** 2026-08-30 (second pass — supplements the 2026-08-29 first pass)
+**Branch:** `development`
+**New commits this pass:** 6 (`4c673b7` through `5c3f223`)
+**Prior first-pass commits:** `d06aab6`, `f64b1a1`, `a169044`, `ac2b615`
 
 ---
 
-## Items Completed (Code Fixes)
+## Re-verification of all 17 items (second pass)
 
-### 0.1 — croniter + scrape_all_sources method
-- **Status:** FIXED
-- Added `croniter==2.0.1` to root `requirements.txt`
-- Added `scrape_all_sources()` method to `ScraperOrchestrator` class (the management command called it but it didn't exist — would crash at runtime)
-
-### 0.2 — remote_type → work_arrangement at scraper ingestion
-- **Status:** FIXED
-- Changed `remote_type=normalize_remote_type(...)` to `work_arrangement=...` in both `orchestrator.py:323` and `tasks.py:224`
-- The Job model renamed this field; both call sites would raise TypeError
-
-### 0.3 — VerificationEngine persists rejection
-- **Status:** FIXED
-- Added `"rejected"` to `Job.STATUS_CHOICES`
-- Engine now writes `job.status = "rejected"` when verification fails
-- Added `"status"` to `update_fields` in `job.save()`
-- Previously: rejected jobs stayed `status="active"` and appeared in public listings
-
-### 0.4 — Scraper integration test
-- **Status:** ADDED
-- Created `apps/scraper/tests/test_scraper_integration.py` with 4 tests:
-  - Full pipeline creates job with correct fields
-  - Blocked aggregator URL is filtered out
-  - Duplicate job not re-added
-  - `scrape_all_sources()` method exists and returns expected shape
-
-### 0.5 — EmployerProfileViewSet.stats() field error
-- **Status:** FIXED
-- Changed `job__employer=employer` → `job__employer_posting__employer=employer`
-- The Job model has no `employer` FK; the path goes through JobPosting
-
-### 0.6 — Missing import in interviews/views.py
-- **Status:** FIXED
-- Added `from django.db import models` — `get_interview_stats()` uses `models.Avg`/`models.Count`
-
-### 0.7 — HybridSearchView calls nonexistent search()
-- **Status:** FIXED
-- Changed `search_service.search(query=..., filters=..., page=..., page_size=...)` to `search_service.search_jobs(SearchQuery(q=query, filters=filters, page=1, per_page=limit))`
-- Added `SearchQuery` import
-- Updated corresponding test mock
-
-### 0.8 — Stale fields in profiles/services.py
-- **Status:** FIXED
-- `Q(is_active=True)` → `Q(status='active')` (2 occurrences)
-- `.order_by('-posted_date')` → `.order_by('-posted_at')` (2 occurrences)
-
-### 0.9 — Stale fields across recommendation/matching/indexing
-- **Status:** FIXED
-- `recommendation_engine.py`: `job.remote_type` → `job.work_arrangement` (6 occurrences), `job.experience_required` → mapped from `job.experience_level` (2 occurrences), dict key `'remote_type'` → `'work_arrangement'`
-- `job_matching.py`: `queryset.filter(remote_type=...)` → `work_arrangement=...`, `job.remote_type` → `job.work_arrangement`
-- `marketing_intelligence.py`: `remote_type='remote'` → `work_arrangement='remote'`
-- `analytics/tracking.py`: `remote_type='remote'` → `work_arrangement='remote'`
-- `index_jobs.py`: `job.job_type` → `job.employment_type`, `job.is_remote` → `job.work_arrangement == 'remote'`
-
-### 0.10 — Bedrock sonnet alias (inference-profile ARN)
-- **Status:** FIXED (configurable)
-- `MODEL_ALIASES` now reads from `settings.BEDROCK_MODEL_ALIASES` with plain model IDs as fallback defaults
-- To use cross-region inference profiles, set `BEDROCK_MODEL_ALIASES` in Django settings with ARN values
-
-### 0.13 — Employer registration sets User.role
-- **Status:** FIXED
-- `EmployerRegistrationView.perform_create()` now sets `self.request.user.role = 'employer'` and saves
-
-### 0.14 — TalentDiscoveryViewSet consent gap
-- **Status:** FIXED
-- `perform_create()` now checks `CareerProfile.objects.filter(user=user, is_discoverable=True).exists()` before allowing discovery creation
-- Raises `ValidationError` if user hasn't opted in
-
-### 0.16 — monitoring/views_ai_costs.py field mismatches
-- **Status:** FIXED
-- `event.metadata` → `event.data` (EventLog model field is `data`)
-- `u.input_tokens`/`u.output_tokens` → `u.tokens_used` (RashidUsage has single field)
-- Cost formula uses blended rate since split isn't available
-
-### 0.17 — JobPostingViewSet.perform_update no-op edit-lock
-- **Status:** FIXED
-- Replaced `return Response(...)` (which DRF ignores) with `raise ValidationError(...)`
-- Used `serializer.instance` instead of redundant `self.get_object()` call
+Most items were already fixed by the first pass on 2026-08-29. This second
+pass re-verified every item against current code, found 7 items that were
+either partially fixed or missed, and fixed them. Items marked "Already
+fixed (first pass)" were confirmed correct by direct code reads.
 
 ---
 
-## Human Action Items (Cannot Be Fixed in Code)
+## Items Fixed This Pass
+
+### 0.3 — VerificationEngine.verify_job() persist rejection (partial fix)
+
+**Status: TWO EARLY-RETURN PATHS WERE STILL MISSING PERSISTENCE**
+
+The first pass fixed the main verification path (lines 168-191) but missed two
+early-return paths that returned a `VerificationResult` without setting
+`job.status = "rejected"`:
+- Line 53: When `ats_result.platform == "BLOCKED_AGGREGATOR"`
+- Line 76: When redirect resolves to a blocked aggregator
+
+**Fix:** Added `job.status = "rejected"`, `job.quality_state = "rejected"`,
+`job.last_verified_at = timezone.now()`, `job.save(update_fields=[...])` before
+both early returns.
+
+**File:** `backend/apps/verification/engine.py:54-58, 77-81`
+**Commit:** `4c673b7`
+
+### 0.4 — Scraper integration test (enhancement)
+
+**Status: ENHANCED EXISTING TEST**
+
+Test already existed from first pass. Added `VerificationResult` import and
+assertion to `test_full_pipeline_creates_job` — now verifies a
+`VerificationResult` row exists with valid status and non-negative trust score.
+
+**File:** `backend/apps/scraper/tests/test_scraper_integration.py:12, 70-73`
+**Commit:** `4c673b7`
+**Verified:** 4/4 tests pass.
+
+### 0.7 — HybridSearchView + JobSearchView method calls
+
+**Status: FIXED**
+
+- `JobSearchView.get()` called `search_service.search(query=..., filters=...)`
+  with keyword args; the real method is `search_jobs(query: SearchQuery)`.
+  Fixed to construct a `SearchQuery` and call `search_jobs()`, serialized
+  via `SearchResponseSerializer`.
+- `HybridSearchView` accessed `SearchResponse` via dict methods
+  (`.get("hits", [])`) instead of attributes (`.hits`, `.id`, `.data`).
+  Fixed all attribute accesses.
+
+**Files:** `backend/apps/search/views.py:111-131`,
+`backend/apps/vectors/views.py:267-329`
+**Commit:** `64b4e26`
+
+### 0.9 extras — Additional stale field references
+
+**Status: FIXED (found references the first pass missed)**
+
+- `ranking_service.py:179`: `job.remote_type` → `job.work_arrangement or job.location_type`
+- `trend_detection.py:53,105`: `is_active=True` → `status='active'` on Job queries (2 occurrences)
+- `tasks_gdpr.py:79`: `SavedJob.created_at` → `saved_at` (matches actual model field)
+- `emails/tasks.py:220`: Fixed `select_related` path for employer through job posting
+
+**Commit:** `ce2dd98`
+
+### 0.10 — Bedrock inference profile IDs
+
+**Status: FIXED**
+
+Raw model IDs (`anthropic.claude-*`) fail with `ValidationException` in
+Bedrock cross-region inference. Changed all IDs in both `MODEL_COSTS` and
+`_DEFAULT_ALIASES` from `anthropic.*` to `us.anthropic.*`:
+- `"haiku": "us.anthropic.claude-3-haiku-20240307-v1:0"`
+- `"sonnet": "us.anthropic.claude-sonnet-4-20250514-v1:0"`
+
+**File:** `backend/apps/intelligence/bedrock_plugin.py:23-32`
+**Commit:** `c7a99f2`
+
+### 0.14 — TalentDiscovery consent gap
+
+**Status: FIXED**
+
+`TalentDiscoveryViewSet.get_queryset()` returned all discoveries without
+checking current consent status, leaking name/email of users who later
+revoked `is_discoverable`. Added subquery filtering to only include
+discoveries where the user's `CareerProfile.is_discoverable=True`.
+
+**File:** `backend/apps/employers/views.py:640-649`
+**Commit:** `01a935b`
+
+### 0.16 — AI cost dashboard field references
+
+**Status: FIXED**
+
+`RashidUsage` has a `date` (DateField), not `created_at` (DateTimeField).
+Fixed four filter calls:
+- Line 60: `created_at__gte=today_start` → `date=today_start.date()`
+- Line 61: `created_at__gte=week_start` → `date__gte=week_start.date()`
+- Line 62: `created_at__gte=month_start` → `date__gte=month_start.date()`
+- Line 122: `created_at__gte=day_start, created_at__lt=day_end` → `date=day_start.date()`
+
+Note: `event.metadata` → `.data` was already correct in current code.
+
+**File:** `backend/apps/monitoring/views_ai_costs.py:60-62, 122`
+**Commit:** `5c3f223`
+
+---
+
+## Items Confirmed Already Fixed (First Pass or Prior Commits)
+
+| # | Item | Confirmed how |
+|---|---|---|
+| 0.1 | croniter + run_scrapers | `croniter==2.0.1` in requirements.txt; `scrape_all_sources()` exists at orchestrator.py:353; installed in venv |
+| 0.2 | remote_type → work_arrangement | Both call sites (tasks.py:224, orchestrator.py:324) already use `work_arrangement=` |
+| 0.5 | EmployerProfileViewSet.stats() | views.py:174 queries `JobPosting.objects.filter(employer=employer)` directly (correct) |
+| 0.6 | Missing models import | views.py:11 has `from django.db import models` |
+| 0.8 | profiles/services.py stale fields | Uses `status='active'` and `posted_at` throughout; grep confirmed no stale refs |
+| 0.9 main | recommendation/matching stale fields | search/recommendation_engine.py uses correct names; career/recommendation_engine.py and intelligence/job_matching.py don't exist (consolidated) |
+| 0.13 | Employer role assignment | views.py:75-76 sets `user.role = 'employer'` and saves |
+| 0.17 | perform_update edit-lock | views.py:271 raises `ValidationError` (not returning discarded `Response`) |
+
+---
+
+## Human Action Items (Unchanged)
 
 ### 0.11 — Voice interviews AWS IAM permissions
-- **Status:** REQUIRES HUMAN ACTION
-- Voice interview service needs `transcribe:StartStreamTranscription` and `polly:SynthesizeSpeech` IAM permissions on the AWS account
-- Verify IAM policy attached to the service role
 
-### 0.12 — Valid JUDGE0_API_KEY
-- **Status:** REQUIRES HUMAN ACTION
-- Code assessment grading requires a valid Judge0 CE API key
-- Set `JUDGE0_API_KEY` in production `.env`
+Requires:
+1. IAM Console: Grant `polly:SynthesizeSpeech`,
+   `transcribe:StartTranscriptionJob` + related actions,
+   S3 read/write on the media bucket
+2. Set `AWS_REGION` and `AWS_STORAGE_BUCKET_NAME` in `.env`
+
+### 0.12 — JUDGE0_API_KEY
+
+Set a valid RapidAPI key for Judge0 CE in `.env` (`JUDGE0_API_KEY`).
 
 ### 0.15 — AWS key rotation confirmation
-- **Status:** REQUIRES HUMAN ACTION
-- Confirm the exposed AWS key from the security incident has been rotated
-- Verify no active credentials remain in any git-tracked file
+
+Confirm the previously-leaked AWS access key (`AKIAYK...TGPY`) has been
+rotated in the IAM Console. Create new key, update `.env`, deactivate old key.
 
 ---
 
-## Additional Fixes (Discovered During Phase 0)
+## Test Results (This Pass)
 
-- **conftest.py**: Removed broken `_disable_throttling` fixture that used `settings` fixture from uninstalled `pytest-django`. Test settings already disable throttling.
-- **pytest-django**: Installed (was in `requirements/test.txt` but not installed in the environment)
+- **Scraper integration tests:** 4/4 passed
+- **Verification engine tests:** 42/42 passed
+- **Django system check:** 0 errors (3 pre-existing allauth deprecation warnings)
 
 ---
 
-## Test Results
+## Summary Table
 
-```
-107 passed, 2 skipped (graph queries — SQLite limitation)
-```
+| # | Item | Status | Fixed by |
+|---|---|---|---|
+| 0.1 | croniter + run_scrapers | Fixed (first pass) | d06aab6 |
+| 0.2 | remote_type → work_arrangement | Fixed (first pass) | d06aab6 |
+| 0.3 | verify_job() persist rejection | Fixed (both passes) | ac2b615 + 4c673b7 |
+| 0.4 | Scraper integration test | Fixed (both passes) | ac2b615 + 4c673b7 |
+| 0.5 | stats() field error | Fixed (first pass) | d06aab6 |
+| 0.6 | Missing models import | Fixed (first pass) | d06aab6 |
+| 0.7 | HybridSearchView method | Fixed (second pass) | 64b4e26 |
+| 0.8 | profiles/services.py stale fields | Fixed (first pass) | f64b1a1 |
+| 0.9 | Stale fields across recs/matching | Fixed (both passes) | f64b1a1 + ce2dd98 |
+| 0.10 | Bedrock inference profile | Fixed (second pass) | c7a99f2 |
+| 0.11 | AWS IAM Polly/Transcribe/S3 | **HUMAN ACTION** | — |
+| 0.12 | JUDGE0_API_KEY | **HUMAN ACTION** | — |
+| 0.13 | Employer role assignment | Fixed (first pass) | a169044 |
+| 0.14 | TalentDiscovery consent gap | Fixed (second pass) | 01a935b |
+| 0.15 | AWS key rotation | **HUMAN ACTION** | — |
+| 0.16 | AI cost dashboard fields | Fixed (second pass) | 5c3f223 |
+| 0.17 | perform_update edit-lock | Fixed (first pass) | a169044 |
 
-Suites passing: verification (31), core/comprehensive (59), scraper (4), vectors (11), skills (2 skipped as designed)
-
-The `apps/career/tests/test_api.py` (23 tests) fails independently of these changes due to a pre-existing issue where test setUp doesn't create CareerProfile objects. These tests were never in the passing baseline.
+**Code fixes: 14/17** (all complete across both passes)
+**Human action items: 3/17** (0.11, 0.12, 0.15)
