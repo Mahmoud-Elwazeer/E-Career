@@ -28,26 +28,62 @@ from .voice_service import voice_interview_service
 logger = logging.getLogger(__name__)
 
 
+def _envelope(data, success=True, message=''):
+    """Wrap data in the project's standard response envelope."""
+    if isinstance(data, dict) and 'success' in data and 'data' in data:
+        return data
+    return {'success': success, 'data': data, 'message': message, 'errors': None}
+
+
 class InterviewViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing interview sessions.
-    
+
     list: Get all user's interview sessions
     retrieve: Get a specific interview session with questions
     create: Start a new interview session
     destroy: Delete an interview session
     """
-    
+
     permission_classes = [IsAuthenticated]
     serializer_class = InterviewSessionSerializer
-    
+
     def get_queryset(self):
         return InterviewSession.objects.filter(
             user=self.request.user
         ).order_by('-started_at')
-    
+
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        response.data = _envelope(response.data)
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        response = super().retrieve(request, *args, **kwargs)
+        response.data = _envelope(response.data)
+        return response
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        response.data = _envelope(response.data)
+        return response
+
+    def update(self, request, *args, **kwargs):
+        response = super().update(request, *args, **kwargs)
+        response.data = _envelope(response.data)
+        return response
+
+    def partial_update(self, request, *args, **kwargs):
+        response = super().partial_update(request, *args, **kwargs)
+        response.data = _envelope(response.data)
+        return response
+
+    def destroy(self, request, *args, **kwargs):
+        super().destroy(request, *args, **kwargs)
+        return Response(_envelope(None, message='Deleted.'), status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['post'])
     def start(self, request):
@@ -128,16 +164,22 @@ class InterviewViewSet(viewsets.ModelViewSet):
         first_question = session.questions.first()
 
         return Response({
-            'session_id': session.id,
-            'interview_type': session.interview_type,
-            'target_role': session.target_role,
-            'difficulty': session.difficulty,
-            'question_count': session.questions.count(),
-            'current_question': {
-                'id': first_question.id,
-                'index': first_question.question_index,
-                'question': first_question.question_text
-            }
+            'success': True,
+            'data': {
+                'id': session.id,
+                'session_id': session.id,
+                'interview_type': session.interview_type,
+                'target_role': session.target_role,
+                'difficulty': session.difficulty,
+                'question_count': session.questions.count(),
+                'current_question': {
+                    'id': first_question.id,
+                    'index': first_question.question_index,
+                    'question': first_question.question_text
+                },
+            },
+            'message': '',
+            'errors': None,
         }, status=status.HTTP_201_CREATED)
     
     @action(detail=True, methods=['post'])
@@ -156,10 +198,12 @@ class InterviewViewSet(viewsets.ModelViewSet):
         current_question = session.questions.filter(answer_text='').first()
         if not current_question:
             return Response({
-                'error': 'All questions answered. Complete the session.',
-                'session_id': session.id
+                'success': False,
+                'data': None,
+                'message': 'All questions answered. Complete the session.',
+                'errors': {'detail': 'All questions answered.'},
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         serializer = AnswerQuestionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         
@@ -188,16 +232,21 @@ class InterviewViewSet(viewsets.ModelViewSet):
         next_question = session.questions.filter(answer_text='').first()
         
         return Response({
-            'session_id': session.id,
-            'question_index': current_question.question_index,
-            'score': evaluation.get('score', 0),
-            'feedback': evaluation.get('feedback', ''),
-            'dimensions': evaluation.get('dimensions', {}),
-            'next_question': {
-                'id': next_question.id,
-                'index': next_question.question_index,
-                'question': next_question.question_text
-            } if next_question else None
+            'success': True,
+            'data': {
+                'session_id': session.id,
+                'question_index': current_question.question_index,
+                'score': evaluation.get('score', 0),
+                'feedback': evaluation.get('feedback', ''),
+                'dimensions': evaluation.get('dimensions', {}),
+                'next_question': {
+                    'id': next_question.id,
+                    'index': next_question.question_index,
+                    'question': next_question.question_text
+                } if next_question else None,
+            },
+            'message': '',
+            'errors': None,
         })
     
     @action(detail=True, methods=['post'])
@@ -213,18 +262,25 @@ class InterviewViewSet(viewsets.ModelViewSet):
         unanswered = session.questions.filter(answer_text='').count()
         if unanswered > 0:
             return Response({
-                'error': f'{unanswered} questions still unanswered.',
-                'session_id': session.id
+                'success': False,
+                'data': None,
+                'message': f'{unanswered} questions still unanswered.',
+                'errors': {'detail': f'{unanswered} questions still unanswered.'},
             }, status=status.HTTP_400_BAD_REQUEST)
         
         # Complete session
         result = interview_service.complete_session(session)
         
         return Response({
-            'session_id': session.id,
-            'overall_score': result['overall_score'],
-            'score_breakdown': result['score_breakdown'],
-            'feedback_summary': result['feedback_summary']
+            'success': True,
+            'data': {
+                'session_id': session.id,
+                'overall_score': result['overall_score'],
+                'score_breakdown': result['score_breakdown'],
+                'feedback_summary': result['feedback_summary'],
+            },
+            'message': '',
+            'errors': None,
         })
     
     @action(detail=True, methods=['post'], parser_classes=[MultiPartParser], url_path='voice-answer')
@@ -327,18 +383,23 @@ class InterviewViewSet(viewsets.ModelViewSet):
                 next_question_audio = base64.b64encode(audio_data).decode('utf-8')
 
         return Response({
-            'session_id': session.id,
-            'question_index': current_question.question_index,
-            'transcript': transcript,
-            'score': evaluation.get('score', 0),
-            'feedback': evaluation.get('feedback', ''),
-            'dimensions': evaluation.get('dimensions', {}),
-            'next_question': {
-                'id': next_question.id,
-                'index': next_question.question_index,
-                'question': next_question.question_text
-            } if next_question else None,
-            'next_question_audio': next_question_audio,
+            'success': True,
+            'data': {
+                'session_id': session.id,
+                'question_index': current_question.question_index,
+                'transcript': transcript,
+                'score': evaluation.get('score', 0),
+                'feedback': evaluation.get('feedback', ''),
+                'dimensions': evaluation.get('dimensions', {}),
+                'next_question': {
+                    'id': next_question.id,
+                    'index': next_question.question_index,
+                    'question': next_question.question_text
+                } if next_question else None,
+                'next_question_audio': next_question_audio,
+            },
+            'message': '',
+            'errors': None,
         })
 
     @action(detail=True, methods=['get'], url_path='question-audio/(?P<question_index>[0-9]+)')
@@ -378,7 +439,12 @@ class InterviewViewSet(viewsets.ModelViewSet):
         """
         sessions = self.get_queryset()
         serializer = InterviewHistorySerializer(sessions, many=True)
-        return Response(serializer.data)
+        return Response({
+            'success': True,
+            'data': serializer.data,
+            'message': '',
+            'errors': None,
+        })
     
     def _build_user_context(self, user):
         """Build user context from profile and career data."""
@@ -427,10 +493,15 @@ def get_interview_stats(request):
     )
     
     return Response({
-        'total_sessions': total_sessions,
-        'completed_sessions': completed_sessions,
-        'avg_score': round(avg_score, 1),
-        'by_type': list(by_type)
+        'success': True,
+        'data': {
+            'total_sessions': total_sessions,
+            'completed_sessions': completed_sessions,
+            'avg_score': round(avg_score, 1),
+            'by_type': list(by_type),
+        },
+        'message': '',
+        'errors': None,
     })
 
 
@@ -448,7 +519,12 @@ def generate_coding_problem(request):
     language = request.data.get('language', 'python')
 
     problem = svc.generate_problem(difficulty=difficulty, topic=topic, language=language)
-    return Response(problem, status=status.HTTP_201_CREATED)
+    return Response({
+        'success': True,
+        'data': problem,
+        'message': '',
+        'errors': None,
+    }, status=status.HTTP_201_CREATED)
 
 
 @api_view(['POST'])
@@ -466,7 +542,12 @@ def execute_coding_solution(request):
         return Response({'error': 'code is required'}, status=status.HTTP_400_BAD_REQUEST)
 
     result = svc.execute_code(code=code, language=language, test_cases=test_cases)
-    return Response(result)
+    return Response({
+        'success': True,
+        'data': result,
+        'message': '',
+        'errors': None,
+    })
 
 
 @api_view(['POST'])
@@ -488,4 +569,9 @@ def evaluate_coding_solution(request):
         code=code, problem=problem, language=language,
         execution_result=execution_result
     )
-    return Response(evaluation)
+    return Response({
+        'success': True,
+        'data': evaluation,
+        'message': '',
+        'errors': None,
+    })
