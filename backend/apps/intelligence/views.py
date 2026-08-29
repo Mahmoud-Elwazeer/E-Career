@@ -124,16 +124,6 @@ def verify_email_address(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def list_tools(request):
-    """List all available platform tools for AI agents."""
-    from .tools import get_tool_registry
-
-    registry = get_tool_registry()
-    return Response({"tools": registry.list_tools()})
-
-
-@api_view(["GET"])
 @permission_classes([IsAdminUser])
 def intelligence_health(request):
     """Admin: check health of all intelligence services."""

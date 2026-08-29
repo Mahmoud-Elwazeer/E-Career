@@ -18,9 +18,6 @@ urlpatterns = [
     # Email Verification
     path("verify-email/", views.verify_email_address, name="verify-email"),
 
-    # Tool Registry
-    path("tools/", views.list_tools, name="list-tools"),
-
     # Knowledge Graph (Phase 4)
     path("graph/skill/<str:skill_name>/", views.skill_neighborhood, name="skill-graph"),
     path("graph/role/<str:role_title>/skills/", views.role_skills_graph, name="role-skills-graph"),
