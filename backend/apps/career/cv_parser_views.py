@@ -1,170 +1,21 @@
 """
-CV Parser Views
+CV Parser Views — status and delete endpoints.
 
-This module contains Django REST Framework views for CV parsing functionality.
+CV upload is handled by /profile/upload_cv/ (profiles app).
+Text extraction: profiles/cv_parser.py (canonical).
+AI parsing: intelligence/career_ai.py (canonical).
 """
 
 import logging
-import os
-from pathlib import Path
-from typing import Dict, Any
-from django.conf import settings
-from django.core.files.storage import default_storage
-from django.core.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
+from django.core.files.storage import default_storage
 
-from .cv_parser import cv_parser_service
 from .models import CareerProfile
 
 logger = logging.getLogger(__name__)
-
-# File size limit (10MB)
-MAX_FILE_SIZE = 10 * 1024 * 1024
-
-# Allowed file types
-ALLOWED_EXTENSIONS = {'.pdf', '.docx', '.doc', '.png', '.jpg', '.jpeg', '.tiff', '.bmp'}
-
-
-def validate_file_extension(file_name: str) -> bool:
-    """Check if file has an allowed extension."""
-    ext = Path(file_name).suffix.lower()
-    return ext in ALLOWED_EXTENSIONS
-
-
-def validate_file_size(file_size: int) -> bool:
-    """Check if file size is within limit."""
-    return file_size <= MAX_FILE_SIZE
-
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def cv_upload(request):
-    """
-    Upload and parse CV file.
-    
-    Accepts PDF, DOCX, and image files.
-    Extracts structured data and updates user's career profile.
-    """
-    if 'cv_file' not in request.FILES:
-        return Response({
-            'success': False,
-            'error': 'No file uploaded',
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    cv_file = request.FILES['cv_file']
-
-    # Validate file (extension + size + magic bytes)
-    from apps.core.upload_security import upload_validator
-    is_valid, error_msg = upload_validator.validate(cv_file)
-    if not is_valid:
-        return Response({
-            'success': False,
-            'error': error_msg,
-        }, status=status.HTTP_400_BAD_REQUEST)
-    
-    try:
-        # Save file temporarily
-        temp_path = Path('temp_cvs') / f"{request.user.id}_{cv_file.name}"
-        temp_full_path = default_storage.path(str(temp_path))
-
-        # Ensure directory exists
-        Path(temp_full_path).parent.mkdir(parents=True, exist_ok=True)
-
-        # Save the file
-        with default_storage.open(str(temp_path), 'wb+') as destination:
-            for chunk in cv_file.chunks():
-                destination.write(chunk)
-
-        # Malware scan
-        from apps.core.upload_security import scan_file_for_malware
-        scan_result = scan_file_for_malware(temp_full_path)
-        if not scan_result.clean:
-            default_storage.delete(str(temp_path))
-            detail = scan_result.threat or scan_result.error or "scan failed"
-            return Response({
-                'success': False,
-                'error': f'File rejected by malware scanner: {detail}',
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # Parse the file based on extension
-        ext = Path(cv_file.name).suffix.lower()
-        
-        if ext == '.pdf':
-            parsed = cv_parser_service.parse_pdf(temp_full_path)
-        elif ext in {'.docx', '.doc'}:
-            parsed = cv_parser_service.parse_docx(temp_full_path)
-        elif ext in {'.png', '.jpg', '.jpeg', '.tiff', '.bmp'}:
-            parsed = cv_parser_service.parse_image(temp_full_path)
-        else:
-            return Response({
-                'success': False,
-                'error': 'Unsupported file type',
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Extract structured data
-        structured_data = cv_parser_service.extract_structured_data(parsed['text'])
-        
-        # Map skills to ESCO
-        matched_skills = cv_parser_service.map_skills_to_esco(structured_data.get('skills', []))
-        
-        # Update user's career profile
-        career_profile, created = CareerProfile.objects.get_or_create(user=request.user)
-        
-        # Update profile with parsed data
-        career_profile.cv_file = cv_file
-        career_profile.cv_parsed_data = structured_data
-        career_profile.cv_parse_status = 'completed'
-        career_profile.cv_parsed_at = None  # Will be set on save
-        
-        # Update profile fields from parsed data
-        if structured_data.get('name'):
-            career_profile.cv_parsed_data['name'] = structured_data['name']
-        if structured_data.get('email'):
-            career_profile.cv_parsed_data['email'] = structured_data['email']
-        if structured_data.get('phone'):
-            career_profile.cv_parsed_data['phone'] = structured_data['phone']
-        if structured_data.get('location'):
-            career_profile.cv_parsed_data['location'] = structured_data['location']
-        
-        career_profile.save()
-        
-        # Update user skills from matched skills
-        updated_count = cv_parser_service.update_user_skills(request.user, matched_skills)
-        
-        # Clean up temp file
-        try:
-            default_storage.delete(str(temp_path))
-        except Exception:
-            pass
-        
-        return Response({
-            'success': True,
-            'data': {
-                'profile_id': career_profile.id,
-                'parse_status': 'completed',
-                'extracted_data': structured_data,
-                'matched_skills': matched_skills,
-                'skills_updated': updated_count,
-            },
-        })
-        
-    except Exception as e:
-        logger.error(f"Error parsing CV: {e}")
-        
-        # Clean up temp file on error
-        try:
-            default_storage.delete(str(temp_path))
-        except Exception:
-            pass
-        
-        return Response({
-            'success': False,
-            'error': str(e),
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
