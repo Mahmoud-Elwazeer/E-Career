@@ -221,7 +221,7 @@ def process_and_store_jobs(jobs: List[Dict], source: Source) -> int:
                 source_type='scraped',
                 employment_type=normalize_employment_type(job_data.get('employment_type')) or 'full_time',
                 experience_level=normalize_experience_level(job_data.get('experience_level')) or 'mid',
-                remote_type=normalize_remote_type(job_data.get('remote_type')),
+                work_arrangement=normalize_remote_type(job_data.get('remote_type')),
                 salary_min=job_data.get('salary_min'),
                 salary_max=job_data.get('salary_max'),
                 salary_currency=job_data.get('salary_currency', 'USD'),

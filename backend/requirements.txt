@@ -16,6 +16,7 @@ factory-boy==3.3.0
 psycopg2-binary==2.9.9
 
 # Job scraping
+croniter==2.0.1
 jobspy==0.31.0
 requests==2.31.0
 httpx==0.27.0

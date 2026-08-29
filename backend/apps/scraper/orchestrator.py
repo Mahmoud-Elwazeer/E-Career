@@ -320,7 +320,7 @@ class ScraperOrchestrator:
                     source_type='scraped',
                     employment_type=normalize_employment_type(job_data.get('employment_type')) or 'full_time',
                     experience_level=normalize_experience_level(job_data.get('experience_level')) or 'mid',
-                    remote_type=normalize_remote_type(job_data.get('remote_type')),
+                    work_arrangement=normalize_remote_type(job_data.get('remote_type')),
                     salary_min=job_data.get('salary_min'),
                     salary_max=job_data.get('salary_max'),
                     salary_currency=job_data.get('salary_currency', 'USD'),
@@ -348,6 +348,38 @@ class ScraperOrchestrator:
                 continue
         
         return added_count
+
+    def scrape_all_sources(self) -> Dict:
+        """
+        Scrape all active sources synchronously.
+
+        Returns:
+            Dict with total_found and total_added counts.
+        """
+        total_found = 0
+        total_added = 0
+
+        sources = Source.objects.filter(is_active=True)
+
+        for source in sources:
+            if not self.should_scrape_source(source):
+                continue
+
+            try:
+                source.last_run_at = timezone.now()
+                source.save(update_fields=['last_run_at'])
+
+                jobs, added = self.scrape_source(source)
+                total_found += len(jobs)
+                total_added += added
+            except Exception as e:
+                logger.error(f"Failed to scrape source {source.id}: {e}")
+                continue
+
+        return {
+            'total_found': total_found,
+            'total_added': total_added,
+        }
 
 
 # Global orchestrator instance
