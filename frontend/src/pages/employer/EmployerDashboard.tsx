@@ -157,11 +157,11 @@ const EmployerDashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-900">Your Job Postings</h2>
-            <span className="text-gray-400 text-sm font-medium cursor-not-allowed" title="Coming soon">
+            <Link to="/app/employer/jobs" className="text-blue-600 text-sm font-medium hover:underline">
               View All
-            </span>
+            </Link>
           </div>
-          
+
           <div className="divide-y">
             {jobs?.slice(0, 5).map((job) => (
               <div
@@ -217,21 +217,21 @@ const EmployerDashboard: React.FC = () => {
           <div className="mt-8 bg-white rounded-lg shadow">
             <div className="p-6 border-b flex items-center justify-between">
               <h2 className="text-xl font-semibold text-gray-900">Recent Applications</h2>
-              <span className="text-gray-400 text-sm font-medium cursor-not-allowed" title="Coming soon">
+              <Link to="/app/employer/applications" className="text-blue-600 text-sm font-medium hover:underline">
                 View All
-              </span>
+              </Link>
             </div>
 
             <div className="p-6">
               <p className="text-gray-600">
                 You have <span className="font-semibold text-orange-600">{stats.applications.new_applications} new applications</span> waiting for review.
               </p>
-              <span
-                className="inline-block mt-4 px-4 py-2 bg-gray-100 text-gray-400 rounded-lg cursor-not-allowed"
-                title="Coming soon"
+              <Link
+                to="/app/employer/applications?status=applied"
+                className="inline-block mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Review New Applications
-              </span>
+              </Link>
             </div>
           </div>
         )}

@@ -56,6 +56,7 @@ class TrendDetectionService:
             )
             .values("tags__name")
             .annotate(count=Count("id"))
+            .order_by("-count")[:50]
         )
 
         previous_map = {s["tags__name"]: s["count"] for s in previous_skills if s["tags__name"]}
@@ -97,6 +98,7 @@ class TrendDetectionService:
             Job.objects.filter(status='active', created_at__gte=recent_cutoff)
             .values("tags__name")
             .annotate(count=Count("id"))
+            .order_by("-count")[:50]
         )
         recent_map = {s["tags__name"]: s["count"] for s in recent_skills if s["tags__name"]}
 

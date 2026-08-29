@@ -14,6 +14,7 @@ from .views import (
     get_profile_completeness,
     recalculate_profile_completeness,
     get_skill_gap_analysis,
+    ats_score,
     TalentScoreViewSet,
     ScoreBreakdownViewSet,
     ScoreTrendsViewSet,
@@ -82,6 +83,9 @@ urlpatterns = [
 
     # CV Tailoring
     path('cv-tailor/<uuid:job_id>/', cv_tailor_suggestions, name='cv-tailor'),
+
+    # ATS Compatibility Scoring
+    path('ats-score/', ats_score, name='ats-score'),
 
     # Recommendations
     path('recommendations/', get_recommendations, name='recommendations'),

@@ -47,6 +47,7 @@ class InterviewViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated]
     serializer_class = InterviewSessionSerializer
+    throttle_scope = 'burst'
 
     def get_queryset(self):
         return InterviewSession.objects.filter(
@@ -89,7 +90,7 @@ class InterviewViewSet(viewsets.ModelViewSet):
     def start(self, request):
         """
         Start a new interview session.
-        
+
         POST /api/v1/interviews/start/
         {
             "interview_type": "technical",

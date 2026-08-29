@@ -21,7 +21,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.db.models import Q
 
-from apps.jobs.models import Job, JobSave, JobView
+from apps.jobs.models import Job
 from apps.events.models import EventLog
 from apps.career.models import CareerUserSkill, CareerProfile
 from apps.users.models import User
