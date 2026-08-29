@@ -5,6 +5,7 @@ from apps.core.admin_views import (
     ActivityLogListView,
     MediaListView,
     MediaDetailView,
+    PlatformConfigView,
 )
 from apps.jobs.template_views import JobTemplateDownloadView
 
@@ -15,4 +16,5 @@ urlpatterns = [
     path("media/", MediaListView.as_view(), name="media-list"),
     path("media/<uuid:uuid>/", MediaDetailView.as_view(), name="media-detail"),
     path("jobs/template/", JobTemplateDownloadView.as_view(), name="job-template-download"),
+    path("platform-config/", PlatformConfigView.as_view(), name="platform-config"),
 ]

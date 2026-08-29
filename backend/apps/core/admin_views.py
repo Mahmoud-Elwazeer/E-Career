@@ -3,8 +3,8 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from apps.core.models import FeatureFlag, ActivityLog, Media
-from apps.core.serializers import FeatureFlagSerializer, ActivityLogSerializer, MediaSerializer
+from apps.core.models import FeatureFlag, ActivityLog, Media, PlatformConfig
+from apps.core.serializers import FeatureFlagSerializer, ActivityLogSerializer, MediaSerializer, PlatformConfigSerializer
 from apps.core.permissions import IsAdminRole
 from apps.core.pagination import StandardPagination
 
@@ -72,3 +72,18 @@ class MediaDetailView(generics.RetrieveDestroyAPIView):
     serializer_class = MediaSerializer
     queryset = Media.objects.all()
     lookup_field = "uuid"
+
+
+@extend_schema(tags=["Platform Config"])
+class PlatformConfigView(generics.RetrieveUpdateAPIView):
+    """Retrieve or update the singleton PlatformConfig."""
+
+    permission_classes = [IsAdminRole]
+    serializer_class = PlatformConfigSerializer
+
+    def get_object(self):
+        obj, _ = PlatformConfig.objects.get_or_create(pk=1)
+        return obj
+
+    def perform_update(self, serializer):
+        serializer.save(updated_by=self.request.user)

@@ -175,3 +175,20 @@ class MediaSerializer(serializers.ModelSerializer):
         model = Media
         fields = ['uuid', 'filename', 'file', 'size', 'mime_type', 'uploaded_by', 'created_at', 'updated_at']
         read_only_fields = ['uuid', 'created_at', 'updated_at']
+
+
+class PlatformConfigSerializer(serializers.ModelSerializer):
+    """Serializer for PlatformConfig singleton."""
+
+    class Meta:
+        from apps.core.models import PlatformConfig
+        model = PlatformConfig
+        fields = [
+            'scrape_interval_hours', 'url_verify_interval_h',
+            'legitimacy_threshold', 'max_job_age_days',
+            'min_match_score_alert', 'max_alerts_per_day', 'match_weights',
+            'email_rotation_mode', 'digest_weekday', 'digest_hour',
+            're_engagement_days', 'require_admin_job_review',
+            'maintenance_mode', 'updated_at', 'updated_by',
+        ]
+        read_only_fields = ['updated_at', 'updated_by']
