@@ -4,7 +4,7 @@ Phase 3A: Employer self-service portal
 """
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import EmployerProfile, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery, TalentPool, TalentPoolCandidate
+from .models import EmployerProfile, EmployerTeamMember, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery, TalentPool, TalentPoolCandidate
 from apps.jobs.serializers import CompanySerializer
 
 User = get_user_model()
@@ -434,3 +434,35 @@ class AddCandidateSerializer(serializers.Serializer):
         choices=['manual', 'search', 'application', 'recommendation'],
         default='manual'
     )
+
+
+class EmployerTeamMemberSerializer(serializers.ModelSerializer):
+    user_email = serializers.EmailField(source='user.email', read_only=True)
+    user_name = serializers.SerializerMethodField()
+    company_name = serializers.CharField(source='company.name', read_only=True)
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+    invited_by_email = serializers.EmailField(source='invited_by.email', read_only=True)
+
+    class Meta:
+        model = EmployerTeamMember
+        fields = [
+            'id', 'user_email', 'user_name', 'company_name',
+            'role', 'role_display', 'invited_by_email',
+            'invited_at', 'accepted_at', 'is_active',
+        ]
+        read_only_fields = ['invited_at', 'accepted_at']
+
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() or obj.user.email
+
+
+class EmployerTeamInviteSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    role = serializers.ChoiceField(
+        choices=['admin', 'recruiter', 'hiring_manager', 'viewer'],
+    )
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("No user with this email address exists on the platform.")
+        return value

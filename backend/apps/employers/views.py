@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db.models import Count, Sum, Q
 
-from .models import EmployerProfile, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery, TalentPool, TalentPoolCandidate
+from .models import EmployerProfile, EmployerTeamMember, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery, TalentPool, TalentPoolCandidate
 from .serializers import (
     EmployerProfileSerializer,
     EmployerProfileWriteSerializer,
@@ -32,6 +32,8 @@ from .serializers import (
     TalentPoolDetailSerializer,
     TalentPoolCandidateSerializer,
     AddCandidateSerializer,
+    EmployerTeamMemberSerializer,
+    EmployerTeamInviteSerializer,
 )
 from .permissions import (
     IsEmployer,
@@ -800,3 +802,89 @@ def ats_gap_analysis(request, posting_id):
     )
     analysis = ats_gap_analyzer.analyze(posting)
     return Response({'success': True, 'data': analysis})
+
+
+
+class EmployerTeamViewSet(viewsets.ViewSet):
+    """Manage employer team members (multi-seat hiring teams)."""
+    permission_classes = [IsAuthenticated, IsEmployer]
+
+    def _get_company(self, user):
+        if hasattr(user, 'employer_profile'):
+            return user.employer_profile.company
+        membership = EmployerTeamMember.objects.filter(
+            user=user, is_active=True, accepted_at__isnull=False
+        ).first()
+        return membership.company if membership else None
+
+    def list(self, request):
+        company = self._get_company(request.user)
+        if not company:
+            return Response({'success': False, 'error': 'No company found.'}, status=status.HTTP_404_NOT_FOUND)
+        members = EmployerTeamMember.objects.filter(
+            company=company
+        ).select_related('user', 'company', 'invited_by')
+        return Response({
+            'success': True,
+            'data': EmployerTeamMemberSerializer(members, many=True).data,
+        })
+
+    @action(detail=False, methods=['post'])
+    def invite(self, request):
+        company = self._get_company(request.user)
+        if not company:
+            return Response({'success': False, 'error': 'No company found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = EmployerTeamInviteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        target_user = User.objects.get(email=serializer.validated_data['email'])
+
+        existing = EmployerTeamMember.objects.filter(user=target_user, company=company).first()
+        if existing:
+            return Response({
+                'success': False,
+                'error': 'User is already a team member.',
+                'data': EmployerTeamMemberSerializer(existing).data,
+            }, status=status.HTTP_409_CONFLICT)
+
+        member = EmployerTeamMember.objects.create(
+            user=target_user,
+            company=company,
+            role=serializer.validated_data['role'],
+            invited_by=request.user,
+        )
+        return Response({
+            'success': True,
+            'data': EmployerTeamMemberSerializer(member).data,
+        }, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'])
+    def accept(self, request):
+        from django.utils import timezone
+        membership = EmployerTeamMember.objects.filter(
+            user=request.user, is_active=True, accepted_at__isnull=True
+        ).first()
+        if not membership:
+            return Response({'success': False, 'error': 'No pending invitation.'}, status=status.HTTP_404_NOT_FOUND)
+        membership.accepted_at = timezone.now()
+        membership.save(update_fields=['accepted_at'])
+        return Response({'success': True, 'data': EmployerTeamMemberSerializer(membership).data})
+
+    def partial_update(self, request, pk=None):
+        company = self._get_company(request.user)
+        member = get_object_or_404(EmployerTeamMember, pk=pk, company=company)
+        new_role = request.data.get('role')
+        if new_role and new_role in dict(EmployerTeamMember.ROLE_CHOICES):
+            member.role = new_role
+            member.save(update_fields=['role'])
+        return Response({'success': True, 'data': EmployerTeamMemberSerializer(member).data})
+
+    def destroy(self, request, pk=None):
+        company = self._get_company(request.user)
+        member = get_object_or_404(EmployerTeamMember, pk=pk, company=company)
+        member.is_active = False
+        member.save(update_fields=['is_active'])
+        return Response(status=status.HTTP_204_NO_CONTENT)

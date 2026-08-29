@@ -14,6 +14,7 @@ from .views import (
     TalentPoolViewSet,
     company_search,
     ats_gap_analysis,
+    EmployerTeamViewSet,
 )
 
 # Create router
@@ -25,6 +26,7 @@ router.register(r'applications', JobApplicationViewSet, basename='employer-appli
 router.register(r'rankings', CandidateRankingViewSet, basename='employer-rankings')
 router.register(r'talent-discoveries', TalentDiscoveryViewSet, basename='employer-talent-discoveries')
 router.register(r'talent-pools', TalentPoolViewSet, basename='employer-talent-pools')
+router.register(r'team', EmployerTeamViewSet, basename='employer-team')
 
 urlpatterns = [
     # Registration

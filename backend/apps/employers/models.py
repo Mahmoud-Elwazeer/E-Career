@@ -43,6 +43,50 @@ class EmployerProfile(models.Model):
         return f"{self.user.email} @ {self.company.name}"
 
 
+
+
+class EmployerTeamMember(models.Model):
+    """Multi-seat employer: links additional users to a Company with roles."""
+
+    ROLE_CHOICES = [
+        ('owner', 'Owner'),
+        ('admin', 'Admin'),
+        ('recruiter', 'Recruiter'),
+        ('hiring_manager', 'Hiring Manager'),
+        ('viewer', 'Viewer'),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='employer_team_memberships',
+    )
+    company = models.ForeignKey(
+        'jobs.Company',
+        on_delete=models.CASCADE,
+        related_name='team_members',
+    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='viewer')
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='team_invitations_sent',
+    )
+    invited_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['-invited_at']
+        unique_together = [('user', 'company')]
+        verbose_name = 'Employer Team Member'
+        verbose_name_plural = 'Employer Team Members'
+
+    def __str__(self):
+        return f"{self.user.email} @ {self.company.name} ({self.role})"
+
 class JobPosting(UUIDModel):
     """
     Employer-managed job posting.
