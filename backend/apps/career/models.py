@@ -216,44 +216,13 @@ class CareerProfile(UUIDModel):
     def update_completeness(self):
         """
         Calculate and update profile completeness score.
-        
-        Each field contributes a percentage to the completeness_score.
-        Returns a list of missing/incomplete fields for UI prompts.
+        Delegates to the canonical completeness_calculator.
         """
-        fields = {
-            'target_roles': 10,
-            'target_locations': 10,
-            'target_salary_min': 10,
-            'open_to_remote': 5,
-            'experience_years': 10,
-            'current_role': 5,
-            'current_company': 5,
-            'github_username': 10,
-            'portfolio_url': 5,
-            'alert_frequency': 5,
-            'min_match_score': 5,
-            'cv_parsed_data': 20,
-        }
-        
-        total_score = 0
-        missing_fields = []
-        
-        for field, weight in fields.items():
-            value = getattr(self, field, None)
-            if value is None or (isinstance(value, (str, list, dict)) and not value):
-                missing_fields.append(field)
-            else:
-                total_score += weight
-        
-        self.completeness_score = total_score / 100.0
+        from apps.career.completeness_calculator import calculate_profile_completeness
+        result = calculate_profile_completeness(self)
+        self.completeness_score = result['score'] / 100.0
         self.save(update_fields=['completeness_score'])
-        
-        return {
-            'score': self.completeness_score,
-            'missing_fields': missing_fields,
-            'total_fields': len(fields),
-            'completed_fields': len(fields) - len(missing_fields)
-        }
+        return result
     
     def get_profile_text(self):
         """

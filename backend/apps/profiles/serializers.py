@@ -74,26 +74,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return status
 
     def get_completion_percentage(self, obj):
-        score = 0
-        if obj.cv_file:
-            score += 30
-        if obj.skills and len(obj.skills) >= 5:
-            score += 20
-        elif obj.skills and len(obj.skills) > 0:
-            score += 10
-        if obj.experience_years and obj.experience_years > 0:
-            score += 15
-        if obj.education and len(obj.education) > 0:
-            score += 15
-        if obj.target_roles and len(obj.target_roles) > 0:
-            score += 5
-        if obj.target_locations and len(obj.target_locations) > 0:
-            score += 5
-        if obj.portfolio_url:
-            score += 5
-        if obj.languages and len(obj.languages) > 0:
-            score += 5
-        return min(score, 100)
+        from apps.career.completeness_calculator import calculate_profile_completeness
+        result = calculate_profile_completeness(obj)
+        return min(result['score'], 100)
 
     def get_is_complete(self, obj):
         return self.get_completion_percentage(obj) >= 60
