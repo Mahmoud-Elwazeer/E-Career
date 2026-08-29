@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { getAccessToken } from '@/services/client';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -26,7 +27,7 @@ export function useRashidAPI() {
   const [error, setError] = useState<string | null>(null);
 
   const getAuthHeaders = () => {
-    const token = localStorage.getItem('accessToken');
+    const token = getAccessToken();
     return {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : '',

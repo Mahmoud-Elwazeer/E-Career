@@ -10,6 +10,7 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
+import { getAccessToken } from '@/services/client';
 import { cn } from '@/lib/utils';
 import ToolSelector from '@/components/rashid/ToolSelector';
 
@@ -186,7 +187,7 @@ export default function RashidChat() {
          try {
            const response = await fetch(`${API_BASE_URL}/rashid/conversations/${conversationId}/messages/`, {
              headers: {
-               Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+               Authorization: `Bearer ${getAccessToken()}`,
              },
            });
            if (response.ok) {
@@ -220,7 +221,7 @@ export default function RashidChat() {
          `${API_BASE_URL}/rashid/conversations/`,
          {
            headers: {
-             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+             Authorization: `Bearer ${getAccessToken()}`,
            },
          }
        );
@@ -241,7 +242,7 @@ export default function RashidChat() {
            method: 'POST',
            headers: {
              'Content-Type': 'application/json',
-             Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+             Authorization: `Bearer ${getAccessToken()}`,
            },
            body: JSON.stringify({ mode }),
          }
@@ -299,7 +300,7 @@ export default function RashidChat() {
          method: 'POST',
          headers: {
            'Content-Type': 'application/json',
-           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+           Authorization: `Bearer ${getAccessToken()}`,
          },
          body: JSON.stringify({ message }),
        })
@@ -338,7 +339,7 @@ export default function RashidChat() {
         {
           method: 'DELETE',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+            Authorization: `Bearer ${getAccessToken()}`,
           },
         }
       );
@@ -390,7 +391,7 @@ export default function RashidChat() {
          method: 'POST',
          headers: {
            'Content-Type': 'application/json',
-           Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
+           Authorization: `Bearer ${getAccessToken()}`,
          },
          body: JSON.stringify({ message: `Use tool: ${toolName}` }),
        })

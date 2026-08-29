@@ -9,6 +9,7 @@ import { Send, X, MessageSquare, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
+import { getAccessToken } from '@/services/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -70,7 +71,7 @@ export function RashidMiniChat({
       if (!localConversationId) return [];
       const response = await fetch(`${API_BASE_URL}/rashid/conversations/${localConversationId}/messages/`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${getAccessToken()}`,
         },
       });
       if (!response.ok) throw new Error('Failed to fetch messages');
@@ -86,7 +87,7 @@ export function RashidMiniChat({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${getAccessToken()}`,
         },
         body: JSON.stringify({ mode }),
       });
@@ -107,7 +108,7 @@ export function RashidMiniChat({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          'Authorization': `Bearer ${getAccessToken()}`,
         },
         body: JSON.stringify({ message: content }),
       });
