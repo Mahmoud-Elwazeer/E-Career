@@ -9,7 +9,7 @@ export interface AppUser {
   full_name: string;
   avatar: string | null;
   avatar_url: string | null;
-  role: "user" | "admin";
+  role: "user" | "admin" | "employer";
   status: string;
   created_at: string;
 }

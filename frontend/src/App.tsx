@@ -7,6 +7,7 @@ import { AnimatePresence } from "framer-motion";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/hooks/use-auth";
 import { RequireAuth } from "@/components/RequireAuth";
+import { RequireAdmin, RequireEmployer } from "@/components/RequireRole";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -69,15 +70,15 @@ function AnimatedRoutes() {
         <Route path="/app/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
         <Route path="/app/settings" element={<RequireAuth><Settings /></RequireAuth>} />
         <Route path="/app/applications" element={<RequireAuth><Applications /></RequireAuth>} />
-        <Route path="/admin" element={<RequireAuth><AdminDashboard /></RequireAuth>} />
-        <Route path="/admin/intelligence" element={<RequireAuth><IntelligenceDashboard /></RequireAuth>} />
+        <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
+        <Route path="/admin/intelligence" element={<RequireAdmin><IntelligenceDashboard /></RequireAdmin>} />
         <Route path="/api-docs" element={<ApiDocs />} />
         
         {/* Employer routes */}
-        <Route path="/app/employer/dashboard" element={<RequireAuth><EmployerDashboard /></RequireAuth>} />
+        <Route path="/app/employer/dashboard" element={<RequireEmployer><EmployerDashboard /></RequireEmployer>} />
         <Route path="/app/employer/register" element={<RequireAuth><EmployerRegister /></RequireAuth>} />
-        <Route path="/app/employer/post-job" element={<RequireAuth><JobPostingForm /></RequireAuth>} />
-        <Route path="/app/employer/talent-search" element={<RequireAuth><TalentSearch /></RequireAuth>} />
+        <Route path="/app/employer/post-job" element={<RequireEmployer><JobPostingForm /></RequireEmployer>} />
+        <Route path="/app/employer/talent-search" element={<RequireEmployer><TalentSearch /></RequireEmployer>} />
 
         {/* Legacy redirects */}
         <Route path="/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />
