@@ -432,3 +432,60 @@ def get_interview_stats(request):
         'avg_score': round(avg_score, 1),
         'by_type': list(by_type)
     })
+
+
+# ── Coding Interview endpoints ──
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_coding_problem(request):
+    """Generate a coding interview problem."""
+    from .coding_service import CodingInterviewService
+
+    svc = CodingInterviewService()
+    difficulty = request.data.get('difficulty', 'medium')
+    topic = request.data.get('topic', 'arrays')
+    language = request.data.get('language', 'python')
+
+    problem = svc.generate_problem(difficulty=difficulty, topic=topic, language=language)
+    return Response(problem, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def execute_coding_solution(request):
+    """Execute user code and return results."""
+    from .coding_service import CodingInterviewService
+
+    svc = CodingInterviewService()
+    code = request.data.get('code', '')
+    language = request.data.get('language', 'python')
+    test_cases = request.data.get('test_cases', [])
+
+    if not code:
+        return Response({'error': 'code is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    result = svc.execute_code(code=code, language=language, test_cases=test_cases)
+    return Response(result)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def evaluate_coding_solution(request):
+    """Evaluate a coding solution with AI feedback."""
+    from .coding_service import CodingInterviewService
+
+    svc = CodingInterviewService()
+    code = request.data.get('code', '')
+    problem = request.data.get('problem', {})
+    language = request.data.get('language', 'python')
+    execution_result = request.data.get('execution_result', {})
+
+    if not code or not problem:
+        return Response({'error': 'code and problem are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    evaluation = svc.evaluate_solution(
+        code=code, problem=problem, language=language,
+        execution_result=execution_result
+    )
+    return Response(evaluation)
