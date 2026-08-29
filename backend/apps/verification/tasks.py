@@ -57,10 +57,11 @@ def daily_liveness_check():
             total_checked += 1
 
             if status_code == 404:
-                job.status = 'expired'
+                job.quality_state = 'expired'
+                job.is_expired = True
                 job.expired_reason = '404_not_found'
                 job.last_verified_at = timezone.now()
-                job.save(update_fields=['status', 'expired_reason', 'last_verified_at'])
+                job.save(update_fields=['quality_state', 'is_expired', 'expired_reason', 'last_verified_at'])
                 expired_count += 1
                 logger.info(f"Job {job.id} ({job.title}) marked as expired (404)")
 
@@ -75,10 +76,11 @@ def daily_liveness_check():
                 still_active_count += 1
 
         except SSRFBlockedError:
-            job.status = 'expired'
+            job.quality_state = 'broken'
+            job.is_expired = True
             job.expired_reason = 'ssrf_blocked'
             job.last_verified_at = timezone.now()
-            job.save(update_fields=['status', 'expired_reason', 'last_verified_at'])
+            job.save(update_fields=['quality_state', 'is_expired', 'expired_reason', 'last_verified_at'])
             expired_count += 1
             logger.warning(f"Job {job.id} ({job.title}) SSRF-blocked URL")
 
@@ -131,10 +133,11 @@ def weekly_reverification():
             total_checked += 1
 
             if status_code == 404:
-                job.status = 'expired'
+                job.quality_state = 'expired'
+                job.is_expired = True
                 job.expired_reason = 'weekly_check_404'
                 job.last_verified_at = timezone.now()
-                job.save(update_fields=['status', 'expired_reason', 'last_verified_at'])
+                job.save(update_fields=['quality_state', 'is_expired', 'expired_reason', 'last_verified_at'])
                 expired_count += 1
 
                 source_name = job.source.name if job.source else 'unknown'
@@ -195,10 +198,11 @@ def verify_job_url(job_id: int):
         )
 
         if status_code == 404:
-            job.status = 'expired'
+            job.quality_state = 'expired'
+            job.is_expired = True
             job.expired_reason = 'manual_check_404'
             job.last_verified_at = timezone.now()
-            job.save(update_fields=['status', 'expired_reason', 'last_verified_at'])
+            job.save(update_fields=['quality_state', 'is_expired', 'expired_reason', 'last_verified_at'])
             return {'status': 'expired', 'reason': '404_not_found'}
         else:
             job.last_verified_at = timezone.now()

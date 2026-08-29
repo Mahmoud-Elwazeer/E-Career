@@ -181,7 +181,7 @@ class Command(BaseCommand):
             issues.append(f"Found {count} expired jobs not marked as expired")
             
             if fix:
-                expired_not_marked.update(is_expired=True)
+                expired_not_marked.update(is_expired=True, quality_state='expired')
                 issues.append(f"Fixed {count} jobs by marking as expired")
         
         return issues

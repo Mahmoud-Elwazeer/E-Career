@@ -391,7 +391,8 @@ class JobDetailView(generics.RetrieveUpdateDestroyAPIView):
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
         instance.status = "archived"
-        instance.save(update_fields=["status"])
+        instance.quality_state = "archived"
+        instance.save(update_fields=["status", "quality_state"])
         return Response(
             {"success": True, "data": None, "message": "Job archived.", "errors": None}
         )

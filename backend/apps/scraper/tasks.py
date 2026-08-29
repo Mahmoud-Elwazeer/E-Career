@@ -196,9 +196,9 @@ def process_and_store_jobs(jobs: List[Dict], source: Source) -> int:
             ).first()
             
             if existing:
-                # Update existing job
                 existing.is_expired = False
-                existing.save(update_fields=['is_expired'])
+                existing.quality_state = 'probably_active'
+                existing.save(update_fields=['is_expired', 'quality_state'])
                 continue
             
             # 7. Create new job
@@ -278,15 +278,15 @@ def verify_apply_urls():
                 
                 if result.status == "expired" or not result.url_accessible:
                     job.is_expired = True
+                    job.quality_state = 'expired'
                     expired += 1
-                
+
                 checked += 1
             except Exception as ve:
-                # Log error but continue
                 print(f"Verification failed for job {job.id}: {ve}")
                 continue
-            
-            job.save(update_fields=['is_expired'])
+
+            job.save(update_fields=['is_expired', 'quality_state'])
         
         # Update pipeline health
         duration = (timezone.now() - start_time).total_seconds()
@@ -356,7 +356,7 @@ def expire_old_jobs():
     expired_count = Job.objects.filter(
         created_at__lt=cutoff_date,
         is_expired=False
-    ).update(is_expired=True)
+    ).update(is_expired=True, quality_state='expired')
     
     return {'expired': expired_count}
 

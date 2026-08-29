@@ -336,7 +336,8 @@ class JobPostingViewSet(viewsets.ModelViewSet):
         # Update linked Job if exists
         if job_post.mirrored_job:
             job_post.mirrored_job.status = 'archived'
-            job_post.mirrored_job.save()
+            job_post.mirrored_job.quality_state = 'archived'
+            job_post.mirrored_job.save(update_fields=['status', 'quality_state'])
         
         return Response({
             'message': 'Job closed successfully',

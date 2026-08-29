@@ -299,7 +299,8 @@ class ScraperOrchestrator:
                 
                 if existing:
                     existing.is_expired = False
-                    existing.save(update_fields=['is_expired'])
+                    existing.quality_state = 'probably_active'
+                    existing.save(update_fields=['is_expired', 'quality_state'])
                     continue
                 
                 # 7. Create new job

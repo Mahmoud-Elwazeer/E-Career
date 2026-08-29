@@ -1,5 +1,17 @@
 from django.db import models
+from django.db.models import QuerySet
 from apps.core.models import UUIDModel
+
+
+class JobQuerySet(QuerySet):
+    def active(self):
+        return self.filter(quality_state__in=("active", "probably_active", "direct_verified"))
+
+    def visible(self):
+        return self.filter(quality_state__in=("active", "probably_active", "direct_verified", "needs_verification"))
+
+
+JobManager = models.Manager.from_queryset(JobQuerySet)
 
 
 class Company(UUIDModel):
@@ -207,7 +219,23 @@ class Job(UUIDModel):
         ("pending", "Pending Review"),
         ("rejected", "Rejected"),
         ("archived", "Archived"),
+        ("expired", "Expired"),
     ]
+
+    QUALITY_STATE_CHOICES = [
+        ("active", "Active"),
+        ("probably_active", "Probably Active"),
+        ("needs_verification", "Needs Verification"),
+        ("expired", "Expired"),
+        ("archived", "Archived"),
+        ("broken", "Broken"),
+        ("duplicate", "Duplicate"),
+        ("rejected", "Rejected"),
+        ("direct_verified", "Direct-source Verified"),
+    ]
+
+    QUALITY_ACTIVE_STATES = ("active", "probably_active", "direct_verified")
+    QUALITY_VISIBLE_STATES = ("active", "probably_active", "direct_verified", "needs_verification")
 
     title = models.CharField(max_length=200, db_index=True)
     slug = models.SlugField(max_length=220, unique=True, db_index=True)
@@ -317,6 +345,15 @@ class Job(UUIDModel):
     )
     expires_at = models.DateTimeField(null=True, blank=True)
     is_expired = models.BooleanField(default=False, db_index=True)
+
+    quality_state = models.CharField(
+        max_length=20,
+        choices=QUALITY_STATE_CHOICES,
+        default="needs_verification",
+        db_index=True,
+    )
+    last_verified_at = models.DateTimeField(null=True, blank=True)
+    expired_reason = models.CharField(max_length=50, blank=True)
     
     # Legitimacy scoring (Block G)
     legitimacy_score = models.FloatField(
@@ -349,6 +386,8 @@ class Job(UUIDModel):
 
     # ============ END NEW FIELDS ============
 
+    objects = JobManager()
+
     class Meta:
         db_table = "jobs_job"
         ordering = ["-posted_at", "-created_at"]
@@ -363,6 +402,7 @@ class Job(UUIDModel):
             models.Index(fields=['expires_at', 'is_expired'], name='jobs_job_expiry_idx'),
             models.Index(fields=['scraped_at'], name='jobs_job_scraped_idx'),
             models.Index(fields=['direct_apply_url'], name='jobs_job_direct_apply_idx'),
+            models.Index(fields=['quality_state'], name='jobs_job_quality_state_idx'),
         ]
 
     def __str__(self):

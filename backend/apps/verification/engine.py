@@ -159,16 +159,23 @@ class VerificationEngine:
         job.apply_url_verified = status == "verified"
         job.apply_url_checked_at = timezone.now()
         job.apply_url_status_code = legitimacy_result.http_status
-        if status == "rejected":
+        if dedup_result.is_duplicate:
             job.status = "rejected"
+            job.quality_state = "duplicate"
+        elif status == "rejected":
+            job.status = "rejected"
+            job.quality_state = "rejected"
+        elif status == "verified":
+            job.quality_state = "direct_verified"
         if ats_result.platform and ats_result.platform != "unknown":
             job.ats_platform = ats_result.platform
         if final_url and final_url != apply_url:
             job.direct_apply_url = final_url
+        job.last_verified_at = timezone.now()
         job.save(update_fields=[
             "legitimacy_score", "legitimacy_flags", "apply_url_verified",
             "apply_url_checked_at", "apply_url_status_code", "ats_platform",
-            "direct_apply_url", "status",
+            "direct_apply_url", "status", "quality_state", "last_verified_at",
         ])
 
         logger.info(
@@ -185,6 +192,9 @@ class VerificationEngine:
     def verify_employer_posted_job(self, job) -> VerificationResult:
         """Employer-posted jobs from verified employers get auto-verified."""
         if job.company and job.company.is_verified:
+            job.quality_state = "direct_verified"
+            job.last_verified_at = timezone.now()
+            job.save(update_fields=["quality_state", "last_verified_at"])
             return self._create_result(
                 job=job,
                 status="verified",

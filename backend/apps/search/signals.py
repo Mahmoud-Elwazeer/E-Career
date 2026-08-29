@@ -21,7 +21,7 @@ def job_saved(sender, instance, created, **kwargs):
     
     Syncs the job to the search index when a job is created or updated.
     """
-    if instance.status == "active":
+    if instance.quality_state in Job.QUALITY_VISIBLE_STATES:
         try:
             search_service.sync_job(instance)
             logger.info(f"Synced job {instance.id} to search (created={created})")

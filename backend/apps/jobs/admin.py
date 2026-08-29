@@ -144,17 +144,17 @@ class JobAdmin(ImportExportModelAdmin, ModelAdmin):
     
     @admin.action(description="Publish selected jobs")
     def publish_jobs(self, request, queryset):
-        count = queryset.update(status="active")
+        count = queryset.update(status="active", quality_state="active")
         self.message_user(request, f"{count} jobs published.")
-    
+
     @admin.action(description="Archive selected jobs")
     def archive_jobs(self, request, queryset):
-        count = queryset.update(status="archived")
+        count = queryset.update(status="archived", quality_state="archived")
         self.message_user(request, f"{count} jobs archived.")
-    
+
     @admin.action(description="Mark as scam")
     def mark_as_scam(self, request, queryset):
-        count = queryset.update(status="archived", is_legitimate=False)
+        count = queryset.update(status="archived", quality_state="rejected", is_legitimate=False)
         self.message_user(request, f"{count} jobs marked as scam.")
     
     actions = ["publish_jobs", "archive_jobs", "mark_as_scam"]

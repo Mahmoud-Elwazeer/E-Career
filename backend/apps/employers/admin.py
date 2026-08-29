@@ -203,6 +203,7 @@ class JobPostingAdmin(ModelAdmin):
                 apply_url_verified=job_post.apply_url_verified,
                 source_type='employer_posted',
                 status='active',
+                quality_state='direct_verified',
                 posted_at=timezone.now().date(),
                 is_legitimate=True,
                 legitimacy_score=1.0,
