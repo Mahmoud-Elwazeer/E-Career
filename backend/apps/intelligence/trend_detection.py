@@ -50,7 +50,7 @@ class TrendDetectionService:
 
         previous_skills = (
             Job.objects.filter(
-                is_active=True,
+                status='active',
                 created_at__gte=previous_cutoff,
                 created_at__lt=recent_cutoff,
             )
@@ -102,7 +102,7 @@ class TrendDetectionService:
 
         previous_skills = (
             Job.objects.filter(
-                is_active=True,
+                status='active',
                 created_at__gte=previous_cutoff,
                 created_at__lt=recent_cutoff,
             )

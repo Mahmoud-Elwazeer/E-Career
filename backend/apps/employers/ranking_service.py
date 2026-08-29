@@ -176,7 +176,7 @@ class CandidateRankingService:
             'location': job.location,
             'salary_min': job.salary_min,
             'salary_max': job.salary_max,
-            'remote_type': job.remote_type,
+            'remote_type': job.work_arrangement or job.location_type,
         }
     
     def _get_candidate_profile(self, candidate) -> Dict:

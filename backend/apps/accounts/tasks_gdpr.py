@@ -76,7 +76,7 @@ def generate_data_export(request_id):
                     'company': job.company.name,
                     'saved_at': user.saved_jobs.through.objects.get(
                         user=user, job=job
-                    ).created_at.isoformat() if hasattr(user.saved_jobs.through.objects.get(user=user, job=job), 'created_at') else None,
+                    ).saved_at.isoformat() if hasattr(user.saved_jobs.through.objects.get(user=user, job=job), 'saved_at') else None,
                 }
                 for job in user.saved_jobs.all()
             ]

@@ -217,10 +217,10 @@ def send_employer_application_notification(application_id):
     try:
         from apps.employers.models import JobApplication
 
-        application = JobApplication.objects.select_related('job', 'job__employer').get(id=application_id)
+        application = JobApplication.objects.select_related('job', 'job__employer_posting__employer').get(id=application_id)
 
-        # Get employer
-        employer = application.job.employer
+        # Get employer (through JobPosting)
+        employer = application.job.employer_posting.employer if hasattr(application.job, 'employer_posting') else None
 
         if not employer or not employer.user.email:
             logger.warning(f"No employer email for application {application_id}")
