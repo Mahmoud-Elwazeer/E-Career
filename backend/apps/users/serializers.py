@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from apps.users.models import SavedJob, Alert, Notification
+from apps.users.models import SavedJob, Alert
+from apps.notifications.models import UserNotification
 from apps.jobs.serializers import JobListSerializer
 
 
@@ -41,10 +42,28 @@ class AlertSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    body = serializers.CharField(source="message", read_only=True)
+    type = serializers.CharField(source="notification_type", read_only=True)
+    is_read = serializers.SerializerMethodField()
+    metadata = serializers.SerializerMethodField()
+
     class Meta:
-        model = Notification
+        model = UserNotification
         fields = [
             "id", "uuid", "title", "body", "type",
             "is_read", "metadata", "created_at",
         ]
         read_only_fields = fields
+
+    def get_is_read(self, obj):
+        return obj.status != "unread"
+
+    def get_metadata(self, obj):
+        meta = {}
+        if obj.related_id:
+            meta["related_id"] = obj.related_id
+        if obj.related_type:
+            meta["related_type"] = obj.related_type
+        if obj.related_url:
+            meta["related_url"] = obj.related_url
+        return meta or None

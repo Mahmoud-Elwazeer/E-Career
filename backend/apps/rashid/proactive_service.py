@@ -15,7 +15,7 @@ from django.conf import settings
 from apps.career.models import CareerBrain, CareerGoal
 from apps.jobs.models import JobSave, JobSearch
 from apps.interviews.models import InterviewSession
-from apps.notifications.models import Notification
+from apps.notifications.models import UserNotification
 from apps.intelligence.career_ai import career_ai_service as bedrock_service
 
 logger = logging.getLogger(__name__)
@@ -290,30 +290,27 @@ class ProactiveRashidService:
     
     def create_notification_record(
         self, user_id: int, trigger_type: str, message: str, context: Dict
-    ) -> Notification:
+    ) -> UserNotification:
         """
         Create a notification record in the database.
-        
+
         Args:
             user_id: User ID
             trigger_type: Type of trigger
             message: Notification message
             context: Trigger context data
-            
+
         Returns:
-            Created Notification instance
+            Created UserNotification instance
         """
-        notification = Notification.objects.create(
+        notification = UserNotification.objects.create(
             user_id=user_id,
-            notification_type='rashid_proactive',
+            notification_type='system',
             title=self._get_notification_title(trigger_type),
             message=message,
-            data={
-                'trigger_type': trigger_type,
-                'context': context,
-                'generated_at': timezone.now().isoformat(),
-            },
-            read=False,
+            related_type='rashid_proactive',
+            related_id=trigger_type,
+            status='unread',
         )
         return notification
     

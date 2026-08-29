@@ -1,10 +1,12 @@
 import logging
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
-from apps.users.models import SavedJob, Alert, Notification
+from apps.users.models import SavedJob, Alert
+from apps.notifications.models import UserNotification
 from apps.users.serializers import SavedJobSerializer, AlertSerializer, NotificationSerializer
 from apps.core.pagination import StandardPagination
 
@@ -128,7 +130,7 @@ class NotificationListView(generics.ListAPIView):
     pagination_class = StandardPagination
 
     def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user).order_by("-created_at")
+        return UserNotification.objects.filter(user=self.request.user).order_by("-created_at")
 
 
 @extend_schema(tags=["Notifications"])
@@ -139,14 +141,15 @@ class NotificationDetailView(APIView):
 
     def patch(self, request, uuid):
         try:
-            notif = Notification.objects.get(uuid=uuid, user=request.user)
-        except Notification.DoesNotExist:
+            notif = UserNotification.objects.get(uuid=uuid, user=request.user)
+        except UserNotification.DoesNotExist:
             return Response(
                 {"success": False, "data": None, "message": "Notification not found.", "errors": None},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        notif.is_read = True
-        notif.save(update_fields=["is_read"])
+        notif.status = "read"
+        notif.read_at = timezone.now()
+        notif.save(update_fields=["status", "read_at"])
         return Response(
             {"success": True, "data": NotificationSerializer(notif).data, "message": "Marked as read.", "errors": None}
         )
@@ -159,7 +162,9 @@ class MarkAllNotificationsReadView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        count = Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        count = UserNotification.objects.filter(
+            user=request.user, status="unread"
+        ).update(status="read", read_at=timezone.now())
         return Response(
             {"success": True, "data": {"marked_read": count}, "message": f"{count} notifications marked as read.", "errors": None}
         )
