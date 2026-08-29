@@ -33,6 +33,7 @@ import Settings from "./pages/Settings";
 import Applications from "./pages/Applications";
 import IntelligenceDashboard from "./pages/IntelligenceDashboard";
 import { EmployerDashboard, EmployerRegister, JobPostingForm, TalentSearch } from "./pages/employer";
+import CodingPractice from "./pages/CodingPractice";
 import { RashidWidget } from "./components/rashid/RashidWidget";
 import { RashidOnboarding } from "./components/rashid/RashidOnboarding";
 import { OnboardingFlow } from "./components/landing/OnboardingFlow";
@@ -77,6 +78,7 @@ function AnimatedRoutes() {
         {/* Employer routes */}
         <Route path="/app/employer/dashboard" element={<RequireEmployer><EmployerDashboard /></RequireEmployer>} />
         <Route path="/app/employer/register" element={<RequireAuth><EmployerRegister /></RequireAuth>} />
+        <Route path="/app/coding-practice" element={<RequireAuth><CodingPractice /></RequireAuth>} />
         <Route path="/app/employer/post-job" element={<RequireEmployer><JobPostingForm /></RequireEmployer>} />
         <Route path="/app/employer/talent-search" element={<RequireEmployer><TalentSearch /></RequireEmployer>} />
 

@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Briefcase, Info, Menu, Building2, User, LogOut, CheckCircle2, Bell } from "lucide-react";
+import { Briefcase, Info, Menu, Building2, Code2, User, LogOut, CheckCircle2, Bell } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
@@ -23,6 +23,7 @@ const publicNavItems = [
 
 const appNavItems = [
   { to: "/app/jobs", label: "Jobs", labelAr: "وظائف", icon: Briefcase },
+  { to: "/app/coding-practice", label: "Practice", labelAr: "تمرين", icon: Code2 },
   { to: "/app/profile", label: "Profile", labelAr: "الملف", icon: User },
   { to: "/about", label: "About", labelAr: "عن USAM", icon: Info },
 ];
