@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # FINAL Cline Implementation Plan - All Remaining Work
 ## E-Career Platform - Complete Audit & Phases
 ## Date: August 7, 2026

@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # FINAL IMPLEMENTATION PLAN — E-Career Platform
 ## Single Source of Truth for All Remaining Work
 ## Created: August 10, 2026

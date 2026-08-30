@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # Week 6: Vector Search & Embeddings - COMPLETE ✅
 
 **Status:** Backend 100% Complete (13/13 backend tasks)  

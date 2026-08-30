@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # Deployment Runbook
 
 This runbook provides step-by-step instructions for deploying the USAM Career Compass application.

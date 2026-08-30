@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # Phase D + G Implementation Plan
 
 ## Phase D: UX Polish (Frontend Focus)

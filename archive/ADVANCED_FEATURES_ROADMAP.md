@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # Advanced Features Roadmap
 ## E-Career Platform - Future Development Plan
 ## Date: August 7, 2026

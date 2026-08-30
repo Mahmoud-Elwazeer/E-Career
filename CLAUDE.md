@@ -11,7 +11,7 @@ frontend in `frontend/`. Production domain: jobs.usamif.com.
 2. `MASTER_IMPLEMENTATION_PLAN.md` — the ONE authoritative synthesis of 10
    independent code-verified domain audits (2026-08-29). Supersedes every
    other `*_SUMMARY.md`/`*_REPORT.md`/`*_PLAN.md` in the repo, including
-   `MASTER_STATE_AND_ROADMAP.md` and `BACKEND_ARCHITECT_REVIEW_2026-08.md`
+   `archive/MASTER_STATE_AND_ROADMAP.md` and `archive/BACKEND_ARCHITECT_REVIEW_2026-08.md`
    (both partially stale now — MASTER_IMPLEMENTATION_PLAN.md's §3 flags
    the specific claims that were wrong).
 3. `audit/D1_*.md` through `audit/D10_*.md` — full detailed evidence behind

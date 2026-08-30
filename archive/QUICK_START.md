@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # Quick Start Guide - E-Career Platform
 
 > **Your credentials are configured!** Ready to start implementation.

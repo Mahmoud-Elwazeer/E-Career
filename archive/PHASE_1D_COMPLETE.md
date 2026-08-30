@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # Phase 1D: Foundation Intelligence - Complete
 
 **Date:** 2026-08-01  

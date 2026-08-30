@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # Backend Architect Review — Frontend API Client & AI Shim Migration
 **Date:** 2026-08-29 | **Scope:** Two specific architectural-drift items flagged in `MASTER_STATE_AND_ROADMAP.md` (2026-08-28). This report re-verifies both against the live repo at `M:\job already web for jobs\E-Career` and supersedes the prior audit's claims wherever the code has since moved.
 

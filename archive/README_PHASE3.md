@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # 🚀 Phase 3: Generate Embeddings - Complete Guide
 
 ## 📋 What Is Phase 3?

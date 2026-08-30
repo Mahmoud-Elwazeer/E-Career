@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # PHASE 2B: Rashid AI Core
 
 > **Dependencies:** Phase 2A complete, AWS Bedrock, django-channels configured  

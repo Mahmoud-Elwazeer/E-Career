@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # 🎯 E-Career Platform - Current Progress Status
 
 **Last Updated:** 2026-06-29  

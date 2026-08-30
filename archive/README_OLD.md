@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # USAM Career Compass
 
 A full-stack job aggregation platform for the MENA region — built with Django 5, DRF, and React.

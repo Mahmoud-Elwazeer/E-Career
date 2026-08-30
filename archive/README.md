@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # E-Career Platform (USAM Jobs)
 
 > **Production Status**: ✅ Live at [https://jobs.usamif.com](https://jobs.usamif.com)

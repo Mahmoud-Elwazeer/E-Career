@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # PHASE 1C: Job Pages Enhancement
 
 > **Dependencies:** Phase 1A, Phase 1B complete  

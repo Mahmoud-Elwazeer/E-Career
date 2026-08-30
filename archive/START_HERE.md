@@ -1,3 +1,5 @@
+> **Superseded by MASTER_IMPLEMENTATION_PLAN.md and audit/PHASE_*_COMPLETION_REPORT.md — kept for history only.**
+
 # 🚀 START HERE - E-Career Implementation
 
 > **Everything is configured. Smart models selected. Ready to build!**
