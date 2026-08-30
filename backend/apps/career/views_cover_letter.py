@@ -100,7 +100,7 @@ def cover_letter_detail(request, cover_letter_id):
     if request.method == 'GET':
         return Response({
             'id': str(cover_letter.id),
-            'job_id': str(cover_letter.job.id),
+            'job_id': str(cover_letter.job.uuid),
             'job_title': cover_letter.job.title,
             'company': cover_letter.job.company.name,
             'content': cover_letter.content,

@@ -7,12 +7,19 @@
 
 ## Part A — GitHub vs Local Reconciliation
 
-- `git status`: clean working tree, no uncommitted changes
-- `git fetch origin`: local and `origin/development` fully in sync (0 local-only, 0 remote-only commits after prior push)
+**Pre-Phase 6 state (at audit start):**
+- `git status`: clean working tree
+- `git fetch origin`: local and `origin/development` were in sync (0 divergent commits)
 - Latest commit: `034acf0 docs: add Phase 6 final audit prompt`
 - Scratch files: `backend/db.sqlite3` exists but is gitignored. No `qa_local_verify.py` or `audit/*.json` temp files found.
 
-**Result:** No divergence, no cleanup needed.
+**Post-Phase 6 state (after all fixes committed):**
+- Local `development` is **8 commits ahead** of `origin/development`:
+  - 3 pre-existing Phase 7 doc commits (`20db43a`, `71762c6`, `fc28b79`)
+  - 5 Phase 6 fix commits (`5c8dba6` through current HEAD)
+- Working tree: clean after scratch file cleanup
+- **Commit range to push:** `origin/development..HEAD` (8 commits)
+- **Not pushed** per prompt instructions — human will review and push.
 
 ---
 
@@ -39,8 +46,9 @@ The real bug was an **inconsistency**: existing endpoints in the same file (cove
 10. `frontend/src/components/TailorResumePanel.tsx`: Changed prop `jobId: number` → `string`
 11. `frontend/src/components/MatchBreakdownModal.tsx`: Changed prop `jobId: number` → `string`
 12. `frontend/src/pages/JobDetail.tsx`: Changed `job.id` → `job.uuid` for MatchScoreCard and TailorResumePanel props
+13. `backend/apps/career/views_cover_letter.py`: Also fixed `job_id` response field from `str(job.id)` → `str(job.uuid)` in `cover_letter_detail` and `list_cover_letters` (returns consistent UUID to frontend)
 
-**Verification:** All 5 Phase 5 endpoint tests pass. `tsc --noEmit` clean.
+**Verification:** All 5 Phase 5 endpoint tests pass. `tsc --noEmit` clean. Live E2E verified (200 on UUID, 404 on integer).
 
 ### B2: Missing Chrome Extension Icons (FIXED)
 
@@ -126,7 +134,16 @@ Works without the token set (current behavior preserved).
 
 Test count increased from 289 → 418. The 129-test jump comes from: 12 new Phase 6 tests (B3), plus previously-undiscovered test modules now collected after installing easyocr/pdf2image/xhtml2pdf (B4) resolved import errors that were silently causing test collection to skip those files.
 
-**Live E2E spot-check:** Not performed in this session. The audit prompt specifies standing up a local dev server with `qa_local_verify.py` scratch settings — this requires creating a temporary settings file, running `manage.py runserver`, and making HTTP requests against actual job UUIDs. This is a human verification step.
+**Live E2E spot-check (performed):**
+Stood up a local dev server (`qa_local_verify.py` scratch settings, SQLite, LocMemCache, port 9999). Created a test user, job (UUID `96817ab2-9911-45d9-83b0-2e8e50c92fa9`), and CareerProfile. Results:
+
+| Endpoint | Method | HTTP Status | Expected |
+|----------|--------|-------------|----------|
+| `/api/v1/career/jobs/96817ab2-.../match-breakdown/` | GET | **200** | 200 |
+| `/api/v1/career/jobs/96817ab2-.../tailor/` | POST | **200** | 200 |
+| `/api/v1/career/jobs/1/match-breakdown/` (integer) | GET | **404** | 404 |
+
+Both UUID endpoints return full JSON payloads with match scores/breakdown and tailor suggestions. The integer-path correctly 404s, confirming the `<int:>` converter was removed. Scratch settings file and `qa_verify.sqlite3` cleaned up after verification.
 
 ---
 
@@ -216,7 +233,6 @@ Test count increased from 289 → 418. The 129-test jump comes from: 12 new Phas
 2. **Redis** must be provisioned (Celery, cache, Channels all depend on it)
 3. **ClamAV** must be provisioned (CV upload scanning is fail-closed — uploads will be rejected without it)
 4. **AWS key rotation** status unknown — if the flagged key hasn't been rotated, this is a security blocker
-5. **Live E2E verification** of the UUID-based endpoints with a running server (not done in this session)
 
 ### Should-fix before production (important):
 6. **Poppler** must be installed on deployment target for `pdf2image` PDF→image conversion
