@@ -102,6 +102,7 @@ End with 3-5 actionable next steps."""
             system_prompt=system,
             model="sonnet",
             max_tokens=3000,
+            operation="content_generation",
         ))
 
         return ContentPiece(
@@ -151,6 +152,7 @@ Write a 600-800 word report covering:
             system_prompt=system,
             model="sonnet",
             max_tokens=2000,
+            operation="content_generation",
         ))
 
         return ContentPiece(
@@ -188,6 +190,7 @@ Write a 600-1000 word guide covering:
             system_prompt=system,
             model="sonnet",
             max_tokens=2500,
+            operation="content_generation",
         ))
 
         title = f"Interview Guide: {role}"

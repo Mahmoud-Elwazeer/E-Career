@@ -241,6 +241,7 @@ Format as a clear numbered list."""
             model="haiku",
             max_tokens=1500,
             user_id=ctx.deps.user_id,
+            operation="interview_prep",
         ))
         return response.content
 

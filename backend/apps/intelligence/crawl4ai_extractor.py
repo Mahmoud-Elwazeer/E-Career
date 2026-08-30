@@ -218,6 +218,7 @@ Return ONLY valid JSON."""
                 system_prompt="You are a web data extraction expert. Extract structured data accurately.",
                 model="haiku",
                 max_tokens=2000,
+                operation="extraction",
             ))
 
             json_start = response.content.find('{')

@@ -250,7 +250,6 @@ class AICostDashboardView(APIView):
     def get(self, request):
         try:
             from apps.events.models import EventLog as Event
-            from apps.rashid.models import RashidUsage
         except ImportError:
             return Response({
                 "error": "AI cost tracking models not available in this environment."
@@ -270,43 +269,28 @@ class AICostDashboardView(APIView):
                     total += float(event.data.get("cost_usd", 0))
             return total
 
-        # Today
         today_events = ai_events.filter(created_at__gte=today_start)
         today_cost = extract_cost(today_events)
         today_calls = today_events.count()
 
-        # This week
         week_events = ai_events.filter(created_at__gte=week_start)
         week_cost = extract_cost(week_events)
         week_calls = week_events.count()
 
-        # This month
         month_events = ai_events.filter(created_at__gte=month_start)
         month_cost = extract_cost(month_events)
         month_calls = month_events.count()
 
-        # Rashid costs
-        rashid_today = RashidUsage.objects.filter(date=today_start.date())
-        rashid_week = RashidUsage.objects.filter(date__gte=week_start.date())
-        rashid_month = RashidUsage.objects.filter(date__gte=month_start.date())
-
-        rashid_today_cost = sum(u.tokens_used * 0.009 / 1000 for u in rashid_today)
-        rashid_week_cost = sum(u.tokens_used * 0.009 / 1000 for u in rashid_week)
-        rashid_month_cost = sum(u.tokens_used * 0.009 / 1000 for u in rashid_month)
-
-        # Cost by feature
         feature_costs = {}
         for event in month_events:
             if event.data:
                 operation = event.data.get("operation", "unknown")
                 cost = float(event.data.get("cost_usd", 0))
                 feature_costs[operation] = feature_costs.get(operation, 0) + cost
-        feature_costs["rashid_chat"] = rashid_month_cost
         feature_costs_sorted = sorted(
             feature_costs.items(), key=lambda x: x[1], reverse=True
         )
 
-        # Model breakdown
         model_usage = {}
         for event in month_events:
             if event.data:
@@ -316,16 +300,14 @@ class AICostDashboardView(APIView):
             model_usage.items(), key=lambda x: x[1], reverse=True
         )
 
-        # Top users by cost
         user_costs = {}
-        for usage in rashid_month:
-            if usage.user_id:
-                email = usage.user.email if usage.user else "Anonymous"
-                cost = usage.tokens_used * 0.009 / 1000
+        for event in month_events.select_related("user"):
+            if event.data and event.user_id:
+                email = event.user.email if event.user else "Anonymous"
+                cost = float(event.data.get("cost_usd", 0))
                 user_costs[email] = user_costs.get(email, 0) + cost
         top_users = sorted(user_costs.items(), key=lambda x: x[1], reverse=True)[:10]
 
-        # Daily trend (last 30 days)
         daily_costs = []
         for i in range(30, -1, -1):
             day_start = now - timedelta(days=i)
@@ -336,27 +318,24 @@ class AICostDashboardView(APIView):
             )
             day_cost = extract_cost(day_events)
 
-            day_rashid = RashidUsage.objects.filter(date=day_start.date())
-            day_rashid_cost = sum(u.tokens_used * 0.009 / 1000 for u in day_rashid)
-
             daily_costs.append({
                 "date": day_start.strftime("%Y-%m-%d"),
-                "cost": round(day_cost + day_rashid_cost, 4),
-                "calls": day_events.count() + day_rashid.count(),
+                "cost": round(day_cost, 4),
+                "calls": day_events.count(),
             })
 
         return Response({
             "today": {
-                "cost": round(today_cost + rashid_today_cost, 4),
-                "calls": today_calls + rashid_today.count(),
+                "cost": round(today_cost, 4),
+                "calls": today_calls,
             },
             "week": {
-                "cost": round(week_cost + rashid_week_cost, 4),
-                "calls": week_calls + rashid_week.count(),
+                "cost": round(week_cost, 4),
+                "calls": week_calls,
             },
             "month": {
-                "cost": round(month_cost + rashid_month_cost, 4),
-                "calls": month_calls + rashid_month.count(),
+                "cost": round(month_cost, 4),
+                "calls": month_calls,
             },
             "feature_costs": [
                 {"feature": k, "cost": round(v, 4)} for k, v in feature_costs_sorted

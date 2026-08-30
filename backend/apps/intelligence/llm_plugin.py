@@ -29,6 +29,7 @@ class LLMRequest:
     temperature: float = 0.3
     json_mode: bool = False
     user_id: int | None = None
+    operation: str = ""
 
 
 @dataclass

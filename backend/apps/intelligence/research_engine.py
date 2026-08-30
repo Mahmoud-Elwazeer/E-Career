@@ -220,6 +220,7 @@ Format your response as structured text with clear sections."""
             system_prompt="You are a research analyst. Provide evidence-based analysis. Clearly distinguish facts from inferences. Never fabricate sources.",
             model="sonnet",
             max_tokens=2000,
+            operation="research",
         ))
 
         evidence = [

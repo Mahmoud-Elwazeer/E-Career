@@ -127,10 +127,18 @@ class BedrockLLMPlugin(LLMPlugin):
         from apps.events.emitter import emit
         from apps.events.types import AI_MODEL_CALLED
 
+        user = None
+        if request.user_id:
+            try:
+                from django.contrib.auth import get_user_model
+                user = get_user_model().objects.get(pk=request.user_id)
+            except Exception:
+                pass
+
         emit(
             event_type=AI_MODEL_CALLED,
             category="ai",
-            user=None,
+            user=user,
             target_type="model",
             target_id=model_id,
             data={
@@ -140,6 +148,7 @@ class BedrockLLMPlugin(LLMPlugin):
                 "latency_ms": latency_ms,
                 "cost_usd": cost,
                 "user_id": request.user_id,
+                "operation": request.operation or "unknown",
             },
         )
 
@@ -150,4 +159,5 @@ class BedrockLLMPlugin(LLMPlugin):
             tokens_out=tokens_out,
             latency_ms=latency_ms,
             cost_usd=cost,
+            operation=request.operation,
         )

@@ -182,6 +182,7 @@ Return ONLY valid JSON, no other text."""
             max_tokens=model_selection.max_tokens,
             temperature=model_selection.temperature,
             user_id=user_id,
+            operation="cv_parsing",
         ))
 
         import json

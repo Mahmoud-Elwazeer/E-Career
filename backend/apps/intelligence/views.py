@@ -38,6 +38,37 @@ def chat_with_rashid(request):
         finally:
             loop.close()
 
+        try:
+            from apps.events.emitter import emit
+            from apps.events.types import AI_MODEL_CALLED
+
+            usage = result.usage() if hasattr(result, 'usage') and callable(result.usage) else None
+            tokens_in = getattr(usage, 'request_tokens', 0) if usage else 0
+            tokens_out = getattr(usage, 'response_tokens', 0) if usage else 0
+            from apps.intelligence.bedrock_plugin import MODEL_COSTS, MODEL_ALIASES
+            model_id = MODEL_ALIASES.get(getattr(settings, "RASHID_MODEL", "sonnet"), "")
+            rates = MODEL_COSTS.get(model_id, {"input_per_1k": 0.003, "output_per_1k": 0.015})
+            cost = round((tokens_in / 1000) * rates["input_per_1k"] + (tokens_out / 1000) * rates["output_per_1k"], 6)
+
+            emit(
+                event_type=AI_MODEL_CALLED,
+                category="ai",
+                user=request.user,
+                target_type="model",
+                target_id=model_id,
+                data={
+                    "model": model_id,
+                    "tokens_in": tokens_in,
+                    "tokens_out": tokens_out,
+                    "cost_usd": cost,
+                    "user_id": request.user.id,
+                    "operation": "chat",
+                    "agent": "rashid_pydantic_ai",
+                },
+            )
+        except Exception:
+            pass
+
         return Response({
             "response": result.data,
             "model": str(result.usage()) if hasattr(result, 'usage') else "unknown",
@@ -53,6 +84,7 @@ def chat_with_rashid(request):
             system_prompt="You are Rashid, a friendly career advisor.",
             model="haiku",
             user_id=request.user.id,
+            operation="chat",
         ))
         return Response({"response": response.content, "model": response.model, "fallback": True})
 

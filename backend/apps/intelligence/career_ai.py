@@ -31,7 +31,7 @@ class CareerAIService:
         from apps.intelligence.circuit_breaker import ai_circuit_breaker
         return ai_circuit_breaker.is_available()
 
-    def invoke_model(self, prompt, system_prompt=None, max_tokens=4096, temperature=0.3, user=None):
+    def invoke_model(self, prompt, system_prompt=None, max_tokens=4096, temperature=0.3, user=None, operation=""):
         from apps.intelligence.llm_plugin import LLMRequest
 
         request = LLMRequest(
@@ -41,6 +41,7 @@ class CareerAIService:
             max_tokens=max_tokens,
             temperature=temperature,
             user_id=getattr(user, 'id', None) if user else None,
+            operation=operation,
         )
         response = self._ai.generate(request)
 
@@ -126,6 +127,7 @@ Return ONLY the JSON object, no additional text."""
                 system_prompt=system_prompt,
                 max_tokens=8000,
                 temperature=0.1,
+                operation="cv_parsing",
             )
 
             json_start = response.find('{')
@@ -185,6 +187,7 @@ Provide match score and detailed analysis."""
                 system_prompt=system_prompt,
                 max_tokens=2000,
                 temperature=0.2,
+                operation="job_matching",
             )
 
             json_start = response.find('{')
@@ -273,6 +276,7 @@ Provide salary guidance with reasoning and negotiation tips."""
                 system_prompt=system_prompt,
                 max_tokens=1500,
                 temperature=0.2,
+                operation="salary_guidance",
             )
 
             json_start = response.find('{')
@@ -352,6 +356,7 @@ Return ONLY the JSON object."""
                 system_prompt=system_prompt,
                 max_tokens=2000,
                 temperature=0.3,
+                operation="interview_prep",
             )
 
             json_start = response.find('{')
@@ -421,6 +426,7 @@ Provide evaluation with scores and feedback."""
                 system_prompt=system_prompt,
                 max_tokens=1500,
                 temperature=0.2,
+                operation="interview_eval",
             )
 
             json_start = resp.find('{')
@@ -477,6 +483,7 @@ Provide rankings with detailed explanations."""
                 system_prompt=system_prompt,
                 max_tokens=3000,
                 temperature=0.2,
+                operation="ranking",
             )
 
             json_start = response.find('{')
@@ -543,6 +550,7 @@ Return ONLY the JSON object."""
                 prompt=prompt,
                 max_tokens=800,
                 temperature=0.3,
+                operation="assessment_feedback",
             )
 
             json_start = response.find('{')
