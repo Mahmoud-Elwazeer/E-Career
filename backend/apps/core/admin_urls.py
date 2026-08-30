@@ -21,6 +21,8 @@ from apps.core.admin_api_views import (
     CompanyTimelineView,
     RecommendationDiagnosticsView,
     GDPRAdminDashboardView,
+    GDPRExportActionView,
+    GDPRDeleteActionView,
     CeleryBeatListView,
     CeleryBeatToggleView,
     AdminSearchView,
@@ -56,6 +58,8 @@ urlpatterns = [
     path("companies/<uuid:company_uuid>/timeline/", CompanyTimelineView.as_view(), name="company-timeline"),
     path("recommendations/diagnostics/", RecommendationDiagnosticsView.as_view(), name="recommendation-diagnostics"),
     path("gdpr/dashboard/", GDPRAdminDashboardView.as_view(), name="gdpr-dashboard"),
+    path("gdpr/export/", GDPRExportActionView.as_view(), name="gdpr-export-action"),
+    path("gdpr/delete/", GDPRDeleteActionView.as_view(), name="gdpr-delete-action"),
 
     # Phase 7b: New admin API endpoints
     path("celery-beat/", CeleryBeatListView.as_view(), name="celery-beat-list"),

@@ -432,9 +432,14 @@ class TalentDiscovery(models.Model):
     viewed_at = models.DateTimeField(null=True, blank=True)
     saved = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
-    
+
+    was_discoverable_at_creation = models.BooleanField(
+        default=False,
+        help_text="Snapshot of user's is_discoverable consent at time of discovery",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'Talent Discovery'
@@ -497,6 +502,10 @@ class TalentPoolCandidate(models.Model):
             ('recommendation', 'AI Recommendation'),
         ],
         default='manual'
+    )
+    was_discoverable_at_creation = models.BooleanField(
+        default=False,
+        help_text="Snapshot of user's is_discoverable consent at time of addition",
     )
     added_at = models.DateTimeField(auto_now_add=True)
 

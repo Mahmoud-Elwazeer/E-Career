@@ -672,10 +672,11 @@ class TalentDiscoveryViewSet(viewsets.ModelViewSet):
         check_entitlement(employer.company, "candidate_search", monthly_count)
 
         user = serializer.validated_data.get('user')
-        if user and not CareerProfile.objects.filter(user=user, is_discoverable=True).exists():
+        discoverable = CareerProfile.objects.filter(user=user, is_discoverable=True).exists() if user else False
+        if user and not discoverable:
             from rest_framework.exceptions import ValidationError
             raise ValidationError('This user has not opted in to employer discovery.')
-        serializer.save(employer=employer)
+        serializer.save(employer=employer, was_discoverable_at_creation=discoverable)
 
 
 class TalentPoolViewSet(viewsets.ModelViewSet):
@@ -728,6 +729,7 @@ class TalentPoolViewSet(viewsets.ModelViewSet):
                 'tags': serializer.validated_data.get('tags', []),
                 'notes': serializer.validated_data.get('notes', ''),
                 'source': serializer.validated_data.get('source', 'manual'),
+                'was_discoverable_at_creation': True,
             }
         )
 

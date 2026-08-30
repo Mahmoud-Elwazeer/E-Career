@@ -10,16 +10,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 from apps.core.views import HealthCheckView, DetailedHealthCheckView
 from apps.jobs.sitemaps import sitemaps as job_sitemaps
 
-# Import custom admin views
-from apps.scraper.admin_views import scraper_dashboard, health_monitor
-
 urlpatterns = [
     # Admin (path from ENV for security)
     path(settings.ADMIN_URL, admin.site.urls),
-    
-    # Custom admin dashboard views (Phase 3C)
-    path("admin/scraper-dashboard/", scraper_dashboard, name="admin-scraper-dashboard"),
-    path("admin/health-monitor/", health_monitor, name="admin-health-monitor"),
 
     # Health check
     path("health/", HealthCheckView.as_view(), name="health-check"),

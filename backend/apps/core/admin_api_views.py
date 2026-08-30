@@ -308,6 +308,25 @@ class AICostDashboardView(APIView):
                 user_costs[email] = user_costs.get(email, 0) + cost
         top_users = sorted(user_costs.items(), key=lambda x: x[1], reverse=True)[:10]
 
+        company_costs = {}
+        try:
+            from apps.employers.models import EmployerProfile
+            employer_user_ids = set(
+                EmployerProfile.objects.values_list("user_id", flat=True)
+            )
+            employer_company_map = dict(
+                EmployerProfile.objects.select_related("company")
+                .values_list("user_id", "company__name")
+            )
+            for event in month_events:
+                if event.data and event.user_id and event.user_id in employer_user_ids:
+                    company_name = employer_company_map.get(event.user_id, "Unknown")
+                    cost = float(event.data.get("cost_usd", 0))
+                    company_costs[company_name] = company_costs.get(company_name, 0) + cost
+        except ImportError:
+            pass
+        top_companies = sorted(company_costs.items(), key=lambda x: x[1], reverse=True)[:10]
+
         daily_costs = []
         for i in range(30, -1, -1):
             day_start = now - timedelta(days=i)
@@ -345,6 +364,9 @@ class AICostDashboardView(APIView):
             ],
             "top_users": [
                 {"email": k, "cost": round(v, 4)} for k, v in top_users
+            ],
+            "company_costs": [
+                {"company": k, "cost": round(v, 4)} for k, v in top_companies
             ],
             "daily_costs": daily_costs,
         })
@@ -1321,9 +1343,9 @@ class AdminCopilotChatView(APIView):
                 from apps.intelligence.bedrock_plugin import MODEL_COSTS, MODEL_ALIASES
                 from django.conf import settings
 
-                usage = result.usage() if hasattr(result, 'usage') and callable(result.usage) else None
-                tokens_in = getattr(usage, 'request_tokens', 0) if usage else 0
-                tokens_out = getattr(usage, 'response_tokens', 0) if usage else 0
+                usage = result.usage if hasattr(result, 'usage') else None
+                tokens_in = getattr(usage, 'input_tokens', 0) if usage else 0
+                tokens_out = getattr(usage, 'output_tokens', 0) if usage else 0
                 model_id = MODEL_ALIASES.get("haiku", "")
                 rates = MODEL_COSTS.get(model_id, {"input_per_1k": 0.00025, "output_per_1k": 0.00125})
                 cost = round((tokens_in / 1000) * rates["input_per_1k"] + (tokens_out / 1000) * rates["output_per_1k"], 6)
@@ -1348,7 +1370,7 @@ class AdminCopilotChatView(APIView):
                 pass
 
             return Response({
-                "response": result.data,
+                "response": result.output,
                 "agent": "admin_copilot",
             })
 
@@ -1360,5 +1382,221 @@ class AdminCopilotChatView(APIView):
         except Exception as e:
             return Response(
                 {"detail": f"Copilot error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+# ---------------------------------------------------------------------------
+# 20. GDPRExportActionView (Phase 7c)
+# ---------------------------------------------------------------------------
+
+
+class GDPRExportActionView(APIView):
+    """
+    Admin-triggered GDPR data export for a user.
+    POST with {"user_id": <int>, "confirm": true} to execute.
+    Omit confirm (or set false) to preview what will be exported.
+    """
+
+    permission_classes = [IsAdminRole]
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        user_id = request.data.get("user_id")
+        confirm = request.data.get("confirm", False)
+
+        if not user_id:
+            return Response(
+                {"detail": "user_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not confirm:
+            return Response({
+                "action": "gdpr_export",
+                "user_id": target_user.id,
+                "email": target_user.email,
+                "requires_confirm": True,
+                "message": f"This will generate a full data export for {target_user.email}. "
+                           "Re-submit with confirm=true to proceed.",
+            })
+
+        try:
+            from apps.accounts.models_gdpr import DataExportRequest
+        except ImportError:
+            return Response(
+                {"detail": "GDPR models not available."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        export_req = DataExportRequest.objects.create(
+            user=target_user,
+            status="processing",
+            ip_address=request.META.get("REMOTE_ADDR"),
+        )
+
+        try:
+            from apps.core.gdpr_service import GDPRService
+            service = GDPRService(target_user)
+            export_data = service.export_user_data_json()
+
+            export_req.status = "completed"
+            export_req.completed_at = timezone.now()
+            export_req.file_size_bytes = len(export_data.encode("utf-8"))
+            export_req.expires_at = timezone.now() + timedelta(days=30)
+            export_req.save()
+
+            ActivityLog.objects.create(
+                action="gdpr_export",
+                metadata={
+                    "target_user_id": target_user.id,
+                    "target_email": target_user.email,
+                    "export_request_id": str(export_req.uuid),
+                    "file_size_bytes": export_req.file_size_bytes,
+                    "triggered_by": request.user.email,
+                },
+                user=request.user,
+            )
+
+            return Response({
+                "action": "gdpr_export",
+                "status": "completed",
+                "export_request_id": str(export_req.uuid),
+                "user_id": target_user.id,
+                "email": target_user.email,
+                "file_size_bytes": export_req.file_size_bytes,
+                "expires_at": export_req.expires_at.isoformat(),
+            })
+
+        except Exception as e:
+            export_req.status = "failed"
+            export_req.error_message = str(e)
+            export_req.save()
+            return Response(
+                {"detail": f"Export failed: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+# ---------------------------------------------------------------------------
+# 21. GDPRDeleteActionView (Phase 7c)
+# ---------------------------------------------------------------------------
+
+
+class GDPRDeleteActionView(APIView):
+    """
+    Admin-triggered GDPR account deletion for a user.
+    POST with {"user_id": <int>, "confirm": true} to execute.
+    Omit confirm to preview what will be deleted.
+    Uses anonymization (not hard delete) to preserve aggregate analytics.
+    """
+
+    permission_classes = [IsAdminRole]
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        user_id = request.data.get("user_id")
+        confirm = request.data.get("confirm", False)
+
+        if not user_id:
+            return Response(
+                {"detail": "user_id is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            target_user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not confirm:
+            return Response({
+                "action": "gdpr_delete",
+                "user_id": target_user.id,
+                "email": target_user.email,
+                "is_active": target_user.is_active,
+                "requires_confirm": True,
+                "message": f"This will anonymize all personal data for {target_user.email} "
+                           "and deactivate the account. This action cannot be undone. "
+                           "Re-submit with confirm=true to proceed.",
+            })
+
+        try:
+            from apps.accounts.models_gdpr import AccountDeletionRequest
+        except ImportError:
+            return Response(
+                {"detail": "GDPR models not available."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        deletion_req, created = AccountDeletionRequest.objects.get_or_create(
+            user=target_user,
+            defaults={
+                "status": "processing",
+                "scheduled_for": timezone.now(),
+                "ip_address": request.META.get("REMOTE_ADDR"),
+            },
+        )
+
+        if not created:
+            if deletion_req.status == "completed":
+                return Response(
+                    {"detail": "Account already deleted/anonymized."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            deletion_req.status = "processing"
+            deletion_req.save()
+
+        try:
+            from apps.core.gdpr_service import GDPRService
+            service = GDPRService(target_user)
+            result = service.delete_user_data_anonymized()
+
+            deletion_req.status = "completed"
+            deletion_req.completed_at = timezone.now()
+            deletion_req.save()
+
+            ActivityLog.objects.create(
+                action="gdpr_delete",
+                metadata={
+                    "target_user_id": target_user.id,
+                    "target_email_was": target_user.email,
+                    "deletion_request_id": str(deletion_req.uuid),
+                    "anonymized_categories": result.get("anonymized_categories", {}),
+                    "triggered_by": request.user.email,
+                },
+                user=request.user,
+            )
+
+            return Response({
+                "action": "gdpr_delete",
+                "status": "completed",
+                "deletion_request_id": str(deletion_req.uuid),
+                "user_id": target_user.id,
+                "anonymized_categories": result.get("anonymized_categories", {}),
+                "errors": result.get("errors", []),
+            })
+
+        except Exception as e:
+            deletion_req.status = "failed"
+            deletion_req.error_message = str(e)
+            deletion_req.save()
+            return Response(
+                {"detail": f"Deletion failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
