@@ -248,18 +248,91 @@ class MatchingService:
         return min(score, 100)  # Cap at 100
     
     def _basic_match_breakdown(self, profile: UserProfile, job: Job) -> Dict:
-        """Fallback basic breakdown"""
+        """Fallback basic breakdown with real per-factor scores"""
+        skills_score = 0
+        skills_reasoning = 'No skills data available'
+        strengths = []
+        gaps = []
+
+        profile_skills = set(
+            skill.lower() for skill in (profile.skills or []) if skill
+        )
+        job_tags = job.tags.all() if hasattr(job, 'tags') else []
+        job_skills = set(tag.name.lower() for tag in job_tags)
+
+        if profile_skills and job_skills:
+            matched = profile_skills & job_skills
+            ratio = len(matched) / len(job_skills)
+            skills_score = int(ratio * 100)
+            if matched:
+                strengths.append(f"Matching skills: {', '.join(list(matched)[:5])}")
+            missing = job_skills - profile_skills
+            if missing:
+                gaps.append(f"Missing skills: {', '.join(list(missing)[:5])}")
+            skills_reasoning = f"{len(matched)}/{len(job_skills)} required skills matched"
+        elif not profile_skills:
+            skills_reasoning = 'Add skills to your profile for matching'
+
+        exp_score = 0
+        exp_reasoning = 'No experience data'
+        if profile.experience_years and job.experience_level:
+            exp_map = {'entry': (0, 2), 'junior': (1, 3), 'mid': (3, 6),
+                       'senior': (6, 10), 'lead': (8, None), 'executive': (10, None)}
+            min_exp, max_exp = exp_map.get(job.experience_level, (0, None))
+            yrs = profile.experience_years
+            if max_exp is None:
+                exp_score = 100 if yrs >= min_exp else int((yrs / max(min_exp, 1)) * 100)
+            elif min_exp <= yrs <= max_exp:
+                exp_score = 100
+            elif yrs > max_exp:
+                exp_score = 80
+            else:
+                exp_score = int((yrs / max(min_exp, 1)) * 100)
+            exp_reasoning = f"{yrs} years experience vs {job.experience_level} level"
+
+        loc_score = 0
+        loc_reasoning = 'No location preference set'
+        desired_locs = getattr(profile, 'desired_locations', []) or []
+        if desired_locs and job.location:
+            if any(loc and loc.lower() in job.location.lower() for loc in desired_locs):
+                loc_score = 100
+                loc_reasoning = 'Location matches your preferences'
+            else:
+                loc_reasoning = f"Job in {job.location}, not in your preferred locations"
+        if getattr(profile, 'open_to_remote', False) and getattr(job, 'location_type', '') == 'remote':
+            loc_score = max(loc_score, 90)
+            loc_reasoning = 'Remote position matches your preference'
+
+        sal_score = 0
+        sal_reasoning = 'No salary data to compare'
+        min_sal = getattr(profile, 'min_salary', None)
+        job_min = getattr(job, 'salary_min', None)
+        job_max = getattr(job, 'salary_max', None)
+        if min_sal and (job_min or job_max):
+            if job_min and float(job_min) >= float(min_sal):
+                sal_score = 100
+                sal_reasoning = 'Salary meets your minimum requirement'
+            elif job_max and float(job_max) >= float(min_sal):
+                sal_score = 75
+                sal_reasoning = 'Salary range overlaps with your minimum'
+            else:
+                sal_score = 30
+                sal_reasoning = 'Salary below your minimum requirement'
+
+        overall = self._basic_match_score(profile, job)
+
         return {
-            'overall_score': self._basic_match_score(profile, job),
+            'overall_score': overall,
             'breakdown': {
-                'skills': {'score': 0, 'reasoning': 'Basic algorithm'},
-                'experience': {'score': 0, 'reasoning': 'Basic algorithm'},
-                'location': {'score': 0, 'reasoning': 'Basic algorithm'}
+                'skills': {'score': skills_score, 'reasoning': skills_reasoning},
+                'experience': {'score': exp_score, 'reasoning': exp_reasoning},
+                'location': {'score': loc_score, 'reasoning': loc_reasoning},
+                'salary': {'score': sal_score, 'reasoning': sal_reasoning},
             },
-            'strengths': [],
-            'gaps': [],
-            'recommendation': 'Consider applying if interested',
-            'improvement_tips': []
+            'strengths': strengths,
+            'gaps': gaps,
+            'recommendation': self._generate_match_reasoning(profile, job, overall),
+            'improvement_tips': [],
         }
     
     def _generate_improvement_tips(self, match_result: Dict) -> List[str]:

@@ -18,6 +18,7 @@ from rest_framework.views import APIView
 
 from apps.career.scoring_engine import ScoringEngine
 from apps.career.models import TalentScore, CareerProfile, CareerUserSkill, CareerLearning, InterviewSession, CareerBrain
+from apps.jobs.models import Job
 from apps.career.serializers import (
     TalentScoreSerializer,
     ScoreBreakdownSerializer,
@@ -554,3 +555,49 @@ def ats_score(request):
     from apps.career.ats_scoring_service import ats_scoring_service
     result = ats_scoring_service.score(cv_text, job_description)
     return Response({'success': True, 'data': result})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def match_breakdown(request, job_id):
+    """GET /api/v1/career/jobs/{job_id}/match-breakdown/"""
+    from apps.profiles.services import matching_service
+    from apps.career.models import CareerProfile
+    try:
+        profile, _ = CareerProfile.objects.get_or_create(user=request.user)
+        job = Job.objects.get(id=job_id)
+        result = matching_service.get_match_breakdown(profile, job)
+        return Response({'success': True, 'data': result, 'message': '', 'errors': None})
+    except Job.DoesNotExist:
+        return Response(
+            {'success': False, 'data': None, 'message': 'Job not found', 'errors': None},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        logger.error("match_breakdown error: %s", e)
+        return Response(
+            {'success': False, 'data': None, 'message': str(e), 'errors': None},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def job_tailor(request, job_id):
+    """POST /api/v1/career/jobs/{job_id}/tailor/ — before/after ATS scoring."""
+    from apps.career.cv_tailor_service import cv_tailor_service
+    try:
+        job = Job.objects.get(id=job_id)
+        result = cv_tailor_service.tailor_for_job(request.user, job)
+        return Response({'success': True, 'data': result, 'message': '', 'errors': None})
+    except Job.DoesNotExist:
+        return Response(
+            {'success': False, 'data': None, 'message': 'Job not found', 'errors': None},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        logger.error("job_tailor error: %s", e)
+        return Response(
+            {'success': False, 'data': None, 'message': str(e), 'errors': None},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
