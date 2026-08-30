@@ -255,27 +255,27 @@ class TestNotificationsEndpoints:
     url = "/api/v1/users/me/notifications/"
 
     def test_list_notifications(self, auth_client, user):
-        from apps.users.models import Notification
-        Notification.objects.create(user=user, title="Hello!", type="system")
+        from apps.notifications.models import UserNotification
+        UserNotification.objects.create(user=user, title="Hello!", notification_type="system", message="Test")
         resp = auth_client.get(self.url)
         assert resp.status_code == status.HTTP_200_OK
         assert resp.json()["data"]["count"] >= 1
 
     def test_mark_notification_read(self, auth_client, user):
-        from apps.users.models import Notification
-        notif = Notification.objects.create(user=user, title="Ping", type="system", is_read=False)
+        from apps.notifications.models import UserNotification
+        notif = UserNotification.objects.create(user=user, title="Ping", notification_type="system", message="Test", status="unread")
         resp = auth_client.patch(f"{self.url}{notif.uuid}/")
         assert resp.status_code == status.HTTP_200_OK
         notif.refresh_from_db()
-        assert notif.is_read is True
+        assert notif.status == "read"
 
     def test_mark_all_notifications_read(self, auth_client, user):
-        from apps.users.models import Notification
-        Notification.objects.create(user=user, title="N1", type="system", is_read=False)
-        Notification.objects.create(user=user, title="N2", type="system", is_read=False)
+        from apps.notifications.models import UserNotification
+        UserNotification.objects.create(user=user, title="N1", notification_type="system", message="Test", status="unread")
+        UserNotification.objects.create(user=user, title="N2", notification_type="system", message="Test", status="unread")
         resp = auth_client.post(f"{self.url}mark-all-read/")
         assert resp.status_code == status.HTTP_200_OK
-        assert Notification.objects.filter(user=user, is_read=False).count() == 0
+        assert UserNotification.objects.filter(user=user, status="unread").count() == 0
 
     def test_notifications_require_auth(self, api_client):
         resp = api_client.get(self.url)
