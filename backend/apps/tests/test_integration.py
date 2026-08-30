@@ -182,7 +182,7 @@ class TestInterviewJourney:
 class TestJobWorkflow:
     """End-to-end job workflow tests."""
 
-    def test_admin_creates_job_and_user_applies(self, api_client, admin_user, company, source):
+    def test_admin_creates_job_and_user_applies(self, api_client, admin_user, user, company, source):
         """Test admin creating a job and user applying to it."""
         client = APIClient()
         # Login as admin
@@ -207,6 +207,7 @@ class TestJobWorkflow:
             "experience_level": "senior",
             "description": "Senior developer needed for growth company.",
             "source_url": "https://example.com/job",
+            "posted_at": "2026-08-30",
             "status": "active",
         }
         response = client.post(url, data)
@@ -309,14 +310,8 @@ class TestJobSearchWorkflow:
     def test_user_searches_filters_and_saves_jobs(self, api_client, user, job, company, tag):
         """Test user searching, filtering, and saving jobs."""
         client = APIClient()
-        # Login
-        url = reverse("accounts:login")
-        response = client.post(url, {
-            "email": user.email,
-            "password": "TestPass123!",
-        })
-        token = response.data["data"]["access"]
-        client.credentials(HTTP_AUTHORIZATION=f"Bearer {token}")
+        # Authenticate directly to avoid login throttle from prior tests
+        client.force_authenticate(user=user)
 
         # Search jobs
         url = reverse("jobs:job-list")

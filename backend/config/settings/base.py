@@ -166,6 +166,7 @@ REST_FRAMEWORK = {
         "anon": "30/minute",      # Anonymous: 30 requests per minute
         "user": "100/minute",     # Authenticated: 100 requests per minute
         "burst": "10/second",     # Burst protection: 10 per second
+        "auth": "10/minute",      # Auth endpoints: 10 per minute
     },
 }
 
