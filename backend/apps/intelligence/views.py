@@ -42,9 +42,9 @@ def chat_with_rashid(request):
             from apps.events.emitter import emit
             from apps.events.types import AI_MODEL_CALLED
 
-            usage = result.usage() if hasattr(result, 'usage') and callable(result.usage) else None
-            tokens_in = getattr(usage, 'request_tokens', 0) if usage else 0
-            tokens_out = getattr(usage, 'response_tokens', 0) if usage else 0
+            usage = result.usage if hasattr(result, 'usage') else None
+            tokens_in = getattr(usage, 'input_tokens', 0) if usage else 0
+            tokens_out = getattr(usage, 'output_tokens', 0) if usage else 0
             from apps.intelligence.bedrock_plugin import MODEL_COSTS, MODEL_ALIASES
             model_id = MODEL_ALIASES.get(getattr(settings, "RASHID_MODEL", "sonnet"), "")
             rates = MODEL_COSTS.get(model_id, {"input_per_1k": 0.003, "output_per_1k": 0.015})
@@ -70,8 +70,8 @@ def chat_with_rashid(request):
             pass
 
         return Response({
-            "response": result.data,
-            "model": str(result.usage()) if hasattr(result, 'usage') else "unknown",
+            "response": result.output,
+            "model": str(result.usage) if hasattr(result, 'usage') else "unknown",
         })
 
     except Exception as e:

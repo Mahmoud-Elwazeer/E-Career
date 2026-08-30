@@ -28,7 +28,7 @@ def create_admin_agent() -> Agent[AdminDeps, str]:
     agent = Agent(
         model,
         deps_type=AdminDeps,
-        system_prompt=_admin_system_prompt,
+        instructions=_admin_system_prompt,
         retries=2,
     )
 

@@ -263,7 +263,7 @@ class RashidService:
         # Call Bedrock
         try:
             if bedrock_service.is_available:
-                response = self._invoke_bedrock(system_prompt, messages)
+                response = self._invoke_bedrock(system_prompt, messages, user=conversation.user)
             else:
                 # Fallback response when Bedrock is not available
                 response = self._get_fallback_response(user_message)
@@ -301,29 +301,115 @@ class RashidService:
         
         return response
 
-    def _invoke_bedrock(self, system_prompt, messages):
-        """Invoke Bedrock with conversation history"""
+    def _invoke_bedrock(self, system_prompt, messages, user=None):
+        """Invoke Bedrock via the pydantic-ai tool-calling agent, falling
+        back to raw invoke_model if the agent layer is unavailable."""
         try:
-            # Build the prompt with history
-            full_prompt = ""
-            for msg in messages:
-                if msg['role'] == 'user':
-                    full_prompt += f"\n\nHuman: {msg['content']}"
-                else:
-                    full_prompt += f"\n\nAssistant: {msg['content']}"
-            
-            response = bedrock_service.invoke_model(
-                prompt=full_prompt,
-                system_prompt=system_prompt,
-                max_tokens=self.config.max_tokens,
-                temperature=self.config.temperature
-            )
-            
-            return response.strip()
-        
+            return self._invoke_via_agent(system_prompt, messages, user)
+        except ImportError:
+            logger.info("pydantic-ai agent unavailable, falling back to raw Bedrock")
         except Exception as e:
-            logger.error(f"Error invoking Bedrock: {e}")
-            raise
+            logger.warning("Agent call failed (%s), falling back to raw Bedrock", e)
+
+        return self._invoke_bedrock_raw(system_prompt, messages)
+
+    def _invoke_via_agent(self, system_prompt, messages, user=None):
+        """Call the pydantic-ai Rashid agent with tool-calling support."""
+        import asyncio
+        from apps.intelligence.agent import get_rashid_agent, PlatformDeps
+        from pydantic_ai.messages import (
+            ModelRequest, ModelResponse, UserPromptPart, TextPart,
+        )
+
+        agent = get_rashid_agent()
+
+        deps = PlatformDeps(
+            user_id=user.id if user else None,
+            user_email=user.email if user else "",
+            user_name=getattr(user, "full_name", "") if user else "",
+        )
+
+        history = []
+        for msg in messages[:-1]:
+            if msg["role"] == "user":
+                history.append(ModelRequest(parts=[UserPromptPart(content=msg["content"])]))
+            else:
+                history.append(ModelResponse(parts=[TextPart(content=msg["content"])]))
+
+        last_msg = messages[-1]["content"] if messages else ""
+
+        loop = asyncio.new_event_loop()
+        try:
+            result = loop.run_until_complete(
+                agent.run(
+                    last_msg,
+                    deps=deps,
+                    message_history=history if history else None,
+                    instructions=system_prompt,
+                )
+            )
+        finally:
+            loop.close()
+
+        self._track_agent_usage(result, user)
+        return result.output.strip()
+
+    def _track_agent_usage(self, result, user):
+        """Emit an EventLog entry for the agent call's cost."""
+        try:
+            from apps.events.emitter import emit
+            from apps.events.types import AI_MODEL_CALLED
+            from apps.intelligence.bedrock_plugin import MODEL_COSTS, MODEL_ALIASES
+            from django.conf import settings
+
+            usage = result.usage if hasattr(result, "usage") else None
+            tokens_in = getattr(usage, "input_tokens", 0) if usage else 0
+            tokens_out = getattr(usage, "output_tokens", 0) if usage else 0
+
+            model_alias = getattr(settings, "RASHID_MODEL", "sonnet")
+            model_id = MODEL_ALIASES.get(model_alias, "")
+            rates = MODEL_COSTS.get(model_id, {"input_per_1k": 0.003, "output_per_1k": 0.015})
+            cost = round(
+                (tokens_in / 1000) * rates["input_per_1k"]
+                + (tokens_out / 1000) * rates["output_per_1k"],
+                6,
+            )
+
+            emit(
+                event_type=AI_MODEL_CALLED,
+                category="ai",
+                user=user,
+                target_type="model",
+                target_id=model_id,
+                data={
+                    "model": model_id,
+                    "tokens_in": tokens_in,
+                    "tokens_out": tokens_out,
+                    "cost_usd": cost,
+                    "user_id": user.id if user else None,
+                    "operation": "chat",
+                    "agent": "rashid_pydantic_ai",
+                },
+            )
+        except Exception:
+            pass
+
+    def _invoke_bedrock_raw(self, system_prompt, messages):
+        """Raw Bedrock invoke_model fallback (no tool-calling)."""
+        full_prompt = ""
+        for msg in messages:
+            if msg["role"] == "user":
+                full_prompt += f"\n\nHuman: {msg['content']}"
+            else:
+                full_prompt += f"\n\nAssistant: {msg['content']}"
+
+        response = bedrock_service.invoke_model(
+            prompt=full_prompt,
+            system_prompt=system_prompt,
+            max_tokens=self.config.max_tokens,
+            temperature=self.config.temperature,
+        )
+        return response.strip()
 
     def _get_fallback_response(self, user_message):
         """Fallback response when Bedrock is not available"""

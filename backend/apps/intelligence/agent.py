@@ -54,7 +54,7 @@ def create_rashid_agent() -> Agent[PlatformDeps, str]:
     rashid = Agent(
         model,
         deps_type=PlatformDeps,
-        system_prompt=_rashid_system_prompt,
+        instructions=_rashid_system_prompt,
         retries=2,
     )
 
