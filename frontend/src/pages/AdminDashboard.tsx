@@ -5,7 +5,8 @@ import {
   TrendingUp, TrendingDown, Minus, Clock, RefreshCw, AlertTriangle,
   Users, Eye, MousePointerClick, Loader2, Upload, PieChart,
   LayoutDashboard, Building2, Star, ShieldCheck, Database, Globe,
-  GitCompare, Brain, Bot, Mic, Zap, Bell, Package, Lock, Activity
+  GitCompare, Brain, Bot, Mic, Zap, Bell, Package, Lock, Activity,
+  MessageSquare, Send
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,7 +32,8 @@ type AdminTab =
   | 'jobs' | 'verification' | 'sources' | 'scraping'
   | 'matching' | 'ai-center' | 'rashid' | 'interviews'
   | 'automations' | 'notifications' | 'analytics'
-  | 'packages' | 'security' | 'search-admin' | 'system-health' | 'settings';
+  | 'packages' | 'security' | 'search-admin' | 'system-health' | 'settings'
+  | 'copilot';
 
 function AnalyticsTab() {
   const { toast } = useToast();
@@ -424,6 +426,314 @@ function GdprDashboardTab({ logs, logsLoading }: { logs: any[]; logsLoading: boo
   );
 }
 
+function CeleryBeatTab() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiRequest<any>("/admin-api/celery-beat/")
+      .then(setData)
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleToggle = async (taskId: number, enabled: boolean) => {
+    try {
+      await apiRequest<any>(`/admin-api/celery-beat/${taskId}/toggle/`, {
+        method: "PATCH",
+        body: JSON.stringify({ enabled }),
+      });
+      setData((prev: any) => ({
+        ...prev,
+        tasks: prev.tasks.map((t: any) => t.id === taskId ? { ...t, enabled } : t),
+      }));
+    } catch {
+      // ignore
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Zap className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Automations (Celery Beat)</h2>
+      </div>
+      {data?.tasks?.length ? (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-start p-3 font-medium">Task</th>
+                  <th className="text-start p-3 font-medium">Schedule</th>
+                  <th className="text-start p-3 font-medium">Last Run</th>
+                  <th className="text-start p-3 font-medium">Runs</th>
+                  <th className="text-start p-3 font-medium">Enabled</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.tasks.map((task: any) => (
+                  <tr key={task.id} className="border-b last:border-0">
+                    <td className="p-3">
+                      <p className="font-medium">{task.name}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono">{task.task}</p>
+                    </td>
+                    <td className="p-3 text-muted-foreground font-mono text-xs">{task.schedule}</td>
+                    <td className="p-3 text-muted-foreground whitespace-nowrap">
+                      {task.last_run_at ? formatDistanceToNow(new Date(task.last_run_at), { addSuffix: true }) : "Never"}
+                    </td>
+                    <td className="p-3 text-muted-foreground">{task.total_run_count}</td>
+                    <td className="p-3">
+                      <Switch checked={task.enabled} onCheckedChange={(v) => handleToggle(task.id, v)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : (
+        <Card><CardContent className="p-8 text-center">
+          <Zap className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+          <p className="text-body text-muted-foreground">No periodic tasks found</p>
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
+function AdminSearchTab() {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+
+  const handleSearch = async () => {
+    if (query.length < 2) return;
+    setLoading(true);
+    setSearched(true);
+    try {
+      const data = await apiRequest<any>(`/admin-api/search/?q=${encodeURIComponent(query)}`);
+      setResults(data?.results || []);
+    } catch {
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Search className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Global Search</h2>
+      </div>
+      <div className="flex gap-2 max-w-lg">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search users, companies, jobs..."
+          onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+          className="rounded-xl"
+        />
+        <Button onClick={handleSearch} disabled={loading || query.length < 2}>
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+        </Button>
+      </div>
+      {searched && (
+        results.length ? (
+          <div className="space-y-2">
+            {results.map((r, i) => (
+              <Card key={i}>
+                <CardContent className="p-4 flex items-center gap-4">
+                  <Badge variant="outline" className="capitalize">{r.type}</Badge>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{r.label}</p>
+                    <p className="text-xs text-muted-foreground truncate">{r.detail}</p>
+                  </div>
+                  {r.role && <Badge variant="secondary" className="text-[10px]">{r.role}</Badge>}
+                  {r.industry && <Badge variant="secondary" className="text-[10px]">{r.industry}</Badge>}
+                  {r.status && <Badge variant="secondary" className="text-[10px]">{r.status}</Badge>}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">No results found for &quot;{query}&quot;</p>
+        )
+      )}
+    </div>
+  );
+}
+
+function PackagesTab() {
+  const [plans, setPlans] = useState<any[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      apiRequest<any>("/admin-api/plans/").catch(() => ({ results: [] })),
+      apiRequest<any>("/admin-api/subscriptions/").catch(() => ({ results: [] })),
+    ]).then(([p, s]) => {
+      setPlans(p?.results || p || []);
+      setSubscriptions(s?.results || s || []);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Package className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Packages &amp; Entitlements</h2>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <h3 className="text-body font-medium mb-3">Subscription Plans ({plans.length})</h3>
+          {plans.length ? (
+            <div className="space-y-2">
+              {plans.map((plan: any) => (
+                <Card key={plan.uuid}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{plan.name}</p>
+                        <p className="text-xs text-muted-foreground">{plan.description || "No description"}</p>
+                      </div>
+                      <Badge variant={plan.is_active ? "default" : "secondary"}>
+                        {plan.is_active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                      <span>Jobs: {plan.job_posting_limit || "∞"}</span>
+                      <span>Search: {plan.candidate_search_limit || "∞"}</span>
+                      <span>AI: {plan.ai_features_enabled ? "Yes" : "No"}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card><CardContent className="p-6 text-center text-muted-foreground">No plans created yet</CardContent></Card>
+          )}
+        </div>
+        <div>
+          <h3 className="text-body font-medium mb-3">Company Subscriptions ({subscriptions.length})</h3>
+          {subscriptions.length ? (
+            <div className="space-y-2">
+              {subscriptions.map((sub: any) => (
+                <Card key={sub.uuid}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">{sub.company_name}</p>
+                        <p className="text-xs text-muted-foreground">Plan: {sub.plan_name}</p>
+                      </div>
+                      <Badge variant={sub.status === "active" ? "default" : "secondary"} className="capitalize">
+                        {sub.status}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <Card><CardContent className="p-6 text-center text-muted-foreground">No subscriptions yet</CardContent></Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CopilotTab() {
+  const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; content: string }>>([]);
+  const [input, setInput] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const sendMessage = async () => {
+    const text = input.trim();
+    if (!text || isProcessing) return;
+    setInput("");
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setIsProcessing(true);
+
+    try {
+      const data = await apiRequest<any>("/admin-api/copilot/chat/", {
+        method: "POST",
+        body: JSON.stringify({ message: text }),
+      });
+      setMessages((prev) => [...prev, { role: "assistant", content: data?.response || "No response." }]);
+    } catch {
+      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, the copilot is unavailable right now." }]);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <MessageSquare className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Admin Copilot</h2>
+        <Badge variant="secondary" className="text-[10px]">AI-powered</Badge>
+      </div>
+      <Card className="flex flex-col" style={{ height: "60vh" }}>
+        <CardContent className="flex-1 overflow-y-auto p-4 space-y-3">
+          {messages.length === 0 && (
+            <div className="text-center text-muted-foreground py-12">
+              <MessageSquare className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+              <p className="text-body font-medium">Ask about platform health, scraping status, AI costs, or verification anomalies.</p>
+              <p className="text-caption mt-1">The copilot has read-only access to admin data. It cannot modify anything directly.</p>
+            </div>
+          )}
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[80%] rounded-xl px-4 py-2.5 text-sm whitespace-pre-wrap ${
+                msg.role === "user"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card border"
+              }`}>
+                {msg.content}
+              </div>
+            </div>
+          ))}
+          {isProcessing && (
+            <div className="flex justify-start">
+              <div className="bg-card border rounded-xl px-4 py-2.5">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </CardContent>
+        <div className="border-t p-3 flex gap-2">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask the copilot..."
+            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+            disabled={isProcessing}
+            className="rounded-xl"
+          />
+          <Button onClick={sendMessage} disabled={isProcessing || !input.trim()} size="icon" className="shrink-0">
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
 
   usePageMeta("Admin Dashboard", "USAM Jobs admin panel — manage jobs, sources, and platform settings.");
@@ -483,6 +793,7 @@ export default function AdminDashboard() {
         { icon: Brain, label: "AI Center", tab: "ai-center" as AdminTab },
         { icon: Bot, label: "Rashid", tab: "rashid" as AdminTab },
         { icon: Mic, label: "Interviews", tab: "interviews" as AdminTab },
+        { icon: MessageSquare, label: "Copilot", tab: "copilot" as AdminTab },
       ],
     },
     {
@@ -828,18 +1139,13 @@ export default function AdminDashboard() {
           {activeTab === "interviews" && (
             <PlaceholderTab icon={Mic} title="Interview Management" description="Manage AI-assisted interview scheduling, templates, and evaluation criteria. Coming soon." />
           )}
-          {activeTab === "automations" && (
-            <PlaceholderTab icon={Zap} title="Automations" description="Configure automated workflows for job processing, notifications, and data pipelines. Coming soon." />
-          )}
+          {activeTab === "automations" && <CeleryBeatTab />}
           {activeTab === "notifications" && (
             <PlaceholderTab icon={Bell} title="Notification Center" description="Manage notification templates, delivery channels, and broadcast messages. Coming soon." />
           )}
-          {activeTab === "packages" && (
-            <PlaceholderTab icon={Package} title="Packages & Billing" description="Manage subscription packages, pricing tiers, and billing configurations. Coming soon." />
-          )}
-          {activeTab === "search-admin" && (
-            <PlaceholderTab icon={Search} title="Search Administration" description="Configure search indexing, relevance tuning, synonyms, and search analytics. Coming soon." />
-          )}
+          {activeTab === "packages" && <PackagesTab />}
+          {activeTab === "search-admin" && <AdminSearchTab />}
+          {activeTab === "copilot" && <CopilotTab />}
         </div>
       </main>
     </div>
