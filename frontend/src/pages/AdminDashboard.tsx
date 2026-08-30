@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import {
   BarChart3, Briefcase, Search, Link2, ArrowLeft, ImageIcon, Settings, ScrollText,
   TrendingUp, TrendingDown, Minus, Clock, RefreshCw, AlertTriangle,
-  Users, Eye, MousePointerClick, Loader2, Upload, PieChart
+  Users, Eye, MousePointerClick, Loader2, Upload, PieChart,
+  LayoutDashboard, Building2, Star, ShieldCheck, Database, Globe,
+  GitCompare, Brain, Bot, Mic, Zap, Bell, Package, Lock, Activity
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,10 +22,16 @@ import { useTheme } from "@/hooks/use-theme";
 import { usePageMeta } from "@/hooks/use-seo";
 import { useToast } from "@/hooks/use-toast";
 import { adminCsvImport, fetchClickAnalytics, fetchSearchAnalytics, fetchConversionAnalytics } from "@/lib/admin-api";
+import { apiRequest } from "@/services/client";
 import { formatDistanceToNow } from "date-fns";
 import { useEffect } from "react";
 
-type AdminTab = "overview" | "jobs" | "sources" | "media" | "settings" | "logs" | "analytics" | "import";
+type AdminTab =
+  | 'overview' | 'users' | 'companies' | 'talent'
+  | 'jobs' | 'verification' | 'sources' | 'scraping'
+  | 'matching' | 'ai-center' | 'rashid' | 'interviews'
+  | 'automations' | 'notifications' | 'analytics'
+  | 'packages' | 'security' | 'search-admin' | 'system-health' | 'settings';
 
 function AnalyticsTab() {
   const { toast } = useToast();
@@ -184,6 +192,238 @@ function CsvImportTab() {
   );
 }
 
+function PlaceholderTab({ icon: Icon, title, description }: { icon: React.ComponentType<{ className?: string }>; title: string; description: string }) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Icon className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">{title}</h2>
+      </div>
+      <Card>
+        <CardContent className="p-8 text-center">
+          <Icon className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-body font-medium">{title}</p>
+          <p className="text-caption text-muted-foreground mt-1">{description}</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function SystemHealthTab() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    apiRequest<any>("/admin-api/system-health/")
+      .then(setData)
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Activity className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">System Health</h2>
+      </div>
+      {data ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.entries(data).map(([key, value]) => (
+            <Card key={key}>
+              <CardContent className="p-5">
+                <p className="text-caption text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
+                <p className="text-heading-2 mt-1">{typeof value === "object" ? JSON.stringify(value) : String(value)}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card><CardContent className="p-8 text-center">
+          <Activity className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-body text-muted-foreground">{error ? "Unable to load system health data" : "No data available"}</p>
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
+function ScrapingDashboardTab() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    apiRequest<any>("/admin-api/scraper-dashboard/")
+      .then(setData)
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Globe className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Scraping Dashboard</h2>
+      </div>
+      {data ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.entries(data).map(([key, value]) => (
+            <Card key={key}>
+              <CardContent className="p-5">
+                <p className="text-caption text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
+                <p className="text-heading-2 mt-1">{typeof value === "object" ? JSON.stringify(value) : String(value)}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card><CardContent className="p-8 text-center">
+          <Globe className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-body text-muted-foreground">{error ? "Unable to load scraper data" : "No scraping data available"}</p>
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
+function AiCenterTab() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    apiRequest<any>("/admin-api/ai-costs/")
+      .then(setData)
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Brain className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">AI Center</h2>
+      </div>
+      {data ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.entries(data).map(([key, value]) => (
+            <Card key={key}>
+              <CardContent className="p-5">
+                <p className="text-caption text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
+                <p className="text-heading-2 mt-1">{typeof value === "object" ? JSON.stringify(value) : String(value)}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card><CardContent className="p-8 text-center">
+          <Brain className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+          <p className="text-body text-muted-foreground">{error ? "Unable to load AI cost data" : "No AI cost data available"}</p>
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
+function GdprDashboardTab({ logs, logsLoading }: { logs: any[]; logsLoading: boolean }) {
+  const [gdprData, setGdprData] = useState<any>(null);
+  const [gdprLoading, setGdprLoading] = useState(true);
+
+  useEffect(() => {
+    apiRequest<any>("/admin-api/gdpr/dashboard/")
+      .then(setGdprData)
+      .catch(() => null)
+      .finally(() => setGdprLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Lock className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Security & Compliance</h2>
+      </div>
+
+      {/* GDPR Dashboard */}
+      {gdprLoading ? (
+        <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      ) : gdprData ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Object.entries(gdprData).map(([key, value]) => (
+            <Card key={key}>
+              <CardContent className="p-5">
+                <p className="text-caption text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
+                <p className="text-heading-2 mt-1">{typeof value === "object" ? JSON.stringify(value) : String(value)}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <Card><CardContent className="p-5 text-center">
+          <p className="text-caption text-muted-foreground">GDPR dashboard data unavailable</p>
+        </CardContent></Card>
+      )}
+
+      {/* Activity Logs (moved from old logs tab) */}
+      <div className="space-y-4">
+        <h3 className="text-body font-medium">Activity Logs</h3>
+        {logsLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : logs.length === 0 ? (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <ScrollText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-body text-muted-foreground">No activity logs recorded yet</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="w-full text-caption">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-start p-3 font-medium">Action</th>
+                    <th className="text-start p-3 font-medium">Entity</th>
+                    <th className="text-start p-3 font-medium">Details</th>
+                    <th className="text-start p-3 font-medium">When</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log: any) => (
+                    <tr key={log.id} className="border-b last:border-0">
+                      <td className="p-3">
+                        <Badge variant="outline" className="text-[10px]">{log.action}</Badge>
+                      </td>
+                      <td className="p-3 text-muted-foreground">
+                        {log.entity_type || "—"}
+                      </td>
+                      <td className="p-3 text-muted-foreground truncate max-w-[200px]">
+                        {log.details ? JSON.stringify(log.details).slice(0, 80) : "—"}
+                      </td>
+                      <td className="p-3 text-muted-foreground whitespace-nowrap">
+                        {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
 
   usePageMeta("Admin Dashboard", "USAM Jobs admin panel — manage jobs, sources, and platform settings.");
@@ -201,7 +441,7 @@ export default function AdminDashboard() {
   const [logsLoading, setLogsLoading] = useState(false);
 
   useEffect(() => {
-    if (activeTab === "logs") {
+    if (activeTab === "security") {
       setLogsLoading(true);
       fetchActivityLogs(1).then(setLogs).catch(() => {}).finally(() => setLogsLoading(false));
     }
@@ -217,16 +457,56 @@ export default function AdminDashboard() {
     { label: "Job Views", value: stats?.total_views ?? "—", trend: "", icon: Eye, up: null },
   ];
 
-  const navItems = [
-    { icon: BarChart3, label: "Overview", tab: "overview" as const },
-    { icon: Briefcase, label: "Jobs", tab: "jobs" as const },
-    { icon: Link2, label: "Sources", tab: "sources" as const },
-    { icon: ImageIcon, label: "Media", tab: "media" as const },
-    { icon: PieChart, label: "Analytics", tab: "analytics" as const },
-    { icon: Upload, label: "Import", tab: "import" as const },
-    { icon: Settings, label: "Settings", tab: "settings" as const },
-    { icon: ScrollText, label: "Logs", tab: "logs" as const },
+  const navGroups = [
+    {
+      label: "Platform",
+      items: [
+        { icon: LayoutDashboard, label: "Overview", tab: "overview" as AdminTab },
+        { icon: Users, label: "Users", tab: "users" as AdminTab },
+        { icon: Building2, label: "Companies", tab: "companies" as AdminTab },
+        { icon: Star, label: "Talent", tab: "talent" as AdminTab },
+      ],
+    },
+    {
+      label: "Content",
+      items: [
+        { icon: Briefcase, label: "Jobs", tab: "jobs" as AdminTab },
+        { icon: ShieldCheck, label: "Verification", tab: "verification" as AdminTab },
+        { icon: Database, label: "Sources", tab: "sources" as AdminTab },
+        { icon: Globe, label: "Scraping", tab: "scraping" as AdminTab },
+      ],
+    },
+    {
+      label: "Intelligence",
+      items: [
+        { icon: GitCompare, label: "Matching", tab: "matching" as AdminTab },
+        { icon: Brain, label: "AI Center", tab: "ai-center" as AdminTab },
+        { icon: Bot, label: "Rashid", tab: "rashid" as AdminTab },
+        { icon: Mic, label: "Interviews", tab: "interviews" as AdminTab },
+      ],
+    },
+    {
+      label: "Operations",
+      items: [
+        { icon: Zap, label: "Automations", tab: "automations" as AdminTab },
+        { icon: Bell, label: "Notifications", tab: "notifications" as AdminTab },
+        { icon: BarChart3, label: "Analytics", tab: "analytics" as AdminTab },
+      ],
+    },
+    {
+      label: "Administration",
+      items: [
+        { icon: Package, label: "Packages", tab: "packages" as AdminTab },
+        { icon: Lock, label: "Security", tab: "security" as AdminTab },
+        { icon: Search, label: "Search", tab: "search-admin" as AdminTab },
+        { icon: Activity, label: "System Health", tab: "system-health" as AdminTab },
+        { icon: Settings, label: "Settings", tab: "settings" as AdminTab },
+      ],
+    },
   ];
+
+  const allNavItems = navGroups.flatMap(g => g.items);
+  const activeNavItem = allNavItems.find(item => item.tab === activeTab);
 
   const handleToggleFlag = async (id: string, enabled: boolean, label: string) => {
     const { error } = await toggleFlag(id, enabled);
@@ -245,20 +525,27 @@ export default function AdminDashboard() {
           <img src="/logo-dark.png" alt="USAM" className="h-8 dark:invert" />
           <p className="text-caption text-muted-foreground mt-1">Admin Panel</p>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
-          {navItems.map((item) => (
-            <button
-              key={item.tab}
-              onClick={() => setActiveTab(item.tab)}
-              className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-lg text-body font-medium transition-colors ${
-                activeTab === item.tab
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground/70 hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </button>
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+          {navGroups.map((group) => (
+            <div key={group.label}>
+              <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 first:pt-1">
+                {group.label}
+              </p>
+              {group.items.map((item) => (
+                <button
+                  key={item.tab}
+                  onClick={() => setActiveTab(item.tab)}
+                  className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-caption font-medium transition-colors ${
+                    activeTab === item.tab
+                      ? "bg-primary text-primary-foreground"
+                      : "text-foreground/70 hover:bg-accent hover:text-foreground"
+                  }`}
+                >
+                  <item.icon className="h-4 w-4" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="p-3 border-t">
@@ -276,19 +563,19 @@ export default function AdminDashboard() {
           <div className="flex items-center justify-between px-6 h-14">
             <div className="flex items-center gap-4">
               <div className="flex lg:hidden gap-1 overflow-x-auto">
-                {navItems.map((item) => (
+                {allNavItems.map((item) => (
                   <Button
                     key={item.tab}
                     variant={activeTab === item.tab ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setActiveTab(item.tab)}
-                    className="text-caption capitalize rounded-lg shrink-0"
+                    className="text-caption rounded-lg shrink-0"
                   >
                     {item.label}
                   </Button>
                 ))}
               </div>
-              <h1 className="text-heading-3 hidden lg:block capitalize">{activeTab}</h1>
+              <h1 className="text-heading-3 hidden lg:block">{activeNavItem?.label ?? activeTab}</h1>
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="rounded-lg" onClick={reloadStats}>
@@ -452,100 +739,107 @@ export default function AdminDashboard() {
           {/* SOURCES */}
           {activeTab === "sources" && <AdminSourcesManager />}
 
-          {/* MEDIA */}
-          {activeTab === "media" && <AdminMediaManager />}
-
-          {/* SETTINGS - Feature Flags */}
+          {/* SETTINGS - Feature Flags + Media + Import */}
           {activeTab === "settings" && (
-            <div className="space-y-6 max-w-2xl">
-              <Card>
-                <CardContent className="p-5">
-                  <h3 className="text-body font-medium mb-4">Feature Flags</h3>
-                  {flagsLoading ? (
-                    <div className="flex justify-center py-6">
-                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {flags.map((flag) => (
-                        <div key={flag.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                          <div>
-                            <p className="text-body font-medium">{flag.label}</p>
-                            {flag.description && (
-                              <p className="text-caption text-muted-foreground">{flag.description}</p>
-                            )}
-                            <Badge variant="outline" className="text-[10px] mt-1">{flag.key}</Badge>
-                          </div>
-                          <Switch
-                            checked={flag.is_enabled}
-                            onCheckedChange={(checked) => handleToggleFlag(flag.uuid, checked, flag.label)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* LOGS */}
-          {activeTab === "logs" && (
-            <div className="space-y-4">
-              <h3 className="text-body font-medium">Activity Logs</h3>
-              {logsLoading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : logs.length === 0 ? (
+            <div className="space-y-8">
+              <div className="max-w-2xl">
                 <Card>
-                  <CardContent className="p-8 text-center">
-                    <ScrollText className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-body text-muted-foreground">No activity logs recorded yet</p>
+                  <CardContent className="p-5">
+                    <h3 className="text-body font-medium mb-4">Feature Flags</h3>
+                    {flagsLoading ? (
+                      <div className="flex justify-center py-6">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {flags.map((flag) => (
+                          <div key={flag.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                            <div>
+                              <p className="text-body font-medium">{flag.label}</p>
+                              {flag.description && (
+                                <p className="text-caption text-muted-foreground">{flag.description}</p>
+                              )}
+                              <Badge variant="outline" className="text-[10px] mt-1">{flag.key}</Badge>
+                            </div>
+                            <Switch
+                              checked={flag.is_enabled}
+                              onCheckedChange={(checked) => handleToggleFlag(flag.uuid, checked, flag.label)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
-              ) : (
-                <Card>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-caption">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-start p-3 font-medium">Action</th>
-                          <th className="text-start p-3 font-medium">Entity</th>
-                          <th className="text-start p-3 font-medium">Details</th>
-                          <th className="text-start p-3 font-medium">When</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {logs.map((log: any) => (
-                          <tr key={log.id} className="border-b last:border-0">
-                            <td className="p-3">
-                              <Badge variant="outline" className="text-[10px]">{log.action}</Badge>
-                            </td>
-                            <td className="p-3 text-muted-foreground">
-                              {log.entity_type || "—"}
-                            </td>
-                            <td className="p-3 text-muted-foreground truncate max-w-[200px]">
-                              {log.details ? JSON.stringify(log.details).slice(0, 80) : "—"}
-                            </td>
-                            <td className="p-3 text-muted-foreground whitespace-nowrap">
-                              {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </Card>
-              )}
+              </div>
+
+              {/* Media Library (moved from standalone media tab) */}
+              <div>
+                <h3 className="text-body font-medium mb-4 flex items-center gap-2">
+                  <ImageIcon className="h-4 w-4 text-muted-foreground" /> Media Library
+                </h3>
+                <AdminMediaManager />
+              </div>
+
+              {/* CSV Import (moved from standalone import tab) */}
+              <div>
+                <h3 className="text-body font-medium mb-4 flex items-center gap-2">
+                  <Upload className="h-4 w-4 text-muted-foreground" /> CSV Import
+                </h3>
+                <CsvImportTab />
+              </div>
             </div>
           )}
 
           {/* ANALYTICS */}
           {activeTab === "analytics" && <AnalyticsTab />}
 
-          {/* CSV IMPORT */}
-          {activeTab === "import" && <CsvImportTab />}
+          {/* SECURITY (includes GDPR dashboard + activity logs) */}
+          {activeTab === "security" && <GdprDashboardTab logs={logs} logsLoading={logsLoading} />}
+
+          {/* SYSTEM HEALTH */}
+          {activeTab === "system-health" && <SystemHealthTab />}
+
+          {/* SCRAPING */}
+          {activeTab === "scraping" && <ScrapingDashboardTab />}
+
+          {/* AI CENTER */}
+          {activeTab === "ai-center" && <AiCenterTab />}
+
+          {/* PLACEHOLDER TABS */}
+          {activeTab === "users" && (
+            <PlaceholderTab icon={Users} title="User Management" description="Manage platform users, roles, and permissions. Coming soon." />
+          )}
+          {activeTab === "companies" && (
+            <PlaceholderTab icon={Building2} title="Company Management" description="Review and manage registered companies and employer accounts. Coming soon." />
+          )}
+          {activeTab === "talent" && (
+            <PlaceholderTab icon={Star} title="Talent Pool" description="Browse and manage candidate profiles, talent rankings, and skill assessments. Coming soon." />
+          )}
+          {activeTab === "verification" && (
+            <PlaceholderTab icon={ShieldCheck} title="Verification Center" description="Review and verify job listings, company profiles, and user identities. Coming soon." />
+          )}
+          {activeTab === "matching" && (
+            <PlaceholderTab icon={GitCompare} title="Job Matching" description="Configure and monitor the AI-powered job matching engine. Coming soon." />
+          )}
+          {activeTab === "rashid" && (
+            <PlaceholderTab icon={Bot} title="Rashid AI Assistant" description="Manage the Rashid conversational AI assistant, training data, and conversation logs. Coming soon." />
+          )}
+          {activeTab === "interviews" && (
+            <PlaceholderTab icon={Mic} title="Interview Management" description="Manage AI-assisted interview scheduling, templates, and evaluation criteria. Coming soon." />
+          )}
+          {activeTab === "automations" && (
+            <PlaceholderTab icon={Zap} title="Automations" description="Configure automated workflows for job processing, notifications, and data pipelines. Coming soon." />
+          )}
+          {activeTab === "notifications" && (
+            <PlaceholderTab icon={Bell} title="Notification Center" description="Manage notification templates, delivery channels, and broadcast messages. Coming soon." />
+          )}
+          {activeTab === "packages" && (
+            <PlaceholderTab icon={Package} title="Packages & Billing" description="Manage subscription packages, pricing tiers, and billing configurations. Coming soon." />
+          )}
+          {activeTab === "search-admin" && (
+            <PlaceholderTab icon={Search} title="Search Administration" description="Configure search indexing, relevance tuning, synonyms, and search analytics. Coming soon." />
+          )}
         </div>
       </main>
     </div>
