@@ -38,11 +38,11 @@
 | 13 | Direct-Apply Verification Admin View | **INTEGRATE** | VerificationResult model stores all 6 stages with admin override fields. Django admin has full fieldsets. React SPA has ZERO visibility into verification data | `verification/models.py:5` VerificationResult (6 stages), `verification/admin.py:7-58` full fieldsets. `AdminDashboard.tsx` — no verification references |
 | 14 | Employer/Recruiter Account Control | **DONE** | Full admin with approve/reject, EmployerTeamMember model (5 roles), verify_apply_urls action, ActivityLog audit trail | `employers/admin.py:28-103` EmployerProfileAdmin, `:107` JobPostingAdmin. `employers/models.py:48` EmployerTeamMember |
 | 15 | Packages/Entitlements | **MISSING** | No Package/Subscription/Entitlement models anywhere. FeatureFlag exists and can serve as the gating mechanism | Zero results for `class.*Package\|Subscription\|Entitlement` across all apps. `core/models.py:345` FeatureFlag is the closest |
-| 16 | Platform Workflow Engine | **DONE** | Prefect-based workflow orchestration with Celery fallback. Rule model with JSONB condition trees and RuleEngine with 14 operators | `intelligence/workflows.py:67-165` Prefect flows. `core/models.py:264` Rule model. `core/rule_engine.py:153` RuleEngine |
+| 16 | Platform Workflow Engine | **PARTIAL** | Rule engine + Celery Beat = real automation substrate (DONE). Prefect-based pipeline layer (`intelligence/workflows.py`) = dead code: `prefect` not installed in venv, zero consumers across `apps/`. Recommendation: delete `workflows.py` as dead code, rely on Celery Beat + Rule engine alone | `core/models.py:264` Rule model. `core/rule_engine.py:153` RuleEngine. `intelligence/workflows.py` — dead code (ModuleNotFoundError if called) |
 | 17 | Automation Center | **DONE** | 18 scheduled Celery Beat tasks across all domains. RuleEngine with 7 seed rules for automated actions. DB-backed scheduler (`django_celery_beat`) | `config/celery.py:21-114` beat_schedule. `core/rule_engine.py:316` seed rules. `core/admin.py:11-85` RuleAdmin |
 | 18 | Notification Admin Control | **DONE** | NotificationPreference (per-user settings), UserNotification (12 types), NotificationBatch models. Full service layer with preference-aware delivery and digest | `notifications/models.py:16,97,205` three models. `notifications/service.py` delivery. `notifications/tasks.py:68` digest. `notifications/admin.py` three admin panels |
 | 19 | Analytics & Reporting | **DONE** | Full analytics app: 8 API endpoints, conversion funnel, retention cohorts, job market insights, feature usage stats. Frontend admin analytics tab | `analytics/views.py:15-179` AdminStats/Charts/Click/Search/Conversion views. `analytics/views_dashboard.py:23` AnalyticsDashboardView. `AdminDashboard.tsx` analytics tab |
-| 20 | Security, Data Retention, Consent | **DONE** | Complete GDPR: DataExportRequest (Article 15), AccountDeletionRequest (Article 17, 30-day grace), GDPRService with anonymization, Celery tasks, rate limiting. Minor gap: no explicit ConsentLog model | `accounts/models_gdpr.py:9,67` GDPR models. `core/gdpr_service.py:50` GDPRService. `core/middleware/rate_limiting.py:32` GDPR rate limits |
+| 20 | Security, Data Retention, Consent | **PARTIAL** | GDPR data models exist (`DataExportRequest`, `AccountDeletionRequest`) but NO DRF view, URL route, or admin action invokes them — models with no usable endpoint. `GDPRService` exists but is unreachable from any API. Phase 7c must build the DRF views + admin UI + confirmation flow + ActivityLog entries for both export and delete/anonymize | `accounts/models_gdpr.py:9,67` GDPR models (exist). `core/gdpr_service.py:50` GDPRService (exists). No URL routes or views wire these to any endpoint |
 | 21 | Admin AI Copilot | **MISSING** | No admin-scoped AI agent. Rashid agent exists for users only | No `AdminCopilot`, `admin_chat` code found. `intelligence/agent.py` has user-only Rashid agent |
 | 22 | Decision-Support / Alerts | **PARTIAL** | Rule engine can trigger alerts. No dedicated admin decision-support dashboard or anomaly detection UI | `core/rule_engine.py` has alert/flag actions. No frontend alert dashboard |
 | 23 | Admin Navigation IA | **PARTIAL** | 8 tabs in AdminDashboard. Owner wants 20-section IA (Overview/Users/Companies/Talent/Jobs/Sources/etc.) | `AdminDashboard.tsx:26` AdminTab union type has 8 values |
@@ -58,8 +58,8 @@
 
 | Verdict | Count | Sections |
 |---------|-------|----------|
-| **DONE** | 10 | §5, §14, §16, §17, §18, §19, §20, + meta §25/§29/§30 |
-| **PARTIAL** | 10 | §1, §2, §3, §6, §7, §8, §9, §10, §11, §22 |
+| **DONE** | 8 | §5, §14, §17, §18, §19, + meta §25/§29/§30 |
+| **PARTIAL** | 12 | §1, §2, §3, §6, §7, §8, §9, §10, §11, §16, §20, §22 |
 | **INTEGRATE** | 3 | §4, §12, §13 |
 | **MISSING (BUILD)** | 3 | §15, §21, §24 |
 | **META** | 4 | §26, §27, §28, §23→PARTIAL |
@@ -394,7 +394,9 @@ AI CALLER                  TRACKING              ADMIN DASHBOARD
 | 7a.11 | Recommendation diagnostics endpoint | DRF view: for any user×job, return matching factors from both engines | Matching section | S |
 | 7a.12 | GDPR admin dashboard | DRF view: pending exports/deletions, compliance stats | Security section | S |
 
-**Total Phase 7a:** ~12 tasks, estimated M effort (extends existing code, no new models).
+| 7a.13 | Remove dead Prefect code | Delete `intelligence/workflows.py` (dead code: prefect not installed, zero consumers). Celery Beat + Rule engine cover the workflow substrate | S |
+
+**Total Phase 7a:** ~13 tasks, estimated M effort (extends existing code, no new models).
 
 ### Phase 7b — Genuine New Builds
 
@@ -417,6 +419,7 @@ AI CALLER                  TRACKING              ADMIN DASHBOARD
 | 7c.1 | Decision-support alerts dashboard | Frontend panel showing triggered rules, anomalies, pending decisions | S |
 | 7c.2 | Interview admin config | DRF endpoint to toggle interview types, set difficulty defaults, view session stats | S |
 | 7c.3 | Voice interview admin config | Expose Polly voice selection, language config, audio limits via PlatformConfig | S |
+| 7c.6 | GDPR export/delete admin flow | DRF views + admin UI for DataExportRequest and AccountDeletionRequest. Confirmation flow (re-enter user email before deletion). ActivityLog entry for every export/delete action. Wire existing `GDPRService` and `accounts/models_gdpr.py` models to actual endpoints | M |
 | 7c.4 | Scraping workflow admin | Unified view of discovery/revalidation/cleanup task status with toggle controls | M |
 | 7c.5 | Admin AI Copilot refinements | Additional tools based on usage patterns, conversation history | S |
 
