@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.conf import settings
 
 from apps.career.models import CareerBrain, CareerGoal
-from apps.jobs.models import JobSave, JobSearch
+from apps.users.models import SavedJob
 from apps.interviews.models import InterviewSession
 from apps.notifications.models import UserNotification
 from apps.intelligence.career_ai import career_ai_service as bedrock_service
@@ -111,9 +111,9 @@ class ProactiveRashidService:
         from apps.jobs.models import Job
         
         # Get jobs saved in last 24 hours
-        recent_saves = JobSave.objects.filter(
+        recent_saves = SavedJob.objects.filter(
             user=user,
-            created_at__gte=timezone.now() - timedelta(days=1)
+            saved_at__gte=timezone.now() - timedelta(days=1)
         ).select_related('job')
         
         return [s.job for s in recent_saves]

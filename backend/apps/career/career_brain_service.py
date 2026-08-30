@@ -13,7 +13,7 @@ from django.utils import timezone
 from django.conf import settings
 
 from apps.career.models import CareerBrain, CareerUserSkill, CareerLearning, CareerGoal
-from apps.jobs.models import JobSave, JobSearch
+from apps.users.models import SavedJob
 from apps.interviews.models import InterviewSession
 from apps.intelligence.career_ai import career_ai_service as bedrock_service
 
@@ -96,20 +96,11 @@ class CareerBrainService:
                 goals_info.append(f"{goal.title}{progress}")
             context_parts.append(f"الأهداف الحالية: {', '.join(goals_info)}")
         
-        # 4. Recent job searches and saves
-        recent_searches = JobSearch.objects.filter(
+        # 4. Recent job saves
+        recent_saves = SavedJob.objects.filter(
             user=user,
-            created_at__gte=timezone.now() - timedelta(days=30)
-        ).order_by('-created_at')[:5]
-        if recent_searches:
-            search_terms = [s.search_query[:50] for s in recent_searches if s.search_query]
-            if search_terms:
-                context_parts.append(f"البحث الأخير: {', '.join(search_terms)}")
-        
-        recent_saves = JobSave.objects.filter(
-            user=user,
-            created_at__gte=timezone.now() - timedelta(days=30)
-        ).order_by('-created_at')[:5]
+            saved_at__gte=timezone.now() - timedelta(days=30)
+        ).order_by('-saved_at')[:5]
         if recent_saves:
             saved_jobs = [s.job.title for s in recent_saves if s.job]
             if saved_jobs:
