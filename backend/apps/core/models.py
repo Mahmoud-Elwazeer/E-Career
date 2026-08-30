@@ -556,3 +556,75 @@ class PortfolioAnalysis(UUIDModel):
     
     def __str__(self):
         return f"Portfolio: {self.url} ({self.status})"
+
+
+# ============================================================================
+# Packages / Entitlements (Phase 7b.2)
+# ============================================================================
+
+class SubscriptionPlan(UUIDModel):
+    """
+    Defines what a plan unlocks — feature flags, limits, AI access.
+    No payment/billing fields: pure entitlement bookkeeping.
+    """
+
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+    feature_flags = models.JSONField(
+        default=list,
+        help_text="List of FeatureFlag keys this plan unlocks",
+    )
+    job_posting_limit = models.IntegerField(
+        default=5,
+        help_text="Max active job postings. 0 = unlimited.",
+    )
+    candidate_search_limit = models.IntegerField(
+        default=50,
+        help_text="Max candidate discoveries per month. 0 = unlimited.",
+    )
+    ai_features_enabled = models.BooleanField(
+        default=False,
+        help_text="Whether AI-powered features (ranking, matching) are available",
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "core_subscription_plan"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class CompanySubscription(UUIDModel):
+    """
+    Links a Company to a SubscriptionPlan with a status lifecycle.
+    """
+
+    STATUS_CHOICES = [
+        ("trial", "Trial"),
+        ("active", "Active"),
+        ("suspended", "Suspended"),
+        ("cancelled", "Cancelled"),
+    ]
+
+    company = models.ForeignKey(
+        "jobs.Company",
+        on_delete=models.CASCADE,
+        related_name="subscriptions",
+    )
+    plan = models.ForeignKey(
+        SubscriptionPlan,
+        on_delete=models.PROTECT,
+        related_name="subscriptions",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="trial")
+    started_at = models.DateTimeField(default=timezone.now)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "core_company_subscription"
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"{self.company} — {self.plan.name} ({self.status})"

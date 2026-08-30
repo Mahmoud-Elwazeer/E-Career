@@ -234,8 +234,14 @@ class JobPostingViewSet(viewsets.ModelViewSet):
     
     def perform_create(self, serializer):
         from .domain_verification import verify_job_posting_url
+        from apps.core.permissions import check_entitlement
 
         employer = self.request.user.employer_profile
+        active_count = self.get_queryset().filter(
+            status__in=["draft", "active", "pending_review"]
+        ).count()
+        check_entitlement(employer.company, "job_posting", active_count)
+
         job_post = serializer.save(
             employer=employer,
             company=employer.company
@@ -656,11 +662,20 @@ class TalentDiscoveryViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         from apps.career.models import CareerProfile
+        from apps.core.permissions import check_entitlement
+
+        employer = self.request.user.employer_profile
+        month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        monthly_count = TalentDiscovery.objects.filter(
+            employer=employer, created_at__gte=month_start
+        ).count()
+        check_entitlement(employer.company, "candidate_search", monthly_count)
+
         user = serializer.validated_data.get('user')
         if user and not CareerProfile.objects.filter(user=user, is_discoverable=True).exists():
             from rest_framework.exceptions import ValidationError
             raise ValidationError('This user has not opted in to employer discovery.')
-        serializer.save(employer=self.request.user.employer_profile)
+        serializer.save(employer=employer)
 
 
 class TalentPoolViewSet(viewsets.ModelViewSet):
