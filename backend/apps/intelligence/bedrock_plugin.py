@@ -22,13 +22,18 @@ logger = structlog.get_logger()
 
 MODEL_COSTS = {
     "us.anthropic.claude-3-haiku-20240307-v1:0": {"input_per_1k": 0.00025, "output_per_1k": 0.00125},
+    # claude-sonnet-4-20250514-v1:0 retained here only for historical cost
+    # lookups against old logged usage rows; it is Legacy/access-denied in
+    # Bedrock as of 2026-08-30 (see audit/LIVE_VERIFICATION_REPORT.md) and
+    # must not be used as an active alias target below.
     "us.anthropic.claude-sonnet-4-20250514-v1:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
+    "us.anthropic.claude-sonnet-4-5-20250929-v1:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
     "us.anthropic.claude-3-5-sonnet-20241022-v2:0": {"input_per_1k": 0.003, "output_per_1k": 0.015},
 }
 
 _DEFAULT_ALIASES = {
     "haiku": "us.anthropic.claude-3-haiku-20240307-v1:0",
-    "sonnet": "us.anthropic.claude-sonnet-4-20250514-v1:0",
+    "sonnet": "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
 }
 
 MODEL_ALIASES = getattr(settings, "BEDROCK_MODEL_ALIASES", _DEFAULT_ALIASES)

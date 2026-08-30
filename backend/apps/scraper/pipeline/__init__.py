@@ -12,7 +12,14 @@ from .normalizer import (
 )
 
 # Import verification engine
-from apps.verification.stages.ats_fingerprint import BLOCKED_DOMAINS
+# NOTE: BLOCKED_DOMAINS (a static constant) was replaced by the DB-backed
+# BlockedDomain model + is_blocked_domain() function during Phase 1 item
+# 1.7 (unify 3 blocklists into one DB model, commit d06d24c) — this
+# re-export was missed at the time and broke every import of this
+# package (apps.scraper.pipeline) until now. No code outside this module
+# consumed the re-export (confirmed via repo-wide grep), so this is a
+# straight removal, not a behavior change.
+from apps.verification.models import is_blocked_domain
 
 # Import skill extraction
 from apps.skills.extraction import skill_extractor, SkillExtractor, extract_skills_for_job
@@ -34,7 +41,7 @@ __all__ = [
     'normalize_location',
     'parse_salary',
     'calculate_expiry_date',
-    'BLOCKED_DOMAINS',
+    'is_blocked_domain',
     'skill_extractor',
     'SkillExtractor',
     'extract_skills_for_job',

@@ -25,13 +25,22 @@ class RashidConfig(models.Model):
     bedrock_region = models.CharField(max_length=30, default='us-east-1')
     bedrock_model_id = models.CharField(
         max_length=100,
-        default='us.anthropic.claude-sonnet-4-20250514-v1:0'
+        # claude-sonnet-4-20250514-v1:0 is marked Legacy in AWS Bedrock and
+        # access is denied on new/most accounts (confirmed live during the
+        # 2026-08-30 E2E verification pass — see audit/LIVE_VERIFICATION_REPORT.md).
+        # claude-sonnet-4-5-20250929-v1:0 is the current, non-legacy Bedrock
+        # model ID as of this fix (verified against AWS's own Bedrock model
+        # card docs). NOTE: existing production rows in this table already
+        # have the old ID persisted as DATA (this default only affects new
+        # rows) — an admin must update the live RashidConfig row's
+        # bedrock_model_id via the admin panel after this deploys.
+        default='us.anthropic.claude-sonnet-4-5-20250929-v1:0'
     )
     
     # Anthropic direct settings (fallback)
     anthropic_model = models.CharField(
         max_length=50,
-        default='claude-sonnet-4'
+        default='claude-sonnet-4-5'
     )
     
     # Generation parameters
