@@ -88,10 +88,15 @@ class ConnectionsService:
             import json
 
             url = f'https://api.github.com/orgs/{github_org}/members?per_page=10'
-            req = urllib.request.Request(url, headers={
+            headers = {
                 'Accept': 'application/vnd.github.v3+json',
                 'User-Agent': 'E-Career-Platform',
-            })
+            }
+            from django.conf import settings
+            token = getattr(settings, 'GITHUB_TOKEN', '')
+            if token:
+                headers['Authorization'] = f'Bearer {token}'
+            req = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(req, timeout=5) as resp:
                 members = json.loads(resp.read())
 

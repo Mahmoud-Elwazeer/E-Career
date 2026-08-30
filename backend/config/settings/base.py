@@ -237,6 +237,9 @@ CORS_ALLOWED_ORIGINS = config(
 )
 CORS_ALLOW_CREDENTIALS = True
 
+# ── External API tokens (optional) ───────────────────────────────────────────
+GITHUB_TOKEN = config("GITHUB_TOKEN", default="")
+
 # ── Frontend ─────────────────────────────────────────────────────────────────
 FRONTEND_URL = config("FRONTEND_URL", default="http://localhost:5173")
 
