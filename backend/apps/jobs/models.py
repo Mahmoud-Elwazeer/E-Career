@@ -70,6 +70,11 @@ class Company(UUIDModel):
         blank=True,
         help_text="Company's official careers page"
     )
+    github_org = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="GitHub organization handle (e.g., 'google' for github.com/google)"
+    )
     
     # Verification
     is_verified = models.BooleanField(

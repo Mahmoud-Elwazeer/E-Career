@@ -888,3 +888,109 @@ class EmployerTeamViewSet(viewsets.ViewSet):
         member.is_active = False
         member.save(update_fields=['is_active'])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def insider_connections(request, company_id):
+    """GET /api/v1/employer/connections/{company_id}/ — find people at a company."""
+    from apps.employers.connections_service import connections_service
+    from apps.jobs.models import Company
+    try:
+        result = connections_service.find_connections(company_id, requesting_user=request.user)
+        return Response({'success': True, 'data': result, 'message': '', 'errors': None})
+    except Company.DoesNotExist:
+        return Response(
+            {'success': False, 'data': None, 'message': 'Company not found', 'errors': None},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    except Exception as e:
+        return Response(
+            {'success': False, 'data': None, 'message': str(e), 'errors': None},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+# ============================================================================
+# Quick-Apply Views (Item 5.3)
+# ============================================================================
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def quick_apply_prepare(request, job_id):
+    """
+    Prepare application data from the user's CareerProfile for review.
+
+    POST /api/v1/employer/quick-apply/{job_id}/prepare/
+
+    Returns mapped fields the user can review before manually submitting
+    on the employer's site.  Does NOT auto-submit.
+    """
+    from apps.jobs.models import Job
+    from .quick_apply_service import quick_apply_service
+
+    try:
+        job = Job.objects.select_related('company').get(id=job_id)
+    except Job.DoesNotExist:
+        return Response(
+            {'success': False, 'data': None, 'message': 'Job not found', 'errors': None},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    try:
+        result = quick_apply_service.prepare_application(request.user, job)
+        return Response({
+            'success': True,
+            'data': result,
+            'message': 'Application data prepared for review.',
+            'errors': None,
+        })
+    except Exception as e:
+        return Response(
+            {'success': False, 'data': None, 'message': str(e), 'errors': None},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def quick_apply_record(request, job_id):
+    """
+    Record that the user clicked through to apply on the employer's site.
+
+    POST /api/v1/employer/quick-apply/{job_id}/record/
+    """
+    from apps.jobs.models import Job
+    from .quick_apply_service import quick_apply_service
+
+    try:
+        job = Job.objects.get(id=job_id)
+    except Job.DoesNotExist:
+        return Response(
+            {'success': False, 'data': None, 'message': 'Job not found', 'errors': None},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    try:
+        result = quick_apply_service.record_application(
+            request.user,
+            job,
+            method=request.data.get('method', 'quick_apply'),
+        )
+        message = (
+            'Application recorded.'
+            if result['created']
+            else 'You have already applied to this job.'
+        )
+        return Response({
+            'success': True,
+            'data': result,
+            'message': message,
+            'errors': None,
+        })
+    except Exception as e:
+        return Response(
+            {'success': False, 'data': None, 'message': str(e), 'errors': None},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )

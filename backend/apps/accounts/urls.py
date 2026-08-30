@@ -14,6 +14,9 @@ from apps.accounts.views import (
     ChangePasswordView,
     AdminUserListView,
     AdminUserDetailView,
+    ExtensionTokenListCreateView,
+    ExtensionTokenRevokeView,
+    ExtensionProfileView,
 )
 
 app_name = "accounts"
@@ -44,4 +47,9 @@ urlpatterns = [
     # Admin user management (test-expected)
     path("users/", AdminUserListView.as_view(), name="user-list"),
     path("users/<int:pk>/", AdminUserDetailView.as_view(), name="user-detail"),
+
+    # Extension tokens (5.4)
+    path("extension-tokens/", ExtensionTokenListCreateView.as_view(), name="extension-token-list"),
+    path("extension-tokens/<int:token_id>/revoke/", ExtensionTokenRevokeView.as_view(), name="extension-token-revoke"),
+    path("extension/profile/", ExtensionProfileView.as_view(), name="extension-profile"),
 ]

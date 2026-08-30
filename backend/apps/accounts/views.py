@@ -536,3 +536,96 @@ class AdminUserDetailView(APIView):
         return Response(
             {"success": True, "data": None, "message": "User deleted.", "errors": None}
         )
+
+
+class ExtensionTokenListCreateView(APIView):
+    """Manage browser extension tokens."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from apps.accounts.extension_tokens import ExtensionToken
+        tokens = ExtensionToken.objects.filter(user=request.user)
+        data = [
+            {
+                'id': t.id,
+                'name': t.name,
+                'prefix': t.token_prefix,
+                'scopes': t.scopes,
+                'is_active': t.is_active,
+                'last_used_at': t.last_used_at,
+                'expires_at': t.expires_at,
+                'created_at': t.created_at,
+            }
+            for t in tokens
+        ]
+        return Response({'success': True, 'data': data, 'message': '', 'errors': None})
+
+    def post(self, request):
+        from apps.accounts.extension_tokens import ExtensionToken
+        name = request.data.get('name', 'Browser Extension')
+        scopes = request.data.get('scopes', ['profile_read', 'jobs_read', 'autofill_log'])
+        valid_scopes = {'profile_read', 'jobs_read', 'autofill_log'}
+        scopes = [s for s in scopes if s in valid_scopes]
+        token_obj, raw_token = ExtensionToken.create_token(
+            user=request.user, name=name, scopes=scopes,
+        )
+        return Response({
+            'success': True,
+            'data': {
+                'id': token_obj.id,
+                'name': token_obj.name,
+                'token': raw_token,
+                'scopes': token_obj.scopes,
+                'expires_at': token_obj.expires_at,
+            },
+            'message': 'Token created. Store it securely — it will not be shown again.',
+            'errors': None,
+        }, status=status.HTTP_201_CREATED)
+
+
+class ExtensionTokenRevokeView(APIView):
+    """Revoke an extension token."""
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, token_id):
+        from apps.accounts.extension_tokens import ExtensionToken
+        try:
+            token = ExtensionToken.objects.get(id=token_id, user=request.user)
+            token.is_active = False
+            token.save(update_fields=['is_active'])
+            return Response({'success': True, 'data': None, 'message': 'Token revoked.', 'errors': None})
+        except ExtensionToken.DoesNotExist:
+            return Response(
+                {'success': False, 'data': None, 'message': 'Token not found.', 'errors': None},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+
+class ExtensionProfileView(APIView):
+    """Read-only profile endpoint for the browser extension."""
+    permission_classes = [IsAuthenticated]
+
+    def get_authenticators(self):
+        from apps.accounts.extension_tokens import ExtensionTokenAuthentication
+        return [ExtensionTokenAuthentication()]
+
+    def get(self, request):
+        user = request.user
+        profile_data = {
+            'name': user.get_full_name(),
+            'email': user.email,
+        }
+        try:
+            cp = user.career_profile
+            profile_data.update({
+                'skills': cp.skills or [],
+                'experience_years': cp.experience_years or 0,
+                'current_role': cp.current_role or '',
+                'current_company': cp.current_company or '',
+                'education': cp.education or [],
+                'languages': cp.languages or [],
+                'phone': '',
+            })
+        except Exception:
+            pass
+        return Response({'success': True, 'data': profile_data, 'message': '', 'errors': None})

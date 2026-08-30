@@ -71,3 +71,6 @@ class User(AbstractUser):
         self.deleted_at = timezone.now()
         self.is_active = False
         self.save(update_fields=["is_deleted", "deleted_at", "is_active"])
+
+
+from .extension_tokens import ExtensionToken  # noqa: E402, F401

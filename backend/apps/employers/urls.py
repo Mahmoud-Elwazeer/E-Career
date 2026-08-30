@@ -15,6 +15,9 @@ from .views import (
     company_search,
     ats_gap_analysis,
     EmployerTeamViewSet,
+    insider_connections,
+    quick_apply_prepare,
+    quick_apply_record,
 )
 
 # Create router
@@ -37,6 +40,13 @@ urlpatterns = [
     
     # ATS gap analysis
     path('postings/<uuid:posting_id>/ats-analysis/', ats_gap_analysis, name='ats-gap-analysis'),
+
+    # Insider Connections (5.5)
+    path('connections/<int:company_id>/', insider_connections, name='insider-connections'),
+
+    # Quick-Apply (5.3)
+    path('quick-apply/<uuid:job_id>/prepare/', quick_apply_prepare, name='quick-apply-prepare'),
+    path('quick-apply/<uuid:job_id>/record/', quick_apply_record, name='quick-apply-record'),
 
     # Router URLs
     path('', include(router.urls)),
