@@ -11,6 +11,7 @@ from .views import (
     get_usage_stats,
     get_config,
     execute_tool_endpoint,
+    analyze_job,
     list_tools
 )
 
@@ -43,6 +44,6 @@ urlpatterns = [
     path('tools/', list_tools, name='rashid-tools'),
     path('tools/execute/', execute_tool_endpoint, name='rashid-tool-execute'),
 
-    # Job analysis (test-expected)
-    path('analyze-job/<slug:job_slug>/', execute_tool_endpoint, name='analyze-job'),
+    # Job analysis
+    path('analyze-job/<slug:job_slug>/', analyze_job, name='analyze-job'),
 ]
