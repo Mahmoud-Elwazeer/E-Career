@@ -165,6 +165,15 @@ class CompanyListView(generics.ListCreateAPIView):
             return [IsAdminRole()]
         return [AllowAny()]
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "Company created.", "errors": None},
+            status=status.HTTP_201_CREATED,
+        )
+
 
 @extend_schema(tags=["Companies"])
 class CompanyDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -182,6 +191,23 @@ class CompanyDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method in ("PATCH", "PUT", "DELETE"):
             return [IsAdminRole()]
         return [AllowAny()]
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "", "errors": None}
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "Company updated.", "errors": None}
+        )
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -207,6 +233,22 @@ class SourceListView(generics.ListCreateAPIView):
             return [IsAdminRole()]
         return [AllowAny()]
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "", "errors": None}
+        )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "Source created.", "errors": None},
+            status=status.HTTP_201_CREATED,
+        )
+
 
 @extend_schema(tags=["Sources"])
 class SourceDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -220,6 +262,23 @@ class SourceDetailView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method in ("PATCH", "PUT", "DELETE"):
             return [IsAdminRole()]
         return [AllowAny()]
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "", "errors": None}
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "Source updated.", "errors": None}
+        )
 
     def destroy(self, request, *args, **kwargs):
         instance = self.get_object()
@@ -253,6 +312,22 @@ class TagListView(generics.ListCreateAPIView):
         slug = make_unique_slug(Tag, name)
         serializer.save(slug=slug)
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "", "errors": None}
+        )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "Tag created.", "errors": None},
+            status=status.HTTP_201_CREATED,
+        )
+
 
 @extend_schema(tags=["Tags"])
 class TagDetailView(generics.RetrieveDestroyAPIView):
@@ -266,6 +341,20 @@ class TagDetailView(generics.RetrieveDestroyAPIView):
         if self.request.method == "DELETE":
             return [IsAdminRole()]
         return [AllowAny()]
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "", "errors": None}
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        self.perform_destroy(instance)
+        return Response(
+            {"success": True, "data": None, "message": "Tag deleted.", "errors": None}
+        )
 
 
 # ── Jobs ───────────────────────────────────────────────────────────────────────
@@ -464,7 +553,11 @@ class SimilarJobsView(generics.ListAPIView):
         except Exception:
             pass
         
-        return super().list(request, *args, **kwargs)
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "", "errors": None}
+        )
 
     def get_queryset(self):
         slug = self.kwargs["slug"]
