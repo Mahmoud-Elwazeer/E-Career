@@ -1,6 +1,6 @@
 """
 Admin API views for E-Career admin panel.
-Phase 7a: DRF API endpoints for admin functionality.
+Phase 7a + 7b: DRF API endpoints for admin functionality.
 
 All views require IsAdminRole permission.
 """
@@ -9,7 +9,7 @@ from rest_framework import generics, serializers, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.utils import timezone
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Value, CharField
 from datetime import timedelta
 
 from apps.core.permissions import IsAdminRole
@@ -950,3 +950,415 @@ class GDPRAdminDashboardView(APIView):
                 "upcoming_7_days": upcoming_deletions,
             },
         })
+
+
+# ---------------------------------------------------------------------------
+# 14. CeleryBeatListView (Phase 7b.5)
+# ---------------------------------------------------------------------------
+
+
+class CeleryBeatListView(APIView):
+    """
+    List all Celery Beat periodic tasks with schedule info.
+    """
+
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        try:
+            from django_celery_beat.models import PeriodicTask
+        except ImportError:
+            return Response(
+                {"detail": "django-celery-beat not installed."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        tasks = PeriodicTask.objects.select_related(
+            "interval", "crontab", "solar", "clocked"
+        ).order_by("name")
+
+        result = []
+        for task in tasks:
+            schedule_str = ""
+            if task.crontab:
+                c = task.crontab
+                schedule_str = f"{c.minute} {c.hour} {c.day_of_week} {c.day_of_month} {c.month_of_year}"
+            elif task.interval:
+                schedule_str = f"every {task.interval.every} {task.interval.period}"
+            elif task.solar:
+                schedule_str = f"solar: {task.solar.event}"
+            elif task.clocked:
+                schedule_str = f"clocked: {task.clocked.clocked_time}"
+
+            result.append({
+                "id": task.id,
+                "name": task.name,
+                "task": task.task,
+                "schedule": schedule_str,
+                "enabled": task.enabled,
+                "last_run_at": task.last_run_at.isoformat() if task.last_run_at else None,
+                "total_run_count": task.total_run_count,
+                "description": task.description or "",
+            })
+
+        return Response({"tasks": result, "count": len(result)})
+
+
+class CeleryBeatToggleView(APIView):
+    """
+    Enable or disable a Celery Beat periodic task.
+    """
+
+    permission_classes = [IsAdminRole]
+
+    def patch(self, request, task_id):
+        try:
+            from django_celery_beat.models import PeriodicTask
+        except ImportError:
+            return Response(
+                {"detail": "django-celery-beat not installed."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        try:
+            task = PeriodicTask.objects.get(pk=task_id)
+        except PeriodicTask.DoesNotExist:
+            return Response(
+                {"detail": "Periodic task not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        enabled = request.data.get("enabled")
+        if enabled is None:
+            return Response(
+                {"detail": "Field 'enabled' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        task.enabled = bool(enabled)
+        task.save(update_fields=["enabled"])
+
+        ActivityLog.objects.create(
+            user=request.user,
+            action=f"celery_task_{'enable' if task.enabled else 'disable'}",
+            target_type="PeriodicTask",
+            target_id=str(task.id),
+            metadata={"task_name": task.name, "enabled": task.enabled},
+        )
+
+        return Response({
+            "id": task.id,
+            "name": task.name,
+            "enabled": task.enabled,
+        })
+
+
+# ---------------------------------------------------------------------------
+# 15. AdminSearchView (Phase 7b.4)
+# ---------------------------------------------------------------------------
+
+
+class AdminSearchView(APIView):
+    """
+    Global admin search across Users, Companies, and Jobs.
+    """
+
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        q = request.query_params.get("q", "").strip()
+        if not q or len(q) < 2:
+            return Response(
+                {"detail": "Query parameter 'q' must be at least 2 characters."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        limit = min(int(request.query_params.get("limit", 20)), 50)
+        results = []
+
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        users = User.objects.filter(
+            Q(email__icontains=q) | Q(first_name__icontains=q) | Q(last_name__icontains=q)
+        )[:limit]
+        for u in users:
+            results.append({
+                "type": "user",
+                "id": u.pk,
+                "label": u.full_name or u.email,
+                "detail": u.email,
+                "role": u.role,
+            })
+
+        from apps.jobs.models import Company
+        companies = Company.objects.filter(
+            Q(name__icontains=q) | Q(domain__icontains=q)
+        )[:limit]
+        for c in companies:
+            results.append({
+                "type": "company",
+                "id": str(c.uuid),
+                "label": c.name,
+                "detail": c.domain or c.website or "",
+                "industry": c.industry,
+            })
+
+        from apps.jobs.models import Job
+        jobs = Job.objects.filter(
+            Q(title__icontains=q) | Q(company__name__icontains=q)
+        ).select_related("company")[:limit]
+        for j in jobs:
+            results.append({
+                "type": "job",
+                "id": str(j.uuid),
+                "label": j.title,
+                "detail": j.company.name if j.company else "",
+                "status": j.status if hasattr(j, "status") else "",
+            })
+
+        results.sort(key=lambda r: (0 if q.lower() in r["label"].lower() else 1))
+
+        return Response({
+            "query": q,
+            "results": results[:limit],
+            "count": len(results[:limit]),
+        })
+
+
+# ---------------------------------------------------------------------------
+# 16. SubscriptionPlanViews (Phase 7b.2)
+# ---------------------------------------------------------------------------
+
+
+class SubscriptionPlanSerializer(serializers.Serializer):
+    uuid = serializers.UUIDField(read_only=True)
+    name = serializers.CharField(max_length=100)
+    description = serializers.CharField(required=False, allow_blank=True)
+    feature_flags = serializers.ListField(child=serializers.CharField(), required=False)
+    job_posting_limit = serializers.IntegerField(required=False)
+    candidate_search_limit = serializers.IntegerField(required=False)
+    ai_features_enabled = serializers.BooleanField(required=False)
+    is_active = serializers.BooleanField(required=False)
+    created_at = serializers.DateTimeField(read_only=True)
+
+
+class SubscriptionPlanListView(generics.ListCreateAPIView):
+    """List and create subscription plans."""
+
+    permission_classes = [IsAdminRole]
+    serializer_class = SubscriptionPlanSerializer
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        from apps.core.models import SubscriptionPlan
+        return SubscriptionPlan.objects.order_by("-created_at")
+
+    def get_serializer_class(self):
+        from apps.core.models import SubscriptionPlan
+        if not SubscriptionPlan._meta.db_table:
+            pass
+
+        class DynamicPlanSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = SubscriptionPlan
+                fields = [
+                    "uuid", "name", "description", "feature_flags",
+                    "job_posting_limit", "candidate_search_limit",
+                    "ai_features_enabled", "is_active", "created_at",
+                ]
+
+        return DynamicPlanSerializer
+
+
+class SubscriptionPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """Retrieve, update, or delete a subscription plan."""
+
+    permission_classes = [IsAdminRole]
+    lookup_field = "uuid"
+
+    def get_queryset(self):
+        from apps.core.models import SubscriptionPlan
+        return SubscriptionPlan.objects.all()
+
+    def get_serializer_class(self):
+        from apps.core.models import SubscriptionPlan
+
+        class DynamicPlanSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = SubscriptionPlan
+                fields = [
+                    "uuid", "name", "description", "feature_flags",
+                    "job_posting_limit", "candidate_search_limit",
+                    "ai_features_enabled", "is_active", "created_at",
+                ]
+
+        return DynamicPlanSerializer
+
+
+class CompanySubscriptionSerializer(serializers.Serializer):
+    uuid = serializers.UUIDField(read_only=True)
+    company_name = serializers.SerializerMethodField()
+    plan_name = serializers.SerializerMethodField()
+    status = serializers.CharField()
+    started_at = serializers.DateTimeField(read_only=True)
+    notes = serializers.CharField(required=False, allow_blank=True)
+
+    def get_company_name(self, obj):
+        return obj.company.name if obj.company else ""
+
+    def get_plan_name(self, obj):
+        return obj.plan.name if obj.plan else ""
+
+
+class CompanySubscriptionListView(generics.ListCreateAPIView):
+    """List and create company subscriptions."""
+
+    permission_classes = [IsAdminRole]
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        from apps.core.models import CompanySubscription
+        return CompanySubscription.objects.select_related(
+            "company", "plan"
+        ).order_by("-started_at")
+
+    def get_serializer_class(self):
+        from apps.core.models import CompanySubscription
+
+        class DynamicSubSerializer(serializers.ModelSerializer):
+            company_name = serializers.SerializerMethodField()
+            plan_name = serializers.SerializerMethodField()
+
+            class Meta:
+                model = CompanySubscription
+                fields = [
+                    "uuid", "company", "plan", "company_name", "plan_name",
+                    "status", "started_at", "notes", "created_at",
+                ]
+
+            def get_company_name(self, obj):
+                return obj.company.name if obj.company else ""
+
+            def get_plan_name(self, obj):
+                return obj.plan.name if obj.plan else ""
+
+        return DynamicSubSerializer
+
+
+class CompanySubscriptionDetailView(generics.RetrieveUpdateAPIView):
+    """Retrieve or update a company subscription."""
+
+    permission_classes = [IsAdminRole]
+    lookup_field = "uuid"
+
+    def get_queryset(self):
+        from apps.core.models import CompanySubscription
+        return CompanySubscription.objects.select_related("company", "plan")
+
+    def get_serializer_class(self):
+        from apps.core.models import CompanySubscription
+
+        class DynamicSubSerializer(serializers.ModelSerializer):
+            company_name = serializers.SerializerMethodField()
+            plan_name = serializers.SerializerMethodField()
+
+            class Meta:
+                model = CompanySubscription
+                fields = [
+                    "uuid", "company", "plan", "company_name", "plan_name",
+                    "status", "started_at", "notes", "created_at",
+                ]
+
+            def get_company_name(self, obj):
+                return obj.company.name if obj.company else ""
+
+            def get_plan_name(self, obj):
+                return obj.plan.name if obj.plan else ""
+
+        return DynamicSubSerializer
+
+
+# ---------------------------------------------------------------------------
+# 17. AdminCopilotChatView (Phase 7b.1)
+# ---------------------------------------------------------------------------
+
+
+class AdminCopilotChatView(APIView):
+    """
+    Admin AI Copilot chat endpoint.
+    Wraps a pydantic-ai admin-scoped agent.
+    """
+
+    permission_classes = [IsAdminRole]
+
+    def post(self, request):
+        message = request.data.get("message", "").strip()
+        if not message:
+            return Response(
+                {"detail": "Field 'message' is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from apps.intelligence.admin_agent import get_admin_agent, AdminDeps
+            import asyncio
+
+            agent = get_admin_agent()
+            deps = AdminDeps(
+                admin_id=request.user.id,
+                admin_email=request.user.email,
+            )
+
+            loop = asyncio.new_event_loop()
+            try:
+                result = loop.run_until_complete(agent.run(message, deps=deps))
+            finally:
+                loop.close()
+
+            try:
+                from apps.events.emitter import emit
+                from apps.events.types import AI_MODEL_CALLED
+                from apps.intelligence.bedrock_plugin import MODEL_COSTS, MODEL_ALIASES
+                from django.conf import settings
+
+                usage = result.usage() if hasattr(result, 'usage') and callable(result.usage) else None
+                tokens_in = getattr(usage, 'request_tokens', 0) if usage else 0
+                tokens_out = getattr(usage, 'response_tokens', 0) if usage else 0
+                model_id = MODEL_ALIASES.get("haiku", "")
+                rates = MODEL_COSTS.get(model_id, {"input_per_1k": 0.00025, "output_per_1k": 0.00125})
+                cost = round((tokens_in / 1000) * rates["input_per_1k"] + (tokens_out / 1000) * rates["output_per_1k"], 6)
+
+                emit(
+                    event_type=AI_MODEL_CALLED,
+                    category="ai",
+                    user=request.user,
+                    target_type="model",
+                    target_id=model_id,
+                    data={
+                        "model": model_id,
+                        "tokens_in": tokens_in,
+                        "tokens_out": tokens_out,
+                        "cost_usd": cost,
+                        "user_id": request.user.id,
+                        "operation": "admin_chat",
+                        "agent": "admin_copilot",
+                    },
+                )
+            except Exception:
+                pass
+
+            return Response({
+                "response": result.data,
+                "agent": "admin_copilot",
+            })
+
+        except ImportError:
+            return Response(
+                {"detail": "Admin copilot agent not available (pydantic-ai not installed)."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+        except Exception as e:
+            return Response(
+                {"detail": f"Copilot error: {str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )

@@ -21,6 +21,14 @@ from apps.core.admin_api_views import (
     CompanyTimelineView,
     RecommendationDiagnosticsView,
     GDPRAdminDashboardView,
+    CeleryBeatListView,
+    CeleryBeatToggleView,
+    AdminSearchView,
+    SubscriptionPlanListView,
+    SubscriptionPlanDetailView,
+    CompanySubscriptionListView,
+    CompanySubscriptionDetailView,
+    AdminCopilotChatView,
 )
 from apps.jobs.template_views import JobTemplateDownloadView
 
@@ -48,4 +56,14 @@ urlpatterns = [
     path("companies/<uuid:company_uuid>/timeline/", CompanyTimelineView.as_view(), name="company-timeline"),
     path("recommendations/diagnostics/", RecommendationDiagnosticsView.as_view(), name="recommendation-diagnostics"),
     path("gdpr/dashboard/", GDPRAdminDashboardView.as_view(), name="gdpr-dashboard"),
+
+    # Phase 7b: New admin API endpoints
+    path("celery-beat/", CeleryBeatListView.as_view(), name="celery-beat-list"),
+    path("celery-beat/<int:task_id>/toggle/", CeleryBeatToggleView.as_view(), name="celery-beat-toggle"),
+    path("search/", AdminSearchView.as_view(), name="admin-search"),
+    path("plans/", SubscriptionPlanListView.as_view(), name="subscription-plans-list"),
+    path("plans/<uuid:uuid>/", SubscriptionPlanDetailView.as_view(), name="subscription-plans-detail"),
+    path("subscriptions/", CompanySubscriptionListView.as_view(), name="company-subscriptions-list"),
+    path("subscriptions/<uuid:uuid>/", CompanySubscriptionDetailView.as_view(), name="company-subscriptions-detail"),
+    path("copilot/chat/", AdminCopilotChatView.as_view(), name="admin-copilot-chat"),
 ]
