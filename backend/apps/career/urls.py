@@ -20,6 +20,21 @@ from .views import (
     ScoreTrendsViewSet,
     CareerBrainView,
 )
+from .views_api import (
+    CareerProfileDetailView,
+    ProfileCompletenessView,
+    UserSkillListView,
+    LearningListView,
+    TalentScoreDetailView,
+    TalentScoreBreakdownView,
+    InterviewSessionListCreateView,
+    InterviewSessionDetailView,
+    WrappedGoalListCreateView,
+    WrappedGoalDetailView,
+    GoalAddMilestoneView,
+    GoalCompleteMilestoneView,
+    CareerBrainDetailView,
+)
 from .cv_parser_views import cv_status, cv_delete
 from .views_onboarding import onboarding_progress
 from .views_cover_letter import generate_cover_letter, cover_letter_detail, list_cover_letters
@@ -52,7 +67,7 @@ urlpatterns = [
     # Career Brain
     path('career-brain/', CareerBrainView.as_view(), name='career-brain'),
 
-    # Career Goal endpoints (progress/analytics must come before <str:pk> to avoid matching)
+    # Career Goal endpoints (progress/analytics must come before <str:pk>)
     path('goals/', CareerGoalListCreateView.as_view(), name='career-goals-list-create'),
     path('goals/progress/', CareerGoalProgressView.as_view(), name='career-goals-progress'),
     path('goals/analytics/', CareerGoalAnalyticsView.as_view(), name='career-goals-analytics'),
@@ -63,13 +78,13 @@ urlpatterns = [
     path('goals/<str:goal_id>/milestones/<str:milestone_id>/complete/', CareerGoalCompleteMilestoneView.as_view(), name='career-goals-milestones-complete'),
 
     # Profile Completeness endpoints
-    path('completeness/', get_profile_completeness, name='profile-completeness'),
+    path('completeness/', ProfileCompletenessView.as_view(), name='profile-completeness'),
     path('completeness/recalculate/', recalculate_profile_completeness, name='profile-completeness-recalculate'),
 
     # Skill Gap Analysis endpoints
     path('skill-gap/', get_skill_gap_analysis, name='skill-gap-analysis'),
-    
-    # CV Parser endpoints (upload is via /profile/upload_cv/)
+
+    # CV Parser endpoints
     path('cv/status/', cv_status, name='cv-status'),
     path('cv/delete/', cv_delete, name='cv-delete'),
 
@@ -90,12 +105,17 @@ urlpatterns = [
     # Recommendations
     path('recommendations/', get_recommendations, name='recommendations'),
 
-    # Test-expected URL name aliases
-    path('profile/', get_profile_completeness, name='profile-detail'),
-    path('goals-list/', CareerGoalListCreateView.as_view(), name='goals-list'),
-    path('goals-detail/<str:pk>/', CareerGoalDetailView.as_view(), name='goals-detail'),
-    path('goals/<str:pk>/add-milestone/', CareerGoalMilestoneView.as_view(), name='goals-add-milestone'),
-    path('skills/', get_skill_gap_analysis, name='skills-list'),
-    path('interview-sessions/', TalentScoreViewSet.as_view(), name='interview-sessions-list'),
-    path('interview-sessions/<str:pk>/', TalentScoreViewSet.as_view(), name='interview-sessions-detail'),
+    # ── Test-expected URL aliases (envelope-wrapped views) ──────────────────
+    path('profile/', CareerProfileDetailView.as_view(), name='profile-detail'),
+    path('skills/', UserSkillListView.as_view(), name='skills-list'),
+    path('learning/', LearningListView.as_view(), name='learning-list'),
+    path('talent-score/detail/', TalentScoreDetailView.as_view(), name='talent-score-detail'),
+    path('talent-score/breakdown/', TalentScoreBreakdownView.as_view(), name='talent-score-breakdown'),
+    path('interview-sessions/', InterviewSessionListCreateView.as_view(), name='interview-sessions-list'),
+    path('interview-sessions/<str:pk>/', InterviewSessionDetailView.as_view(), name='interview-sessions-detail'),
+    path('goals-list/', WrappedGoalListCreateView.as_view(), name='goals-list'),
+    path('goals-detail/<str:pk>/', WrappedGoalDetailView.as_view(), name='goals-detail'),
+    path('goals/<str:pk>/add-milestone/', GoalAddMilestoneView.as_view(), name='goals-add-milestone'),
+    path('goals/<str:pk>/complete-milestone/', GoalCompleteMilestoneView.as_view(), name='goals-complete-milestone'),
+    path('career-brain/detail/', CareerBrainDetailView.as_view(), name='career-brain-detail'),
 ]
