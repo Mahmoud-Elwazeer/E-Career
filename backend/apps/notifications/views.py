@@ -5,6 +5,7 @@ This module contains Django REST Framework views for notification management.
 """
 
 import logging
+from django.db import models
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
