@@ -164,3 +164,28 @@ class TestAICostCompanyBreakdown:
         assert resp.status_code == status.HTTP_200_OK
         assert "company_costs" in data
         assert isinstance(data["company_costs"], list)
+
+
+# ---------------------------------------------------------------------------
+# Decision-support alerts
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestDecisionSupportAlerts:
+    url = reverse("decision-support-alerts")
+
+    def test_admin_can_get_alerts(self, admin_client):
+        resp = admin_client.get(self.url)
+        data = unwrap(resp)
+        assert resp.status_code == status.HTTP_200_OK
+        assert "alerts" in data
+        assert isinstance(data["alerts"], list)
+        assert "checked_at" in data
+        assert "total_active" in data
+
+    def test_non_admin_denied(self, non_admin_client):
+        resp = non_admin_client.get(self.url)
+        assert resp.status_code in (
+            status.HTTP_401_UNAUTHORIZED,
+            status.HTTP_403_FORBIDDEN,
+        )

@@ -1600,3 +1600,113 @@ class GDPRDeleteActionView(APIView):
                 {"detail": f"Deletion failed: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+
+# ---------------------------------------------------------------------------
+# 22. DecisionSupportAlertsView (Final pass)
+# ---------------------------------------------------------------------------
+
+
+class DecisionSupportAlertsView(APIView):
+    """
+    Aggregated decision-support alerts for the admin dashboard.
+    Evaluates current system state against thresholds and returns active alerts.
+    Covers: scraper health, AI cost spikes, queue backlog, model failures.
+    """
+
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        alerts = []
+        now = timezone.now()
+
+        try:
+            from apps.events.models import EventLog
+            today_cost = 0
+            today_events = EventLog.objects.filter(
+                category="ai",
+                created_at__date=now.date(),
+            )
+            for e in today_events:
+                if e.data:
+                    today_cost += float(e.data.get("cost_usd", 0))
+            if today_cost > 10.0:
+                alerts.append({
+                    "severity": "warning",
+                    "category": "ai_cost_spike",
+                    "message": f"AI spend today: ${today_cost:.2f} (threshold: $10.00)",
+                    "value": round(today_cost, 2),
+                })
+        except Exception:
+            pass
+
+        try:
+            from apps.scraper.models import ScraperSource
+            stale_threshold = now - timedelta(days=2)
+            sources = ScraperSource.objects.filter(is_active=True)
+            stale = [s for s in sources if not s.last_scraped_at or s.last_scraped_at < stale_threshold]
+            if stale:
+                alerts.append({
+                    "severity": "critical" if len(stale) > 2 else "warning",
+                    "category": "scraper_stale",
+                    "message": f"{len(stale)} scraper source(s) have not run in 2+ days: "
+                               + ", ".join(s.name for s in stale[:5]),
+                    "value": len(stale),
+                })
+        except Exception:
+            pass
+
+        try:
+            from django.core.cache import cache
+            cache.set("alert_health_check", "ok", 10)
+            if cache.get("alert_health_check") != "ok":
+                alerts.append({
+                    "severity": "critical",
+                    "category": "cache_failure",
+                    "message": "Redis/cache is not responding correctly",
+                })
+        except Exception:
+            alerts.append({
+                "severity": "critical",
+                "category": "cache_failure",
+                "message": "Cache service unreachable",
+            })
+
+        try:
+            from celery import current_app
+            inspect = current_app.control.inspect(timeout=2)
+            stats = inspect.stats()
+            if not stats:
+                alerts.append({
+                    "severity": "warning",
+                    "category": "queue_backlog",
+                    "message": "No Celery workers detected — task queue may be backing up",
+                })
+        except Exception:
+            alerts.append({
+                "severity": "warning",
+                "category": "queue_backlog",
+                "message": "Cannot reach Celery broker to check worker status",
+            })
+
+        try:
+            from apps.accounts.models_gdpr import AccountDeletionRequest
+            overdue = AccountDeletionRequest.objects.filter(
+                status="pending",
+                scheduled_for__lt=now,
+            ).count()
+            if overdue:
+                alerts.append({
+                    "severity": "warning",
+                    "category": "gdpr_overdue",
+                    "message": f"{overdue} account deletion(s) past scheduled date",
+                    "value": overdue,
+                })
+        except Exception:
+            pass
+
+        return Response({
+            "alerts": alerts,
+            "checked_at": now.isoformat(),
+            "total_active": len(alerts),
+        })

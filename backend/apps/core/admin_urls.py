@@ -23,6 +23,7 @@ from apps.core.admin_api_views import (
     GDPRAdminDashboardView,
     GDPRExportActionView,
     GDPRDeleteActionView,
+    DecisionSupportAlertsView,
     CeleryBeatListView,
     CeleryBeatToggleView,
     AdminSearchView,
@@ -60,6 +61,9 @@ urlpatterns = [
     path("gdpr/dashboard/", GDPRAdminDashboardView.as_view(), name="gdpr-dashboard"),
     path("gdpr/export/", GDPRExportActionView.as_view(), name="gdpr-export-action"),
     path("gdpr/delete/", GDPRDeleteActionView.as_view(), name="gdpr-delete-action"),
+
+    # Final pass: decision-support alerts
+    path("alerts/", DecisionSupportAlertsView.as_view(), name="decision-support-alerts"),
 
     # Phase 7b: New admin API endpoints
     path("celery-beat/", CeleryBeatListView.as_view(), name="celery-beat-list"),
