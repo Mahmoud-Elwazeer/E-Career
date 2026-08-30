@@ -1,20 +1,24 @@
 /**
- * E-Career Autofill — Greenhouse ATS content script
+ * E-Career Autofill — Ashby ATS content script
  *
- * Pre-fills Greenhouse application forms with data from the user's E-Career
+ * Pre-fills Ashby application forms with data from the user's E-Career
  * profile. The user MUST click "Submit" themselves — we never auto-submit.
+ *
+ * Ashby application pages: https://jobs.ashbyhq.com/{company}/application?jobId={id}
+ * Form renders React inputs inside ._form or [data-testid] containers.
  */
 
 const API_BASE = "https://jobs.usamif.com/api/v1";
 
 const FIELD_MAP = {
-  first_name: ['input[name="first_name"]', '#first_name'],
-  last_name: ['input[name="last_name"]', '#last_name'],
-  email: ['input[name="email"]', '#email'],
-  phone: ['input[name="phone"]', '#phone'],
-  location: ['input[name="location"]', '#job_application_location'],
-  linkedin_profile: ['input[name="job_application[urls][LinkedIn]"]', 'input[data-source="LinkedIn"]'],
-  website: ['input[name="job_application[urls][Portfolio]"]', 'input[data-source="Portfolio"]'],
+  first_name: ['input[name="first_name"]', 'input[name="_systemfield_name"]', 'input[placeholder*="First"]'],
+  last_name: ['input[name="last_name"]', 'input[placeholder*="Last"]'],
+  email: ['input[name="email"]', 'input[name="_systemfield_email"]', 'input[type="email"]'],
+  phone: ['input[name="phone"]', 'input[name="_systemfield_phone"]', 'input[type="tel"]'],
+  location: ['input[name="location"]', 'input[name="_systemfield_location"]', 'input[placeholder*="Location"]'],
+  linkedin: ['input[name="linkedin"]', 'input[name="_systemfield_linkedin"]', 'input[placeholder*="LinkedIn"]'],
+  portfolio: ['input[name="website"]', 'input[name="portfolio"]', 'input[placeholder*="Website"]', 'input[placeholder*="Portfolio"]'],
+  current_company: ['input[name="company"]', 'input[name="currentCompany"]', 'input[placeholder*="Company"]'],
 };
 
 function findField(selectors) {
@@ -77,7 +81,8 @@ async function main() {
     last_name: profile.last_name || nameParts.slice(1).join(" ") || "",
     email: profile.email,
     location: profile.location,
-    website: profile.portfolio_url,
+    portfolio: profile.portfolio_url,
+    current_company: profile.current_company,
   };
 
   let filled = 0;

@@ -1,20 +1,23 @@
 /**
- * E-Career Autofill — Greenhouse ATS content script
+ * E-Career Autofill — Lever ATS content script
  *
- * Pre-fills Greenhouse application forms with data from the user's E-Career
+ * Pre-fills Lever application forms with data from the user's E-Career
  * profile. The user MUST click "Submit" themselves — we never auto-submit.
+ *
+ * Lever application pages: https://jobs.lever.co/{company}/{posting-id}/apply
+ * Form uses <input> fields inside .application-form or .postings-btn-wrapper.
  */
 
 const API_BASE = "https://jobs.usamif.com/api/v1";
 
 const FIELD_MAP = {
-  first_name: ['input[name="first_name"]', '#first_name'],
-  last_name: ['input[name="last_name"]', '#last_name'],
-  email: ['input[name="email"]', '#email'],
-  phone: ['input[name="phone"]', '#phone'],
-  location: ['input[name="location"]', '#job_application_location'],
-  linkedin_profile: ['input[name="job_application[urls][LinkedIn]"]', 'input[data-source="LinkedIn"]'],
-  website: ['input[name="job_application[urls][Portfolio]"]', 'input[data-source="Portfolio"]'],
+  full_name: ['input[name="name"]', 'input[placeholder*="Full name"]', 'input[placeholder*="full name"]'],
+  email: ['input[name="email"]', 'input[type="email"]'],
+  phone: ['input[name="phone"]', 'input[type="tel"]'],
+  current_company: ['input[name="org"]', 'input[placeholder*="Current company"]', 'input[placeholder*="company"]'],
+  location: ['input[name="location"]', 'input[placeholder*="Location"]', 'input[placeholder*="location"]'],
+  linkedin: ['input[name="urls[LinkedIn]"]', 'input[placeholder*="LinkedIn"]'],
+  portfolio: ['input[name="urls[Portfolio]"]', 'input[placeholder*="Portfolio"]', 'input[placeholder*="Website"]'],
 };
 
 function findField(selectors) {
@@ -71,13 +74,12 @@ async function main() {
   const profile = await fetchProfile(token);
   if (!profile) return;
 
-  const nameParts = (profile.name || "").split(" ");
   const mapping = {
-    first_name: profile.first_name || nameParts[0] || "",
-    last_name: profile.last_name || nameParts.slice(1).join(" ") || "",
+    full_name: profile.name || `${profile.first_name || ""} ${profile.last_name || ""}`.trim(),
     email: profile.email,
+    current_company: profile.current_company,
     location: profile.location,
-    website: profile.portfolio_url,
+    portfolio: profile.portfolio_url,
   };
 
   let filled = 0;

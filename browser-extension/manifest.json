@@ -22,6 +22,16 @@
       "matches": ["https://boards.greenhouse.io/*/jobs/*"],
       "js": ["content-greenhouse.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://jobs.lever.co/*"],
+      "js": ["content-lever.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://jobs.ashbyhq.com/*"],
+      "js": ["content-ashby.js"],
+      "run_at": "document_idle"
     }
   ],
   "icons": {

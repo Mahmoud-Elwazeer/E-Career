@@ -613,6 +613,8 @@ class ExtensionProfileView(APIView):
         user = request.user
         profile_data = {
             'name': user.get_full_name(),
+            'first_name': user.first_name,
+            'last_name': user.last_name,
             'email': user.email,
         }
         try:
@@ -624,7 +626,8 @@ class ExtensionProfileView(APIView):
                 'current_company': cp.current_company or '',
                 'education': cp.education or [],
                 'languages': cp.languages or [],
-                'phone': '',
+                'portfolio_url': cp.portfolio_url or '',
+                'location': (cp.location or '') if hasattr(cp, 'location') else '',
             })
         except Exception:
             pass
