@@ -318,9 +318,8 @@ class JobAutocompleteView(APIView):
             pass
         
         try:
-            suggestions = search_service.autocomplete(
-                query=query,
-                field=field,
+            suggestions = search_service.autocomplete_jobs(
+                prefix=query,
                 limit=limit,
             )
             

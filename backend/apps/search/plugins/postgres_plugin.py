@@ -136,7 +136,14 @@ class PostgresSearchPlugin(SearchPlugin):
             elif key == "company_name" and value:
                 qs = qs.filter(company__name__icontains=value)
             elif key == "trust_score" and value:
-                qs = qs.filter(legitimacy_score__gte=value)
+                if isinstance(value, tuple):
+                    low, high = value
+                    if low is not None:
+                        qs = qs.filter(legitimacy_score__gte=low)
+                    if high is not None:
+                        qs = qs.filter(legitimacy_score__lte=high)
+                else:
+                    qs = qs.filter(legitimacy_score__gte=value)
 
         return qs
 

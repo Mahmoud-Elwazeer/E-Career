@@ -417,7 +417,8 @@ class RecommendationEngine:
                 score += 0.3
             elif user_profile.target_locations:
                 for loc in user_profile.target_locations:
-                    if loc.get('city') in job.location:
+                    loc_str = loc.get('city', '') if isinstance(loc, dict) else str(loc)
+                    if loc_str and loc_str in job.location:
                         score += 0.3
                         break
         
@@ -437,7 +438,10 @@ class RecommendationEngine:
         user_profile = getattr(self.user, 'career_profile', None)
         target_roles = []
         if user_profile and user_profile.target_roles:
-            target_roles = [r.get('role', '').lower() for r in user_profile.target_roles]
+            target_roles = [
+                (r.get('role', '') if isinstance(r, dict) else str(r)).lower()
+                for r in user_profile.target_roles
+            ]
         
         # Get user's skills
         user_skills = CareerUserSkill.objects.filter(user=self.user)
