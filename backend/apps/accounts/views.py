@@ -8,7 +8,7 @@ from django.template.loader import render_to_string
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -33,7 +33,6 @@ logger = logging.getLogger(__name__)
 
 
 class AuthRateThrottle(AnonRateThrottle):
-    rate = "10/minute"
     scope = "auth"
 
 
@@ -461,4 +460,79 @@ class GoogleCallbackView(APIView):
                 "message": "Use /accounts/google/login/ for Google OAuth.",
                 "errors": None,
             }
+        )
+
+
+class AdminUserListView(APIView):
+    """GET/POST /api/v1/auth/users/ - Admin user management."""
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    @extend_schema(tags=["Admin"], summary="List all users")
+    def get(self, request):
+        users = User.objects.filter(is_deleted=False)
+        data = UserMeSerializer(users, many=True, context={"request": request}).data
+        return Response(
+            {"success": True, "data": data, "message": "", "errors": None}
+        )
+
+    @extend_schema(tags=["Admin"], summary="Create a user")
+    def post(self, request):
+        email = request.data.get("email", "").lower()
+        password = request.data.get("password", "")
+        first_name = request.data.get("first_name", "")
+        last_name = request.data.get("last_name", "")
+        role = request.data.get("role", "jobseeker")
+        try:
+            user = User.objects.create_user(
+                email=email, password=password,
+                first_name=first_name, last_name=last_name, role=role,
+            )
+        except Exception as e:
+            return Response(
+                {"success": False, "data": None, "message": str(e), "errors": None},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        data = UserMeSerializer(user, context={"request": request}).data
+        return Response(
+            {"success": True, "data": data, "message": "User created.", "errors": None},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class AdminUserDetailView(APIView):
+    """PATCH/DELETE /api/v1/auth/users/<pk>/ - Admin user detail management."""
+
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    @extend_schema(tags=["Admin"], summary="Update a user")
+    def patch(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response(
+                {"success": False, "data": None, "message": "User not found.", "errors": None},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        for field in ("role", "status", "first_name", "last_name"):
+            if field in request.data:
+                setattr(user, field, request.data[field])
+        user.save()
+        data = UserMeSerializer(user, context={"request": request}).data
+        return Response(
+            {"success": True, "data": data, "message": "User updated.", "errors": None}
+        )
+
+    @extend_schema(tags=["Admin"], summary="Soft-delete a user")
+    def delete(self, request, pk):
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response(
+                {"success": False, "data": None, "message": "User not found.", "errors": None},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        user.soft_delete()
+        return Response(
+            {"success": True, "data": None, "message": "User deleted.", "errors": None}
         )

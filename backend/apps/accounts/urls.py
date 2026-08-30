@@ -12,6 +12,8 @@ from apps.accounts.views import (
     GoogleCallbackView,
     MeView,
     ChangePasswordView,
+    AdminUserListView,
+    AdminUserDetailView,
 )
 
 app_name = "accounts"
@@ -40,6 +42,6 @@ urlpatterns = [
     path("change-password/", ChangePasswordView.as_view(), name="change-password"),
 
     # Admin user management (test-expected)
-    path("users/", MeView.as_view(), name="user-list"),
-    path("users/<uuid:pk>/", MeView.as_view(), name="user-detail"),
+    path("users/", AdminUserListView.as_view(), name="user-list"),
+    path("users/<int:pk>/", AdminUserDetailView.as_view(), name="user-detail"),
 ]
