@@ -3,7 +3,7 @@ import { useRef, useEffect, useState } from "react";
 import {
   ArrowLeft, ArrowRight, MapPin, Clock, Bookmark, BookmarkCheck,
   Building2, Globe, DollarSign, Briefcase, Calendar, Share2, Loader2,
-  MessageCircle, Star, AlertTriangle, CheckCircle, XCircle, X,
+  AlertTriangle, CheckCircle, XCircle, X,
 } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,10 @@ import { useJobStructuredData, usePageMeta, useBreadcrumbStructuredData } from "
 import { AskRashidCard } from "@/components/rashid/AskRashidButton";
 import { DirectApplyBadge, DirectApplyText } from "@/components/DirectApplyBadge";
 import DynamicFormFields, { validateDynamicFields } from "@/components/application/DynamicFormFields";
+import { MatchScoreCard } from "@/components/MatchScoreCard";
+import { TailorResumePanel } from "@/components/TailorResumePanel";
+import { InsiderConnectionsCard } from "@/components/InsiderConnectionsCard";
+import { QuickApplyPanel } from "@/components/QuickApplyPanel";
 import { formatDistanceToNow } from "date-fns";
 import type { Job } from "@/services/jobs";
 
@@ -116,112 +120,6 @@ function OverviewGrid({ job, isAr }: any) {
   );
 }
 
-// Phase 1C: Match Breakdown Component
-function MatchBreakdownCard({ job, isAr }: any) {
-  if (!job.match_score && !job.match_breakdown) return null;
-  
-  const breakdown = job.match_breakdown;
-  
-  return (
-    <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/50">
-      <CardContent className="p-5">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
-            <Star className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <div>
-            <h3 className="text-body font-semibold text-emerald-800 dark:text-emerald-200">
-              {isAr ? "مطابقة ملفك" : "Profile Match"}
-            </h3>
-            <p className="text-caption text-emerald-600 dark:text-emerald-400">
-              {job.match_score}% {isAr ? "تطابق" : "match"}
-            </p>
-          </div>
-        </div>
-        
-        {breakdown?.components && (
-          <div className="space-y-3">
-            {breakdown.components.skills && (
-              <div className="flex items-center justify-between text-caption">
-                <span className="text-muted-foreground">{isAr ? "المهارات" : "Skills"}</span>
-                <span className="font-medium">{Math.round(breakdown.components.skills.score)}%</span>
-              </div>
-            )}
-            {breakdown.components.location && (
-              <div className="flex items-center justify-between text-caption">
-                <span className="text-muted-foreground">{isAr ? "الموقع" : "Location"}</span>
-                <span className="font-medium">{Math.round(breakdown.components.location.score)}%</span>
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// Phase 1C: Ask Rashid Button Component
-function AskRashidButton({ jobSlug, isAr }: { jobSlug: string; isAr: boolean }) {
-  const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<any>(null);
-  
-  const handleAskRashid = async () => {
-    setLoading(true);
-    try {
-      const { askRashidAboutJob } = await import("@/services/jobs");
-      const result = await askRashidAboutJob(jobSlug);
-      setResponse(result);
-    } catch (error) {
-      console.error("Failed to get Rashid analysis:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  return (
-    <Card className="border-primary/20">
-      <CardContent className="p-5">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <MessageCircle className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h3 className="text-body font-medium">{isAr ? "اسأل رشيد" : "Ask Rashid"}</h3>
-            <p className="text-caption text-muted-foreground">
-              {isAr ? "مساعدك الذكي للوظائف" : "Your AI career assistant"}
-            </p>
-          </div>
-        </div>
-        
-        <Button 
-          variant="outline" 
-          className="w-full rounded-xl press-feedback"
-          onClick={handleAskRashid}
-          disabled={loading}
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 me-2 animate-spin" />
-          ) : (
-            <MessageCircle className="h-4 w-4 me-2" />
-          )}
-          {isAr ? "حلل هذه الوظيفة" : "Analyze this job"}
-        </Button>
-        
-        {response && (
-          <div className="mt-4 p-3 bg-surface-2 rounded-lg text-caption text-muted-foreground">
-            <p>{response.message}</p>
-            {response.skills_required?.length > 0 && (
-              <div className="mt-2">
-                <span className="font-medium">{isAr ? "المهارات المطلوبة:" : "Skills:"} </span>
-                {response.skills_required.join(", ")}
-              </div>
-            )}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
 
 // Phase 1C: Legitimacy Warning Component
 function LegitimacyWarning({ job, isAr }: any) {
@@ -524,10 +422,33 @@ export default function JobDetail() {
               onToggleSave={() => (saved ? remove(job.id) : save(job.id))}
               onApplyClick={handleApplyClick}
             />
-            
-            {/* Phase 1C: Match Breakdown */}
-            <MatchBreakdownCard job={job} isAr={isAr} />
-            
+
+            {/* Phase 5.1: Enhanced Match Score Card */}
+            <MatchScoreCard jobId={job.id} matchScore={job.match_score} isAr={isAr} />
+
+            {/* Phase 5.2: Resume Tailoring */}
+            <TailorResumePanel jobId={job.id} jobTitle={job.title} isAr={isAr} />
+
+            {/* Phase 5.3: Quick Apply */}
+            {(job as any).ats_platform && (
+              <QuickApplyPanel
+                jobId={job.uuid}
+                jobTitle={job.title}
+                atsPlatform={(job as any).ats_platform}
+                applyUrl={job.direct_apply_url}
+                isAr={isAr}
+              />
+            )}
+
+            {/* Phase 5.5: Insider Connections */}
+            {job.company?.id && (
+              <InsiderConnectionsCard
+                companyId={job.company.id}
+                companyName={job.company.name}
+                isAr={isAr}
+              />
+            )}
+
             {/* Phase 3: Ask Rashid Card */}
             <AskRashidCard jobSlug={job.slug} isAr={isAr} />
           </div>
