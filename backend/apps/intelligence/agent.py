@@ -275,6 +275,128 @@ Format as a clear numbered list."""
             f"- Based on {len(salaries)} data points"
         )
 
+    @agent.tool
+    async def get_match_score(
+        ctx: RunContext[PlatformDeps],
+        job_id: str,
+    ) -> str:
+        """Get a detailed match score breakdown between the user's profile and a specific job."""
+        if not ctx.deps.user_id:
+            return "User not authenticated."
+
+        from apps.career.models import CareerProfile
+        from apps.jobs.models import Job
+        from apps.profiles.services import MatchingService
+
+        try:
+            profile = CareerProfile.objects.get(user_id=ctx.deps.user_id)
+        except CareerProfile.DoesNotExist:
+            return "No career profile found. Please complete your profile first."
+
+        try:
+            job = Job.objects.get(id=job_id)
+        except Job.DoesNotExist:
+            return f"Job with ID {job_id} not found."
+
+        service = MatchingService()
+        result = service.get_match_breakdown(profile, job)
+
+        lines = [f"**Match Score for '{job.title}':** {result.get('overall_score', 0):.0f}/100"]
+        breakdown = result.get("breakdown", {})
+        for factor, detail in breakdown.items():
+            score = detail.get("score", 0) if isinstance(detail, dict) else detail
+            reasoning = detail.get("reasoning", "") if isinstance(detail, dict) else ""
+            lines.append(f"- {factor.replace('_', ' ').title()}: {score:.0f}/100{f' — {reasoning}' if reasoning else ''}")
+
+        for strength in result.get("strengths", []):
+            lines.append(f"- Strength: {strength}")
+        for gap in result.get("gaps", []):
+            lines.append(f"- Gap: {gap}")
+        if result.get("recommendation"):
+            lines.append(f"\n**Recommendation:** {result['recommendation']}")
+        return "\n".join(lines)
+
+    @agent.tool
+    async def tailor_resume(
+        ctx: RunContext[PlatformDeps],
+        job_id: str,
+    ) -> str:
+        """Tailor the user's resume for a specific job, returning before/after ATS scores and suggestions."""
+        if not ctx.deps.user_id:
+            return "User not authenticated."
+
+        from django.contrib.auth import get_user_model
+        from apps.jobs.models import Job
+
+        User = get_user_model()
+        try:
+            user = User.objects.get(id=ctx.deps.user_id)
+        except User.DoesNotExist:
+            return "User not found."
+
+        try:
+            job = Job.objects.get(id=job_id)
+        except Job.DoesNotExist:
+            return f"Job with ID {job_id} not found."
+
+        from apps.career.cv_tailor_service import CVTailorService
+        service = CVTailorService()
+        result = service.tailor_for_job(user, job)
+
+        lines = [
+            f"**Resume Tailoring for '{job.title}':**",
+            f"- Original ATS Score: {result['original_score']:.0f}/100",
+            f"- Tailored ATS Score: {result['tailored_score']:.0f}/100",
+            f"- Improvement: +{result['score_delta']:.0f} points",
+            f"- Skill Match: {result['skill_match_ratio']:.0%}",
+        ]
+        if result.get("missing_skills"):
+            lines.append(f"- Missing Skills: {', '.join(result['missing_skills'][:8])}")
+        if result.get("suggestions"):
+            lines.append("\n**Suggestions:**")
+            for s in result["suggestions"][:5]:
+                lines.append(f"  {s}")
+        return "\n".join(lines)
+
+    @agent.tool
+    async def find_referral_contacts(
+        ctx: RunContext[PlatformDeps],
+        company_id: str,
+    ) -> str:
+        """Find insider connections at a company — E-Career users and public GitHub contributors."""
+        if not ctx.deps.user_id:
+            return "User not authenticated."
+
+        from django.contrib.auth import get_user_model
+        from apps.employers.connections_service import ConnectionsService
+
+        User = get_user_model()
+        try:
+            user = User.objects.get(id=ctx.deps.user_id)
+        except User.DoesNotExist:
+            return "User not found."
+
+        service = ConnectionsService()
+        try:
+            result = service.find_connections(int(company_id), requesting_user=user)
+        except Exception as e:
+            return f"Could not find connections: {e}"
+
+        company_name = result["company"]["name"]
+        ecareer = result.get("ecareer_connections", [])
+        github = result.get("github_contributors", [])
+
+        if not ecareer and not github:
+            return f"No insider connections found at {company_name}."
+
+        lines = [f"**Connections at {company_name}:** ({result['total_connections']} found)"]
+        for c in ecareer[:5]:
+            role = f" — {c['current_role']}" if c.get("current_role") else ""
+            lines.append(f"- {c['name']}{role} ({c['connection_type'].replace('_', ' ')})")
+        for g in github[:5]:
+            lines.append(f"- GitHub: @{g['username']} ({g['profile_url']})")
+        return "\n".join(lines)
+
 
 _rashid_agent: Agent[PlatformDeps, str] | None = None
 
