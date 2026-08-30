@@ -67,7 +67,7 @@ export async function getRecommendations(
   });
 }
 
-export async function getMatchBreakdown(jobId: number): Promise<MatchBreakdown> {
+export async function getMatchBreakdown(jobId: string): Promise<MatchBreakdown> {
   return apiRequest<MatchBreakdown>(`/career/jobs/${jobId}/match-breakdown/`);
 }
 

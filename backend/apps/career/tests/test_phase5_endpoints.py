@@ -1,4 +1,6 @@
 """Tests for Phase 5 career endpoints (match-breakdown, tailor)."""
+import uuid
+
 import pytest
 from django.urls import reverse
 from rest_framework import status
@@ -12,7 +14,7 @@ class TestMatchBreakdownEndpoint:
             user=user,
             defaults={"skills": ["Python", "Django"]},
         )
-        url = reverse("career:match-breakdown", kwargs={"job_id": job.id})
+        url = reverse("career:match-breakdown", kwargs={"job_id": job.uuid})
         response = auth_client.get(url)
         assert response.status_code == status.HTTP_200_OK
         data = response.data.get("data", response.data)
@@ -20,14 +22,14 @@ class TestMatchBreakdownEndpoint:
         assert "breakdown" in data
 
     def test_match_breakdown_unauthenticated(self, api_client, job):
-        url = reverse("career:match-breakdown", kwargs={"job_id": job.id})
+        url = reverse("career:match-breakdown", kwargs={"job_id": job.uuid})
         response = api_client.get(url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_match_breakdown_nonexistent_job(self, auth_client, user):
         from apps.career.models import CareerProfile
         CareerProfile.objects.get_or_create(user=user)
-        url = reverse("career:match-breakdown", kwargs={"job_id": 99999})
+        url = reverse("career:match-breakdown", kwargs={"job_id": uuid.uuid4()})
         response = auth_client.get(url)
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
@@ -43,7 +45,7 @@ class TestTailorEndpoint:
                 "cv_parsed_data": {"text": "Experienced Python developer with Django skills."},
             },
         )
-        url = reverse("career:job-tailor", kwargs={"job_id": job.id})
+        url = reverse("career:job-tailor", kwargs={"job_id": job.uuid})
         response = auth_client.post(url)
         assert response.status_code == status.HTTP_200_OK
         data = response.data.get("data", response.data)
@@ -52,6 +54,6 @@ class TestTailorEndpoint:
         assert "suggestions" in data
 
     def test_tailor_unauthenticated(self, api_client, job):
-        url = reverse("career:job-tailor", kwargs={"job_id": job.id})
+        url = reverse("career:job-tailor", kwargs={"job_id": job.uuid})
         response = api_client.post(url)
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

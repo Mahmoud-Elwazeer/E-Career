@@ -26,7 +26,7 @@ def generate_cover_letter(request, job_id):
         "regenerate": false  // Set to true to create new version
     }
     """
-    job = get_object_or_404(Job, id=job_id, status='active')
+    job = get_object_or_404(Job, uuid=job_id, status='active')
 
     tone = request.data.get('tone', 'professional')
     regenerate = request.data.get('regenerate', False)

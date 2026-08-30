@@ -294,8 +294,8 @@ Format as a clear numbered list."""
             return "No career profile found. Please complete your profile first."
 
         try:
-            job = Job.objects.get(id=job_id)
-        except Job.DoesNotExist:
+            job = Job.objects.get(uuid=job_id)
+        except (Job.DoesNotExist, ValueError):
             return f"Job with ID {job_id} not found."
 
         service = MatchingService()
@@ -335,8 +335,8 @@ Format as a clear numbered list."""
             return "User not found."
 
         try:
-            job = Job.objects.get(id=job_id)
-        except Job.DoesNotExist:
+            job = Job.objects.get(uuid=job_id)
+        except (Job.DoesNotExist, ValueError):
             return f"Job with ID {job_id} not found."
 
         from apps.career.cv_tailor_service import CVTailorService

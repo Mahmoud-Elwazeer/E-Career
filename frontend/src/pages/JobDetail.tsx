@@ -424,10 +424,10 @@ export default function JobDetail() {
             />
 
             {/* Phase 5.1: Enhanced Match Score Card */}
-            <MatchScoreCard jobId={job.id} matchScore={job.match_score} isAr={isAr} />
+            <MatchScoreCard jobId={job.uuid} matchScore={job.match_score} isAr={isAr} />
 
             {/* Phase 5.2: Resume Tailoring */}
-            <TailorResumePanel jobId={job.id} jobTitle={job.title} isAr={isAr} />
+            <TailorResumePanel jobId={job.uuid} jobTitle={job.title} isAr={isAr} />
 
             {/* Phase 5.3: Quick Apply */}
             {(job as any).ats_platform && (

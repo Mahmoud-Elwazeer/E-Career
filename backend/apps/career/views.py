@@ -565,7 +565,7 @@ def match_breakdown(request, job_id):
     from apps.career.models import CareerProfile
     try:
         profile, _ = CareerProfile.objects.get_or_create(user=request.user)
-        job = Job.objects.get(id=job_id)
+        job = Job.objects.get(uuid=job_id)
         result = matching_service.get_match_breakdown(profile, job)
         return Response({'success': True, 'data': result, 'message': '', 'errors': None})
     except Job.DoesNotExist:
@@ -587,7 +587,7 @@ def job_tailor(request, job_id):
     """POST /api/v1/career/jobs/{job_id}/tailor/ — before/after ATS scoring."""
     from apps.career.cv_tailor_service import cv_tailor_service
     try:
-        job = Job.objects.get(id=job_id)
+        job = Job.objects.get(uuid=job_id)
         result = cv_tailor_service.tailor_for_job(request.user, job)
         return Response({'success': True, 'data': result, 'message': '', 'errors': None})
     except Job.DoesNotExist:

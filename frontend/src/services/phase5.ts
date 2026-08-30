@@ -13,7 +13,7 @@ export interface TailorResult {
   tailored_ats_breakdown: Record<string, number>;
 }
 
-export async function tailorResume(jobId: number): Promise<TailorResult> {
+export async function tailorResume(jobId: string): Promise<TailorResult> {
   return apiRequest<TailorResult>(`/career/jobs/${jobId}/tailor/`, {
     method: 'POST',
   });

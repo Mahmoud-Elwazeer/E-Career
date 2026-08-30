@@ -8,7 +8,7 @@ import { tailorResume } from "@/services/phase5";
 import type { TailorResult } from "@/services/phase5";
 
 interface TailorResumePanelProps {
-  jobId: number;
+  jobId: string;
   jobTitle: string;
   isAr?: boolean;
 }

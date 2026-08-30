@@ -8,7 +8,7 @@ import { getMatchBreakdown } from "@/services/recommendations";
 import type { MatchBreakdown } from "@/services/recommendations";
 
 interface MatchScoreCardProps {
-  jobId: number;
+  jobId: string;
   matchScore?: number;
   isAr?: boolean;
 }

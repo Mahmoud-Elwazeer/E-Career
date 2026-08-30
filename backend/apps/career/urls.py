@@ -105,10 +105,10 @@ urlpatterns = [
     path('ats-score/', ats_score, name='ats-score'),
 
     # Match Score Breakdown (5.1)
-    path('jobs/<int:job_id>/match-breakdown/', match_breakdown, name='match-breakdown'),
+    path('jobs/<uuid:job_id>/match-breakdown/', match_breakdown, name='match-breakdown'),
 
     # Job-Specific Resume Tailoring (5.2)
-    path('jobs/<int:job_id>/tailor/', job_tailor, name='job-tailor'),
+    path('jobs/<uuid:job_id>/tailor/', job_tailor, name='job-tailor'),
 
     # Recommendations
     path('recommendations/', get_recommendations, name='recommendations'),

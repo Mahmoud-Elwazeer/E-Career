@@ -4,7 +4,7 @@ import { getMatchBreakdown } from "@/services/recommendations";
 import { Button } from "@/components/ui/button";
 
 interface MatchBreakdownModalProps {
-  jobId: number;
+  jobId: string;
   jobTitle: string;
   onClose: () => void;
 }
