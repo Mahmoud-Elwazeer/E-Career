@@ -96,6 +96,62 @@ BUILD, not anything it classified as already DONE/PARTIAL):**
    already tracked per Phase 7a item 4/5 — wire a simple threshold alert
    on top of data that already exists before building anything new).
 
+## Explicit checklist — the 9 items flagged in the audit prompt as likely MISSING (verify against the actual audit output; build whichever it confirmed as MISSING/BUILD, skip whichever it found already DONE/PARTIAL)
+
+These map 1:1 to the "Explicit checklist" section in
+`PHASE_7_ADMIN_GOVERNANCE_AUDIT_PROMPT.md` — the audit should have
+already told you DONE/PARTIAL/MISSING for each; this is the build
+checklist so none of them get silently dropped between audit and
+execution:
+
+1. **Scraping Control Center — operational controls**: per-`Source`
+   start/stop/pause/resume/enable/disable/run-now/reschedule actions (DRF
+   views + React admin tab), not just the existing read-only stats
+   dashboard. Wire each action through Celery (e.g. revoke a scheduled
+   task, trigger an immediate one-off task) with an `ActivityLog` entry
+   per action.
+2. **AI-assisted scraping (optional, evaluate cost/benefit first)**: if
+   the audit recommends it, start with the lowest-risk assist (anomaly/
+   failure diagnosis — an AI tool that reads recent scraper error logs
+   and summarizes likely causes) before source-discovery or parser-
+   adaptation automation, which are higher-risk. Any AI action that would
+   change a live parser/source config MUST go through the
+   propose→approve→execute→audit flow — never auto-apply.
+3. **Talent Quality framework**: only build if the audit found
+   `TalentScore`/`ScoreBreakdown` insufficient — if those already
+   implement an explainable, evidence-based score, this item is
+   INTEGRATE (surface it better in admin), not BUILD.
+4. **Recommendation Control (admin view)**: a new admin-only endpoint +
+   React tab that, given a recommendation event ID (or user+job pair),
+   shows the full breakdown (reuse `MatchingService.get_match_breakdown`
+   from Phase 5 — call it from the admin side too, don't duplicate the
+   scoring logic) plus admin-configurable ranking weight overrides stored
+   in `PlatformConfig`.
+5. **Per-job admin detail page**: one new React page
+   (`AdminJobDetail.tsx` or similar) + one new DRF view aggregating
+   `Job` + its `VerificationResult` history + duplicate relationships +
+   quality_state + matching stats. Link to it from the existing
+   `AdminJobsTable.tsx` (add a "view details" action per row).
+6. **User Lifecycle Timeline**: one new React component rendering a
+   per-user timeline from `ActivityLog` + any other event sources
+   identified in the audit (onboarding steps, CV upload/analysis events,
+   application/interview status changes). Backend: one aggregating DRF
+   view, not N separate calls per timeline stage.
+7. **Company Lifecycle Timeline**: same pattern as item 6, for companies.
+8. **Employer/Recruiter admin control**: extend the existing
+   `EmployerTeamMember` model's admin visibility — a new admin tab
+   listing all hiring-team members across all companies, with a
+   suspend/restrict action (soft-disable, not hard delete) and
+   `ActivityLog` entry.
+9. **Notification admin control + data retention/consent tooling**:
+   (a) admin-configurable notification digest/frequency defaults via
+   `PlatformConfig`; (b) a genuine per-user data export (JSON dump of
+   their profile/CV/applications/interview data) and a delete/anonymize
+   action with a confirmation step and `ActivityLog` entry — this is a
+   real GDPR-style requirement, treat it with the same care as any other
+   irreversible action (require typed confirmation, e.g. re-entering the
+   user's email, before executing deletion).
+
 ## Rules
 
 - Follow every constraint from `PHASE_7_ADMIN_GOVERNANCE_AUDIT_PROMPT.md`

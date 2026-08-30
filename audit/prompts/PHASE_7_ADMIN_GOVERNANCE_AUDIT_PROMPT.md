@@ -192,6 +192,84 @@ broken.
    acceptable for now (platform is likely owner-only today) before
    building a multi-tier RBAC system that may be premature.
 
+## Explicit checklist — confirm the classification covers ALL of these (do not silently skip any; each maps to a numbered section in the owner's original mandate)
+
+Cross-checked against the owner's full 30-section request — these 9 items
+are real, named requirements that are easy to under-scope if the audit
+stays too abstract. Each MUST get its own row/subsection in your
+classification table, with a DONE/PARTIAL/BROKEN/MISSING/BUILD verdict
+grounded in actual code inspection (most of these will classify as
+MISSING per the repo-wide searches already run, but verify yourself —
+don't assume):
+
+1. **Scraping Control Center — REAL per-source operational controls**
+   (owner's §9/§10). `apps/scraper/admin_views.py`'s `scraper_dashboard`
+   is READ-ONLY monitoring (confirmed: it only renders `Source`/`Job`
+   aggregates, no start/stop/pause/resume/run-now/schedule-edit action
+   views exist anywhere in `apps/scraper/`). This is almost certainly
+   MISSING — confirm, and if so it's a genuine BUILD: an admin needs to
+   individually start/stop/pause/resume/enable/disable/run-now/reschedule
+   each `Source`, not just watch its stats. Also missing: differentiated
+   workflows for NEW JOB DISCOVERY vs OLD JOB REVALIDATION vs EXPIRED JOB
+   CLEANUP vs BROKEN LINK DETECTION vs DUPLICATE DETECTION (§10) — check
+   whether these are even conceptually distinct in the current Celery
+   task structure, or one undifferentiated "scrape" task.
+2. **AI-assisted scraping operations** (§11) — source discovery, parser
+   adaptation, anomaly/failure diagnosis via AI. Confirmed MISSING (no
+   AI-assist code found in `apps/scraper/` in prior searches). If built,
+   must follow the owner's explicit propose→validate→approve→execute→
+   audit pattern for anything destructive — AI must never silently
+   change a live parser or disable a source.
+3. **Talent Quality / Qualification framework** (§5) — an explainable,
+   evidence-based scoring system (profile completeness + CV quality +
+   verified experience + skills + assessments + interview performance +
+   career consistency), explicitly NOT an arbitrary AI "truth score."
+   Check whether `TalentScore`/`ScoreBreakdown` (referenced in
+   `apps/career/views.py`'s imports: `TalentScoreViewSet`,
+   `ScoreBreakdownViewSet`, `ScoreTrendsViewSet`) already implements this
+   — if so this may be PARTIAL/DONE, not MISSING; verify the actual
+   scoring factors used before classifying.
+4. **Recommendation Control — admin-facing explainability + config**
+   (§6) — admin visibility into WHY a specific job was recommended to a
+   specific user (or candidate to a company), with matching/ranking
+   factors, confidence, missing info, negative signals, AND
+   admin-configurable ranking weights/eligibility thresholds/frequency
+   (via `PlatformConfig`, not hardcoded). Distinct from the USER-facing
+   `MatchScoreCard` (Phase 5) — this is an ADMIN view into any
+   recommendation event with full audit detail.
+5. **Per-job full inspector** (§12) — one dedicated admin page per job
+   showing: source, employer, ATS, original/canonical/application URLs,
+   direct-apply verification result AND timestamp, status, expiration,
+   duplicate relationships, quality score, matching stats, AI
+   classification, full source/update history. Distinct from the
+   existing `AdminJobsTable.tsx` list view — check if a per-job DETAIL
+   view exists at all (likely missing).
+6. **User Lifecycle Timeline** (§2) — a per-user admin view showing the
+   REGISTERED→ONBOARDING→PROFILE→CV→CAREER IDENTITY→SKILLS→TALENT
+   QUALIFIED→RECOMMENDATIONS→APPLICATIONS→INTERVIEWS→RESULTS journey as
+   an actual timeline, backed by existing `ActivityLog`/event data where
+   available. Confirmed MISSING as a dedicated admin UI (no such
+   component found in `frontend/src/components/admin/`).
+7. **Company Lifecycle Timeline** (§3) — same pattern for companies
+   (REGISTERED→VERIFICATION→PROFILE→PACKAGE→JOBS→DISCOVERY→SCREENING→
+   INTERVIEWS→HIRING→ANALYTICS). Confirmed MISSING.
+8. **Employer/Recruiter account control** (§14) — admin visibility into
+   hiring team members (uses the real `EmployerTeamMember` model from
+   Phase 2 item 2.8), permission review, abuse flagging, and an actual
+   suspend/restrict action (with `ActivityLog` entry) — not just viewing
+   the company's own team-management self-service page. Check whether
+   this exists from the ADMIN side specifically (the company's own
+   self-service team UI existing is not the same thing).
+9. **Notification admin control + data retention/consent tools** (§18,
+   §20 partial) — admin-configurable notification templates/frequency/
+   digest rules (extend the dual-notification-system fix from earlier
+   phases, don't rebuild it), PLUS a genuine data retention/deletion tool
+   (view/export/delete a user's data on request, consent history,
+   right-to-be-forgotten execution with an audit trail) — GDPR-style
+   tooling the owner explicitly asked for in §20 ("data retention, data
+   deletion... consent management") that has not been addressed in any
+   prior phase's scope. Confirmed MISSING.
+
 ## Task: produce the audit BEFORE writing implementation code
 
 Per the owner's explicit instruction (§28: "Do not immediately rewrite
