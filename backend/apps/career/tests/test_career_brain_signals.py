@@ -93,8 +93,8 @@ class TestSyncCareerBrainTask(TestCase):
         result = sync_career_brain(user2.id)
         assert result.get("skipped") is True
 
-    def test_sync_returns_error_for_missing_user(self):
+    def test_sync_returns_skipped_for_missing_user(self):
         from apps.career.tasks import sync_career_brain
 
         result = sync_career_brain(99999)
-        assert "error" in result
+        assert result.get("skipped") is True

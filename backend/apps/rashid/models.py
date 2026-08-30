@@ -25,7 +25,7 @@ class RashidConfig(models.Model):
     bedrock_region = models.CharField(max_length=30, default='us-east-1')
     bedrock_model_id = models.CharField(
         max_length=100,
-        default='anthropic.claude-sonnet-4-20250514-v1:0'
+        default='us.anthropic.claude-sonnet-4-20250514-v1:0'
     )
     
     # Anthropic direct settings (fallback)
