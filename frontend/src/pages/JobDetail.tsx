@@ -236,6 +236,11 @@ export default function JobDetail() {
   const [job, setJob] = useState<Job | null>(null);
   const [similarJobs, setSimilarJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [applicationValues, setApplicationValues] = useState<Record<string, any>>({});
+  const [applicationErrors, setApplicationErrors] = useState<Record<string, string>>({});
+  const [submittingApplication, setSubmittingApplication] = useState(false);
+  const [applicationResult, setApplicationResult] = useState<{ status: string; message: string } | null>(null);
   const { isSaved, save, remove } = useSavedJobs();
   const { lang, dir } = useTheme();
   const isAr = lang === "ar";
@@ -299,13 +304,6 @@ export default function JobDetail() {
   const expired = job.deadline ? new Date(job.deadline) < new Date() : false;
   const saved = isSaved(job.id);
   const tags = job.tags ?? [];
-
-  // Application modal state
-  const [showApplicationModal, setShowApplicationModal] = useState(false);
-  const [applicationValues, setApplicationValues] = useState<Record<string, any>>({});
-  const [applicationErrors, setApplicationErrors] = useState<Record<string, string>>({});
-  const [submittingApplication, setSubmittingApplication] = useState(false);
-  const [applicationResult, setApplicationResult] = useState<{ status: string; message: string } | null>(null);
 
   const hasCustomForm = job.custom_form_fields && job.custom_form_fields.length > 0;
 
