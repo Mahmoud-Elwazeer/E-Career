@@ -70,13 +70,13 @@ sentence-transformers==3.0.1
 numpy>=1.24.0
 
 # Web Extraction (Phase 3)
-crawl4ai==0.3.7
+# crawl4ai==0.3.7  # disabled: requires litellm==1.48.0 unavailable on Python 3.10
 
 # Research Engine (Phase 3)
-gpt-researcher==0.9.1
+# gpt-researcher==0.9.1  # disabled: heavy deps, graceful fallback in research_engine.py
 
 # Workflow Orchestration (Phase 3 - optional)
-prefect==3.0.0
+# prefect==3.0.0  # disabled: not imported anywhere yet
 
 # Change Detection Client (Phase 2)
 # changedetection.io is self-hosted Docker, no pip package needed
