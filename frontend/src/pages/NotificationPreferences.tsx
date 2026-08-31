@@ -48,7 +48,7 @@ export default function NotificationPreferences() {
   const { data: preferenceData } = useQuery({
     queryKey: ['notification-preferences'],
     queryFn: async () => {
-      return apiRequest<{ data: NotificationPreference }>('/notifications/preferences/');
+      return apiRequest<NotificationPreference>('/notifications/preferences/');
     },
   });
 
@@ -66,8 +66,8 @@ export default function NotificationPreferences() {
   });
 
   useEffect(() => {
-    if (preferenceData?.data) {
-      setPreference(preferenceData.data);
+    if (preferenceData) {
+      setPreference(preferenceData);
     }
     setLoading(false);
   }, [preferenceData]);

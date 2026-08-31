@@ -44,6 +44,7 @@ import {
   Cell
 } from 'recharts';
 import scoresApi, { calculateGrade, getGradeColor, getTrendColor } from '../services/scores';
+import { AuthNavbar } from '@/components/AuthNavbar';
 
 // Score dimension configuration
 const DIMENSION_CONFIG = {
@@ -139,15 +140,9 @@ export default function TalentScoreDashboard() {
         scoresApi.getAllScoresWithActions()
       ]);
 
-      if (scoresRes.success) {
-        setScores(scoresRes.data);
-      }
-      if (trendsRes.success) {
-        setTrends(trendsRes.data);
-      }
-      if (actionsRes.success) {
-        setActions(actionsRes.data.actions);
-      }
+      setScores(scoresRes);
+      setTrends(trendsRes);
+      setActions(actionsRes.actions);
     } catch (err) {
       console.error('Failed to load scores:', err);
       setError('Failed to load talent scores. Please try again.');
@@ -220,6 +215,7 @@ export default function TalentScoreDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
+      <AuthNavbar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">

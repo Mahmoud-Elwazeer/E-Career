@@ -135,7 +135,7 @@ export default function ResumeBuilder() {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Resume> }) =>
-      apiFetch(`${API_BASE}/resumes/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+      apiFetch(`${API_BASE}/resumes/${id}/update/`, { method: 'PUT', body: JSON.stringify(data) }),
     onSuccess: () => {
       setIsSaving(false);
       setLastSaved(new Date());

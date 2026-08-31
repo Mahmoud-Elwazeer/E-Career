@@ -137,7 +137,8 @@ export const searchCompanies = async (query: string): Promise<{ companies: Compa
 
 // Job Posting APIs
 export const getJobPostings = async (): Promise<JobPosting[]> => {
-  return apiRequest<JobPosting[]>('/employer/jobs/');
+  const data = await apiRequest<any>('/employer/jobs/');
+  return Array.isArray(data) ? data : data?.results ?? [];
 };
 
 export const getJobPosting = async (id: number): Promise<JobPosting> => {
@@ -285,7 +286,8 @@ export interface CandidateRanking {
 
 // Talent Pool APIs
 export const listTalentPools = async (): Promise<TalentPool[]> => {
-  return apiRequest<TalentPool[]>('/employer/talent-pools/');
+  const data = await apiRequest<any>('/employer/talent-pools/');
+  return Array.isArray(data) ? data : data?.results ?? [];
 };
 
 export const createTalentPool = async (data: CreateTalentPoolData): Promise<TalentPool> => {
@@ -308,9 +310,10 @@ export const rankCandidates = async (jobId: number, candidateIds?: number[], ran
 };
 
 export const listRankings = async (jobId?: number): Promise<CandidateRanking[]> => {
-  return apiRequest<CandidateRanking[]>('/employer/rankings/', {
+  const data = await apiRequest<any>('/employer/rankings/', {
     params: jobId ? { job_id: jobId } : undefined,
   });
+  return Array.isArray(data) ? data : data?.results ?? [];
 };
 
 // Export all as named exports

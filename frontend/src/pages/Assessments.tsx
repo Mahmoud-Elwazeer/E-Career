@@ -92,7 +92,7 @@ export default function AssessmentsPage() {
 
   const startAssessment = useMutation({
     mutationFn: (templateId: number) =>
-      apiRequest<ActiveSession>('/assessment/start/', {
+      apiRequest<ActiveSession>('/assessment/assessments/start/', {
         method: 'POST',
         body: { template_id: templateId },
       }),
@@ -105,10 +105,9 @@ export default function AssessmentsPage() {
 
   const submitAssessment = useMutation({
     mutationFn: () =>
-      apiRequest('/assessment/submit/', {
+      apiRequest(`/assessment/assessments/${activeSession?.id}/submit/`, {
         method: 'POST',
         body: {
-          session_id: activeSession?.id,
           answers: Object.entries(answers).map(([qi, answer]) => ({
             question_index: Number(qi),
             answer,

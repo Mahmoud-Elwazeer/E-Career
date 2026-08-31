@@ -13,7 +13,7 @@ import { usePageMeta } from "@/hooks/use-seo";
 import { getAccessToken } from "@/services/client";
 
 export default function IntelligenceDashboard() {
-  usePageMeta({ title: "Intelligence Dashboard" });
+  usePageMeta("Intelligence Dashboard");
 
   const [health, setHealth] = useState<any>(null);
   const [metrics, setMetrics] = useState<any>(null);
@@ -28,7 +28,7 @@ export default function IntelligenceDashboard() {
       intelligenceApi.getDecliningSkills(30).catch(() => []),
       fetch("/api/v1/intelligence/admin/metrics/", {
         headers: { Authorization: `Bearer ${getAccessToken()}` },
-      }).then(r => r.ok ? r.json() : null).catch(() => null),
+      }).then(r => r.ok ? r.json().then(json => json.data ?? json) : null).catch(() => null),
     ]).then(([h, em, dec, m]) => {
       setHealth(h);
       setEmerging(em || []);

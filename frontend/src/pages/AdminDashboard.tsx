@@ -533,7 +533,7 @@ function VerificationTab() {
     try {
       await apiRequest<any>(`/admin-api/verification/${selectedJobUuid}/override/`, {
         method: "PATCH",
-        body: JSON.stringify({ trust_score: Number(overrideScore), reason: overrideReason }),
+        body: { trust_score: Number(overrideScore), reason: overrideReason },
       });
       toast({ title: "Override applied successfully" });
       loadVerification(selectedJobUuid);
@@ -1245,7 +1245,7 @@ function CeleryBeatTab() {
     try {
       await apiRequest<any>(`/admin-api/celery-beat/${taskId}/toggle/`, {
         method: "PATCH",
-        body: JSON.stringify({ enabled }),
+        body: { enabled },
       });
       setData((prev: any) => ({
         ...prev,
@@ -1474,7 +1474,7 @@ function CopilotTab() {
     try {
       const data = await apiRequest<any>("/admin-api/copilot/chat/", {
         method: "POST",
-        body: JSON.stringify({ message: text }),
+        body: { message: text },
       });
       setMessages((prev) => [...prev, { role: "assistant", content: data?.response || "No response." }]);
     } catch {

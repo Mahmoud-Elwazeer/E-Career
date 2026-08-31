@@ -116,16 +116,16 @@ export interface AllScoresWithActions {
 
 // Scores API functions
 export const scoresApi = {
-  getScores: async (): Promise<{ success: boolean; data: TalentScore }> => {
-    return apiRequest<{ success: boolean; data: TalentScore }>('/career/scores/');
+  getScores: async (): Promise<TalentScore> => {
+    return apiRequest<TalentScore>('/career/scores/');
   },
 
-  getScoreBreakdown: async (dimension: string): Promise<{ success: boolean; data: ScoreBreakdown }> => {
-    return apiRequest<{ success: boolean; data: ScoreBreakdown }>(`/career/scores/breakdown/${dimension}/`);
+  getScoreBreakdown: async (dimension: string): Promise<ScoreBreakdown> => {
+    return apiRequest<ScoreBreakdown>(`/career/scores/breakdown/${dimension}/`);
   },
 
-  getScoreTrends: async (): Promise<{ success: boolean; data: ScoreTrendsResponse }> => {
-    return apiRequest<{ success: boolean; data: ScoreTrendsResponse }>('/career/scores/trends/');
+  getScoreTrends: async (): Promise<ScoreTrendsResponse> => {
+    return apiRequest<ScoreTrendsResponse>('/career/scores/trends/');
   },
 
   recalculateScores: async (): Promise<{ success: boolean; message: string }> => {
@@ -134,29 +134,25 @@ export const scoresApi = {
     });
   },
 
-  getAllScoresWithActions: async (): Promise<{ success: boolean; data: AllScoresWithActions }> => {
-    return apiRequest<{ success: boolean; data: AllScoresWithActions }>('/career/scores/with-actions/');
+  getAllScoresWithActions: async (): Promise<AllScoresWithActions> => {
+    return apiRequest<AllScoresWithActions>('/career/scores/with-actions/');
   },
 
   getCompositeScore: async (): Promise<{ overall_score: number; overall_grade: string; dimensions: { [key: string]: number } }> => {
-    const result = await apiRequest<{ success: boolean; data: TalentScore }>('/career/scores/');
-    if (result.success) {
-      const data = result.data;
-      return {
-        overall_score: data.overall_score,
-        overall_grade: calculateGrade(data.overall_score),
-        dimensions: {
-          skill_score: data.skill_score,
-          experience_score: data.experience_score,
-          education_score: data.education_score,
-          portfolio_score: data.portfolio_score,
-          interview_score: data.interview_score,
-          growth_score: data.growth_score,
-          communication_score: data.communication_score,
-        },
-      };
-    }
-    throw new Error('Failed to get composite score');
+    const data = await apiRequest<TalentScore>('/career/scores/');
+    return {
+      overall_score: data.overall_score,
+      overall_grade: calculateGrade(data.overall_score),
+      dimensions: {
+        skill_score: data.skill_score,
+        experience_score: data.experience_score,
+        education_score: data.education_score,
+        portfolio_score: data.portfolio_score,
+        interview_score: data.interview_score,
+        growth_score: data.growth_score,
+        communication_score: data.communication_score,
+      },
+    };
   },
 };
 
