@@ -79,7 +79,7 @@ export default function ToolSelector({ onSelectTool, onClose, isAr = false }: To
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">
-            {isAr ? 'أدوات رشيد' : 'Rashid Tools'}
+            {isAr ? 'أدوات رشيد' : 'Rasheed Tools'}
           </h2>
           <button
             onClick={onClose}

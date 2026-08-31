@@ -522,7 +522,7 @@ export default function RashidChat() {
               </button>
               <div>
                 <h1 className="text-lg font-semibold">
-                  {isAr ? 'رشيد - مستشارك المهني' : 'Rashid - Your Career Mentor'}
+                  {isAr ? 'رشيد - مستشارك المهني' : 'Rasheed - Your Career Mentor'}
                 </h1>
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   {isConnected ? (
@@ -564,7 +564,7 @@ export default function RashidChat() {
               <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
                 <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
                 <p className="text-lg font-medium">
-                  {isAr ? 'ابدأ محادثة مع رشيد' : 'Start a conversation with Rashid'}
+                  {isAr ? 'ابدأ محادثة مع رشيد' : 'Start a conversation with Rasheed'}
                 </p>
                 <p className="text-sm">
                   {isAr

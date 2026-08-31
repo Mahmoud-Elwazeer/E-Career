@@ -46,7 +46,7 @@ const getGreeting = (pathname: string, lang: string): string => {
       ar: 'محتاج مساعدة في التوظيف؟',
     },
     default: {
-      en: "Hi! I'm Rashid, your career advisor",
+      en: "Hi! I'm Rasheed, your career advisor",
       ar: 'أهلاً! أنا راشد، مستشارك المهني',
     },
   };

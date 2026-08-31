@@ -96,8 +96,8 @@ class Migration(migrations.Migration):
                 ("updated_at", models.DateTimeField(auto_now=True)),
             ],
             options={
-                "verbose_name": "Rashid Configuration",
-                "verbose_name_plural": "Rashid Configuration",
+                "verbose_name": "Rasheed Configuration",
+                "verbose_name_plural": "Rasheed Configuration",
             },
         ),
         migrations.CreateModel(
@@ -137,7 +137,7 @@ class Migration(migrations.Migration):
                     "job",
                     models.ForeignKey(
                         blank=True,
-                        help_text="Job being discussed (for 'Ask Rashid about this job')",
+                        help_text="Job being discussed (for 'Ask Rasheed about this job')",
                         null=True,
                         on_delete=django.db.models.deletion.SET_NULL,
                         to="jobs.job",
@@ -153,8 +153,8 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "verbose_name": "Rashid Conversation",
-                "verbose_name_plural": "Rashid Conversations",
+                "verbose_name": "Rasheed Conversation",
+                "verbose_name_plural": "Rasheed Conversations",
                 "ordering": ["-updated_at"],
             },
         ),
@@ -190,8 +190,8 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "verbose_name": "Rashid Message",
-                "verbose_name_plural": "Rashid Messages",
+                "verbose_name": "Rasheed Message",
+                "verbose_name_plural": "Rasheed Messages",
                 "ordering": ["created_at"],
             },
         ),
@@ -234,8 +234,8 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "verbose_name": "Rashid User Profile",
-                "verbose_name_plural": "Rashid User Profiles",
+                "verbose_name": "Rasheed User Profile",
+                "verbose_name_plural": "Rasheed User Profiles",
             },
         ),
         migrations.CreateModel(
@@ -301,8 +301,8 @@ class Migration(migrations.Migration):
                 ),
             ],
             options={
-                "verbose_name": "Rashid Usage",
-                "verbose_name_plural": "Rashid Usage",
+                "verbose_name": "Rasheed Usage",
+                "verbose_name_plural": "Rasheed Usage",
                 "unique_together": {("user", "date")},
             },
         ),

@@ -739,7 +739,7 @@ function RashidTab() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Bot className="h-5 w-5 text-primary" />
-        <h2 className="text-heading-3">Rashid AI Assistant</h2>
+        <h2 className="text-heading-3">Rasheed AI Assistant</h2>
       </div>
 
       {rashidStats && (
@@ -1595,7 +1595,7 @@ export default function AdminDashboard() {
       items: [
         { icon: GitCompare, label: "Matching", tab: "matching" as AdminTab },
         { icon: Brain, label: "AI Center", tab: "ai-center" as AdminTab },
-        { icon: Bot, label: "Rashid", tab: "rashid" as AdminTab },
+        { icon: Bot, label: "Rasheed", tab: "rashid" as AdminTab },
         { icon: Mic, label: "Interviews", tab: "interviews" as AdminTab },
         { icon: MessageSquare, label: "Copilot", tab: "copilot" as AdminTab },
       ],

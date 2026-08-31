@@ -216,7 +216,7 @@ export function RashidWidget() {
              
              {/* Tooltip */}
              <div className="absolute -top-12 right-0 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-               {lang === 'ar' ? 'راشد - مساعدك المهني' : 'Rashid - Your Career Advisor'}
+               {lang === 'ar' ? 'راشد - مساعدك المهني' : 'Rasheed - Your Career Advisor'}
              </div>
            </motion.button>
         </div>

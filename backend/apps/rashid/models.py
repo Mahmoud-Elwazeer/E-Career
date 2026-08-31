@@ -98,8 +98,8 @@ Natural conversational tone, not formal Arabic."""
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        verbose_name = 'Rashid Configuration'
-        verbose_name_plural = 'Rashid Configuration'
+        verbose_name = 'Rasheed Configuration'
+        verbose_name_plural = 'Rasheed Configuration'
     
     def save(self, *args, **kwargs):
         # Enforce single row
@@ -107,7 +107,7 @@ Natural conversational tone, not formal Arabic."""
         super().save(*args, **kwargs)
     
     def __str__(self):
-        return f"Rashid Config (Provider: {self.ai_provider})"
+        return f"Rasheed Config (Provider: {self.ai_provider})"
 
 
 class RashidProfile(models.Model):
@@ -148,11 +148,11 @@ class RashidProfile(models.Model):
     last_updated = models.DateTimeField(auto_now=True)
     
     class Meta:
-        verbose_name = 'Rashid User Profile'
-        verbose_name_plural = 'Rashid User Profiles'
+        verbose_name = 'Rasheed User Profile'
+        verbose_name_plural = 'Rasheed User Profiles'
     
     def __str__(self):
-        return f"Rashid Profile: {self.user.email}"
+        return f"Rasheed Profile: {self.user.email}"
 
 
 class RashidConversation(models.Model):
@@ -189,7 +189,7 @@ class RashidConversation(models.Model):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        help_text="Job being discussed (for 'Ask Rashid about this job')"
+        help_text="Job being discussed (for 'Ask Rasheed about this job')"
     )
     
     # Timestamps
@@ -199,8 +199,8 @@ class RashidConversation(models.Model):
     
     class Meta:
         ordering = ['-updated_at']
-        verbose_name = 'Rashid Conversation'
-        verbose_name_plural = 'Rashid Conversations'
+        verbose_name = 'Rasheed Conversation'
+        verbose_name_plural = 'Rasheed Conversations'
     
     def __str__(self):
         return f"{self.user.email} - {self.mode} - {self.title[:50]}"
@@ -233,8 +233,8 @@ class RashidMessage(models.Model):
     
     class Meta:
         ordering = ['created_at']
-        verbose_name = 'Rashid Message'
-        verbose_name_plural = 'Rashid Messages'
+        verbose_name = 'Rasheed Message'
+        verbose_name_plural = 'Rasheed Messages'
     
     def __str__(self):
         return f"{self.role} @ {self.created_at}"
@@ -289,8 +289,8 @@ class RashidUsage(models.Model):
     
     class Meta:
         unique_together = ('user', 'date')
-        verbose_name = 'Rashid Usage'
-        verbose_name_plural = 'Rashid Usage'
+        verbose_name = 'Rasheed Usage'
+        verbose_name_plural = 'Rasheed Usage'
     
     def __str__(self):
         return f"{self.user.email} - {self.date} - {self.tokens_used} tokens"

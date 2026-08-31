@@ -57,7 +57,7 @@ export function EmptyState({
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">👋</span>
             <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              Rashid says:
+              Rasheed says:
             </span>
           </div>
           <p className="text-xs text-blue-600 dark:text-blue-400 mb-2">

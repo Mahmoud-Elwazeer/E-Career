@@ -75,7 +75,7 @@ describe('RashidWidget', () => {
     render(<RashidWidget />);
 
     // Find and click the widget button
-    const widgetButton = screen.getByRole('button', { name: /Rashid/i });
+    const widgetButton = screen.getByRole('button', { name: /Rasheed/i });
     fireEvent.click(widgetButton);
 
     expect(toggleWidget).toHaveBeenCalled();
@@ -114,11 +114,11 @@ describe('RashidWidget', () => {
 
     // Find the message input and send a message
     const input = screen.getByPlaceholderText(/Type your message/i);
-    fireEvent.change(input, { target: { value: 'Hello, Rashid!' } });
+    fireEvent.change(input, { target: { value: 'Hello, Rasheed!' } });
     fireEvent.keyDown(input, { key: 'Enter', code: 'Enter' });
 
     await waitFor(() => {
-      expect(sendMessage).toHaveBeenCalledWith('Hello, Rashid!');
+      expect(sendMessage).toHaveBeenCalledWith('Hello, Rasheed!');
     });
   });
 
