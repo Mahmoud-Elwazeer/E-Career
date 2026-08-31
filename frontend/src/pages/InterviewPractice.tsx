@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
 import { cn } from '@/lib/utils';
+import { AuthNavbar } from '@/components/AuthNavbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -119,6 +120,8 @@ export default function InterviewPractice() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const liveTranscriptRef = useRef('');
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -144,11 +147,13 @@ export default function InterviewPractice() {
           target_role: targetRole,
           difficulty: selectedDifficulty,
           mode,
+          language: isAr ? 'ar' : 'en',
         }),
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const json = await response.json();
+        const data = json.data ?? json;
         setSession({
           id: data.session_id,
           interview_type: data.interview_type,
@@ -162,8 +167,19 @@ export default function InterviewPractice() {
         });
         setStep(2);
         setCurrentQuestionIndex(0);
+        // Read first question aloud in voice mode
+        if (mode === 'voice' && data.current_question?.question && 'speechSynthesis' in window) {
+          const utter = new SpeechSynthesisUtterance(data.current_question.question);
+          utter.lang = isAr ? 'ar-SA' : 'en-US';
+          window.speechSynthesis.speak(utter);
+        }
+      } else {
+        const err = await response.json().catch(() => null);
+        alert(isAr ? 'فشل بدء المقابلة. حاول مرة أخرى.' : 'Failed to start interview. Please try again.');
+        console.error('Start interview error:', err);
       }
     } catch (error) {
+      alert(isAr ? 'خطأ في الاتصال. تحقق من الإنترنت.' : 'Connection error. Check your internet.');
       console.error('Error starting interview:', error);
     } finally {
       setIsProcessing(false);
@@ -186,8 +202,9 @@ export default function InterviewPractice() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        
+        const json = await response.json();
+        const data = json.data ?? json;
+
         // Update current question with score
         const updatedQuestions = [...session.questions];
         updatedQuestions[currentQuestionIndex] = {
@@ -197,12 +214,12 @@ export default function InterviewPractice() {
           feedback: data.feedback,
           dimensions: data.dimensions,
         };
-        
+
         setSession({
           ...session,
           questions: updatedQuestions,
         });
-        
+
         if (data.next_question) {
           // Add next question
           const nextQuestion = {
@@ -242,7 +259,8 @@ export default function InterviewPractice() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const json = await response.json();
+        const data = json.data ?? json;
         setSession({
           ...session,
           overall_score: data.overall_score,
@@ -258,38 +276,145 @@ export default function InterviewPractice() {
     }
   };
 
-  // Voice recording controls
+  // Voice recording controls — uses browser SpeechRecognition (Arabic + English)
+  // with fallback to MediaRecorder + backend transcription
+  const hasSpeechRecognition = typeof window !== 'undefined' &&
+    (('SpeechRecognition' in window) || ('webkitSpeechRecognition' in window));
+
   const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
+    setVoiceTranscript('');
+    liveTranscriptRef.current = '';
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+    if (hasSpeechRecognition) {
+      const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SR();
+      recognition.lang = isAr ? 'ar-SA' : 'en-US';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event: any) => {
+        let final = '';
+        let interim = '';
+        for (let i = 0; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript;
+          if (event.results[i].isFinal) final += t + ' ';
+          else interim = t;
         }
+        liveTranscriptRef.current = (final + interim).trim();
+        setVoiceTranscript(liveTranscriptRef.current);
       };
 
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        stream.getTracks().forEach(track => track.stop());
-        submitVoiceAnswer(audioBlob);
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        if (event.error === 'not-allowed') {
+          alert(isAr ? 'يرجى السماح بالوصول إلى الميكروفون' : 'Please allow microphone access');
+        }
+        setIsRecording(false);
       };
 
-      mediaRecorder.start();
+      recognition.onend = () => {
+        // If still marked as recording, user didn't stop manually — auto-submit
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
       setIsRecording(true);
-      setVoiceTranscript('');
-    } catch (error) {
-      console.error('Error accessing microphone:', error);
+    } else {
+      // Fallback: MediaRecorder + backend transcription
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) audioChunksRef.current.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          stream.getTracks().forEach(track => track.stop());
+          submitVoiceAnswer(audioBlob);
+        };
+
+        mediaRecorder.start();
+        setIsRecording(true);
+      } catch (error) {
+        alert(isAr ? 'لا يمكن الوصول إلى الميكروفون' : 'Cannot access microphone');
+      }
     }
   };
 
   const stopRecording = () => {
+    setIsRecording(false);
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+      const transcript = liveTranscriptRef.current.trim();
+      if (transcript) {
+        // Submit the browser-transcribed text as a regular text answer
+        setAnswer(transcript);
+        setVoiceTranscript(transcript);
+        submitTextAnswer(transcript);
+      }
+      return;
+    }
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
-      setIsRecording(false);
+    }
+  };
+
+  const submitTextAnswer = async (text: string) => {
+    if (!text.trim() || !session) return;
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}/interviews/${session.id}/answer/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
+        },
+        body: JSON.stringify({ answer: text }),
+      });
+      if (response.ok) {
+        const json = await response.json();
+        const data = json.data ?? json;
+        const updatedQuestions = [...session.questions];
+        updatedQuestions[currentQuestionIndex] = {
+          ...updatedQuestions[currentQuestionIndex],
+          answer: text,
+          score: data.score,
+          feedback: data.feedback,
+          dimensions: data.dimensions,
+        };
+        setSession({ ...session, questions: updatedQuestions });
+        if (data.next_question) {
+          setSession({
+            ...session,
+            questions: [...updatedQuestions, {
+              id: data.next_question.id,
+              index: data.next_question.index,
+              question: data.next_question.question,
+            }],
+          });
+          setCurrentQuestionIndex(currentQuestionIndex + 1);
+          setVoiceTranscript('');
+          // Read next question aloud using browser TTS
+          if ('speechSynthesis' in window) {
+            const utter = new SpeechSynthesisUtterance(data.next_question.question);
+            utter.lang = isAr ? 'ar-SA' : 'en-US';
+            window.speechSynthesis.speak(utter);
+          }
+        } else {
+          await completeInterview();
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting voice text answer:', error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -300,6 +425,7 @@ export default function InterviewPractice() {
     try {
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
+      formData.append('language', isAr ? 'ar' : 'en');
 
       const response = await fetch(`${API_BASE_URL}/interviews/${session.id}/voice-answer/`, {
         method: 'POST',
@@ -310,7 +436,8 @@ export default function InterviewPractice() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const json = await response.json();
+        const data = json.data ?? json;
 
         // Show transcript
         setVoiceTranscript(data.transcript || '');
@@ -613,7 +740,7 @@ export default function InterviewPractice() {
                   size="sm"
                   onClick={() => {
                     if (session && currentQuestion) {
-                      fetch(`${API_BASE_URL}/interviews/${session.id}/question-audio/${currentQuestion.index}/`, {
+                      fetch(`${API_BASE_URL}/interviews/${session.id}/question-audio/${currentQuestion.index}/?language=${isAr ? 'ar' : 'en'}`, {
                         headers: {
                           'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
                         },
@@ -865,8 +992,9 @@ export default function InterviewPractice() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-8">
-      <div className="container mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <AuthNavbar />
+      <div className="container mx-auto px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

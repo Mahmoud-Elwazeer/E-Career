@@ -17,7 +17,7 @@ class InterviewService:
     def __init__(self):
         self.bedrock = bedrock_service
     
-    def generate_questions(self, interview_type, target_role, difficulty, user_context=None, job_context=None):
+    def generate_questions(self, interview_type, target_role, difficulty, user_context=None, job_context=None, language='en'):
         """
         Generate 5 interview questions using Bedrock Haiku.
 
@@ -27,19 +27,20 @@ class InterviewService:
             difficulty: easy, medium, hard
             user_context: Optional user profile context
             job_context: Optional specific job context (F5 enhancement)
+            language: 'en' for English, 'ar' for Arabic
 
         Returns:
             list: List of 5 question dictionaries
         """
         start_time = time.time()
-        
+
         # Build prompt
         difficulty_desc = {
             'easy': 'Entry-level, fundamental concepts',
             'medium': 'Mid-level, moderate complexity',
             'hard': 'Senior-level, complex scenarios'
         }
-        
+
         type_prompts = {
             'technical': 'Technical questions about the role',
             'behavioral': 'Behavioral and situational questions',
@@ -47,7 +48,11 @@ class InterviewService:
             'system_design': 'System design and architecture questions',
             'case_study': 'Case study and problem-solving questions',
         }
-        
+
+        lang_instruction = ''
+        if language == 'ar':
+            lang_instruction = '\nIMPORTANT: Generate ALL questions in Arabic (العربية). The questions and evaluation criteria must be in Arabic.'
+
         prompt = f"""You are an expert interviewer. Generate 5 interview questions for a {target_role} position at {difficulty} level.
 
 Type: {type_prompts.get(interview_type, 'General')}
@@ -55,6 +60,7 @@ Difficulty: {difficulty_desc.get(difficulty, 'Medium')}
 
 User Context: {user_context or 'No user context available'}
 {'Job Context: ' + job_context if job_context else ''}
+{lang_instruction}
 
 Format your response as a JSON array with exactly 5 questions. Each question should have:
 - "question": The question text
@@ -259,37 +265,40 @@ Return ONLY valid JSON, no other text."""
         }
     
     def _generate_feedback_summary(self, avg_score, dimensions, questions):
-        """Generate a summary feedback for the session."""
-        summary_parts = []
-        
-        # Overall assessment
+        """Generate a bilingual summary feedback for the session."""
+        summary_parts_ar = []
+        summary_parts_en = []
+
         if avg_score >= 8:
-            summary_parts.append("ممتاز! أداء قوي جداً.")
+            summary_parts_ar.append("ممتاز! أداء قوي جداً.")
+            summary_parts_en.append("Excellent! Very strong performance.")
         elif avg_score >= 6:
-            summary_parts.append("جيد جداً! لديك أساس قوي.")
+            summary_parts_ar.append("جيد جداً! لديك أساس قوي.")
+            summary_parts_en.append("Very good! You have a solid foundation.")
         elif avg_score >= 4:
-            summary_parts.append("جيد، لكن هناك مجال للتحسين.")
+            summary_parts_ar.append("جيد، لكن هناك مجال للتحسين.")
+            summary_parts_en.append("Good, but there is room for improvement.")
         else:
-            summary_parts.append("حاول مرة أخرى مع التركيز على النقاط المذكورة.")
-        
-        # Dimension highlights
+            summary_parts_ar.append("حاول مرة أخرى مع التركيز على النقاط المذكورة.")
+            summary_parts_en.append("Try again focusing on the points mentioned.")
+
         if dimensions:
             best_dim = max(dimensions.items(), key=lambda x: x[1])
             worst_dim = min(dimensions.items(), key=lambda x: x[1])
-            
-            dim_names = {
-                'relevance': 'الصلة بالسؤال',
-                'depth': 'العمق',
-                'structure': 'التنظيم',
-                'technical': 'المحتوى التقني',
-                'communication': 'التواصل',
-                'growth': 'القدرة على التعلم'
+
+            dim_names_ar = {
+                'relevance': 'الصلة بالسؤال', 'depth': 'العمق',
+                'structure': 'التنظيم', 'technical': 'المحتوى التقني',
+                'communication': 'التواصل', 'growth': 'القدرة على التعلم'
             }
-            
-            summary_parts.append(f"أقوى مهارة: {dim_names.get(worst_dim[0], worst_dim[0])} ({worst_dim[1]}/10)")
-            summary_parts.append(f"أولى بالتحسين: {dim_names.get(worst_dim[0], worst_dim[0])} ({worst_dim[1]}/10)")
-        
-        return " ".join(summary_parts)
+
+            summary_parts_ar.append(f"أقوى مهارة: {dim_names_ar.get(best_dim[0], best_dim[0])} ({best_dim[1]}/10)")
+            summary_parts_ar.append(f"أولى بالتحسين: {dim_names_ar.get(worst_dim[0], worst_dim[0])} ({worst_dim[1]}/10)")
+
+            summary_parts_en.append(f"Strongest: {best_dim[0].title()} ({best_dim[1]}/10)")
+            summary_parts_en.append(f"Needs improvement: {worst_dim[0].title()} ({worst_dim[1]}/10)")
+
+        return " ".join(summary_parts_ar) + "\n\n" + " ".join(summary_parts_en)
 
 
 # Singleton instance

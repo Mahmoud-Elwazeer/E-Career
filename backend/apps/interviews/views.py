@@ -107,6 +107,7 @@ class InterviewViewSet(viewsets.ModelViewSet):
         difficulty = serializer.validated_data.get('difficulty', 'medium')
         mode = serializer.validated_data.get('mode', 'text')
         job_id = serializer.validated_data.get('job_id')
+        language = request.data.get('language', 'en')
 
         # Build user context
         user_context = self._build_user_context(request.user)
@@ -124,7 +125,8 @@ class InterviewViewSet(viewsets.ModelViewSet):
             target_role=target_role,
             difficulty=difficulty,
             user_context=user_context,
-            job_context=job_context
+            job_context=job_context,
+            language=language,
         )
         
         # Create session
@@ -339,7 +341,8 @@ class InterviewViewSet(viewsets.ModelViewSet):
             )
 
         # Transcribe audio
-        transcript = voice_interview_service.speech_to_text(audio_bytes)
+        language = request.data.get('language', 'en')
+        transcript = voice_interview_service.speech_to_text(audio_bytes, language=language)
         if not transcript:
             return Response(
                 {'error': 'Failed to transcribe audio. Please try again.'},
@@ -379,7 +382,7 @@ class InterviewViewSet(viewsets.ModelViewSet):
         # Generate TTS for next question
         next_question_audio = None
         if next_question:
-            audio_data = voice_interview_service.text_to_speech(next_question.question_text)
+            audio_data = voice_interview_service.text_to_speech(next_question.question_text, language=language)
             if audio_data:
                 next_question_audio = base64.b64encode(audio_data).decode('utf-8')
 
@@ -422,7 +425,8 @@ class InterviewViewSet(viewsets.ModelViewSet):
             )
 
         # Generate TTS audio
-        audio_data = voice_interview_service.text_to_speech(question.question_text)
+        language = request.query_params.get('language', 'en')
+        audio_data = voice_interview_service.text_to_speech(question.question_text, language=language)
         if not audio_data:
             return Response(
                 {'error': 'Failed to generate audio.'},
