@@ -133,7 +133,7 @@ export function JobCard({ job, isSaved, onToggleSave }: JobCardProps) {
         )}
         
         {/* Legitimacy Warning - Phase 1C */}
-        {job.legitimacy_score !== null && job.legitimacy_score !== undefined && job.legitimacy_score < 50 && (
+        {job.legitimacy_score !== null && job.legitimacy_score !== undefined && job.legitimacy_score < 0.5 && (
           <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
             <p className="text-caption text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5" />

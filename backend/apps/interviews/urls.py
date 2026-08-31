@@ -15,17 +15,16 @@ router.register(r'sessions', InterviewViewSet, basename='interview-sessions')
 
 urlpatterns = [
     path('', include(router.urls)),
+    # Direct routes matching frontend URLs (/api/v1/interviews/start/, etc.)
+    path('start/', InterviewViewSet.as_view({'post': 'start'}), name='interview-start'),
+    path('<int:pk>/answer/', InterviewViewSet.as_view({'post': 'answer'}), name='interview-answer'),
+    path('<int:pk>/complete/', InterviewViewSet.as_view({'post': 'complete'}), name='interview-complete'),
+    path('<int:pk>/voice-answer/', InterviewViewSet.as_view({'post': 'voice_answer'}), name='interview-voice-answer'),
+    path('<int:pk>/question-audio/<int:question_index>/', InterviewViewSet.as_view({'get': 'question_audio'}), name='interview-question-audio'),
+    path('history/', InterviewViewSet.as_view({'get': 'history'}), name='interview-history'),
     path('stats/', get_interview_stats, name='interview-stats'),
-    path('practice-questions/', InterviewViewSet.as_view({'post': 'start'}), name='practice-questions'),
     # Coding interview endpoints
     path('coding-problem/', generate_coding_problem, name='coding-problem'),
     path('coding-solution/', execute_coding_solution, name='coding-solution'),
     path('coding-evaluate/', evaluate_coding_solution, name='coding-evaluate'),
-    # Voice interview
-    path('voice/start/', InterviewViewSet.as_view({'post': 'start'}), name='voice-interview-start'),
-    path('voice/<uuid:pk>/answer/', InterviewViewSet.as_view({'post': 'answer'}), name='voice-interview-answer'),
-    path('<uuid:pk>/feedback/', InterviewViewSet.as_view({'get': 'retrieve'}), name='interview-feedback'),
-    # Nested questions
-    path('sessions/<uuid:session_id>/questions/', InterviewViewSet.as_view({'get': 'list', 'post': 'create'}), name='interview-questions-list'),
-    path('sessions/<uuid:session_id>/questions/<uuid:pk>/', InterviewViewSet.as_view({'get': 'retrieve', 'patch': 'partial_update'}), name='interview-questions-detail'),
 ]

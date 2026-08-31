@@ -123,7 +123,7 @@ function OverviewGrid({ job, isAr }: any) {
 
 // Phase 1C: Legitimacy Warning Component
 function LegitimacyWarning({ job, isAr }: any) {
-  if (!job.legitimacy_score || job.legitimacy_score >= 50) return null;
+  if (!job.legitimacy_score || job.legitimacy_score >= 0.5) return null;
   
   return (
     <div className="p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl">

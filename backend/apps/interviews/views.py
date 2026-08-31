@@ -165,6 +165,14 @@ class InterviewViewSet(viewsets.ModelViewSet):
 
         # Get first question
         first_question = session.questions.first()
+        if not first_question:
+            session.delete()
+            return Response({
+                'success': False,
+                'data': None,
+                'message': 'Failed to generate interview questions. Please try again.',
+                'errors': {'detail': 'No questions generated.'},
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({
             'success': True,

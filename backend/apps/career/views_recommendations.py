@@ -29,6 +29,8 @@ def get_recommendations(request):
 
     return Response({
         'success': True,
-        'count': len(recommendations),
-        'data': recommendations,
+        'data': {
+            'count': len(recommendations),
+            'recommendations': recommendations,
+        },
     })
