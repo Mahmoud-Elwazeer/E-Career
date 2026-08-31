@@ -427,60 +427,47 @@ class RecommendationEngine:
     def _get_fallback_recommendations(self, n_recommendations: int) -> List[Dict[str, Any]]:
         """
         Get fallback recommendations when ML model is not available.
-        
+
+        Production-quality content-based + collaborative signals engine.
+
         Args:
             n_recommendations: Number of recommendations to return
-            
+
         Returns:
-            List of recommended jobs
+            List of recommended jobs with comprehensive scoring
         """
-        # Get user's target roles
+        # Import models at function level to avoid circular imports
+        from apps.users.models import SavedJob
+        from apps.jobs.models import JobApplication
+
+        # Get user profile
         user_profile = getattr(self.user, 'career_profile', None)
-        target_roles = []
-        if user_profile and user_profile.target_roles:
-            target_roles = [
-                (r.get('role', '') if isinstance(r, dict) else str(r)).lower()
-                for r in user_profile.target_roles
-            ]
-        
-        # Get user's skills
-        user_skills = CareerUserSkill.objects.filter(user=self.user)
-        user_skill_names = [s.skill.name.lower() for s in user_skills]
-        
-        # Get active jobs
-        jobs = Job.objects.filter(status='active').select_related('company')[:100]
-        
+
+        # Build user preference data
+        user_data = self._build_user_preference_data(user_profile)
+
+        # Get collaborative signals
+        collab_signals = self._get_collaborative_signals()
+
+        # Get active jobs with related data
+        jobs = Job.objects.filter(status='active').select_related('company').prefetch_related('skills')[:500]
+
         # Score jobs
         scored_jobs = []
+        company_counts = {}
+
         for job in jobs:
-            score = 0.0
-            
-            # Title match
-            job_title_lower = job.title.lower()
-            for role in target_roles:
-                if role in job_title_lower:
-                    score += 0.3
-            
-            # Skill match
-            for skill_name in user_skill_names:
-                if skill_name in job_title_lower or skill_name in (job.description or '').lower():
-                    score += 0.1
-            
-            # Experience match
-            if user_profile and user_profile.experience_years:
-                experience_diff = abs({'entry': 1, 'mid': 4, 'senior': 8, 'lead': 12}.get(job.experience_level, 4) - user_profile.experience_years)
-                score += max(0, 1 - experience_diff / 10) * 0.2
-            
-            # Location match
-            if user_profile and user_profile.open_to_remote:
-                if job.work_arrangement in ['remote', 'hybrid']:
-                    score += 0.2
-            
+            # Calculate comprehensive score
+            score = self._calculate_fallback_score(job, user_data, collab_signals, user_profile)
+
             if score > 0:
+                company_name = job.company.name if job.company else 'Unknown'
+
                 scored_jobs.append({
+                    'job': job,
                     'job_id': str(job.uuid),
                     'job_title': job.title,
-                    'company_name': job.company.name if job.company else '',
+                    'company_name': company_name,
                     'location': job.location,
                     'score': round(score, 3),
                     'collaborative_score': 0.0,
@@ -490,10 +477,392 @@ class RecommendationEngine:
                     'salary_min': job.salary_min,
                     'salary_max': job.salary_max,
                 })
-        
-        # Sort by score and return top recommendations
+
+        # Sort by score
         scored_jobs.sort(key=lambda x: x['score'], reverse=True)
-        return scored_jobs[:n_recommendations]
+
+        # Apply diversity constraint (max 3 jobs per company)
+        final_recommendations = []
+        company_counts = {}
+
+        for item in scored_jobs:
+            company_name = item['company_name']
+            if company_counts.get(company_name, 0) < 3:
+                final_recommendations.append(item)
+                company_counts[company_name] = company_counts.get(company_name, 0) + 1
+
+                if len(final_recommendations) >= n_recommendations:
+                    break
+
+        # Remove the job object from final output
+        for item in final_recommendations:
+            item.pop('job', None)
+
+        return final_recommendations
+
+    def _build_user_preference_data(self, user_profile) -> Dict[str, Any]:
+        """
+        Build user preference data for matching.
+
+        Args:
+            user_profile: CareerProfile instance or None
+
+        Returns:
+            Dictionary with user preferences
+        """
+        data = {
+            'target_roles': [],
+            'skills': {},
+            'experience_years': 0,
+            'target_locations': [],
+            'open_to_remote': True,
+            'target_salary_min': None,
+            'target_salary_currency': 'USD',
+        }
+
+        if not user_profile:
+            return data
+
+        # Target roles
+        if user_profile.target_roles:
+            data['target_roles'] = [
+                (r.get('role', '') if isinstance(r, dict) else str(r)).lower()
+                for r in user_profile.target_roles
+            ]
+
+        # Skills with proficiency levels
+        user_skills = CareerUserSkill.objects.filter(user=self.user).select_related('skill')
+        proficiency_weights = {
+            'beginner': 0.4,
+            'intermediate': 0.7,
+            'advanced': 0.9,
+            'expert': 1.0,
+        }
+        for us in user_skills:
+            weight = proficiency_weights.get(us.proficiency, 0.5)
+            data['skills'][us.skill.name.lower()] = {
+                'weight': weight,
+                'skill_obj': us.skill,
+            }
+
+        # Experience and preferences
+        data['experience_years'] = user_profile.experience_years or 0
+        data['open_to_remote'] = user_profile.open_to_remote
+        data['target_salary_min'] = user_profile.target_salary_min
+        data['target_salary_currency'] = user_profile.target_salary_currency or 'USD'
+
+        # Target locations
+        if user_profile.target_locations:
+            data['target_locations'] = [
+                (loc.get('city', '') if isinstance(loc, dict) else str(loc)).lower()
+                for loc in user_profile.target_locations
+            ]
+
+        return data
+
+    def _get_collaborative_signals(self) -> Dict[str, float]:
+        """
+        Get collaborative filtering signals from user interactions.
+
+        Returns:
+            Dictionary mapping job_id to signal strength
+        """
+        from apps.users.models import SavedJob
+        from apps.jobs.models import JobApplication
+
+        signals = {}
+
+        # Application signals (stronger)
+        applications = JobApplication.objects.filter(user=self.user).select_related('job')
+        status_weights = {
+            'submitted': 1.0,
+            'screening': 1.5,
+            'interview': 2.0,
+            'offer': 2.5,
+            'accepted': 3.0,
+            'rejected': -0.5,
+            'withdrawn': -0.3,
+        }
+        for app in applications:
+            if app.job:
+                weight = status_weights.get(app.status, 1.0)
+                signals[str(app.job.uuid)] = weight
+
+        # Saved job signals (moderate - weight 0.5 as specified)
+        saved_jobs = SavedJob.objects.filter(user=self.user).select_related('job')
+        for saved in saved_jobs:
+            if saved.job:
+                job_id = str(saved.job.uuid)
+                # Don't override stronger application signals
+                if job_id not in signals or signals[job_id] < 0.5:
+                    signals[job_id] = 0.5
+
+        return signals
+
+    def _calculate_fallback_score(
+        self,
+        job: Job,
+        user_data: Dict[str, Any],
+        collab_signals: Dict[str, float],
+        user_profile
+    ) -> float:
+        """
+        Calculate comprehensive fallback score for a job.
+
+        Args:
+            job: Job instance
+            user_data: User preference data
+            collab_signals: Collaborative signals
+            user_profile: CareerProfile instance
+
+        Returns:
+            Final score (0-10)
+        """
+        score = 0.0
+
+        # 1. Collaborative signal (if exists)
+        job_id = str(job.uuid)
+        if job_id in collab_signals:
+            signal = collab_signals[job_id]
+            if signal > 0:
+                # Positive signals boost similar jobs
+                score += 2.0
+            elif signal < 0:
+                # Negative signals penalize
+                return 0.0  # Don't recommend rejected/withdrawn jobs
+
+        # 2. Title match with target roles (weight: 2.5)
+        job_title_lower = job.title.lower()
+        for role in user_data['target_roles']:
+            if role and role in job_title_lower:
+                score += 2.5
+                break
+
+        # 3. Skill matching with proficiency weighting (weight: 3.0)
+        skill_score = self._calculate_skill_match_score(job, user_data['skills'])
+        score += skill_score * 3.0
+
+        # 4. Experience level matching (weight: 1.5)
+        exp_score = self._calculate_experience_match_score(job, user_data['experience_years'])
+        score += exp_score * 1.5
+
+        # 5. Location and remote preference matching (weight: 1.5)
+        location_score = self._calculate_location_match_score(
+            job,
+            user_data['target_locations'],
+            user_data['open_to_remote']
+        )
+        score += location_score * 1.5
+
+        # 6. Salary range matching (weight: 1.0)
+        salary_score = self._calculate_salary_match_score(
+            job,
+            user_data['target_salary_min'],
+            user_data['target_salary_currency']
+        )
+        score += salary_score * 1.0
+
+        # 7. Recency boost (weight: 0.5)
+        recency_score = self._calculate_recency_score(job)
+        score += recency_score * 0.5
+
+        return score
+
+    def _calculate_skill_match_score(self, job: Job, user_skills: Dict[str, Dict]) -> float:
+        """
+        Calculate skill match score with proficiency weighting.
+
+        Args:
+            job: Job instance
+            user_skills: Dict mapping skill name to {weight, skill_obj}
+
+        Returns:
+            Score between 0 and 1
+        """
+        if not user_skills:
+            return 0.0
+
+        job_description_lower = (job.description or '').lower()
+        job_title_lower = job.title.lower()
+
+        # Get job skills from relationship
+        job_skills = set()
+        try:
+            for skill in job.skills.all():
+                job_skills.add(skill.name.lower())
+        except:
+            pass
+
+        matched_weight = 0.0
+        total_weight = sum(s['weight'] for s in user_skills.values())
+
+        for skill_name, skill_data in user_skills.items():
+            skill_weight = skill_data['weight']
+
+            # Check for skill in job skills, title, or description
+            if skill_name in job_skills:
+                matched_weight += skill_weight
+            elif skill_name in job_title_lower:
+                matched_weight += skill_weight * 0.8
+            elif skill_name in job_description_lower:
+                matched_weight += skill_weight * 0.5
+
+        return matched_weight / total_weight if total_weight > 0 else 0.0
+
+    def _calculate_experience_match_score(self, job: Job, user_experience_years: int) -> float:
+        """
+        Calculate experience level match score.
+
+        Args:
+            job: Job instance
+            user_experience_years: User's years of experience
+
+        Returns:
+            Score between 0 and 1
+        """
+        if not job.experience_level or user_experience_years is None:
+            return 0.5  # Neutral score
+
+        # Map experience levels to years
+        level_to_years = {
+            'entry': 1,
+            'junior': 2,
+            'mid': 4,
+            'senior': 8,
+            'lead': 12,
+            'principal': 15,
+        }
+
+        job_years = level_to_years.get(job.experience_level, 4)
+        diff = abs(job_years - user_experience_years)
+
+        # Score decreases with difference
+        if diff == 0:
+            return 1.0
+        elif diff <= 2:
+            return 0.8
+        elif diff <= 4:
+            return 0.6
+        elif diff <= 6:
+            return 0.4
+        else:
+            return 0.2
+
+    def _calculate_location_match_score(
+        self,
+        job: Job,
+        target_locations: List[str],
+        open_to_remote: bool
+    ) -> float:
+        """
+        Calculate location preference match score.
+
+        Args:
+            job: Job instance
+            target_locations: List of target location strings
+            open_to_remote: Whether user is open to remote work
+
+        Returns:
+            Score between 0 and 1
+        """
+        score = 0.0
+
+        # Remote/hybrid preference
+        if open_to_remote:
+            if job.work_arrangement == 'remote':
+                score = 1.0
+            elif job.work_arrangement == 'hybrid':
+                score = 0.8
+            else:
+                # Still check location match for on-site
+                score = 0.3
+
+        # Location match
+        if target_locations and job.location:
+            job_location_lower = job.location.lower()
+            for target_loc in target_locations:
+                if target_loc and target_loc in job_location_lower:
+                    score = max(score, 0.9)
+                    break
+
+        # If no preferences set, neutral score
+        if not open_to_remote and not target_locations:
+            score = 0.5
+
+        return score
+
+    def _calculate_salary_match_score(
+        self,
+        job: Job,
+        target_salary_min: Optional[float],
+        target_currency: str
+    ) -> float:
+        """
+        Calculate salary range match score.
+
+        Args:
+            job: Job instance
+            target_salary_min: User's minimum target salary
+            target_currency: User's target currency
+
+        Returns:
+            Score between 0 and 1
+        """
+        if not target_salary_min or not job.salary_min:
+            return 0.5  # Neutral score when data unavailable
+
+        # Simple currency check (ideally would use conversion rates)
+        job_currency = getattr(job, 'salary_currency', 'USD') or 'USD'
+        if job_currency != target_currency:
+            return 0.5  # Neutral when currencies don't match
+
+        # Check if job salary range meets or exceeds target
+        if job.salary_max and job.salary_max >= target_salary_min:
+            # Job can meet target
+            if job.salary_min >= target_salary_min:
+                return 1.0  # Entire range above target
+            else:
+                # Range includes target
+                range_size = job.salary_max - job.salary_min
+                overlap = job.salary_max - target_salary_min
+                return 0.7 + (overlap / range_size * 0.3) if range_size > 0 else 0.7
+        elif job.salary_min >= target_salary_min * 0.8:
+            # Close to target (within 20%)
+            return 0.6
+        else:
+            # Below target
+            return 0.3
+
+    def _calculate_recency_score(self, job: Job) -> float:
+        """
+        Calculate recency boost score.
+
+        Args:
+            job: Job instance
+
+        Returns:
+            Score between 0 and 1
+        """
+        if not job.posted_at:
+            return 0.5  # Neutral for unknown post date
+
+        from datetime import date
+        today = date.today()
+        days_old = (today - job.posted_at).days
+
+        # Boost newer jobs
+        if days_old <= 3:
+            return 1.0
+        elif days_old <= 7:
+            return 0.9
+        elif days_old <= 14:
+            return 0.8
+        elif days_old <= 30:
+            return 0.6
+        elif days_old <= 60:
+            return 0.4
+        else:
+            return 0.2
     
     def get_similar_jobs(self, job_uuid: str, n_similar: int = 5) -> List[Dict[str, Any]]:
         """

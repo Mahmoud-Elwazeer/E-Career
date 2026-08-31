@@ -338,11 +338,86 @@ class ScoringEngine:
         # Would need job history to calculate actual progression
         progression_score = 0.5 + min(0.3, experience_years * 0.03)
         
-        # Company quality (placeholder - would need company data)
-        company_quality = 0.5
+        # Company quality - score based on available company data
+        company_quality = 0.1  # Minimum floor for unknown company
+
+        # Try to get company info from current_company or CV data
+        company_name = current_company
+        if company_name:
+            try:
+                from apps.jobs.models import Company
+                company = Company.objects.filter(name__iexact=company_name).first()
+
+                if company:
+                    # Start with base score
+                    company_quality = 0.1
+
+                    # Add points for verification
+                    if company.is_verified:
+                        company_quality += 0.3
+
+                    # Add points for having meaningful size data
+                    if company.size:
+                        company_quality += 0.2
+
+                    # Add points for web presence
+                    if company.website or company.domain:
+                        company_quality += 0.1
+
+                    # Add points for careers page
+                    if company.careers_page_url:
+                        company_quality += 0.1
+
+                    # Add points for description/about content
+                    if company.about or company.description:
+                        company_quality += 0.1
+
+                    # Add points for GitHub presence
+                    if company.github_org:
+                        company_quality += 0.1
+            except Exception:
+                # If company lookup fails, keep minimum score
+                pass
         
-        # Responsibility growth (placeholder)
-        responsibility_growth = 0.5
+        # Responsibility growth - analyze role progression from CV data
+        responsibility_growth = 0.5  # Default neutral score
+
+        if self.profile and self.profile.cv_parsed_data:
+            cv_data = self.profile.cv_parsed_data
+            work_experience = cv_data.get('work_experience') or cv_data.get('experience') or []
+
+            if isinstance(work_experience, list) and len(work_experience) > 0:
+                # Define seniority levels for progression analysis
+                seniority_levels = {
+                    'intern': 1, 'junior': 2, 'mid': 3, 'intermediate': 3,
+                    'senior': 4, 'lead': 5, 'principal': 6, 'staff': 6,
+                    'manager': 7, 'director': 8, 'vp': 9, 'cto': 10, 'ceo': 10
+                }
+
+                role_levels = []
+                for exp in work_experience:
+                    if isinstance(exp, dict):
+                        title = exp.get('title', '').lower()
+                        # Check for seniority indicators in title
+                        for keyword, level in seniority_levels.items():
+                            if keyword in title:
+                                role_levels.append(level)
+                                break
+
+                if len(role_levels) > 1:
+                    # Check if roles show progression
+                    is_progressing = all(role_levels[i] <= role_levels[i+1] for i in range(len(role_levels)-1))
+                    if is_progressing:
+                        responsibility_growth = 0.8 + min(0.2, len(role_levels) * 0.05)
+                    else:
+                        # Some progression but not linear
+                        responsibility_growth = 0.6
+                elif len(role_levels) == 1:
+                    # Only one role detected, neutral score
+                    responsibility_growth = 0.5
+                else:
+                    # Multiple roles but no seniority detected - slight positive
+                    responsibility_growth = 0.5 + min(0.2, len(work_experience) * 0.05)
         
         # Calculate weighted score
         experience_score = (
@@ -436,8 +511,53 @@ class ScoringEngine:
             completed_at__gte=timezone.now().date() - timedelta(days=180)
         )
         
-        # Calculate degree relevance (placeholder - would need degree data)
-        degree_relevance = 0.5
+        # Calculate degree relevance - compare education against target roles
+        degree_relevance = 0.5  # Default neutral score
+
+        if self.profile:
+            education = self.profile.education or []
+            target_roles = self.profile.target_roles or []
+
+            if education and target_roles:
+                # Extract education fields
+                education_fields = []
+                for edu in education:
+                    if isinstance(edu, dict):
+                        degree = edu.get('degree', '').lower()
+                        field = edu.get('field', '').lower()
+                        education_fields.extend([degree, field])
+
+                # Extract target role keywords
+                target_keywords = []
+                for role in target_roles:
+                    if isinstance(role, dict):
+                        role_name = role.get('role', '').lower()
+                        target_keywords.append(role_name)
+                    elif isinstance(role, str):
+                        target_keywords.append(role.lower())
+
+                # Define relevance mappings
+                relevance_map = {
+                    'computer science': ['software', 'developer', 'engineer', 'programmer', 'data', 'ai', 'ml'],
+                    'engineering': ['engineer', 'software', 'developer', 'technical', 'architect'],
+                    'business': ['manager', 'product', 'marketing', 'sales', 'analyst', 'business'],
+                    'design': ['designer', 'ux', 'ui', 'creative', 'visual'],
+                    'data science': ['data', 'analyst', 'scientist', 'machine learning', 'ai'],
+                    'marketing': ['marketing', 'social media', 'content', 'brand'],
+                }
+
+                # Check for matches
+                best_match = 0.3  # Base for unrelated fields
+                for field_key, role_keywords in relevance_map.items():
+                    if any(field_key in edu_field for edu_field in education_fields):
+                        if any(keyword in target_role for keyword in role_keywords for target_role in target_keywords):
+                            best_match = 1.0
+                            break
+
+                degree_relevance = best_match
+            elif not education:
+                # No education data available - neutral score
+                degree_relevance = 0.5
         
         # Certifications count
         certification_count = completed_learning.count()
@@ -699,8 +819,32 @@ class ScoringEngine:
         completed_certifications = completed_learning.count()
         certification_progress_score = min(1.0, completed_certifications / 5)
         
-        # Goal completion rate (placeholder - would need goal data)
-        goal_completion_score = 0.5
+        # Goal completion rate - query CareerGoal model
+        goal_completion_score = 0.5  # Default neutral score
+
+        try:
+            from apps.career.models import CareerGoal
+            goals = CareerGoal.objects.filter(user=self.user)
+            total_goals = goals.count()
+
+            if total_goals > 0:
+                # Count completed goals
+                completed_goals = goals.filter(status='completed').count()
+
+                # Get average progress of active/in_progress goals
+                active_goals = goals.filter(status__in=['active', 'in_progress'])
+                if active_goals.exists():
+                    avg_progress = active_goals.aggregate(avg_progress=Avg('progress'))['avg_progress'] or 0
+                else:
+                    avg_progress = 0
+
+                # Calculate score: 60% completion rate + 40% active progress
+                completion_rate = completed_goals / total_goals if total_goals > 0 else 0
+                goal_completion_score = completion_rate * 0.6 + (avg_progress / 100) * 0.4
+            # else: no goals means neutral 0.5 score
+        except Exception:
+            # If query fails, keep default neutral score
+            pass
         
         # Calculate weighted score
         growth_score = (
@@ -793,8 +937,47 @@ class ScoringEngine:
         cv_parsed_data = self.profile.cv_parsed_data or {}
         cv_text = cv_parsed_data.get('text', '') or ''
         
-        # CV clarity score (placeholder - would need NLP analysis)
-        cv_clarity_score = 0.5
+        # CV clarity score - lightweight NLP on cv_parsed_data
+        cv_clarity_score = 0.5  # Default neutral score
+
+        if cv_text and len(cv_text) > 50:
+            import re
+
+            # Split into sentences
+            sentences = re.split(r'[.!?]+', cv_text)
+            sentences = [s.strip() for s in sentences if s.strip()]
+
+            if sentences:
+                # Calculate average sentence length (words per sentence)
+                total_words = sum(len(s.split()) for s in sentences)
+                avg_sentence_length = total_words / len(sentences) if sentences else 0
+
+                # Ideal sentence length is 15-25 words
+                if 15 <= avg_sentence_length <= 25:
+                    clarity_score = 1.0
+                elif 10 <= avg_sentence_length <= 30:
+                    clarity_score = 0.8
+                elif avg_sentence_length < 10:
+                    clarity_score = 0.6  # Too short
+                else:
+                    clarity_score = 0.5  # Too long
+
+                # Check for quantified achievements (numbers/percentages)
+                has_numbers = bool(re.search(r'\d+%|\d+\+|\d+ years?|\d+ months?', cv_text))
+                if has_numbers:
+                    clarity_score += 0.2
+
+                # Check text length (200-2000 words is good range)
+                word_count = len(cv_text.split())
+                if 200 <= word_count <= 2000:
+                    clarity_score += 0.2
+                elif 100 <= word_count <= 3000:
+                    clarity_score += 0.1
+
+                cv_clarity_score = min(1.0, clarity_score / 1.4)  # Normalize to 0-1
+        elif not cv_text:
+            # No CV data means neutral score
+            cv_clarity_score = 0.5
         
         # Profile completeness
         profile_completeness = self.profile.completeness_score or 0.0
@@ -1003,8 +1186,62 @@ class ScoringEngine:
         total_skills = self.skills.count()
         verification_level = verified_skills / max(total_skills, 1)
         
-        # Consistency check (placeholder - would need contradiction detection)
-        consistency_score = 0.8  # Default high consistency
+        # Consistency check - cross-reference profile fields
+        consistency_score = 1.0  # Start with perfect consistency
+        inconsistencies_found = 0
+
+        if profile:
+            # Check 1: Experience years vs CV work history dates
+            if profile.experience_years and profile.cv_parsed_data:
+                work_experience = profile.cv_parsed_data.get('work_experience') or profile.cv_parsed_data.get('experience') or []
+                if isinstance(work_experience, list) and work_experience:
+                    # Try to calculate years from date ranges
+                    import re
+                    from datetime import datetime
+
+                    total_months = 0
+                    for exp in work_experience:
+                        if isinstance(exp, dict):
+                            start_date = exp.get('start_date', '')
+                            end_date = exp.get('end_date', '') or exp.get('present', False)
+
+                            # Simple year extraction
+                            start_year_match = re.search(r'(19|20)\d{2}', str(start_date))
+                            if end_date and end_date != True:
+                                end_year_match = re.search(r'(19|20)\d{2}', str(end_date))
+                            else:
+                                end_year_match = None
+
+                            if start_year_match:
+                                start_year = int(start_year_match.group())
+                                if end_year_match:
+                                    end_year = int(end_year_match.group())
+                                else:
+                                    end_year = datetime.now().year
+                                total_months += (end_year - start_year) * 12
+
+                    calculated_years = total_months / 12
+                    claimed_years = profile.experience_years
+
+                    # Allow 1 year tolerance
+                    if abs(calculated_years - claimed_years) > 1:
+                        inconsistencies_found += 1
+
+            # Check 2: Skills in profile vs skills mentioned in CV text
+            if profile.skills and profile.cv_parsed_data:
+                cv_text = profile.cv_parsed_data.get('text', '').lower()
+                if cv_text:
+                    profile_skills = [s.lower() for s in profile.skills if isinstance(s, str)]
+                    # Check if at least 50% of listed skills are mentioned in CV
+                    mentioned_count = sum(1 for skill in profile_skills if skill in cv_text)
+                    if profile_skills and (mentioned_count / len(profile_skills)) < 0.5:
+                        inconsistencies_found += 1
+
+            # Deduct 0.1 for each inconsistency, floor at 0.3
+            consistency_score = max(0.3, 1.0 - (inconsistencies_found * 0.1))
+        else:
+            # No data to check means assume consistent
+            consistency_score = 0.8
         
         # Calculate weighted score
         ai_confidence = (

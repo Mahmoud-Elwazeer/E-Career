@@ -143,7 +143,7 @@ class CandidateRankingService:
                 'overall_score': overall_score,
                 'skill_match_score': skill_match,
                 'experience_score': experience_match,
-                'education_score': 0.5,  # Placeholder
+                'education_score': self._calculate_education_score(candidate),
                 'salary_expectation_score': salary_match,
                 'knockout_passed': knockout_passed,
                 'knockout_failures': knockout_failures,
@@ -282,14 +282,14 @@ class CandidateRankingService:
         salary_min = job_req.get('salary_min')
         salary_max = job_req.get('salary_max')
         candidate_expectation = candidate.get('salary_expectation')
-        
+
         if not salary_min or not salary_max or not candidate_expectation:
             return 0.5  # Default if no data
-        
+
         try:
             candidate_expectation = float(candidate_expectation)
             mid_salary = (salary_min + salary_max) / 2
-            
+
             if salary_min <= candidate_expectation <= salary_max:
                 # Perfect match
                 return 1.0
@@ -301,6 +301,46 @@ class CandidateRankingService:
                 return 0.5
         except (ValueError, TypeError):
             return 0.5
+
+    def _calculate_education_score(self, candidate) -> float:
+        """Calculate education score based on candidate's education data (0-1)."""
+        try:
+            career_profile = candidate.career_profile
+            education = career_profile.education or []
+
+            if not education:
+                return 0.3  # No education data
+
+            score = 0.3  # Base score for having any education
+
+            # Analyze degree levels
+            degree_levels = {
+                'phd': 0.9, 'doctorate': 0.9, 'دكتوراه': 0.9,
+                'master': 0.7, 'masters': 0.7, 'ماجستير': 0.7,
+                'bachelor': 0.5, 'bachelors': 0.5, 'بكالوريوس': 0.5,
+                'associate': 0.4, 'diploma': 0.4, 'دبلوم': 0.4
+            }
+
+            highest_degree = 0.0
+            for edu in education:
+                if isinstance(edu, dict):
+                    degree = edu.get('degree', '').lower()
+                    for degree_type, degree_score in degree_levels.items():
+                        if degree_type in degree:
+                            highest_degree = max(highest_degree, degree_score)
+                            break
+
+            if highest_degree > 0:
+                score = highest_degree
+
+            # Check for certifications
+            certifications = career_profile.certifications or []
+            if certifications:
+                score += 0.1
+
+            return min(1.0, score)
+        except Exception:
+            return 0.3  # Default if no education data or error
     
     def _generate_explanations(
         self, job, candidate, job_requirements, candidate_profile,
@@ -426,10 +466,64 @@ class CandidateRankingService:
     def _evaluate_knockout_question(
         self, question: KnockoutQuestion, candidate, explanations: Dict
     ) -> bool:
-        """Evaluate a single knockout question."""
-        # This is a placeholder - implement actual evaluation logic
-        # based on question type and candidate data
-        return True
+        """Evaluate a single knockout question based on candidate data."""
+        try:
+            career_profile = candidate.career_profile
+            question_text = question.question_text.lower()
+            question_type = question.question_type
+            required_answer = question.required_answer
+            pass_if_matches = question.pass_if_matches
+
+            # Experience-based questions
+            if 'experience' in question_text or 'years' in question_text:
+                experience_years = career_profile.experience_years or 0
+
+                # Try to extract required years from question
+                import re
+                years_match = re.search(r'(\d+)\+?\s*years?', question_text)
+                if years_match:
+                    required_years = int(years_match.group(1))
+                    has_requirement = experience_years >= required_years
+
+                    if pass_if_matches:
+                        return has_requirement
+                    else:
+                        return not has_requirement
+
+            # Skills-based questions
+            if 'skill' in question_text or any(skill_keyword in question_text for skill_keyword in ['python', 'java', 'javascript', 'react', 'aws', 'sql']):
+                skills = career_profile.skills or []
+                cv_parsed = career_profile.cv_parsed_data or {}
+                cv_text = cv_parsed.get('text', '').lower()
+
+                # Check if any required skill is in candidate's skills or CV
+                has_skill = False
+                if isinstance(skills, list):
+                    has_skill = any(skill.lower() in question_text for skill in skills if isinstance(skill, str))
+
+                if not has_skill and cv_text:
+                    # Check CV text for skill mentions
+                    skill_keywords = ['python', 'java', 'javascript', 'react', 'node', 'aws', 'sql', 'docker', 'kubernetes']
+                    has_skill = any(keyword in question_text and keyword in cv_text for keyword in skill_keywords)
+
+                if pass_if_matches:
+                    return has_skill
+                else:
+                    return not has_skill
+
+            # Yes/No questions with required answer
+            if question_type == 'yes_no' and required_answer:
+                # For yes/no questions without explicit candidate response,
+                # give benefit of doubt
+                return True
+
+            # Default: pass (benefit of doubt - don't wrongly reject)
+            return True
+
+        except Exception as e:
+            logger.error(f"Error evaluating knockout question: {e}")
+            # On error, give benefit of doubt
+            return True
     
     def generate_shortlist(self, job_id: int, max_candidates: int = 10, employer=None) -> List[Dict]:
         """
