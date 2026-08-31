@@ -1,18 +1,17 @@
 """
 Coding Interview Service
 
-This module provides coding interview capabilities using Judge0 API
-for code execution and AWS Bedrock for problem generation and evaluation.
+Uses Piston (open-source, free) as the primary code execution engine
+and AWS Bedrock for problem generation and evaluation.
 """
 
 import logging
-import requests
-from typing import Dict, Any, Optional, List
-from datetime import datetime
+from typing import Dict, Any, List
 
 from django.conf import settings
 
 from apps.intelligence.career_ai import career_ai_service as bedrock_service
+from apps.core.code_execution import _execute_piston, _execute_judge0, JUDGE0_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -20,29 +19,24 @@ logger = logging.getLogger(__name__)
 class CodingInterviewService:
     """
     Service for coding interviews.
-    
+
     Features:
     - Generate coding problems using Bedrock Claude
-    - Execute code using Judge0 API
+    - Execute code using Piston (free) or Judge0 (optional)
     - Evaluate solutions with AI feedback
     """
-    
-    # Judge0 API configuration
-    JUDGE0_API_URL = "https://judge0-ce.p.rapidapi.com"
-    JUDGE0_API_KEY = getattr(settings, 'JUDGE0_API_KEY', None)
-    
-    # Supported languages
+
     LANGUAGES = {
-        'python': {'id': 71, 'name': 'Python 3', 'extension': 'py'},
-        'javascript': {'id': 63, 'name': 'JavaScript (Node.js)', 'extension': 'js'},
-        'java': {'id': 62, 'name': 'Java', 'extension': 'java'},
-        'c++': {'id': 54, 'name': 'C++20', 'extension': 'cpp'},
-        'c': {'id': 50, 'name': 'C17', 'extension': 'c'},
-        'c#': {'id': 51, 'name': 'C#', 'extension': 'cs'},
-        'php': {'id': 56, 'name': 'PHP', 'extension': 'php'},
-        'ruby': {'id': 72, 'name': 'Ruby', 'extension': 'rb'},
-        'go': {'id': 59, 'name': 'Go', 'extension': 'go'},
-        'rust': {'id': 75, 'name': 'Rust', 'extension': 'rs'},
+        'python': {'name': 'Python 3', 'extension': 'py'},
+        'javascript': {'name': 'JavaScript (Node.js)', 'extension': 'js'},
+        'java': {'name': 'Java', 'extension': 'java'},
+        'c++': {'name': 'C++20', 'extension': 'cpp'},
+        'c': {'name': 'C17', 'extension': 'c'},
+        'c#': {'name': 'C#', 'extension': 'cs'},
+        'php': {'name': 'PHP', 'extension': 'php'},
+        'ruby': {'name': 'Ruby', 'extension': 'rb'},
+        'go': {'name': 'Go', 'extension': 'go'},
+        'rust': {'name': 'Rust', 'extension': 'rs'},
     }
     
     def __init__(self):
@@ -134,94 +128,35 @@ class CodingInterviewService:
     
     def execute_code(self, code: str, language: str, test_cases: List[Dict] = None) -> Dict[str, Any]:
         """
-        Execute code using Judge0 API.
-        
-        Args:
-            code: Code to execute
-            language: Programming language
-            test_cases: Optional test cases to run
-            
+        Execute code using Piston (free) with Judge0 fallback.
+
         Returns:
-            Execution result with passed, failed, output, errors, execution_time, memory
+            Execution result with success, status, output, stderr, execution_time, memory
         """
-        language_info = self.LANGUAGES.get(language, self.LANGUAGES['python'])
-        lang_id = language_info['id']
-        
-        # Prepare request body
-        body = {
-            'language_id': lang_id,
-            'source_code': code,
-            'stdin': '',
-        }
-        
-        headers = {
-            'Content-Type': 'application/json',
-        }
-        
-        if self.JUDGE0_API_KEY:
-            headers['X-RapidAPI-Key'] = self.JUDGE0_API_KEY
-            headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com'
-        
-        try:
-            # Submit job
-            response = requests.post(
-                f"{self.JUDGE0_API_URL}/submissions",
-                json=body,
-                headers=headers,
-                timeout=10
-            )
-            
-            if response.status_code != 201:
-                return {
-                    'success': False,
-                    'error': f'API error: {response.status_code}',
-                    'output': None,
-                    'stderr': None,
-                    'execution_time': 0,
-                    'memory': 0,
-                }
-            
-            result = response.json()
-            token = result.get('token')
-            
-            if not token:
-                return {
-                    'success': False,
-                    'error': 'No token in response',
-                    'output': None,
-                    'stderr': None,
-                    'execution_time': 0,
-                    'memory': 0,
-                }
-            
-            # Get result
-            result_response = requests.get(
-                f"{self.JUDGE0_API_URL}/submissions/{token}",
-                headers=headers,
-                timeout=10
-            )
-            
-            result_data = result_response.json()
-            
-            return {
-                'success': True,
-                'status': result_data.get('status', {}).get('description', 'Unknown'),
-                'output': result_data.get('stdout', ''),
-                'stderr': result_data.get('stderr', ''),
-                'execution_time': result_data.get('time', 0),
-                'memory': result_data.get('memory', 0),
-            }
-            
-        except Exception as e:
-            logger.error(f"Code execution error: {e}")
+        result = _execute_piston(code, language)
+
+        if result.get('error') and JUDGE0_API_KEY:
+            logger.info("piston_failed_in_interview, falling back to judge0")
+            result = _execute_judge0(code, language)
+
+        if result.get('error'):
             return {
                 'success': False,
-                'error': str(e),
+                'error': result['error'],
                 'output': None,
                 'stderr': None,
                 'execution_time': 0,
                 'memory': 0,
             }
+
+        return {
+            'success': True,
+            'status': result.get('status_description', 'Unknown'),
+            'output': result.get('stdout', ''),
+            'stderr': result.get('stderr', ''),
+            'execution_time': result.get('time', 0) or 0,
+            'memory': result.get('memory', 0) or 0,
+        }
     
     def evaluate_solution(self, problem: Dict, code: str, execution_result: Dict) -> Dict[str, Any]:
         """
