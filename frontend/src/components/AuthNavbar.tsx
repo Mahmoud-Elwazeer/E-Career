@@ -1,5 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { Briefcase, Info, Menu, Building2, Code2, User, LogOut, CheckCircle2, Bell } from "lucide-react";
+import {
+  Briefcase, Info, Menu, User, LogOut, CheckCircle2,
+  MessageCircle, FileText, Mic, Sparkles,
+  ClipboardList, Bookmark, Target, Bell,
+  Settings as SettingsIcon, PlusCircle, Search,
+  LayoutDashboard, DollarSign, Award,
+} from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
@@ -16,22 +22,45 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const publicNavItems = [
+interface NavItem {
+  to: string;
+  label: string;
+  labelAr: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const publicNavItems: NavItem[] = [
   { to: "/", label: "Home", labelAr: "الرئيسية", icon: Briefcase },
   { to: "/about", label: "About", labelAr: "عن USAM", icon: Info },
 ];
 
-const appNavItems = [
-  { to: "/app/jobs", label: "Jobs", labelAr: "وظائف", icon: Briefcase },
-  { to: "/app/coding-practice", label: "Practice", labelAr: "تمرين", icon: Code2 },
-  { to: "/app/profile", label: "Profile", labelAr: "الملف", icon: User },
-  { to: "/about", label: "About", labelAr: "عن USAM", icon: Info },
+const appPrimaryNav: NavItem[] = [
+  { to: "/app/jobs", label: "Jobs", labelAr: "الوظائف", icon: Briefcase },
+  { to: "/app/rashid", label: "Rasheed", labelAr: "رشيد", icon: MessageCircle },
+  { to: "/app/resume", label: "Resume", labelAr: "السيرة الذاتية", icon: FileText },
+  { to: "/app/interviews", label: "Interviews", labelAr: "المقابلات", icon: Mic },
+  { to: "/app/recommendations", label: "For You", labelAr: "مقترحة لك", icon: Sparkles },
 ];
 
-const employerNavItems = [
-  { to: "/app/employer/dashboard", label: "Dashboard", labelAr: "لوحة التحكم", icon: Building2 },
-  { to: "/app/jobs", label: "Jobs", labelAr: "وظائف", icon: Briefcase },
-  { to: "/about", label: "About", labelAr: "عن USAM", icon: Info },
+const appSecondaryNav: NavItem[] = [
+  { to: "/app/applications", label: "Applications", labelAr: "طلباتي", icon: ClipboardList },
+  { to: "/app/saved", label: "Saved Jobs", labelAr: "المحفوظات", icon: Bookmark },
+  { to: "/app/talent-score", label: "Talent Score", labelAr: "نقاط الموهبة", icon: Target },
+  { to: "/app/alerts", label: "Job Alerts", labelAr: "تنبيهات الوظائف", icon: Bell },
+  { to: "/app/salary", label: "Salary Insights", labelAr: "رؤى الرواتب", icon: DollarSign },
+  { to: "/app/assessments", label: "Assessments", labelAr: "التقييمات", icon: Award },
+  { to: "/app/settings", label: "Settings", labelAr: "الإعدادات", icon: SettingsIcon },
+];
+
+const employerPrimaryNav: NavItem[] = [
+  { to: "/app/employer/dashboard", label: "Dashboard", labelAr: "لوحة التحكم", icon: LayoutDashboard },
+  { to: "/app/employer/post-job", label: "Post Job", labelAr: "نشر وظيفة", icon: PlusCircle },
+  { to: "/app/employer/talent-search", label: "Talent Search", labelAr: "بحث المواهب", icon: Search },
+];
+
+const employerSecondaryNav: NavItem[] = [
+  { to: "/app/jobs", label: "Browse Jobs", labelAr: "تصفح الوظائف", icon: Briefcase },
+  { to: "/app/settings", label: "Settings", labelAr: "الإعدادات", icon: SettingsIcon },
 ];
 
 export function AuthNavbar() {
@@ -43,7 +72,9 @@ export function AuthNavbar() {
   const reduced = useReducedMotion();
 
   const isEmployer = user?.role === 'employer';
-  const navItems = !isAuthenticated ? publicNavItems : isEmployer ? employerNavItems : appNavItems;
+  const primaryNav = !isAuthenticated ? publicNavItems : isEmployer ? employerPrimaryNav : appPrimaryNav;
+  const secondaryNav = isEmployer ? employerSecondaryNav : appSecondaryNav;
+  const mobileNav = !isAuthenticated ? publicNavItems : [...primaryNav, ...secondaryNav];
 
   return (
     <header className="sticky top-0 z-50 border-b bg-card/95 glass supports-[backdrop-filter]:bg-card/80">
@@ -54,13 +85,13 @@ export function AuthNavbar() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-0.5">
-          {navItems.map((item) => {
+          {primaryNav.map((item) => {
             const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
             return (
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-body font-medium transition-all duration-fast ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-body font-medium transition-all duration-fast ${
                   active
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-foreground/60 hover:text-foreground hover:bg-accent"
@@ -81,8 +112,6 @@ export function AuthNavbar() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="sm" className="ms-1 rounded-lg gap-2 h-9 px-2.5">
-                    {/* <img src={user.avatar} alt={user.name} className="h-6 w-6 rounded-full" /> */}
-                    {/* Session badge */}
                     <AnimatePresence>
                       <motion.span
                         className="hidden lg:flex items-center gap-1 text-caption font-medium text-foreground/70"
@@ -96,7 +125,7 @@ export function AuthNavbar() {
                     </AnimatePresence>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuContent align="end" className="w-56">
                   <div className="px-3 py-2.5">
                     <div className="flex items-center gap-2 mb-1">
                       <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
@@ -111,6 +140,15 @@ export function AuthNavbar() {
                       {isAr ? "الملف الشخصي" : "Profile"}
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {secondaryNav.map((item) => (
+                    <DropdownMenuItem key={item.to} asChild>
+                      <Link to={item.to} className="cursor-pointer">
+                        <item.icon className="h-3.5 w-3.5 me-2" />
+                        {isAr ? item.labelAr : item.label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={signOut} className="text-destructive cursor-pointer">
                     <LogOut className="h-3.5 w-3.5 me-2" />
@@ -131,7 +169,6 @@ export function AuthNavbar() {
           <ThemeToggle />
           {isAuthenticated && user && (
             <div className="flex items-center gap-1">
-              {/* <img src={user.avatar} alt={user.name} className="h-7 w-7 rounded-full" /> */}
               <CheckCircle2 className="h-3 w-3 text-success -ms-2 -mt-3" />
             </div>
           )}
@@ -141,17 +178,15 @@ export function AuthNavbar() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side={isAr ? "left" : "right"} className="w-72">
+            <SheetContent side={isAr ? "left" : "right"} className="w-72 overflow-y-auto">
               <SheetTitle className="sr-only">Navigation</SheetTitle>
               <div className="flex items-center justify-between mt-2 mb-6">
                 <img src="/logo-dark.png" alt="USAM" className="h-7 dark:invert" />
                 <LangToggle />
               </div>
 
-              {/* Session badge in mobile sheet */}
               {isAuthenticated && user && (
                 <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
-                  {/* <img src={user.avatar} alt={user.name} className="h-9 w-9 rounded-full" /> */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <p className="text-body font-medium truncate">{user.name}</p>
@@ -163,7 +198,7 @@ export function AuthNavbar() {
               )}
 
               <nav className="flex flex-col gap-1">
-                {navItems.map((item) => {
+                {mobileNav.map((item) => {
                   const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
                   return (
                     <Link
@@ -181,6 +216,32 @@ export function AuthNavbar() {
                     </Link>
                   );
                 })}
+
+                {isAuthenticated && (
+                  <>
+                    <Link
+                      to="/app/profile"
+                      onClick={() => setOpen(false)}
+                      className={`flex items-center gap-2.5 px-4 py-3 rounded-lg text-body font-medium transition-all duration-fast ${
+                        location.pathname.startsWith("/app/profile")
+                          ? "bg-primary text-primary-foreground"
+                          : "text-foreground/60 hover:text-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <User className="h-4 w-4" />
+                      {isAr ? "الملف الشخصي" : "Profile"}
+                    </Link>
+                    <div className="my-2 border-t border-border" />
+                    <button
+                      onClick={() => { signOut(); setOpen(false); }}
+                      className="flex items-center gap-2.5 px-4 py-3 rounded-lg text-body font-medium text-destructive hover:bg-accent"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      {isAr ? "تسجيل الخروج" : "Sign out"}
+                    </button>
+                  </>
+                )}
+
                 {!isAuthenticated && (
                   <Link
                     to="/login"
@@ -189,15 +250,6 @@ export function AuthNavbar() {
                   >
                     {isAr ? "تسجيل الدخول" : "Sign in"}
                   </Link>
-                )}
-                {isAuthenticated && (
-                  <button
-                    onClick={() => { signOut(); setOpen(false); }}
-                    className="flex items-center gap-2.5 px-4 py-3 rounded-lg text-body font-medium text-destructive hover:bg-accent mt-2"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    {isAr ? "تسجيل الخروج" : "Sign out"}
-                  </button>
                 )}
               </nav>
             </SheetContent>
