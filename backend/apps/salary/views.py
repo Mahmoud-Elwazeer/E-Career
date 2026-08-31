@@ -138,7 +138,7 @@ def get_salary_benchmark(request):
         })
         
     except Exception as e:
-        logger.error("get_salary_benchmark_failed", error=str(e))
+        logger.error("get_salary_benchmark_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
@@ -182,7 +182,7 @@ def get_market_rates(request):
         })
         
     except Exception as e:
-        logger.error("get_market_rates_failed", error=str(e))
+        logger.error("get_market_rates_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
@@ -204,7 +204,7 @@ def get_salary_insights(request):
         })
         
     except Exception as e:
-        logger.error("get_salary_insights_failed", error=str(e))
+        logger.error("get_salary_insights_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
@@ -226,7 +226,7 @@ def get_salary_alerts(request):
         })
         
     except Exception as e:
-        logger.error("get_salary_alerts_failed", error=str(e))
+        logger.error("get_salary_alerts_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
@@ -255,7 +255,7 @@ def mark_alert_as_read(request, alert_id):
             'error': 'Alert not found',
         }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        logger.error("mark_alert_as_read_failed", error=str(e))
+        logger.error("mark_alert_as_read_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
@@ -276,7 +276,7 @@ class SalaryDataViewSet(APIView):
                 'data': SalaryDataSerializer(salary_data, many=True).data,
             })
         except Exception as e:
-            logger.error("get_salary_data_failed", error=str(e))
+            logger.error("get_salary_data_failed: %s", e)
             return Response({
                 'success': False,
                 'error': str(e),
@@ -297,7 +297,7 @@ class MarketRateViewSet(APIView):
                 'data': MarketRateSerializer(market_rates, many=True).data,
             })
         except Exception as e:
-            logger.error("get_market_rates_failed", error=str(e))
+            logger.error("get_market_rates_failed: %s", e)
             return Response({
                 'success': False,
                 'error': str(e),
@@ -318,7 +318,7 @@ class SalaryBenchmarkViewSet(APIView):
                 'data': SalaryBenchmarkSerializer(benchmarks, many=True).data,
             })
         except Exception as e:
-            logger.error("get_salary_benchmarks_failed", error=str(e))
+            logger.error("get_salary_benchmarks_failed: %s", e)
             return Response({
                 'success': False,
                 'error': str(e),
@@ -339,7 +339,7 @@ class SalaryInsightViewSet(APIView):
                 'data': SalaryInsightSerializer(insights, many=True).data,
             })
         except Exception as e:
-            logger.error("get_salary_insights_failed", error=str(e))
+            logger.error("get_salary_insights_failed: %s", e)
             return Response({
                 'success': False,
                 'error': str(e),
@@ -360,7 +360,7 @@ class SalaryAlertViewSet(APIView):
                 'data': SalaryAlertSerializer(alerts, many=True).data,
             })
         except Exception as e:
-            logger.error("get_salary_alerts_failed", error=str(e))
+            logger.error("get_salary_alerts_failed: %s", e)
             return Response({
                 'success': False,
                 'error': str(e),

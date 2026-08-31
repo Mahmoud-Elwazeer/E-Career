@@ -6,9 +6,9 @@ This module contains Django REST Framework views for resume management.
 
 import logging
 from django.utils import timezone
-from rest_framework import status
+from rest_framework import status, serializers as drf_serializers
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_resume_templates(request):
     """
     Get available resume templates.
@@ -45,19 +46,22 @@ def get_resume_templates(request):
             'data': ResumeTemplateSerializer(templates, many=True).data,
         })
     except Exception as e:
-        logger.error("get_resume_templates_failed", error=str(e))
+        logger.error("get_resume_templates_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
-def get_user_resumes(request):
+def resumes_list_create(request):
     """
-    Get resumes for the authenticated user.
+    GET: Get resumes for the authenticated user.
+    POST: Create a new resume.
     """
+    if request.method == 'POST':
+        return _create_resume(request)
     try:
         resumes = Resume.objects.filter(user=request.user).order_by('-updated_at')
         return Response({
@@ -65,7 +69,7 @@ def get_user_resumes(request):
             'data': ResumeSerializer(resumes, many=True).data,
         })
     except Exception as e:
-        logger.error("get_user_resumes_failed", error=str(e))
+        logger.error("get_user_resumes_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
@@ -79,7 +83,7 @@ def get_resume(request, resume_id):
     Get a specific resume by ID.
     """
     try:
-        resume = Resume.objects.get(id=resume_id, user=request.user)
+        resume = Resume.objects.get(uuid=resume_id, user=request.user)
         resume.last_viewed_at = timezone.now()
         resume.save()
         return Response({
@@ -92,16 +96,14 @@ def get_resume(request, resume_id):
             'error': 'Resume not found',
         }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        logger.error("get_resume_failed", error=str(e))
+        logger.error("get_resume_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_resume(request):
+def _create_resume(request):
     """
     Create a new resume for the authenticated user.
     """
@@ -140,7 +142,7 @@ def create_resume(request):
             'data': ResumeSerializer(resume).data,
         }, status=status.HTTP_201_CREATED)
     except Exception as e:
-        logger.error("create_resume_failed", error=str(e))
+        logger.error("create_resume_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
@@ -154,7 +156,7 @@ def update_resume(request, resume_id):
     Update a resume.
     """
     try:
-        resume = Resume.objects.get(id=resume_id, user=request.user)
+        resume = Resume.objects.get(uuid=resume_id, user=request.user)
         
         serializer = ResumeUpdateSerializer(data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -197,7 +199,7 @@ def update_resume(request, resume_id):
             'error': 'Resume not found',
         }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        logger.error("update_resume_failed", error=str(e))
+        logger.error("update_resume_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
@@ -211,7 +213,7 @@ def delete_resume(request, resume_id):
     Delete a resume.
     """
     try:
-        resume = Resume.objects.get(id=resume_id, user=request.user)
+        resume = Resume.objects.get(uuid=resume_id, user=request.user)
         resume.delete()
         return Response({
             'success': True,
@@ -223,7 +225,7 @@ def delete_resume(request, resume_id):
             'error': 'Resume not found',
         }, status=status.HTTP_404_NOT_FOUND)
     except Exception as e:
-        logger.error("delete_resume_failed", error=str(e))
+        logger.error("delete_resume_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
@@ -244,7 +246,7 @@ def export_resume(request):
         serializer.is_valid(raise_exception=True)
 
         resume_id = request.data.get('resume_id')
-        resume = Resume.objects.get(id=resume_id, user=request.user)
+        resume = Resume.objects.get(uuid=resume_id, user=request.user)
         export_format = serializer.validated_data['format']
 
         format_handlers = {
@@ -282,20 +284,28 @@ def export_resume(request):
             'success': False,
             'error': 'Resume not found',
         }, status=status.HTTP_404_NOT_FOUND)
+    except drf_serializers.ValidationError as e:
+        return Response({
+            'success': False,
+            'error': str(e.detail if hasattr(e, 'detail') else e),
+        }, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
-        logger.error("export_resume_failed", error=str(e))
+        logger.error("export_resume_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
-def get_profile_sections(request):
+def profile_sections_list_create(request):
     """
-    Get profile sections for the authenticated user.
+    GET: Get profile sections for the authenticated user.
+    POST: Create a profile section.
     """
+    if request.method == 'POST':
+        return _create_profile_section(request)
     try:
         sections = ProfileSection.objects.filter(user=request.user).order_by('order')
         return Response({
@@ -303,16 +313,14 @@ def get_profile_sections(request):
             'data': ProfileSectionSerializer(sections, many=True).data,
         })
     except Exception as e:
-        logger.error("get_profile_sections_failed", error=str(e))
+        logger.error("get_profile_sections_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_profile_section(request):
+def _create_profile_section(request):
     """
     Create a profile section.
     """
@@ -334,19 +342,22 @@ def create_profile_section(request):
             'data': ProfileSectionSerializer(section).data,
         }, status=status.HTTP_201_CREATED)
     except Exception as e:
-        logger.error("create_profile_section_failed", error=str(e))
+        logger.error("create_profile_section_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
-def get_skill_verifications(request):
+def skill_verifications_list_create(request):
     """
-    Get skill verifications for the authenticated user.
+    GET: Get skill verifications for the authenticated user.
+    POST: Create a skill verification.
     """
+    if request.method == 'POST':
+        return _create_skill_verification(request)
     try:
         verifications = SkillVerification.objects.filter(user=request.user)
         return Response({
@@ -354,16 +365,14 @@ def get_skill_verifications(request):
             'data': SkillVerificationSerializer(verifications, many=True).data,
         })
     except Exception as e:
-        logger.error("get_skill_verifications_failed", error=str(e))
+        logger.error("get_skill_verifications_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_skill_verification(request):
+def _create_skill_verification(request):
     """
     Create a skill verification.
     """
@@ -387,7 +396,7 @@ def create_skill_verification(request):
             'data': SkillVerificationSerializer(verification).data,
         }, status=status.HTTP_201_CREATED)
     except Exception as e:
-        logger.error("create_skill_verification_failed", error=str(e))
+        logger.error("create_skill_verification_failed: %s", e)
         return Response({
             'success': False,
             'error': str(e),
@@ -408,7 +417,7 @@ class ResumeViewSet(APIView):
                 'data': ResumeSerializer(resumes, many=True).data,
             })
         except Exception as e:
-            logger.error("get_resumes_failed", error=str(e))
+            logger.error("get_resumes_failed: %s", e)
             return Response({
                 'success': False,
                 'error': str(e),
@@ -430,7 +439,7 @@ class ResumeViewSet(APIView):
                 'data': ResumeSerializer(resume).data,
             })
         except Exception as e:
-            logger.error("create_resume_failed", error=str(e))
+            logger.error("create_resume_failed: %s", e)
             return Response({
                 'success': False,
                 'error': str(e),
@@ -449,7 +458,7 @@ class ResumeTemplateViewSet(APIView):
                 'data': ResumeTemplateSerializer(templates, many=True).data,
             })
         except Exception as e:
-            logger.error("get_templates_failed", error=str(e))
+            logger.error("get_templates_failed: %s", e)
             return Response({
                 'success': False,
                 'error': str(e),
