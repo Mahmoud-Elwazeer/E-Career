@@ -11,6 +11,7 @@ import { RashidCharacter } from './character';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { apiRequest } from '@/services/client';
 
 interface OnboardingStep {
   question: { en: string; ar: string };
@@ -48,18 +49,20 @@ export function RashidOnboarding() {
   const { lang } = useTheme();
   const { isAuthenticated } = useAuth();
   const isAr = lang === 'ar';
-  
-  // Check if user has already been onboarded
-  const hasOnboarded = typeof window !== 'undefined' && localStorage.getItem('rashid_onboarded') === 'true';
-  
-  // Don't show if not authenticated or already onboarded
-  if (!isAuthenticated || hasOnboarded) {
-    return null;
-  }
+
+  // All hooks MUST be declared before any early return (React rules of hooks)
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+
+  // Check if user has already been onboarded
+  const hasOnboarded = typeof window !== 'undefined' && localStorage.getItem('rashid_onboarded') === 'true';
+
+  // Don't show if not authenticated or already onboarded
+  if (!isAuthenticated || hasOnboarded) {
+    return null;
+  }
 
   const handleSelectOption = (value: string) => {
     setAnswers(prev => ({ ...prev, [`step_${currentStep}`]: value }));
@@ -90,21 +93,16 @@ export function RashidOnboarding() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/v1/rashid/profile/complete_onboarding/', {
+      await apiRequest('/rashid/profile/complete_onboarding/', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ answers }),
+        body: { answers },
       });
 
-      if (response.ok) {
-        localStorage.setItem('rashid_onboarded', 'true');
-        setShowCelebration(true);
-        setTimeout(() => {
-          setShowCelebration(false);
-        }, 3000);
-      }
+      localStorage.setItem('rashid_onboarded', 'true');
+      setShowCelebration(true);
+      setTimeout(() => {
+        setShowCelebration(false);
+      }, 3000);
     } catch (error) {
       console.error('Failed to submit onboarding:', error);
       // Even if API fails, mark as onboarded
@@ -132,7 +130,7 @@ export function RashidOnboarding() {
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-center">
           <h2 className="text-2xl font-bold text-white">
-            {isAr ? 'مرحباً بك في رشيد!' : 'Welcome to Rashid!'}
+            {isAr ? 'مرحباً بك في رشيد!' : 'Welcome to Rasheed!'}
           </h2>
           <p className="text-blue-100 mt-2">
             {isAr ? 'دعني أتعلم أكثر عنك' : 'Let me learn more about you'}
@@ -185,7 +183,7 @@ export function RashidOnboarding() {
                 {isAr ? 'تم التسجيل بنجاح!' : 'Registration Complete!'}
               </h3>
               <p className="text-muted-foreground">
-                {isAr ? 'رشيد جاهز لمساعدتك' : 'Rashid is ready to help you'}
+                {isAr ? 'رشيد جاهز لمساعدتك' : 'Rasheed is ready to help you'}
               </p>
             </div>
           ) : currentStepData.type === 'select' ? (

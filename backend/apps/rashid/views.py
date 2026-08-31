@@ -288,8 +288,23 @@ class ProfileViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def complete_onboarding(self, request):
-        """Mark onboarding as complete"""
+        """Save onboarding answers and mark as complete"""
         profile = self.get_object()
+
+        answers = request.data.get('answers', {})
+
+        # Map step_0: career level (junior/mid/senior) -> experience_level
+        if 'step_0' in answers:
+            profile.experience_level = answers['step_0']
+
+        # Map step_1: work field text -> current_role
+        if 'step_1' in answers:
+            profile.current_role = answers['step_1']
+
+        # Map step_2: career goal (find_job/promotion/switch/learn) -> current_situation
+        if 'step_2' in answers:
+            profile.current_situation = answers['step_2']
+
         profile.onboarding_complete = True
         profile.save()
         return Response(success_response(data={
