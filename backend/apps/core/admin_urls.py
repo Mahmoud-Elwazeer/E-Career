@@ -32,6 +32,12 @@ from apps.core.admin_api_views import (
     CompanySubscriptionListView,
     CompanySubscriptionDetailView,
     AdminCopilotChatView,
+    AdminUserListView,
+    AdminInterviewStatsView,
+    AdminRashidStatsView,
+    AdminNotificationStatsView,
+    AdminCsvImportView,
+    AdminBroadcastNotificationView,
 )
 from apps.jobs.template_views import JobTemplateDownloadView
 
@@ -74,4 +80,12 @@ urlpatterns = [
     path("subscriptions/", CompanySubscriptionListView.as_view(), name="company-subscriptions-list"),
     path("subscriptions/<uuid:uuid>/", CompanySubscriptionDetailView.as_view(), name="company-subscriptions-detail"),
     path("copilot/chat/", AdminCopilotChatView.as_view(), name="admin-copilot-chat"),
+
+    # Phase 7c: New admin dashboard endpoints
+    path("users/", AdminUserListView.as_view(), name="admin-users-list"),
+    path("interviews/stats/", AdminInterviewStatsView.as_view(), name="admin-interviews-stats"),
+    path("rashid/stats/", AdminRashidStatsView.as_view(), name="admin-rashid-stats"),
+    path("notifications/stats/", AdminNotificationStatsView.as_view(), name="admin-notifications-stats"),
+    path("csv-import/", AdminCsvImportView.as_view(), name="admin-csv-import"),
+    path("notifications/broadcast/", AdminBroadcastNotificationView.as_view(), name="admin-notifications-broadcast"),
 ]

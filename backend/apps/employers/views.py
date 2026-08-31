@@ -305,9 +305,23 @@ class JobPostingViewSet(viewsets.ModelViewSet):
         
         job_post.status = 'pending_review'
         job_post.save()
-        
-        # TODO: Send notification to admin
-        
+
+        try:
+            from django.contrib.auth import get_user_model
+            from apps.users.models import Notification
+            User = get_user_model()
+            admins = User.objects.filter(role='admin', is_active=True)
+            for admin_user in admins:
+                Notification.objects.create(
+                    user=admin_user,
+                    title=f'New job submission: {job_post.title}',
+                    body=f'{job_post.company.name} submitted "{job_post.title}" for review.',
+                    type='system',
+                    metadata={'job_posting_id': job_post.id, 'company': job_post.company.name},
+                )
+        except Exception:
+            pass
+
         return Response({
             'message': 'Job submitted for review. You will be notified once it is approved.',
             'status': job_post.status

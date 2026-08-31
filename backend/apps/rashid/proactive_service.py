@@ -133,9 +133,28 @@ class ProactiveRashidService:
         )
     
     def _check_trending_skills(self, user) -> List[str]:
-        """Check for trending skills in user's target field."""
-        # This is a placeholder - would integrate with market data API
-        # For now, return some common trending skills
+        """Derive trending skills from recent job postings in the user's target field."""
+        try:
+            from apps.jobs.models import Job, Tag
+            from django.db.models import Count
+
+            profile = getattr(user, 'career_profile', None)
+            target = getattr(profile, 'target_role', '') if profile else ''
+
+            jobs_qs = Job.objects.filter(status='active')
+            if target:
+                jobs_qs = jobs_qs.filter(title__icontains=target)
+
+            top_tags = (
+                Tag.objects.filter(jobs__in=jobs_qs)
+                .values_list('name', flat=True)
+                .annotate(cnt=Count('id'))
+                .order_by('-cnt')[:5]
+            )
+            if top_tags:
+                return list(top_tags)
+        except Exception:
+            pass
         return ['Python', 'AI/ML', 'Cloud Computing']
     
     def _check_interview_reminder(self, user) -> int:

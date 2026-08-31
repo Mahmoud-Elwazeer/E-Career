@@ -125,19 +125,35 @@ class JobAskRashidView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         
-        # This will be fully implemented in Phase 2B
-        # For now, return a placeholder with basic job info
+        job_data = {
+            "job_id": job.id,
+            "job_title": job.title,
+            "company": job.company.name if job.company else None,
+            "location": job.location,
+            "salary_range": f"{job.salary_min} - {job.salary_max} {job.salary_currency}" if job.salary_min and job.salary_max else None,
+            "skills_required": [tag.name for tag in job.tags.all()],
+        }
+
+        try:
+            from apps.rashid.service import RashidService
+            service = RashidService(request.user)
+            prompt = (
+                f"Analyze this job and give career advice:\n"
+                f"Title: {job.title}\n"
+                f"Company: {job.company.name if job.company else 'Unknown'}\n"
+                f"Location: {job.location or 'Not specified'}\n"
+                f"Description: {(job.description or '')[:2000]}\n"
+                f"Requirements: {(job.requirements or '')[:1000]}\n"
+                f"Skills: {', '.join(tag.name for tag in job.tags.all())}"
+            )
+            analysis = service.generate_response(prompt, mode="general")
+            job_data["rashid_analysis"] = analysis.get("response", "") if isinstance(analysis, dict) else str(analysis)
+        except Exception:
+            job_data["rashid_analysis"] = None
+
         return Response({
             "success": True,
-            "data": {
-                "message": "Rashid analysis will be available after Phase 2B",
-                "job_id": job.id,
-                "job_title": job.title,
-                "company": job.company.name if job.company else None,
-                "location": job.location,
-                "salary_range": f"{job.salary_min} - {job.salary_max} {job.salary_currency}" if job.salary_min and job.salary_max else None,
-                "skills_required": [tag.name for tag in job.tags.all()],
-            },
+            "data": job_data,
             "message": "",
             "errors": None,
         })

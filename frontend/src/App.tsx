@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/hooks/use-auth";
+import { apiRequest } from "@/services/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin, RequireEmployer } from "@/components/RequireRole";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -111,8 +112,15 @@ function OnboardingWrapper() {
   }, [user]);
 
   const handleOnboardingComplete = (preferences: { track: string; mode: string; location: string }) => {
-    console.log("User preferences:", preferences);
-    // TODO: Send preferences to backend API
+    apiRequest("/career/onboarding/", {
+      method: "PATCH",
+      body: {
+        step_id: "preferences",
+        career_stage: preferences.track,
+        primary_interest: preferences.mode,
+      },
+    }).catch(() => {});
+    localStorage.setItem("usam_onboarding_complete", "true");
     setShowOnboarding(false);
   };
 

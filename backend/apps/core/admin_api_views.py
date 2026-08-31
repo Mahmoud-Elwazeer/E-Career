@@ -1710,3 +1710,391 @@ class DecisionSupportAlertsView(APIView):
             "checked_at": now.isoformat(),
             "total_active": len(alerts),
         })
+
+
+# ---------------------------------------------------------------------------
+# 23. AdminUserListView (Phase 7c)
+# ---------------------------------------------------------------------------
+
+
+class AdminUserListView(generics.ListAPIView):
+    """List all users with pagination and optional search."""
+
+    permission_classes = [IsAdminRole]
+    pagination_class = StandardPagination
+
+    class UserSerializer(serializers.Serializer):
+        id = serializers.IntegerField(read_only=True)
+        email = serializers.EmailField(read_only=True)
+        first_name = serializers.CharField(read_only=True)
+        last_name = serializers.CharField(read_only=True)
+        role = serializers.CharField(read_only=True)
+        is_active = serializers.BooleanField(read_only=True)
+        date_joined = serializers.DateTimeField(read_only=True)
+        last_login = serializers.DateTimeField(read_only=True)
+
+    serializer_class = UserSerializer
+
+    def get_queryset(self):
+        from django.contrib.auth import get_user_model
+
+        User = get_user_model()
+        qs = User.objects.all().order_by("-date_joined")
+
+        search = self.request.query_params.get("search", "").strip()
+        if search:
+            qs = qs.filter(
+                Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+            )
+
+        return qs
+
+
+# ---------------------------------------------------------------------------
+# 24. AdminInterviewStatsView (Phase 7c)
+# ---------------------------------------------------------------------------
+
+
+class AdminInterviewStatsView(APIView):
+    """
+    Aggregate interview statistics for the admin dashboard.
+    """
+
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        try:
+            from apps.interviews.models import InterviewSession
+        except ImportError:
+            return Response(
+                {"detail": "Interviews module not available."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        from django.db.models import Avg
+
+        total_sessions = InterviewSession.objects.count()
+        completed_sessions = InterviewSession.objects.filter(
+            status="completed"
+        ).count()
+
+        avg_score_result = InterviewSession.objects.filter(
+            overall_score__isnull=False
+        ).aggregate(avg=Avg("overall_score"))
+        avg_score = round(avg_score_result["avg"], 2) if avg_score_result["avg"] is not None else None
+
+        by_type = dict(
+            InterviewSession.objects.values_list("interview_type")
+            .annotate(cnt=Count("id"))
+            .values_list("interview_type", "cnt")
+        )
+
+        by_difficulty = dict(
+            InterviewSession.objects.values_list("difficulty")
+            .annotate(cnt=Count("id"))
+            .values_list("difficulty", "cnt")
+        )
+
+        recent_qs = (
+            InterviewSession.objects.select_related("user")
+            .order_by("-started_at")[:10]
+        )
+        recent_sessions = [
+            {
+                "id": s.id,
+                "user_email": s.user.email if s.user else None,
+                "interview_type": s.interview_type,
+                "status": s.status,
+                "overall_score": s.overall_score,
+                "started_at": s.started_at,
+            }
+            for s in recent_qs
+        ]
+
+        return Response({
+            "success": True,
+            "data": {
+                "total_sessions": total_sessions,
+                "completed_sessions": completed_sessions,
+                "avg_score": avg_score,
+                "by_type": by_type,
+                "by_difficulty": by_difficulty,
+                "recent_sessions": recent_sessions,
+            },
+        })
+
+
+# ---------------------------------------------------------------------------
+# 25. AdminRashidStatsView (Phase 7c)
+# ---------------------------------------------------------------------------
+
+
+class AdminRashidStatsView(APIView):
+    """
+    Rashid AI conversation statistics for the admin dashboard.
+    """
+
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        try:
+            from apps.rashid.models import RashidConversation
+        except ImportError:
+            return Response(
+                {"detail": "Rashid module not available."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        total_conversations = RashidConversation.objects.count()
+
+        by_mode = dict(
+            RashidConversation.objects.values_list("mode")
+            .annotate(cnt=Count("id"))
+            .values_list("mode", "cnt")
+        )
+
+        recent_qs = (
+            RashidConversation.objects.select_related("user")
+            .order_by("-started_at")[:10]
+        )
+        recent_conversations = [
+            {
+                "id": c.id,
+                "user_email": c.user.email if c.user else None,
+                "mode": c.mode,
+                "title": c.title,
+                "created_at": c.started_at,
+            }
+            for c in recent_qs
+        ]
+
+        # Today's AI costs from EventLog
+        today_ai_cost = 0
+        today_ai_calls = 0
+        try:
+            from apps.events.models import EventLog
+
+            today_events = EventLog.objects.filter(
+                category="ai",
+                created_at__date=timezone.now().date(),
+            )
+            today_ai_calls = today_events.count()
+            for e in today_events:
+                if e.data:
+                    today_ai_cost += float(e.data.get("cost_usd", 0))
+        except Exception:
+            pass
+
+        return Response({
+            "success": True,
+            "data": {
+                "total_conversations": total_conversations,
+                "by_mode": by_mode,
+                "recent_conversations": recent_conversations,
+                "today_ai_costs": {
+                    "cost": round(today_ai_cost, 4),
+                    "calls": today_ai_calls,
+                },
+            },
+        })
+
+
+# ---------------------------------------------------------------------------
+# 26. AdminNotificationStatsView (Phase 7c)
+# ---------------------------------------------------------------------------
+
+
+class AdminNotificationStatsView(APIView):
+    """
+    Notification statistics for the admin dashboard.
+    """
+
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        try:
+            from apps.users.models import Notification
+        except ImportError:
+            return Response(
+                {"detail": "Notification model not available."},
+                status=status.HTTP_501_NOT_IMPLEMENTED,
+            )
+
+        total_notifications = Notification.objects.count()
+        unread_count = Notification.objects.filter(is_read=False).count()
+
+        by_type = dict(
+            Notification.objects.values_list("type")
+            .annotate(cnt=Count("id"))
+            .values_list("type", "cnt")
+        )
+
+        recent_qs = (
+            Notification.objects.select_related("user")
+            .order_by("-created_at")[:20]
+        )
+        recent_notifications = [
+            {
+                "id": str(n.uuid),
+                "user_email": n.user.email if n.user else None,
+                "title": n.title,
+                "type": n.type,
+                "is_read": n.is_read,
+                "created_at": n.created_at,
+            }
+            for n in recent_qs
+        ]
+
+        return Response({
+            "success": True,
+            "data": {
+                "total_notifications": total_notifications,
+                "unread_count": unread_count,
+                "by_type": by_type,
+                "recent_notifications": recent_notifications,
+            },
+        })
+
+
+# ---------------------------------------------------------------------------
+# 27. AdminCsvImportView
+# ---------------------------------------------------------------------------
+
+
+class AdminBroadcastNotificationView(APIView):
+    """Send a broadcast notification to all active users."""
+
+    permission_classes = [IsAdminRole]
+
+    def post(self, request):
+        title = (request.data.get("title") or "").strip()
+        body = (request.data.get("body") or "").strip()
+        if not title:
+            return Response(
+                {"detail": "Title is required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from django.contrib.auth import get_user_model
+        from apps.users.models import Notification
+
+        User = get_user_model()
+        active_users = User.objects.filter(is_active=True)
+        notifications = [
+            Notification(user=u, title=title, body=body, type="system")
+            for u in active_users
+        ]
+        Notification.objects.bulk_create(notifications)
+
+        return Response({
+            "success": True,
+            "data": {
+                "sent_to": len(notifications),
+                "title": title,
+            },
+        })
+
+
+class AdminCsvImportView(APIView):
+    """Import jobs from a CSV file uploaded by admin."""
+
+    permission_classes = [IsAdminRole]
+
+    def post(self, request):
+        import csv
+        import io
+
+        csv_file = request.FILES.get("file")
+        if not csv_file:
+            return Response(
+                {"detail": "No file uploaded."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not csv_file.name.endswith(".csv"):
+            return Response(
+                {"detail": "File must be a .csv"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from apps.jobs.models import Job, Company, Tag
+
+            decoded = csv_file.read().decode("utf-8-sig")
+            reader = csv.DictReader(io.StringIO(decoded))
+
+            imported = 0
+            skipped = 0
+            errors = []
+            total = 0
+
+            for row_num, row in enumerate(reader, start=2):
+                total += 1
+                title = (row.get("title") or "").strip()
+                if not title:
+                    errors.append(f"Row {row_num}: missing title")
+                    skipped += 1
+                    continue
+
+                company_name = (row.get("company") or "").strip()
+                company = None
+                if company_name:
+                    company, _ = Company.objects.get_or_create(
+                        name=company_name,
+                        defaults={"slug": company_name.lower().replace(" ", "-")[:80]},
+                    )
+
+                salary_min = None
+                salary_max = None
+                try:
+                    if row.get("salary_min"):
+                        salary_min = int(row["salary_min"])
+                    if row.get("salary_max"):
+                        salary_max = int(row["salary_max"])
+                except ValueError:
+                    pass
+
+                job = Job.objects.create(
+                    title=title,
+                    company=company,
+                    description=(row.get("description") or "").strip(),
+                    location=(row.get("location") or "").strip(),
+                    work_arrangement=(row.get("work_mode") or "").strip() or None,
+                    experience_level=(row.get("seniority") or "").strip() or None,
+                    salary_min=salary_min,
+                    salary_max=salary_max,
+                    salary_currency=(row.get("currency") or "EGP").strip(),
+                    apply_url=(row.get("apply_url") or "").strip(),
+                    source_type="employer_posted",
+                    status="review",
+                )
+
+                tags_str = (row.get("tags") or "").strip()
+                if tags_str:
+                    for tag_name in tags_str.split(";"):
+                        tag_name = tag_name.strip()
+                        if tag_name:
+                            tag, _ = Tag.objects.get_or_create(
+                                name=tag_name,
+                                defaults={"slug": tag_name.lower().replace(" ", "-")[:50]},
+                            )
+                            job.tags.add(tag)
+
+                imported += 1
+
+            return Response({
+                "success": True,
+                "data": {
+                    "imported": imported,
+                    "skipped": skipped,
+                    "total": total,
+                    "errors": errors,
+                },
+            })
+        except Exception as e:
+            return Response(
+                {"detail": f"CSV processing failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

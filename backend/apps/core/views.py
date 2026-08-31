@@ -217,13 +217,66 @@ def github_connections(request):
         try:
             serializer = GitHubConnectSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
-            
-            # TODO: Implement GitHub OAuth flow
-            # For now, return placeholder response
+
+            code = serializer.validated_data['code']
+
+            import requests as http_requests
+            from django.conf import settings as django_settings
+
+            client_id = getattr(django_settings, 'GITHUB_CLIENT_ID', '') or ''
+            client_secret = getattr(django_settings, 'GITHUB_CLIENT_SECRET', '') or ''
+            if not client_id or not client_secret:
+                return Response({
+                    'success': False,
+                    'error': 'GitHub OAuth is not configured. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.',
+                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+            token_resp = http_requests.post(
+                'https://github.com/login/oauth/access_token',
+                json={
+                    'client_id': client_id,
+                    'client_secret': client_secret,
+                    'code': code,
+                },
+                headers={'Accept': 'application/json'},
+                timeout=15,
+            )
+            token_data = token_resp.json()
+            access_token = token_data.get('access_token')
+            if not access_token:
+                return Response({
+                    'success': False,
+                    'error': token_data.get('error_description', 'Failed to obtain GitHub access token'),
+                }, status=status.HTTP_400_BAD_REQUEST)
+
+            gh_user_resp = http_requests.get(
+                'https://api.github.com/user',
+                headers={
+                    'Authorization': f'Bearer {access_token}',
+                    'Accept': 'application/vnd.github+json',
+                },
+                timeout=15,
+            )
+            gh_user = gh_user_resp.json()
+
+            conn, created = GitHubConnection.objects.update_or_create(
+                github_id=str(gh_user['id']),
+                defaults={
+                    'user': request.user,
+                    'username': gh_user.get('login', ''),
+                    'access_token': access_token,
+                    'refresh_token': token_data.get('refresh_token', ''),
+                    'avatar_url': gh_user.get('avatar_url', ''),
+                    'profile_url': gh_user.get('html_url', ''),
+                    'email': gh_user.get('email', '') or '',
+                    'name': gh_user.get('name', '') or '',
+                },
+            )
+
             return Response({
                 'success': True,
-                'message': 'GitHub OAuth flow not yet implemented',
-                'data': serializer.validated_data,
+                'data': GitHubConnectionSerializer(conn).data,
+                'created': created,
             })
         except Exception as e:
             logger.error("create_github_connection_failed", error=str(e))
@@ -259,18 +312,67 @@ def portfolio_analyses(request):
             
             url = serializer.validated_data['url']
             
-            # Create analysis record
             analysis = PortfolioAnalysis.objects.create(
                 user=request.user,
                 url=url,
                 status='analyzing',
             )
-            
-            # TODO: Implement portfolio analysis
-            # For now, return placeholder response
+
+            import requests as http_requests
+            try:
+                page_resp = http_requests.get(url, timeout=15, headers={
+                    'User-Agent': 'E-Career Portfolio Analyzer/1.0',
+                })
+                page_text = page_resp.text[:8000]
+            except Exception:
+                page_text = f"(Could not fetch {url})"
+
+            try:
+                from apps.intelligence.career_ai import career_ai_service as bedrock_service
+                prompt = (
+                    f"Analyze this portfolio/project page and provide a professional assessment.\n"
+                    f"URL: {url}\n\nPage content (truncated):\n{page_text}\n\n"
+                    f"Return a JSON object with keys: summary (2-3 sentences), "
+                    f"strengths (list of strings), improvements (list of strings), "
+                    f"technologies_detected (list of strings), overall_score (1-10)."
+                )
+                ai_result = bedrock_service.invoke_model(
+                    prompt=prompt,
+                    system_prompt="You are a technical portfolio reviewer. Return valid JSON only.",
+                    max_tokens=1500,
+                    temperature=0.3,
+                )
+                import json
+                try:
+                    result_data = json.loads(ai_result)
+                except (json.JSONDecodeError, TypeError):
+                    result_data = {"summary": ai_result, "overall_score": None}
+
+                analysis.status = 'completed'
+                analysis.technologies = result_data.get('technologies_detected', [])
+                analysis.tech_stack = {
+                    'strengths': result_data.get('strengths', []),
+                    'improvements': result_data.get('improvements', []),
+                }
+                score = result_data.get('overall_score')
+                if score is not None:
+                    analysis.quality_score = min(float(score) / 10.0, 1.0)
+                analysis.observations = {
+                    'summary': result_data.get('summary', ''),
+                    'raw': result_data,
+                }
+                analysis.save()
+            except Exception as exc:
+                logger.warning("portfolio_analysis_ai_failed", error=str(exc))
+                analysis.status = 'completed'
+                analysis.observations = {
+                    'summary': f"Portfolio at {url} was recorded. AI analysis unavailable — "
+                               "ensure AWS Bedrock model access is configured.",
+                }
+                analysis.save()
+
             return Response({
                 'success': True,
-                'message': 'Portfolio analysis started',
                 'data': PortfolioAnalysisSerializer(analysis).data,
             })
         except Exception as e:

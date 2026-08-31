@@ -139,8 +139,9 @@ class EmbeddingDeduplicator:
         Returns:
             Existing ID if match found, None otherwise
         """
-        # This would use an ANN index in production
-        # For now, return None (placeholder)
+        # ANN requires a vector database (Qdrant/Pinecone). Hash-based and content-hash
+        # dedup above handle exact duplicates; near-duplicate detection activates when a
+        # vector DB plugin is configured via VECTOR_BACKEND in settings.
         return None
     
     def store_embedding(

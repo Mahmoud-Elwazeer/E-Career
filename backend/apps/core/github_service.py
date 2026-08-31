@@ -227,45 +227,52 @@ class GitHubService:
 
 
 def analyze_portfolio_url(url: str) -> Dict[str, Any]:
-    """
-    Analyze a portfolio URL using Bedrock Haiku.
-    
-    This is a placeholder that would call the Bedrock service in production.
-    """
-    # Extract domain
+    """Analyze a portfolio URL using AI (Bedrock) with static fallback."""
     parsed = urlparse(url)
     domain = parsed.netloc or parsed.path.split('/')[0]
-    
-    # In production, this would call Bedrock Haiku to:
-    # 1. Scrape the portfolio URL
-    # 2. Analyze technologies used
-    # 3. Evaluate project quality
-    # 4. Generate observations
-    
+
+    page_text = ""
+    try:
+        resp = requests.get(url, timeout=15, headers={'User-Agent': 'E-Career/1.0'})
+        page_text = resp.text[:6000]
+    except Exception:
+        pass
+
+    try:
+        from apps.intelligence.career_ai import career_ai_service
+        import json
+        prompt = (
+            f"Analyze this portfolio page and return JSON with: technologies (list), "
+            f"projects (list of {{name, description, technologies}}), quality_score (0-1), "
+            f"completeness_score (0-1), tech_stack ({{frontend, backend, database}} lists), "
+            f"project_count (int), observations ({{strengths, growth_areas}} lists).\n\n"
+            f"URL: {url}\nContent:\n{page_text[:4000]}"
+        )
+        ai_resp = career_ai_service.invoke_model(
+            prompt=prompt,
+            system_prompt="Return valid JSON only.",
+            max_tokens=1500,
+            temperature=0.3,
+        )
+        result = json.loads(ai_resp) if isinstance(ai_resp, str) else ai_resp
+        result['url'] = url
+        result['domain'] = domain
+        return result
+    except Exception:
+        logger.info("analyze_portfolio_url_ai_unavailable", url=url)
+
     return {
         'url': url,
         'domain': domain,
-        'technologies': ['React', 'Node.js', 'TypeScript'],  # Placeholder
-        'projects': [
-            {
-                'name': 'Project 1',
-                'description': 'Sample project',
-                'technologies': ['React', 'Node.js'],
-                'stars': 100,
-            }
-        ],
-        'quality_score': 0.8,
-        'completeness_score': 0.7,
-        'tech_stack': {
-            'frontend': ['React', 'Tailwind'],
-            'backend': ['Node.js', 'Express'],
-            'database': ['PostgreSQL'],
-        },
-        'project_count': 3,
-        'star_count': 150,
-        'contribution_count': 50,
+        'technologies': [],
+        'projects': [],
+        'quality_score': None,
+        'completeness_score': None,
+        'tech_stack': {},
+        'project_count': 0,
+        'star_count': 0,
+        'contribution_count': 0,
         'observations': {
-            'strengths': ['Clean code structure', 'Good documentation'],
-            'growth_areas': ['Add more projects', 'Improve mobile responsiveness'],
+            'note': 'AI analysis unavailable — configure AWS Bedrock model access.',
         },
     }

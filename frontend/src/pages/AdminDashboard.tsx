@@ -194,20 +194,824 @@ function CsvImportTab() {
   );
 }
 
-function PlaceholderTab({ icon: Icon, title, description }: { icon: React.ComponentType<{ className?: string }>; title: string; description: string }) {
+function UsersTab() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [timeline, setTimeline] = useState<any[] | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+
+  const fetchUsers = async (search?: string) => {
+    setSearching(true);
+    try {
+      const params = search ? `?search=${encodeURIComponent(search)}` : "";
+      const data = await apiRequest<any>(`/admin-api/users/${params}`);
+      setUsers(Array.isArray(data) ? data : data?.results || []);
+    } catch {
+      setUsers([]);
+    } finally {
+      setSearching(false);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchUsers(); }, []);
+
+  const handleSearch = () => {
+    if (searchTerm.length < 2 && searchTerm.length > 0) return;
+    fetchUsers(searchTerm || undefined);
+  };
+
+  const loadTimeline = async (userId: string) => {
+    setSelectedUserId(userId);
+    setTimelineLoading(true);
+    try {
+      const data = await apiRequest<any>(`/admin-api/users/${userId}/timeline/`);
+      setTimeline(Array.isArray(data) ? data : data?.events || []);
+    } catch {
+      setTimeline([]);
+    } finally {
+      setTimelineLoading(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Icon className="h-5 w-5 text-primary" />
-        <h2 className="text-heading-3">{title}</h2>
+        <Users className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">User Management</h2>
       </div>
-      <Card>
-        <CardContent className="p-8 text-center">
-          <Icon className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
-          <p className="text-body font-medium">{title}</p>
-          <p className="text-caption text-muted-foreground mt-1">{description}</p>
-        </CardContent>
-      </Card>
+
+      <Card><CardContent className="p-5 space-y-4">
+        <h3 className="text-body font-medium">Search Users</h3>
+        <div className="flex gap-2 max-w-lg">
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search by name or email..."
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            className="rounded-xl"
+          />
+          <Button onClick={handleSearch} disabled={searching}>
+            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+          </Button>
+        </div>
+      </CardContent></Card>
+
+      <Card><CardContent className="p-5">
+        <h3 className="text-body font-medium mb-4">Users ({users.length})</h3>
+        {users.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-caption">
+              <thead><tr className="border-b">
+                <th className="text-start p-3 font-medium">Email</th>
+                <th className="text-start p-3 font-medium">Name</th>
+                <th className="text-start p-3 font-medium">Role</th>
+                <th className="text-start p-3 font-medium">Active</th>
+                <th className="text-start p-3 font-medium">Joined</th>
+                <th className="text-start p-3 font-medium">Actions</th>
+              </tr></thead>
+              <tbody>
+                {users.map((user: any, i: number) => (
+                  <tr key={user.id || i} className="border-b last:border-0 hover:bg-muted/50">
+                    <td className="p-3">{user.email}</td>
+                    <td className="p-3 text-muted-foreground">{[user.first_name, user.last_name].filter(Boolean).join(" ") || "—"}</td>
+                    <td className="p-3"><Badge variant="outline" className="text-[10px]">{user.role}</Badge></td>
+                    <td className="p-3">{user.is_active ? "Yes" : "No"}</td>
+                    <td className="p-3 text-muted-foreground whitespace-nowrap">
+                      {user.date_joined ? formatDistanceToNow(new Date(user.date_joined), { addSuffix: true }) : "—"}
+                    </td>
+                    <td className="p-3">
+                      <Button variant="ghost" size="sm" onClick={() => loadTimeline(String(user.id))}>
+                        Timeline
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-caption text-muted-foreground">No users found</p>
+        )}
+      </CardContent></Card>
+
+      {selectedUserId && (
+        <Card><CardContent className="p-5">
+          <h3 className="text-body font-medium mb-3">User Timeline</h3>
+          {timelineLoading ? (
+            <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+          ) : timeline && timeline.length > 0 ? (
+            <div className="space-y-2">
+              {timeline.map((event: any, i: number) => (
+                <div key={i} className="flex items-start gap-3 py-2 border-b last:border-0">
+                  <Clock className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div>
+                    <p className="text-caption font-medium">{event.action || event.type || "Event"}</p>
+                    <p className="text-[10px] text-muted-foreground">{event.detail || event.description || ""}</p>
+                    {event.created_at && (
+                      <p className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(event.created_at), { addSuffix: true })}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-caption text-muted-foreground">No timeline data available</p>
+          )}
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
+function CompaniesTab() {
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  useEffect(() => {
+    apiRequest<any>("/admin-api/companies/")
+      .then((data) => setCompanies(data?.results || []))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const loadDetail = async (uuid: string) => {
+    setDetailLoading(true);
+    try {
+      const data = await apiRequest<any>(`/admin-api/companies/${uuid}/`);
+      setSelectedCompany(data);
+    } catch {
+      setSelectedCompany(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (error) return <div className="text-center p-8 text-muted-foreground">Failed to load companies.</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Building2 className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Company Management</h2>
+        <Badge variant="secondary">{companies.length} companies</Badge>
+      </div>
+
+      {companies.length > 0 ? (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-caption">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-start p-3 font-medium">Name</th>
+                  <th className="text-start p-3 font-medium">Industry</th>
+                  <th className="text-start p-3 font-medium">Size</th>
+                  <th className="text-start p-3 font-medium">Jobs</th>
+                  <th className="text-start p-3 font-medium">Status</th>
+                  <th className="text-start p-3 font-medium">Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {companies.map((c: any) => (
+                  <tr key={c.uuid} className="border-b last:border-0 hover:bg-muted/50 cursor-pointer" onClick={() => loadDetail(c.uuid)}>
+                    <td className="p-3 font-medium">{c.name}</td>
+                    <td className="p-3 text-muted-foreground">{c.industry || "—"}</td>
+                    <td className="p-3 text-muted-foreground">{c.size || "—"}</td>
+                    <td className="p-3"><Badge variant="secondary">{c.job_count ?? 0}</Badge></td>
+                    <td className="p-3">
+                      <Badge variant={c.status === "active" ? "default" : "outline"} className="capitalize">{c.status || "unknown"}</Badge>
+                    </td>
+                    <td className="p-3 text-muted-foreground whitespace-nowrap">
+                      {c.created_at ? formatDistanceToNow(new Date(c.created_at), { addSuffix: true }) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : (
+        <Card><CardContent className="p-8 text-center">
+          <Building2 className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+          <p className="text-body text-muted-foreground">No companies registered yet</p>
+        </CardContent></Card>
+      )}
+
+      {detailLoading && (
+        <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      )}
+      {selectedCompany && !detailLoading && (
+        <Card><CardContent className="p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-body font-medium">{selectedCompany.name}</h3>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedCompany(null)}>Close</Button>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {Object.entries(selectedCompany as Record<string, unknown>).filter(([k]) => !["uuid", "id"].includes(k)).map(([key, value]) => (
+              <div key={key}>
+                <p className="text-[10px] text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
+                <p className="text-caption mt-0.5">{typeof value === "object" ? JSON.stringify(value) : String(value ?? "—")}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
+function TalentTab() {
+  const [pools, setPools] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    apiRequest<any>("/admin-api/talent-pools/")
+      .then((data) => setPools(data?.results || []))
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  if (error) return <div className="text-center p-8 text-muted-foreground">Failed to load talent pools.</div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Star className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Talent Pools</h2>
+        <Badge variant="secondary">{pools.length} pools</Badge>
+      </div>
+
+      {pools.length > 0 ? (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-caption">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-start p-3 font-medium">Pool Name</th>
+                  <th className="text-start p-3 font-medium">Company</th>
+                  <th className="text-start p-3 font-medium">Candidates</th>
+                  <th className="text-start p-3 font-medium">Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pools.map((pool: any) => (
+                  <tr key={pool.uuid} className="border-b last:border-0">
+                    <td className="p-3 font-medium">{pool.name}</td>
+                    <td className="p-3 text-muted-foreground">{pool.company_name || "—"}</td>
+                    <td className="p-3"><Badge variant="secondary">{pool.candidate_count ?? 0}</Badge></td>
+                    <td className="p-3 text-muted-foreground whitespace-nowrap">
+                      {pool.created_at ? formatDistanceToNow(new Date(pool.created_at), { addSuffix: true }) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      ) : (
+        <Card><CardContent className="p-8 text-center">
+          <Star className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
+          <p className="text-body text-muted-foreground">No talent pools created yet</p>
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
+function VerificationTab() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [jobResults, setJobResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [verification, setVerification] = useState<any>(null);
+  const [verLoading, setVerLoading] = useState(false);
+  const [selectedJobUuid, setSelectedJobUuid] = useState<string | null>(null);
+  const [overrideScore, setOverrideScore] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
+  const [overriding, setOverriding] = useState(false);
+  const { toast } = useToast();
+
+  const handleSearch = async () => {
+    if (searchTerm.length < 2) return;
+    setSearching(true);
+    try {
+      const data = await apiRequest<any>(`/admin-api/search/?q=${encodeURIComponent(searchTerm)}&limit=20`);
+      setJobResults((data?.results || []).filter((r: any) => r.type === "job"));
+    } catch {
+      setJobResults([]);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const loadVerification = async (jobUuid: string) => {
+    setSelectedJobUuid(jobUuid);
+    setVerLoading(true);
+    try {
+      const data = await apiRequest<any>(`/admin-api/verification/${jobUuid}/`);
+      setVerification(data);
+    } catch {
+      setVerification(null);
+    } finally {
+      setVerLoading(false);
+    }
+  };
+
+  const handleOverride = async () => {
+    if (!selectedJobUuid || !overrideScore || !overrideReason) return;
+    setOverriding(true);
+    try {
+      await apiRequest<any>(`/admin-api/verification/${selectedJobUuid}/override/`, {
+        method: "PATCH",
+        body: JSON.stringify({ trust_score: Number(overrideScore), reason: overrideReason }),
+      });
+      toast({ title: "Override applied successfully" });
+      loadVerification(selectedJobUuid);
+      setOverrideScore("");
+      setOverrideReason("");
+    } catch {
+      toast({ title: "Override failed", variant: "destructive" });
+    } finally {
+      setOverriding(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <ShieldCheck className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Verification Center</h2>
+      </div>
+
+      <Card><CardContent className="p-5 space-y-4">
+        <h3 className="text-body font-medium">Search Jobs for Verification</h3>
+        <div className="flex gap-2 max-w-lg">
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search job titles..."
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            className="rounded-xl"
+          />
+          <Button onClick={handleSearch} disabled={searching || searchTerm.length < 2}>
+            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+          </Button>
+        </div>
+        {jobResults.length > 0 && (
+          <div className="space-y-2">
+            {jobResults.map((job: any, i: number) => (
+              <div key={job.id || i} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer" onClick={() => loadVerification(job.id)}>
+                <div>
+                  <p className="text-caption font-medium">{job.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{job.detail}</p>
+                </div>
+                <Button variant="outline" size="sm">Check Verification</Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent></Card>
+
+      {verLoading && (
+        <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+      )}
+      {verification && !verLoading && (
+        <Card><CardContent className="p-5 space-y-4">
+          <h3 className="text-body font-medium">Verification Details</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {verification.trust_score != null && (
+              <div>
+                <p className="text-[10px] text-muted-foreground">Trust Score</p>
+                <p className="text-heading-2 mt-1">{verification.trust_score}</p>
+              </div>
+            )}
+            {Object.entries(verification as Record<string, unknown>).filter(([k]) => k !== "trust_score").map(([key, value]) => (
+              <div key={key}>
+                <p className="text-[10px] text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
+                <p className="text-caption mt-0.5">{typeof value === "object" ? JSON.stringify(value) : String(value ?? "—")}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t pt-4 space-y-3">
+            <h4 className="text-caption font-medium">Override Trust Score</h4>
+            <div className="flex gap-2 max-w-lg">
+              <Input
+                type="number"
+                value={overrideScore}
+                onChange={(e) => setOverrideScore(e.target.value)}
+                placeholder="New score (0-100)"
+                className="rounded-xl w-40"
+              />
+              <Input
+                value={overrideReason}
+                onChange={(e) => setOverrideReason(e.target.value)}
+                placeholder="Reason for override"
+                className="rounded-xl flex-1"
+              />
+              <Button onClick={handleOverride} disabled={overriding || !overrideScore || !overrideReason}>
+                {overriding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Override"}
+              </Button>
+            </div>
+          </div>
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
+function MatchingTab() {
+  const [userId, setUserId] = useState("");
+  const [jobUuid, setJobUuid] = useState("");
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+
+  const handleDiagnose = async () => {
+    if (!userId || !jobUuid) return;
+    setLoading(true);
+    setError(false);
+    setResult(null);
+    try {
+      const data = await apiRequest<any>(`/admin-api/recommendations/diagnostics/?user_id=${encodeURIComponent(userId)}&job_uuid=${encodeURIComponent(jobUuid)}`);
+      setResult(data);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <GitCompare className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Match Diagnostics</h2>
+      </div>
+
+      <Card><CardContent className="p-5 space-y-4">
+        <h3 className="text-body font-medium">Diagnose Match</h3>
+        <p className="text-caption text-muted-foreground">Enter a user ID and job UUID to see how the matching engine scores them.</p>
+        <div className="flex flex-col sm:flex-row gap-2 max-w-2xl">
+          <Input
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            placeholder="User ID"
+            className="rounded-xl"
+          />
+          <Input
+            value={jobUuid}
+            onChange={(e) => setJobUuid(e.target.value)}
+            placeholder="Job UUID"
+            className="rounded-xl"
+          />
+          <Button onClick={handleDiagnose} disabled={loading || !userId || !jobUuid}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Diagnose"}
+          </Button>
+        </div>
+      </CardContent></Card>
+
+      {error && (
+        <Card><CardContent className="p-5 text-center">
+          <p className="text-caption text-destructive">Failed to load diagnostics. Check that both IDs are valid.</p>
+        </CardContent></Card>
+      )}
+
+      {result && (
+        <div className="space-y-4">
+          {result.match_breakdown ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(result.match_breakdown as Record<string, unknown>).map(([key, value]) => (
+                <Card key={key}>
+                  <CardContent className="p-5">
+                    <p className="text-caption text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
+                    <p className="text-heading-2 mt-1">{typeof value === "number" ? `${Math.round(value * 100)}%` : String(value)}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(result as Record<string, unknown>).map(([key, value]) => (
+                <Card key={key}>
+                  <CardContent className="p-5">
+                    <p className="text-caption text-muted-foreground capitalize">{key.replace(/_/g, " ")}</p>
+                    <p className="text-heading-2 mt-1">{typeof value === "object" ? JSON.stringify(value) : String(value)}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RashidTab() {
+  const [rashidStats, setRashidStats] = useState<any>(null);
+  const [aiCosts, setAiCosts] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      apiRequest<any>("/admin-api/rashid/stats/").catch(() => null),
+      apiRequest<any>("/admin-api/ai-costs/").catch(() => null),
+    ]).then(([rs, ai]) => {
+      setRashidStats(rs);
+      setAiCosts(ai);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Bot className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Rashid AI Assistant</h2>
+      </div>
+
+      {rashidStats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: "Total Conversations", value: rashidStats.total_conversations },
+            { label: "Today's AI Cost", value: rashidStats.today_ai_costs?.cost != null ? `$${rashidStats.today_ai_costs.cost.toFixed(2)}` : "—" },
+            { label: "Today's AI Calls", value: rashidStats.today_ai_costs?.calls ?? "—" },
+          ].map((s) => (
+            <Card key={s.label}><CardContent className="p-5">
+              <p className="text-caption text-muted-foreground">{s.label}</p>
+              <p className="text-heading-2 mt-1">{s.value ?? "—"}</p>
+            </CardContent></Card>
+          ))}
+        </div>
+      )}
+
+      {rashidStats?.by_mode && Object.keys(rashidStats.by_mode).length > 0 && (
+        <Card><CardContent className="p-5">
+          <h3 className="text-body font-medium mb-4">Conversations by Mode</h3>
+          <div className="space-y-2">
+            {Object.entries(rashidStats.by_mode as Record<string, number>).map(([mode, count]) => (
+              <div key={mode} className="flex items-center justify-between py-2 border-b last:border-0">
+                <span className="text-caption capitalize">{mode.replace(/_/g, " ")}</span>
+                <Badge variant="secondary">{String(count)}</Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent></Card>
+      )}
+
+      {rashidStats?.recent_conversations?.length > 0 && (
+        <Card><CardContent className="p-5">
+          <h3 className="text-body font-medium mb-4">Recent Conversations</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-caption">
+              <thead><tr className="border-b">
+                <th className="text-start p-3 font-medium">User</th>
+                <th className="text-start p-3 font-medium">Mode</th>
+                <th className="text-start p-3 font-medium">Title</th>
+              </tr></thead>
+              <tbody>
+                {rashidStats.recent_conversations.map((c: any, i: number) => (
+                  <tr key={c.id || i} className="border-b last:border-0">
+                    <td className="p-3">{c.user_email}</td>
+                    <td className="p-3"><Badge variant="outline" className="text-[10px]">{c.mode}</Badge></td>
+                    <td className="p-3 text-muted-foreground truncate max-w-[200px]">{c.title || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent></Card>
+      )}
+
+      <Card><CardContent className="p-5">
+        <h3 className="text-body font-medium mb-4">AI Feature Costs</h3>
+        {aiCosts?.feature_costs ? (
+          <div className="space-y-3">
+            {Object.entries(aiCosts.feature_costs as Record<string, any>).map(([feature, cost]) => (
+              <div key={feature} className="flex items-center justify-between py-2 border-b last:border-0">
+                <span className="text-caption capitalize">{feature.replace(/_/g, " ")}</span>
+                <Badge variant="secondary">${typeof cost === "number" ? cost.toFixed(4) : String(cost)}</Badge>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-caption text-muted-foreground">No AI cost data available</p>
+        )}
+      </CardContent></Card>
+    </div>
+  );
+}
+
+function InterviewsTab() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiRequest<any>("/admin-api/interviews/stats/")
+      .then(setStats)
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Mic className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Interview Management</h2>
+      </div>
+
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[
+            { label: "Total Sessions", value: stats.total_sessions },
+            { label: "Completed", value: stats.completed_sessions },
+            { label: "Avg Score", value: stats.avg_score != null ? stats.avg_score.toFixed(1) : "—" },
+          ].map((s) => (
+            <Card key={s.label}><CardContent className="p-5">
+              <p className="text-caption text-muted-foreground">{s.label}</p>
+              <p className="text-heading-2 mt-1">{s.value ?? "—"}</p>
+            </CardContent></Card>
+          ))}
+        </div>
+      )}
+
+      {stats?.by_type && Object.keys(stats.by_type).length > 0 && (
+        <Card><CardContent className="p-5">
+          <h3 className="text-body font-medium mb-4">Sessions by Type</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {Object.entries(stats.by_type as Record<string, number>).map(([type, count]) => (
+              <div key={type} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <span className="text-caption capitalize">{type.replace(/_/g, " ")}</span>
+                <Badge variant="secondary">{String(count)}</Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent></Card>
+      )}
+
+      {stats?.recent_sessions?.length > 0 && (
+        <Card><CardContent className="p-5">
+          <h3 className="text-body font-medium mb-4">Recent Sessions</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-caption">
+              <thead><tr className="border-b">
+                <th className="text-start p-3 font-medium">User</th>
+                <th className="text-start p-3 font-medium">Type</th>
+                <th className="text-start p-3 font-medium">Status</th>
+                <th className="text-start p-3 font-medium">Score</th>
+                <th className="text-start p-3 font-medium">Started</th>
+              </tr></thead>
+              <tbody>
+                {stats.recent_sessions.map((s: any, i: number) => (
+                  <tr key={s.id || i} className="border-b last:border-0">
+                    <td className="p-3">{s.user_email}</td>
+                    <td className="p-3"><Badge variant="outline" className="text-[10px]">{s.interview_type}</Badge></td>
+                    <td className="p-3"><Badge variant={s.status === "completed" ? "default" : "secondary"} className="text-[10px]">{s.status}</Badge></td>
+                    <td className="p-3">{s.overall_score != null ? s.overall_score.toFixed(1) : "—"}</td>
+                    <td className="p-3 text-muted-foreground whitespace-nowrap">
+                      {s.started_at ? formatDistanceToNow(new Date(s.started_at), { addSuffix: true }) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent></Card>
+      )}
+    </div>
+  );
+}
+
+function NotificationsTab() {
+  const [notifStats, setNotifStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastMessage, setBroadcastMessage] = useState("");
+
+  useEffect(() => {
+    apiRequest<any>("/admin-api/notifications/stats/")
+      .then(setNotifStats)
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <Bell className="h-5 w-5 text-primary" />
+        <h2 className="text-heading-3">Notification Center</h2>
+      </div>
+
+      <Card><CardContent className="p-5 space-y-4">
+        <h3 className="text-body font-medium">Broadcast Notification</h3>
+        <p className="text-caption text-muted-foreground">Send a notification to all active users.</p>
+        <div className="space-y-3 max-w-lg">
+          <Input
+            value={broadcastTitle}
+            onChange={(e) => setBroadcastTitle(e.target.value)}
+            placeholder="Notification title"
+            className="rounded-xl"
+          />
+          <Input
+            value={broadcastMessage}
+            onChange={(e) => setBroadcastMessage(e.target.value)}
+            placeholder="Notification message"
+            className="rounded-xl"
+          />
+          <Button
+            disabled={!broadcastTitle.trim()}
+            onClick={async () => {
+              try {
+                const res = await apiRequest<any>("/admin-api/notifications/broadcast/", {
+                  method: "POST",
+                  body: { title: broadcastTitle, body: broadcastMessage },
+                });
+                setBroadcastTitle("");
+                setBroadcastMessage("");
+                alert(`Broadcast sent to ${res?.sent_to ?? "all"} users`);
+              } catch { alert("Failed to send broadcast"); }
+            }}
+          >
+            <Send className="h-4 w-4 mr-1.5" /> Send Broadcast
+          </Button>
+        </div>
+      </CardContent></Card>
+
+      {notifStats && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {[
+            { label: "Total Notifications", value: notifStats.total_notifications },
+            { label: "Unread", value: notifStats.unread_count },
+          ].map((s) => (
+            <Card key={s.label}><CardContent className="p-5">
+              <p className="text-caption text-muted-foreground">{s.label}</p>
+              <p className="text-heading-2 mt-1">{s.value ?? "—"}</p>
+            </CardContent></Card>
+          ))}
+        </div>
+      )}
+
+      {notifStats?.by_type && Object.keys(notifStats.by_type).length > 0 && (
+        <Card><CardContent className="p-5">
+          <h3 className="text-body font-medium mb-4">By Type</h3>
+          <div className="space-y-2">
+            {Object.entries(notifStats.by_type as Record<string, number>).map(([type, count]) => (
+              <div key={type} className="flex items-center justify-between py-2 border-b last:border-0">
+                <span className="text-caption capitalize">{(type || "unknown").replace(/_/g, " ")}</span>
+                <Badge variant="secondary">{String(count)}</Badge>
+              </div>
+            ))}
+          </div>
+        </CardContent></Card>
+      )}
+
+      <Card><CardContent className="p-5">
+        <h3 className="text-body font-medium mb-4">Recent Notifications</h3>
+        {loading ? (
+          <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+        ) : notifStats?.recent_notifications?.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-caption">
+              <thead><tr className="border-b">
+                <th className="text-start p-3 font-medium">User</th>
+                <th className="text-start p-3 font-medium">Title</th>
+                <th className="text-start p-3 font-medium">Type</th>
+                <th className="text-start p-3 font-medium">Read</th>
+                <th className="text-start p-3 font-medium">When</th>
+              </tr></thead>
+              <tbody>
+                {notifStats.recent_notifications.map((n: any, i: number) => (
+                  <tr key={n.id || i} className="border-b last:border-0">
+                    <td className="p-3">{n.user_email}</td>
+                    <td className="p-3 truncate max-w-[200px]">{n.title}</td>
+                    <td className="p-3"><Badge variant="outline" className="text-[10px]">{n.type || "—"}</Badge></td>
+                    <td className="p-3">{n.is_read ? "Yes" : "No"}</td>
+                    <td className="p-3 text-muted-foreground whitespace-nowrap">
+                      {n.created_at ? formatDistanceToNow(new Date(n.created_at), { addSuffix: true }) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="text-caption text-muted-foreground">No notifications yet</p>
+        )}
+      </CardContent></Card>
     </div>
   );
 }
@@ -1117,32 +1921,16 @@ export default function AdminDashboard() {
           {/* AI CENTER */}
           {activeTab === "ai-center" && <AiCenterTab />}
 
-          {/* PLACEHOLDER TABS */}
-          {activeTab === "users" && (
-            <PlaceholderTab icon={Users} title="User Management" description="Manage platform users, roles, and permissions. Coming soon." />
-          )}
-          {activeTab === "companies" && (
-            <PlaceholderTab icon={Building2} title="Company Management" description="Review and manage registered companies and employer accounts. Coming soon." />
-          )}
-          {activeTab === "talent" && (
-            <PlaceholderTab icon={Star} title="Talent Pool" description="Browse and manage candidate profiles, talent rankings, and skill assessments. Coming soon." />
-          )}
-          {activeTab === "verification" && (
-            <PlaceholderTab icon={ShieldCheck} title="Verification Center" description="Review and verify job listings, company profiles, and user identities. Coming soon." />
-          )}
-          {activeTab === "matching" && (
-            <PlaceholderTab icon={GitCompare} title="Job Matching" description="Configure and monitor the AI-powered job matching engine. Coming soon." />
-          )}
-          {activeTab === "rashid" && (
-            <PlaceholderTab icon={Bot} title="Rashid AI Assistant" description="Manage the Rashid conversational AI assistant, training data, and conversation logs. Coming soon." />
-          )}
-          {activeTab === "interviews" && (
-            <PlaceholderTab icon={Mic} title="Interview Management" description="Manage AI-assisted interview scheduling, templates, and evaluation criteria. Coming soon." />
-          )}
+          {/* ADMIN MANAGEMENT TABS */}
+          {activeTab === "users" && <UsersTab />}
+          {activeTab === "companies" && <CompaniesTab />}
+          {activeTab === "talent" && <TalentTab />}
+          {activeTab === "verification" && <VerificationTab />}
+          {activeTab === "matching" && <MatchingTab />}
+          {activeTab === "rashid" && <RashidTab />}
+          {activeTab === "interviews" && <InterviewsTab />}
           {activeTab === "automations" && <CeleryBeatTab />}
-          {activeTab === "notifications" && (
-            <PlaceholderTab icon={Bell} title="Notification Center" description="Manage notification templates, delivery channels, and broadcast messages. Coming soon." />
-          )}
+          {activeTab === "notifications" && <NotificationsTab />}
           {activeTab === "packages" && <PackagesTab />}
           {activeTab === "search-admin" && <AdminSearchTab />}
           {activeTab === "copilot" && <CopilotTab />}

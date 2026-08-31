@@ -176,7 +176,12 @@ export async function adminDeleteMedia(uuid: string) {
   return apiRequest<void>(`/admin-api/media/${uuid}/`, { method: "DELETE" });
 }
 
-// ── CSV Import (stub — backend endpoint to be added post-MVP) ─────────────────
-export async function adminCsvImport(_file: File) {
-  return { imported: 0, skipped: 0, total: 0, errors: ["CSV import endpoint not yet implemented."] };
+// ── CSV Import ───────────────────────────────────────────────────────────────
+export async function adminCsvImport(file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+  return apiRequest<{ imported: number; skipped: number; total: number; errors: string[] }>(
+    "/admin-api/csv-import/",
+    { method: "POST", formData },
+  );
 }

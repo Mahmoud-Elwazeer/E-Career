@@ -335,12 +335,6 @@ class Job(UUIDModel):
         db_index=True
     )
     
-    # Salary information (duplicate fields - kept for backward compatibility during migration)
-    # TODO: Remove these after migration is complete
-    salary_min_new = models.IntegerField(null=True, blank=True)
-    salary_max_new = models.IntegerField(null=True, blank=True)
-    salary_currency_new = models.CharField(max_length=3, default='EGP', blank=True)
-    
     # Pipeline metadata
     scraped_at = models.DateTimeField(null=True, blank=True)
     source_raw_url = models.URLField(

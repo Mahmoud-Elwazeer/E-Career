@@ -383,7 +383,26 @@ class CourseAdvisorTool(RashidTool):
             return "عذراً، حصل خطأ في ترشيح الدورات. حاول تاني بعد شوية."
     
     def _get_available_courses(self) -> str:
-        """Return a static curated course catalog. Does NOT fetch from edu.usamif.com yet."""
+        """Fetch courses from edu.usamif.com, falling back to a curated static catalog."""
+        try:
+            import requests as http_requests
+            resp = http_requests.get(
+                'https://edu.usamif.com/api/v1/courses/',
+                timeout=8,
+                headers={'Accept': 'application/json'},
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                courses = data if isinstance(data, list) else data.get('results', data.get('courses', []))
+                if courses:
+                    lines = []
+                    for c in courses[:20]:
+                        name = c.get('title') or c.get('name', '')
+                        desc = c.get('description', '')[:80]
+                        lines.append(f"- {name}: {desc}")
+                    return "\n".join(lines)
+        except Exception:
+            pass
         return """
 - أساسيات Python للمبتدئين: تعلم البرمجة من الصفر
 - تطوير تطبيقات الويب بـ Django: بناء تطبيقات احترافية
