@@ -60,7 +60,7 @@ disposable-email-domains==0.0.103
 bertopic==0.16.4
 
 # Scraping Enhancement
-scrapling==0.4.15
+# scrapling==0.4.15  # disabled: lxml>=6.1.1 conflicts with docling's lxml<6.0.0
 
 # Structured Logging
 structlog==24.1.0
