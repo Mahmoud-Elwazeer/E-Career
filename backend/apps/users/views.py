@@ -7,7 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 from drf_spectacular.utils import extend_schema
 from apps.users.models import SavedJob, Alert
 from apps.notifications.models import UserNotification
-from apps.users.serializers import SavedJobSerializer, AlertSerializer, NotificationSerializer
+from apps.users.serializers import SavedJobSerializer, AlertSerializer, NotificationSerializer, ApplicationSerializer
+from apps.employers.models import JobApplication
 from apps.core.pagination import StandardPagination
 
 logger = logging.getLogger(__name__)
@@ -167,4 +168,55 @@ class MarkAllNotificationsReadView(APIView):
         ).update(status="read", read_at=timezone.now())
         return Response(
             {"success": True, "data": {"marked_read": count}, "message": f"{count} notifications marked as read.", "errors": None}
+        )
+
+
+# ── Applications ──────────────────────────────────────────────────────────────
+
+@extend_schema(tags=["Applications"])
+class ApplicationListView(generics.ListAPIView):
+    """GET /api/v1/users/me/applications/ — List user's job applications."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ApplicationSerializer
+    pagination_class = StandardPagination
+
+    def get_queryset(self):
+        return (
+            JobApplication.objects.filter(user=self.request.user)
+            .select_related("job", "job__company", "job__source")
+            .prefetch_related("job__tags")
+            .order_by("-applied_at")
+        )
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "", "errors": None}
+        )
+
+
+@extend_schema(tags=["Applications"])
+class ApplicationDetailView(generics.RetrieveAPIView):
+    """GET /api/v1/users/me/applications/<id>/ — Get application details."""
+
+    permission_classes = [IsAuthenticated]
+    serializer_class = ApplicationSerializer
+
+    def get_queryset(self):
+        return JobApplication.objects.filter(user=self.request.user).select_related(
+            "job", "job__company", "job__source"
+        ).prefetch_related("job__tags")
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance)
+        return Response(
+            {"success": True, "data": serializer.data, "message": "", "errors": None}
         )

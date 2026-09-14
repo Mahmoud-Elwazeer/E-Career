@@ -17,6 +17,7 @@ from .views import (
     GDPRDataExportViewSet,
     GDPRDataDeletionViewSet,
     GDPRDataAnonymizationViewSet,
+    public_plans,
 )
 
 urlpatterns = [
@@ -25,6 +26,8 @@ urlpatterns = [
     path('rules/test/', test_rules, name='test-rules'),
     path('rules/seed/', seed_rules, name='seed-rules'),
 
+    # Public pricing (read-only, active plans)
+    path('plans/', public_plans, name='public-plans'),
     # Feature flags endpoints
     path('feature-flags/', get_feature_flags, name='get-feature-flags'),
     path('feature-flags/<str:key>/', check_feature_flag, name='check-feature-flag'),

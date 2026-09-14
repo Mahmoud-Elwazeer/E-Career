@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from apps.users.models import SavedJob, Alert
 from apps.notifications.models import UserNotification
+from apps.employers.models import JobApplication
 from apps.jobs.serializers import JobListSerializer
 
 
@@ -67,3 +68,26 @@ class NotificationSerializer(serializers.ModelSerializer):
         if obj.related_url:
             meta["related_url"] = obj.related_url
         return meta or None
+
+
+class ApplicationSerializer(serializers.ModelSerializer):
+    """Serializer for job applications from the candidate's perspective"""
+    job = JobListSerializer(read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    cv_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = JobApplication
+        fields = [
+            'id', 'job', 'status', 'status_display',
+            'cv_snapshot', 'cv_url', 'custom_form_responses', 'applied_at'
+        ]
+        read_only_fields = fields
+
+    def get_cv_url(self, obj):
+        """Get CV URL if available"""
+        if obj.cv_snapshot:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.cv_snapshot.url)
+        return None
