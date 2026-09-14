@@ -4,6 +4,8 @@ export default {
   darkMode: ["class"],
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
   prefix: "",
+  // Register a `night:` variant so logo/asset inversions can target the deep theme.
+  // (Colors already flow through CSS variables; this is only for utilities like invert.)
   theme: {
     container: {
       center: true,
@@ -186,5 +188,12 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-rtl") as any, require("tailwindcss-animate") as any],
+  plugins: [
+    require("tailwindcss-rtl") as any,
+    require("tailwindcss-animate") as any,
+    // Enable `night:` utility variant driven by the `.night` root class.
+    function nightVariant({ addVariant }: { addVariant: (name: string, def: string) => void }) {
+      addVariant("night", ".night &");
+    },
+  ],
 } satisfies Config;

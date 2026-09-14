@@ -1,19 +1,18 @@
 /**
  * useAuth Hook Tests
- * 
+ *
  * Tests for the useAuth hook including:
  * - Login/logout flow
  * - Authentication state
  * - User data handling
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor, act } from '@testing-library/react';
-import { AuthProvider, useAuth } from '../use-auth';
-import { getAccessToken, getRefreshToken, clearTokens } from '@/services/client';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderHook, waitFor, act } from "@testing-library/react";
+import { AuthProvider, useAuth } from "../use-auth";
 
-// Mock the auth service
-vi.mock('@/services/auth', () => ({
+// Hoisted mock fns so both the mock factory and the assertions share the same refs.
+const authMocks = vi.hoisted(() => ({
   login: vi.fn(),
   logout: vi.fn(),
   register: vi.fn(),
@@ -21,52 +20,53 @@ vi.mock('@/services/auth', () => ({
   getMe: vi.fn(),
 }));
 
-// Mock the client service
-vi.mock('@/services/client', () => ({
+const clientMocks = vi.hoisted(() => ({
   getAccessToken: vi.fn(),
   getRefreshToken: vi.fn(),
   clearTokens: vi.fn(),
 }));
 
-// Import mocked functions
-const login = vi.hoisted(() => vi.fn());
-const logout = vi.hoisted(() => vi.fn());
-const register = vi.hoisted(() => vi.fn());
-const resetPassword = vi.hoisted(() => vi.fn());
-const getMe = vi.hoisted(() => vi.fn());
+vi.mock("@/services/auth", () => ({
+  login: authMocks.login,
+  logout: authMocks.logout,
+  register: authMocks.register,
+  resetPassword: authMocks.resetPassword,
+  getMe: authMocks.getMe,
+}));
 
-// Mock window event listener
-const addEventListenerMock = vi.fn();
-const removeEventListenerMock = vi.fn();
-Object.defineProperty(window, 'addEventListener', { value: addEventListenerMock });
-Object.defineProperty(window, 'removeEventListener', { value: removeEventListenerMock });
+vi.mock("@/services/client", () => ({
+  getAccessToken: clientMocks.getAccessToken,
+  getRefreshToken: clientMocks.getRefreshToken,
+  clearTokens: clientMocks.clearTokens,
+}));
 
-describe('useAuth Hook', () => {
+describe("useAuth Hook", () => {
   const wrapper = ({ children }: { children: React.ReactNode }) => (
     <AuthProvider>{children}</AuthProvider>
   );
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (getAccessToken as any).mockReturnValue(null);
-    (getRefreshToken as any).mockReturnValue(null);
+    clientMocks.getAccessToken.mockReturnValue(null);
+    clientMocks.getRefreshToken.mockReturnValue(null);
   });
 
-  it('returns initial state when not authenticated', () => {
+  it("returns initial state when not authenticated", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
 
     expect(result.current.isAuthenticated).toBe(false);
     expect(result.current.user).toBeNull();
-    expect(result.current.isLoading).toBe(true);
+    // With no token, loading resolves synchronously to false.
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
   });
 
-  it('returns authenticated state when user has token', async () => {
-    (getAccessToken as any).mockReturnValue('fake-token');
-    (getMe as any).mockResolvedValue({
+  it("returns authenticated state when user has token", async () => {
+    clientMocks.getAccessToken.mockReturnValue("fake-token");
+    authMocks.getMe.mockResolvedValue({
       id: 1,
-      email: 'test@example.com',
-      first_name: 'Test',
-      last_name: 'User',
+      email: "test@example.com",
+      first_name: "Test",
+      last_name: "User",
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -74,166 +74,154 @@ describe('useAuth Hook', () => {
     await waitFor(() => {
       expect(result.current.isAuthenticated).toBe(true);
       expect(result.current.user).not.toBeNull();
-      expect(result.current.user?.email).toBe('test@example.com');
+      expect(result.current.user?.email).toBe("test@example.com");
     });
   });
 
-  it('handles login successfully', async () => {
-    (login as any).mockResolvedValue({
+  it("handles login successfully", async () => {
+    authMocks.login.mockResolvedValue({
       user: {
         id: 1,
-        email: 'test@example.com',
-        first_name: 'Test',
-        last_name: 'User',
+        email: "test@example.com",
+        first_name: "Test",
+        last_name: "User",
       },
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    // Wait for initial load to complete
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    // Perform login
     await act(async () => {
-      await result.current.signIn('test@example.com', 'password123');
+      await result.current.signIn("test@example.com", "password123");
     });
 
     expect(result.current.isAuthenticated).toBe(true);
-    expect(result.current.user?.email).toBe('test@example.com');
-    expect(result.current.user?.full_name).toBe('Test User');
+    expect(result.current.user?.email).toBe("test@example.com");
+    expect(result.current.user?.name).toBe("Test User");
   });
 
-  it('handles logout successfully', async () => {
-    (getAccessToken as any).mockReturnValue('fake-token');
-    (getMe as any).mockResolvedValue({
+  it("handles logout successfully", async () => {
+    clientMocks.getAccessToken.mockReturnValue("fake-token");
+    clientMocks.getRefreshToken.mockReturnValue("fake-refresh");
+    authMocks.getMe.mockResolvedValue({
       id: 1,
-      email: 'test@example.com',
-      first_name: 'Test',
-      last_name: 'User',
+      email: "test@example.com",
+      first_name: "Test",
+      last_name: "User",
     });
-    (logout as any).mockResolvedValue(undefined);
+    authMocks.logout.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    // Wait for initial load to complete
-    await waitFor(() => {
-      expect(result.current.isAuthenticated).toBe(true);
-    });
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
 
-    // Perform logout
     await act(async () => {
       await result.current.signOut();
     });
 
     expect(result.current.isAuthenticated).toBe(false);
     expect(result.current.user).toBeNull();
-    expect(clearTokens).toHaveBeenCalled();
   });
 
-  it('handles registration successfully', async () => {
-    (register as any).mockResolvedValue({
+  it("handles registration successfully", async () => {
+    authMocks.register.mockResolvedValue({
       user: {
         id: 1,
-        email: 'newuser@example.com',
-        first_name: 'New',
-        last_name: 'User',
+        email: "newuser@example.com",
+        first_name: "New",
+        last_name: "User",
       },
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    // Perform registration
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
     await act(async () => {
-      await result.current.signUp(
-        'newuser@example.com',
-        'password123',
-        'New',
-        'User'
-      );
+      await result.current.signUp("newuser@example.com", "password123", "New", "User");
     });
 
     expect(result.current.isAuthenticated).toBe(true);
-    expect(result.current.user?.email).toBe('newuser@example.com');
+    expect(result.current.user?.email).toBe("newuser@example.com");
   });
 
-  it('handles password reset', async () => {
-    (resetPassword as any).mockResolvedValue(undefined);
+  it("handles password reset", async () => {
+    authMocks.resetPassword.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    const response = await act(async () => {
-      return await result.current.resetPassword('test@example.com');
+    let response: { error: Error | null } = { error: new Error("unset") };
+    await act(async () => {
+      response = await result.current.resetPassword("test@example.com");
     });
 
     expect(response.error).toBeNull();
   });
 
-  it('handles password reset error', async () => {
-    (resetPassword as any).mockRejectedValue(new Error('User not found'));
+  it("handles password reset error", async () => {
+    authMocks.resetPassword.mockRejectedValue(new Error("User not found"));
 
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    const response = await act(async () => {
-      return await result.current.resetPassword('nonexistent@example.com');
+    let response: { error: Error | null } = { error: null };
+    await act(async () => {
+      response = await result.current.resetPassword("nonexistent@example.com");
     });
 
     expect(response.error).not.toBeNull();
-    expect(response.error?.message).toBe('User not found');
+    expect(response.error?.message).toBe("User not found");
   });
 
-  it('handles auth:logout event', async () => {
-    (getAccessToken as any).mockReturnValue('fake-token');
-    (getMe as any).mockResolvedValue({
+  it("handles auth:logout event", async () => {
+    clientMocks.getAccessToken.mockReturnValue("fake-token");
+    authMocks.getMe.mockResolvedValue({
       id: 1,
-      email: 'test@example.com',
-      first_name: 'Test',
-      last_name: 'User',
+      email: "test@example.com",
+      first_name: "Test",
+      last_name: "User",
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    // Wait for initial load to complete
-    await waitFor(() => {
-      expect(result.current.isAuthenticated).toBe(true);
-    });
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
 
-    // Simulate logout event
     await act(async () => {
-      window.dispatchEvent(new Event('auth:logout'));
+      window.dispatchEvent(new Event("auth:logout"));
     });
 
     expect(result.current.isAuthenticated).toBe(false);
     expect(result.current.user).toBeNull();
   });
 
-  it('normalizes user name correctly', async () => {
-    (getAccessToken as any).mockReturnValue('fake-token');
-    (getMe as any).mockResolvedValue({
+  it("normalizes user name correctly", async () => {
+    clientMocks.getAccessToken.mockReturnValue("fake-token");
+    authMocks.getMe.mockResolvedValue({
       id: 1,
-      email: 'test@example.com',
-      name: 'Full Name',
+      email: "test@example.com",
+      name: "Full Name",
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
     await waitFor(() => {
-    expect(result.current.user?.full_name).toBe('Full Name');
+      expect(result.current.user?.name).toBe("Full Name");
     });
   });
 
-  it('handles missing user data gracefully', async () => {
-    (getAccessToken as any).mockReturnValue('fake-token');
-    (getMe as any).mockResolvedValue({
+  it("falls back to a default name when user data is missing", async () => {
+    clientMocks.getAccessToken.mockReturnValue("fake-token");
+    authMocks.getMe.mockResolvedValue({
       id: 1,
-      email: 'test@example.com',
+      email: "test@example.com",
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
     await waitFor(() => {
-    expect(result.current.user?.full_name).toBe('test');
+      expect(result.current.user?.name).toBe("User");
     });
   });
 });

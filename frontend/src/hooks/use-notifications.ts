@@ -30,14 +30,18 @@ export function useNotifications() {
     try {
       await markNotificationRead(uuid);
       setNotifications((prev) => prev.map((n) => (n.uuid === uuid ? { ...n, is_read: true } : n)));
-    } catch {}
+    } catch {
+      /* non-critical: optimistic UI already applied; ignore transient failure */
+    }
   }, []);
 
   const markAllRead = useCallback(async () => {
     try {
       await markAllNotificationsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    } catch {}
+    } catch {
+      /* non-critical: optimistic UI already applied; ignore transient failure */
+    }
   }, []);
 
   return { notifications, unreadCount, isLoading, markRead, markAllRead, reload: load };

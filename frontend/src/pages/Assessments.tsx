@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AuthNavbar } from '@/components/AuthNavbar';
+import { AppShell } from '@/components/shells/AppShell';
 import { apiRequest } from '@/services/client';
 import { useTheme } from '@/hooks/use-theme';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,9 +54,9 @@ interface ActiveSession {
 }
 
 const difficultyColor: Record<string, string> = {
-  easy: 'bg-green-500/10 text-green-600 border-green-500/20',
-  medium: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
-  hard: 'bg-red-500/10 text-red-600 border-red-500/20',
+  easy: 'bg-green-500/10 text-success border-green-500/20',
+  medium: 'bg-yellow-500/10 text-warning-foreground border-yellow-500/20',
+  hard: 'bg-red-500/10 text-destructive border-red-500/20',
 };
 
 const badgeLevelColor: Record<string, string> = {
@@ -136,8 +136,7 @@ export default function AssessmentsPage() {
     const total = questions.length;
 
     return (
-      <div className="min-h-screen bg-background">
-        <AuthNavbar />
+      <AppShell>
         <main className="container py-8 max-w-2xl">
           <Card>
             <CardHeader>
@@ -214,13 +213,12 @@ export default function AssessmentsPage() {
             </Button>
           </div>
         </main>
-      </div>
+      </AppShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <AuthNavbar />
+    <AppShell>
       <main className="container py-8 space-y-6">
         <div>
           <h1 className="text-3xl font-bold">
@@ -238,7 +236,7 @@ export default function AssessmentsPage() {
             {badges.map((badge) => (
               <div
                 key={badge.id}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${badgeLevelColor[badge.badge_level] || badgeLevelColor['bronze']} text-white text-sm font-medium`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${badgeLevelColor[badge.badge_level] || badgeLevelColor['bronze']} text-primary-foreground text-sm font-medium`}
               >
                 <Star className="h-3.5 w-3.5" />
                 {badge.skill_name}
@@ -347,13 +345,13 @@ export default function AssessmentsPage() {
                           )}
                           {a.passed !== null && (
                             a.passed ? (
-                              <CheckCircle2 className="h-6 w-6 text-green-500" />
+                              <CheckCircle2 className="h-6 w-6 text-success" />
                             ) : (
-                              <XCircle className="h-6 w-6 text-red-500" />
+                              <XCircle className="h-6 w-6 text-destructive" />
                             )
                           )}
                           {!a.completed_at && (
-                            <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-yellow-600">
+                            <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-warning-foreground">
                               {isAr ? 'قيد التنفيذ' : 'In Progress'}
                             </span>
                           )}
@@ -386,7 +384,7 @@ export default function AssessmentsPage() {
                     <CardContent className="pt-5">
                       <div className="flex items-center gap-3">
                         <div className={`h-12 w-12 rounded-full flex items-center justify-center bg-gradient-to-br ${badgeLevelColor[badge.badge_level] || badgeLevelColor['bronze']}`}>
-                          <Award className="h-6 w-6 text-white" />
+                          <Award className="h-6 w-6 text-primary-foreground" />
                         </div>
                         <div>
                           <h4 className="font-semibold">{badge.skill_name}</h4>
@@ -407,6 +405,6 @@ export default function AssessmentsPage() {
           )}
         </AnimatePresence>
       </main>
-    </div>
+    </AppShell>
   );
 }

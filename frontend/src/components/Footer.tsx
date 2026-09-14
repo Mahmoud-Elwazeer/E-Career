@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
+import { Logo } from "@/components/Logo";
 
 export function Footer() {
   const { lang } = useTheme();
@@ -12,7 +13,7 @@ export function Footer() {
       <div className="container relative z-10 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <img src="/logo-dark.png" alt="USAM" className="h-9 mb-4 invert" />
+            <Logo variant="onDark" className="h-9 mb-4" />
             <p className="text-body opacity-80">
               {lang === "ar"
                 ? "بحث واحد. كل الفرص. نجمع الوظائف من أفضل المنصات في منطقة الشرق الأوسط."

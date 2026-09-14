@@ -7,6 +7,7 @@ import {
   LayoutDashboard, DollarSign, Award,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { Logo } from "@/components/Logo";
 import { useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ interface NavItem {
 
 const publicNavItems: NavItem[] = [
   { to: "/", label: "Home", labelAr: "الرئيسية", icon: Briefcase },
+  { to: "/pricing", label: "Pricing", labelAr: "الأسعار", icon: DollarSign },
   { to: "/about", label: "About", labelAr: "عن USAM", icon: Info },
 ];
 
@@ -79,8 +81,8 @@ export function AuthNavbar() {
   return (
     <header className="sticky top-0 z-50 border-b bg-card/95 glass supports-[backdrop-filter]:bg-card/80">
       <div className="container flex h-14 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 press-feedback">
-          <img src="/logo-dark.png" alt="USAM" className="h-8 dark:invert" style={{ minWidth: 70 }} />
+        <Link to="/" className="flex items-center gap-2 press-feedback" aria-label="USAM home">
+          <Logo className="h-8" />
         </Link>
 
         {/* Desktop nav */}
@@ -181,7 +183,7 @@ export function AuthNavbar() {
             <SheetContent side={isAr ? "left" : "right"} className="w-72 overflow-y-auto">
               <SheetTitle className="sr-only">Navigation</SheetTitle>
               <div className="flex items-center justify-between mt-2 mb-6">
-                <img src="/logo-dark.png" alt="USAM" className="h-7 dark:invert" />
+                <Logo className="h-7" />
                 <LangToggle />
               </div>
 

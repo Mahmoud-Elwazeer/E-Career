@@ -10,12 +10,12 @@ import { getRecommendations, RecommendedJob } from "@/services/recommendations";
 // Match score badge component
 function MatchBadge({ score }: { score: number }) {
   let bgColor = "bg-gray-500";
-  let textColor = "text-white";
-  
+  const textColor = "text-primary-foreground";
+
   if (score >= 90) {
-    bgColor = "bg-green-500";
+    bgColor = "bg-success";
   } else if (score >= 75) {
-    bgColor = "bg-blue-500";
+    bgColor = "bg-primary";
   } else if (score >= 60) {
     bgColor = "bg-yellow-500";
   }
@@ -33,62 +33,76 @@ function RecommendationCard({
   onViewBreakdown 
 }: { 
   recommendation: RecommendedJob;
-  onViewBreakdown: (jobId: number) => void;
+  onViewBreakdown: (jobId: string) => void;
 }) {
-  const { job, match_score, reasoning } = recommendation;
-  
+  const {
+    job_id, job_title, company_name, location, score,
+    employment_type, work_arrangement, salary_min, salary_max,
+    match_reasons, explanation,
+  } = recommendation;
+  const matchScore = Math.round(score <= 1 ? score * 100 : score);
+  const reasons = match_reasons && match_reasons.length ? match_reasons : (explanation ? [explanation] : []);
+
   return (
     <div className="bg-card border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
       {/* Match badge */}
       <div className="flex justify-between items-start p-4 pb-0">
         <div className="flex-1">
-          <Link to={`/app/jobs/${job.id}`} className="hover:text-primary">
-            <h3 className="text-lg font-semibold text-foreground">{job.title}</h3>
+          <Link to={`/app/jobs/${job_id}`} className="hover:text-primary">
+            <h3 className="text-lg font-semibold text-foreground">{job_title}</h3>
           </Link>
-          <p className="text-muted-foreground">{job.company.name}</p>
+          <p className="text-muted-foreground">{company_name}</p>
         </div>
-        <MatchBadge score={match_score} />
+        <MatchBadge score={matchScore} />
       </div>
-      
+
       {/* Job details */}
       <div className="p-4 pt-2">
         <div className="flex flex-wrap gap-2 text-sm text-muted-foreground mb-3">
-          <span>{job.location}</span>
-          {job.location_type && (
+          {location && <span>{location}</span>}
+          {work_arrangement && (
             <>
               <span>•</span>
-              <span className="capitalize">{job.location_type}</span>
+              <span className="capitalize">{work_arrangement}</span>
             </>
           )}
-          {job.employment_type && (
+          {employment_type && (
             <>
               <span>•</span>
-              <span className="capitalize">{job.employment_type}</span>
+              <span className="capitalize">{employment_type}</span>
             </>
           )}
         </div>
-        
+
         {/* Salary */}
-        {(job.salary_min || job.salary_max) && (
+        {(salary_min || salary_max) && (
           <div className="text-sm text-muted-foreground mb-3">
-            {job.salary_min?.toLocaleString()} - {job.salary_max?.toLocaleString()} EGP
+            {salary_min?.toLocaleString()} - {salary_max?.toLocaleString()} EGP
           </div>
         )}
-        
-        {/* Reasoning */}
-        <div className="bg-primary-muted/30 border border-primary/20 rounded-lg p-3 mb-3">
-          <p className="text-sm text-foreground">
-            <strong className="text-primary">Why this matches:</strong> {reasoning}
-          </p>
-        </div>
-        
+
+        {/* Explainable match reasons (evidence-grounded, no opaque scores) */}
+        {reasons.length > 0 && (
+          <div className="bg-primary-muted/30 border border-primary/20 rounded-lg p-3 mb-3">
+            <p className="text-sm font-medium text-primary mb-1">Why this matches</p>
+            <ul className="text-sm text-foreground space-y-1">
+              {reasons.map((r, i) => (
+                <li key={i} className="flex gap-2">
+                  <span className="text-primary">•</span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => onViewBreakdown(job.id)}>
+          <Button variant="outline" size="sm" onClick={() => onViewBreakdown(job_id)}>
             View Breakdown
           </Button>
           <Button asChild size="sm">
-            <Link to={`/app/jobs/${job.id}`}>
+            <Link to={`/app/jobs/${job_id}`}>
               View Job <ChevronRight className="h-4 w-4 ml-1" />
             </Link>
           </Button>
@@ -141,7 +155,7 @@ function EmptyState() {
 export default function Recommendations() {
   const { lang } = useTheme();
   const isAr = lang === "ar";
-  const [selectedJobId, setSelectedJobId] = useState<number | null>(null);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   
   // Fetch recommendations
   const { data, isLoading, error } = useQuery({
@@ -149,11 +163,12 @@ export default function Recommendations() {
     queryFn: () => getRecommendations(20, 60),
   });
   
-  // Calculate stats
-  const strongMatches = data?.recommendations?.filter(r => r.match_score >= 80).length || 0;
-  const avgScore = data?.recommendations?.length 
+  // Calculate stats (scores may be 0-1 or 0-100 depending on path; normalize).
+  const normScore = (s: number) => Math.round(s <= 1 ? s * 100 : s);
+  const strongMatches = data?.recommendations?.filter(r => normScore(r.score) >= 80).length || 0;
+  const avgScore = data?.recommendations?.length
     ? Math.round(
-        data.recommendations.reduce((sum, r) => sum + r.match_score, 0) / data.recommendations.length
+        data.recommendations.reduce((sum, r) => sum + normScore(r.score), 0) / data.recommendations.length
       )
     : 0;
   
@@ -194,8 +209,8 @@ export default function Recommendations() {
             
             <div className="bg-card border rounded-lg p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Target className="h-5 w-5 text-green-600" />
+                <div className="p-2 bg-success/15 rounded-lg">
+                  <Target className="h-5 w-5 text-success" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
@@ -210,8 +225,8 @@ export default function Recommendations() {
             
             <div className="bg-card border rounded-lg p-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Lightbulb className="h-5 w-5 text-purple-600" />
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Lightbulb className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-foreground">
@@ -240,7 +255,7 @@ export default function Recommendations() {
             <div className="space-y-4">
               {data?.recommendations?.map((rec) => (
                 <RecommendationCard 
-                  key={rec.job.id} 
+                  key={rec.job_id} 
                   recommendation={rec}
                   onViewBreakdown={(jobId) => setSelectedJobId(jobId)}
                 />

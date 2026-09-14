@@ -16,7 +16,15 @@ interface JobCardProps {
 
 function isExpired(job: Job): boolean {
   if (!job.deadline) return false;
-  return new Date(job.deadline) < new Date();
+  const d = new Date(job.deadline);
+  return !isNaN(d.getTime()) && d < new Date();
+}
+
+function formatPostedAgo(postedAt?: string): string {
+  if (!postedAt) return "";
+  const d = new Date(postedAt);
+  if (isNaN(d.getTime())) return "";
+  return formatDistanceToNow(d, { addSuffix: true });
 }
 
 export function JobCard({ job, isSaved, onToggleSave }: JobCardProps) {
@@ -32,8 +40,8 @@ export function JobCard({ job, isSaved, onToggleSave }: JobCardProps) {
       ? `From ${job.salary_min.toLocaleString()} ${job.salary_currency ?? ""}`
       : null);
 
-  // Use posted_ago from API if available, otherwise format locally
-  const postedAgo = job.posted_ago || formatDistanceToNow(new Date(job.posted_at), { addSuffix: true });
+  // Use posted_ago from API if available, otherwise format locally (guard invalid dates).
+  const postedAgo = job.posted_ago || formatPostedAgo(job.posted_at);
 
   return (
     <Card className="group hover:shadow-md hover:border-primary/20 transition-all duration-normal border-border/60 animate-fade-in relative overflow-hidden">

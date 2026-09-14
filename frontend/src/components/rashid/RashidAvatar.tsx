@@ -81,7 +81,7 @@ export function RashidAvatar({
       {/* Speech bubble indicator when talking */}
       {currentState === 'talking' && (
         <motion.div
-          className="absolute -top-2 -right-2 w-3 h-3 bg-blue-500 rounded-full"
+          className="absolute -top-2 -right-2 w-3 h-3 bg-primary rounded-full"
           animate={{ scale: [1, 1.2, 1] }}
           transition={{ duration: 0.3, repeat: Infinity }}
         />

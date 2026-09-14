@@ -205,38 +205,38 @@ export function RashidMiniChat({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 100, scale: 0.95 }}
       transition={{ type: 'spring', duration: 0.4 }}
-      className="fixed bottom-24 right-4 md:right-8 w-[380px] md:w-[400px] h-[550px] md:h-[600px] bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden z-50 border border-gray-200 dark:border-gray-700 flex flex-col"
+      className="fixed bottom-24 end-4 md:end-8 w-[380px] md:w-[400px] h-[550px] md:h-[600px] bg-card rounded-2xl shadow-2xl overflow-hidden z-50 border border-border flex flex-col"
     >
       {/* Header */}
-      <div className="bg-blue-600 p-4 flex items-center justify-between">
+      <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+          <div className="w-10 h-10 bg-primary-foreground/20 rounded-full flex items-center justify-center">
             <span className="text-xl">👋</span>
           </div>
           <div>
-            <h3 className="text-white font-semibold text-lg">راشد</h3>
-            <p className="text-blue-100 text-xs flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-400' : connectionStatus === 'connecting' ? 'bg-yellow-400 animate-pulse' : 'bg-red-400'}`} />
+            <h3 className="font-semibold text-lg">{isAr ? "رشيد" : "Rasheed"}</h3>
+            <p className="text-primary-foreground/80 text-xs flex items-center gap-1">
+              <span className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-success' : connectionStatus === 'connecting' ? 'bg-yellow-400 animate-pulse' : 'bg-destructive'}`} />
               {connectionStatus === 'connected' ? (isAr ? 'متصل' : 'Online') : connectionStatus === 'connecting' ? (isAr ? 'يتصل' : 'Connecting...') : (isAr ? 'خطأ' : 'Error')}
             </p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="text-white/80 hover:text-white hover:bg-white/20 rounded-full p-1 transition-colors"
+          className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/20 rounded-full p-1 transition-colors"
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-950">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/40">
         {messagesLoading ? (
-          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+          <div className="flex items-center justify-center h-full text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <MessageSquare className="w-12 h-12 mb-2 opacity-50" />
             <p>{isAr ? 'ابدأ المحادثة' : 'Start the conversation'}</p>
           </div>
@@ -247,8 +247,8 @@ export function RashidMiniChat({
               className={cn(
                 'max-w-[85%] p-3 rounded-2xl text-sm',
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white ml-auto rounded-br-none'
-                  : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 mr-auto rounded-bl-none border border-gray-200 dark:border-gray-700'
+                  ? 'bg-primary text-primary-foreground ms-auto rounded-br-none'
+                  : 'bg-card text-card-foreground me-auto rounded-bl-none border border-border'
               )}
             >
               {msg.content}
@@ -256,7 +256,7 @@ export function RashidMiniChat({
           ))
         )}
         {isProcessing && (
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
+          <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>{isAr ? 'جاري الرد...' : 'Typing...'}</span>
           </div>
@@ -265,7 +265,7 @@ export function RashidMiniChat({
       </div>
 
       {/* Input Area */}
-      <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+      <div className="p-3 bg-card border-t border-border">
         <div className="flex items-center gap-2">
           <input
             type="text"
@@ -273,13 +273,13 @@ export function RashidMiniChat({
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={isAr ? 'اكتب رسالتك...' : 'Type your message...'}
-            className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white"
+            className="flex-1 px-4 py-2 bg-muted rounded-full text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             disabled={isProcessing || connectionStatus !== 'connected'}
           />
           <button
             onClick={handleSendMessage}
             disabled={!inputMessage.trim() || isProcessing || connectionStatus !== 'connected'}
-            className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isProcessing ? (
               <Loader2 className="w-5 h-5 animate-spin" />

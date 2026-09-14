@@ -70,19 +70,19 @@ export default function IntelligenceDashboard() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="flex items-center gap-2">
-                  <div className={`h-2.5 w-2.5 rounded-full ${health.ai_service?.available ? "bg-green-500" : "bg-red-500"}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full ${health.ai_service?.available ? "bg-success" : "bg-destructive"}`} />
                   <span className="text-sm">AI Service</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className={`h-2.5 w-2.5 rounded-full ${health.circuit_breaker?.available ? "bg-green-500" : "bg-yellow-500"}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full ${health.circuit_breaker?.available ? "bg-success" : "bg-yellow-500"}`} />
                   <span className="text-sm">Circuit Breaker: {health.circuit_breaker?.state}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className={`h-2.5 w-2.5 rounded-full ${health.document_processor?.available ? "bg-green-500" : "bg-gray-400"}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full ${health.document_processor?.available ? "bg-success" : "bg-muted-foreground/40"}`} />
                   <span className="text-sm">Doc Processor: {health.document_processor?.backend || "N/A"}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className={`h-2.5 w-2.5 rounded-full ${health.trend_detection?.available ? "bg-green-500" : "bg-gray-400"}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full ${health.trend_detection?.available ? "bg-success" : "bg-muted-foreground/40"}`} />
                   <span className="text-sm">Trend Detection</span>
                 </div>
               </div>
@@ -127,7 +127,7 @@ export default function IntelligenceDashboard() {
           <StaggerItem>
             <Card>
               <CardContent className="p-5 text-center">
-                <TrendingUp className="h-5 w-5 mx-auto mb-2 text-green-600" />
+                <TrendingUp className="h-5 w-5 mx-auto mb-2 text-success" />
                 <p className="text-2xl font-bold">{metrics.job_growth_rate}%</p>
                 <p className="text-xs text-muted-foreground">Job Growth Rate</p>
                 <Badge variant="secondary" className="mt-1 text-xs">vs last month</Badge>
@@ -143,7 +143,7 @@ export default function IntelligenceDashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-600" /> Emerging Skills
+                <TrendingUp className="h-4 w-4 text-success" /> Emerging Skills
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -154,7 +154,7 @@ export default function IntelligenceDashboard() {
                   {emerging.slice(0, 10).map((skill, i) => (
                     <div key={i} className="flex items-center justify-between py-1.5 border-b last:border-0">
                       <span className="text-sm font-medium">{skill.skill}</span>
-                      <Badge variant="default" className="bg-green-100 text-green-800 text-xs">
+                      <Badge variant="default" className="bg-success/15 text-success text-xs">
                         +{skill.growth_pct?.toFixed(0)}%
                       </Badge>
                     </div>
@@ -169,7 +169,7 @@ export default function IntelligenceDashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-red-500" /> Declining Skills
+                <TrendingDown className="h-4 w-4 text-destructive" /> Declining Skills
               </CardTitle>
             </CardHeader>
             <CardContent>
