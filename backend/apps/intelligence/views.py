@@ -418,3 +418,21 @@ def extract_from_url(request):
         "method": result.extraction_method,
         "error": result.error,
     })
+
+
+# --- Tool Registry ---
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def platform_tools(request):
+    """List the platform AI tools available to the Rashid agent.
+
+    Returns the live tool registry (name + description) so clients can
+    surface which capabilities the assistant can invoke.
+    """
+    try:
+        from apps.rashid.tools import get_available_tools
+
+        return Response({"tools": get_available_tools()})
+    except Exception:  # pragma: no cover - defensive
+        return Response({"tools": []})

@@ -1914,25 +1914,27 @@ class AdminNotificationStatsView(APIView):
     permission_classes = [IsAdminRole]
 
     def get(self, request):
+        # Read the canonical UserNotification model (same model the in-app
+        # inbox and all notification writers now use).
         try:
-            from apps.users.models import Notification
+            from apps.notifications.models import UserNotification
         except ImportError:
             return Response(
                 {"detail": "Notification model not available."},
                 status=status.HTTP_501_NOT_IMPLEMENTED,
             )
 
-        total_notifications = Notification.objects.count()
-        unread_count = Notification.objects.filter(is_read=False).count()
+        total_notifications = UserNotification.objects.count()
+        unread_count = UserNotification.objects.filter(status="unread").count()
 
         by_type = dict(
-            Notification.objects.values_list("type")
+            UserNotification.objects.values_list("notification_type")
             .annotate(cnt=Count("id"))
-            .values_list("type", "cnt")
+            .values_list("notification_type", "cnt")
         )
 
         recent_qs = (
-            Notification.objects.select_related("user")
+            UserNotification.objects.select_related("user")
             .order_by("-created_at")[:20]
         )
         recent_notifications = [
@@ -1940,8 +1942,8 @@ class AdminNotificationStatsView(APIView):
                 "id": str(n.uuid),
                 "user_email": n.user.email if n.user else None,
                 "title": n.title,
-                "type": n.type,
-                "is_read": n.is_read,
+                "type": n.notification_type,
+                "is_read": n.status != "unread",
                 "created_at": n.created_at,
             }
             for n in recent_qs
@@ -1978,15 +1980,22 @@ class AdminBroadcastNotificationView(APIView):
             )
 
         from django.contrib.auth import get_user_model
-        from apps.users.models import Notification
+        from apps.notifications.models import UserNotification
 
         User = get_user_model()
         active_users = User.objects.filter(is_active=True)
+        # Write to the canonical UserNotification model (read by the in-app
+        # inbox). bulk_create is retained for broadcast efficiency.
         notifications = [
-            Notification(user=u, title=title, body=body, type="system")
+            UserNotification(
+                user=u,
+                notification_type="system",
+                title=title,
+                message=body,
+            )
             for u in active_users
         ]
-        Notification.objects.bulk_create(notifications)
+        UserNotification.objects.bulk_create(notifications)
 
         return Response({
             "success": True,
