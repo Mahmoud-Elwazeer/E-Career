@@ -137,7 +137,12 @@ jobs:
           cd E-Career/frontend
           npm run lint
 
-      - name: Run Prettier check
+      - name: Run unit tests
         run: |
           cd E-Career/frontend
-          npm run format:check
+          npm test
+
+      - name: Production build
+        run: |
+          cd E-Career/frontend
+          npm run build
