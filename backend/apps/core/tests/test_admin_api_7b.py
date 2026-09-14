@@ -315,6 +315,52 @@ class TestEntitlementChecks:
         assert check_entitlement(company, "job_posting", 9999) is True
         assert check_entitlement(company, "candidate_search", 9999) is True
 
+    def test_ai_feature_gate(self):
+        from apps.core.permissions import check_entitlement
+        from apps.core.models import SubscriptionPlan, CompanySubscription
+        from apps.jobs.models import Company
+        from rest_framework.exceptions import PermissionDenied
+
+        company = Company.objects.create(name="AI Gate Co", slug="ai-gate-co")
+        plan = SubscriptionPlan.objects.create(name="No AI Plan", ai_features_enabled=False)
+        CompanySubscription.objects.create(company=company, plan=plan, status="active")
+
+        with pytest.raises(PermissionDenied):
+            check_entitlement(company, "ai_feature")
+
+        # A plan with AI enabled allows it.
+        company2 = Company.objects.create(name="AI OK Co", slug="ai-ok-co")
+        plan2 = SubscriptionPlan.objects.create(name="AI Plan", ai_features_enabled=True)
+        CompanySubscription.objects.create(company=company2, plan=plan2, status="active")
+        assert check_entitlement(company2, "ai_feature") is True
+
+    def test_feature_flag_gate(self):
+        from apps.core.permissions import check_entitlement
+        from apps.core.models import SubscriptionPlan, CompanySubscription
+        from apps.jobs.models import Company
+        from rest_framework.exceptions import PermissionDenied
+
+        company = Company.objects.create(name="Feature Gate Co", slug="feature-gate-co")
+        plan = SubscriptionPlan.objects.create(
+            name="Restricted Plan",
+            feature_flags={"talent_pool": False},
+        )
+        CompanySubscription.objects.create(company=company, plan=plan, status="active")
+
+        with pytest.raises(PermissionDenied):
+            check_entitlement(company, "feature", feature="talent_pool")
+
+        # A feature not explicitly disabled is allowed (never silently locks out).
+        assert check_entitlement(company, "feature", feature="some_new_feature") is True
+
+    def test_feature_gate_allows_when_no_subscription(self):
+        from apps.core.permissions import check_entitlement
+        from apps.jobs.models import Company
+
+        company = Company.objects.create(name="Feature No Sub Co", slug="feature-no-sub-co")
+        assert check_entitlement(company, "feature", feature="talent_pool") is True
+        assert check_entitlement(company, "ai_feature") is True
+
 
 # ---------------------------------------------------------------------------
 # Admin Copilot
