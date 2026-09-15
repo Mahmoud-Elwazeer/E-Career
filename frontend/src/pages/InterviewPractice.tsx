@@ -23,6 +23,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { AppShell } from '@/components/shells/AppShell';
 import { Button } from '@/components/ui/button';
@@ -102,6 +103,7 @@ export default function InterviewPractice() {
   const { isAuthenticated } = useAuth();
   const { lang } = useTheme();
   const isAr = lang === 'ar';
+  const { toast } = useToast();
   const navigate = useNavigate();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -175,11 +177,11 @@ export default function InterviewPractice() {
         }
       } else {
         const err = await response.json().catch(() => null);
-        alert(isAr ? 'فشل بدء المقابلة. حاول مرة أخرى.' : 'Failed to start interview. Please try again.');
+        toast({ title: isAr ? 'فشل بدء المقابلة' : 'Failed to start interview', description: isAr ? 'حاول مرة أخرى.' : 'Please try again.', variant: 'destructive' });
         console.error('Start interview error:', err);
       }
     } catch (error) {
-      alert(isAr ? 'خطأ في الاتصال. تحقق من الإنترنت.' : 'Connection error. Check your internet.');
+      toast({ title: isAr ? 'خطأ في الاتصال' : 'Connection error', description: isAr ? 'تحقق من الإنترنت.' : 'Check your internet.', variant: 'destructive' });
       console.error('Error starting interview:', error);
     } finally {
       setIsProcessing(false);
@@ -307,7 +309,7 @@ export default function InterviewPractice() {
       recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         if (event.error === 'not-allowed') {
-          alert(isAr ? 'يرجى السماح بالوصول إلى الميكروفون' : 'Please allow microphone access');
+          toast({ title: isAr ? 'الميكروفون' : 'Microphone', description: isAr ? 'يرجى السماح بالوصول إلى الميكروفون' : 'Please allow microphone access', variant: 'destructive' });
         }
         setIsRecording(false);
       };
@@ -340,7 +342,7 @@ export default function InterviewPractice() {
         mediaRecorder.start();
         setIsRecording(true);
       } catch (error) {
-        alert(isAr ? 'لا يمكن الوصول إلى الميكروفون' : 'Cannot access microphone');
+        toast({ title: isAr ? 'الميكروفون' : 'Microphone', description: isAr ? 'لا يمكن الوصول إلى الميكروفون' : 'Cannot access microphone', variant: 'destructive' });
       }
     }
   };
