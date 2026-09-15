@@ -21,23 +21,7 @@ import {
 } from 'lucide-react';
 import ResumePreview from '@/components/resume/ResumePreview';
 
-import { getAccessToken } from '@/services/client';
-
-const API_BASE = '/api/v1/resume';
-
-function getAuthHeaders() {
-  const token = getAccessToken();
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
-async function apiFetch(url: string, options: RequestInit = {}) {
-  const res = await fetch(url, { ...options, headers: { ...getAuthHeaders(), ...options.headers } });
-  if (!res.ok) throw new Error(`API error: ${res.status}`);
-  return res.json();
-}
+import { apiRequest } from '@/services/client';
 
 interface Experience {
   id: string;
@@ -116,26 +100,26 @@ export default function ResumeBuilder() {
 
   const { data: resumesRes, isLoading: resumesLoading } = useQuery({
     queryKey: ['user-resumes'],
-    queryFn: () => apiFetch(`${API_BASE}/resumes/`),
+    queryFn: () => apiRequest<Resume[]>(`/resume/resumes/`),
   });
 
-  const resumes: Resume[] = resumesRes?.data || [];
+  const resumes: Resume[] = resumesRes ?? [];
 
   const createMutation = useMutation({
     mutationFn: (data: Partial<Resume>) =>
-      apiFetch(`${API_BASE}/resumes/`, { method: 'POST', body: JSON.stringify(data) }),
+      apiRequest<Resume>(`/resume/resumes/`, { method: 'POST', body: data }),
     onSuccess: (res) => {
       queryClient.invalidateQueries({ queryKey: ['user-resumes'] });
-      if (res?.data?.id) {
-        setSelectedResumeId(res.data.id);
-        setLocalData(res.data);
+      if (res?.id) {
+        setSelectedResumeId(res.id);
+        setLocalData(res);
       }
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Resume> }) =>
-      apiFetch(`${API_BASE}/resumes/${id}/update/`, { method: 'PUT', body: JSON.stringify(data) }),
+      apiRequest(`/resume/resumes/${id}/update/`, { method: 'PUT', body: data }),
     onSuccess: () => {
       setIsSaving(false);
       setLastSaved(new Date());
@@ -146,7 +130,7 @@ export default function ResumeBuilder() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) =>
-      apiFetch(`${API_BASE}/resumes/${id}/delete/`, { method: 'DELETE' }),
+      apiRequest(`/resume/resumes/${id}/delete/`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-resumes'] });
       setSelectedResumeId(null);
@@ -156,7 +140,7 @@ export default function ResumeBuilder() {
 
   const exportMutation = useMutation({
     mutationFn: ({ resumeId, format }: { resumeId: string; format: string }) =>
-      apiFetch(`${API_BASE}/export/`, { method: 'POST', body: JSON.stringify({ resume_id: resumeId, format }) }),
+      apiRequest(`/resume/export/`, { method: 'POST', body: { resume_id: resumeId, format } }),
   });
 
   // Select first resume on load
@@ -214,9 +198,9 @@ export default function ResumeBuilder() {
 
   const handleImportFromCV = async () => {
     try {
-      const res = await apiFetch('/api/v1/career/cv/status/');
-      if (res?.data?.cv_parsed_data) {
-        const parsed = res.data.cv_parsed_data;
+      const res = await apiRequest<{ cv_parsed_data?: any }>('/career/cv/status/');
+      if (res?.cv_parsed_data) {
+        const parsed = res.cv_parsed_data;
         setLocalData(prev => {
           if (!prev) return prev;
           const updated = {

@@ -4,6 +4,7 @@ from apps.users.views import (
     SavedJobListView, SavedJobDetailView,
     AlertListView, AlertDetailView,
     NotificationListView, NotificationDetailView, MarkAllNotificationsReadView,
+    ApplicationListView, ApplicationDetailView,
 )
 
 urlpatterns = [
@@ -21,4 +22,7 @@ urlpatterns = [
     path("me/notifications/", NotificationListView.as_view(), name="notifications-list"),
     path("me/notifications/<uuid:uuid>/", NotificationDetailView.as_view(), name="notifications-detail"),
     path("me/notifications/mark-all-read/", MarkAllNotificationsReadView.as_view(), name="notifications-mark-all-read"),
+    # Applications
+    path("me/applications/", ApplicationListView.as_view(), name="applications-list"),
+    path("me/applications/<int:pk>/", ApplicationDetailView.as_view(), name="applications-detail"),
 ]

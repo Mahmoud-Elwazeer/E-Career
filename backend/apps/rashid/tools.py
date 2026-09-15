@@ -422,12 +422,102 @@ class CourseAdvisorTool(RashidTool):
 
 
 # Tool Registry
+class SearchJobsTool(RashidTool):
+    """Search live jobs by keyword/location and return a concise list."""
+
+    name = "search_jobs"
+    description = "البحث عن وظائف حسب الكلمة المفتاحية أو المكان"
+
+    def execute(self, context: Dict[str, Any]) -> str:
+        query = (context.get("query") or context.get("q") or "").strip()
+        location = (context.get("location") or "").strip()
+        from apps.jobs.models import Job
+
+        qs = Job.objects.filter(status="active").select_related("company")
+        if query:
+            from django.db.models import Q
+            qs = qs.filter(Q(title__icontains=query) | Q(description__icontains=query))
+        if location:
+            qs = qs.filter(location__icontains=location)
+
+        jobs = list(qs.order_by("-posted_at")[:8])
+        if not jobs:
+            return "مفيش وظائف مطابقة دلوقتي. جرّب كلمات تانية أو وسّع البحث."
+
+        lines = ["لقيتلك الوظايف دي:"]
+        for j in jobs:
+            company = getattr(j.company, "name", "") if j.company_id else ""
+            loc = j.location or ""
+            lines.append(f"- {j.title} — {company} ({loc}) [id:{j.id}]")
+        lines.append("\nتحب أعرفك تفاصيل أي وظيفة أو أشرحلك مدى مناسبتها ليك؟")
+        return "\n".join(lines)
+
+
+class GetJobTool(RashidTool):
+    """Return full details for a specific job by id."""
+
+    name = "get_job"
+    description = "عرض تفاصيل وظيفة معينة بالـ id"
+
+    def execute(self, context: Dict[str, Any]) -> str:
+        job_id = context.get("job_id") or context.get("id")
+        if not job_id:
+            return "محتاج رقم الوظيفة (job_id) عشان أعرضلك التفاصيل."
+        from apps.jobs.models import Job
+        try:
+            j = Job.objects.select_related("company").get(id=job_id)
+        except Job.DoesNotExist:
+            return "الوظيفة دي مش موجودة أو اتشالت."
+        company = getattr(j.company, "name", "") if j.company_id else ""
+        return (
+            f"**{j.title}** — {company}\n"
+            f"المكان: {j.location or 'غير محدد'}\n"
+            f"نوع العمل: {getattr(j, 'work_arrangement', '') or 'غير محدد'}\n\n"
+            f"الوصف:\n{(j.description or '')[:800]}\n\n"
+            f"المتطلبات:\n{(j.requirements or '')[:600]}"
+        )
+
+
+class RecommendJobsTool(RashidTool):
+    """Personalized job recommendations for the current user via the live engine."""
+
+    name = "recommend_jobs"
+    description = "ترشيح وظائف مناسبة ليك بناءً على ملفك"
+
+    def execute(self, context: Dict[str, Any]) -> str:
+        user = context.get("user")
+        if not user or not getattr(user, "is_authenticated", False):
+            return "محتاج تسجّل الدخول الأول عشان أرشحلك وظايف على مقاسك."
+        try:
+            from apps.search.recommendation_engine import get_recommendation_engine
+            engine = get_recommendation_engine(user)
+            recs = engine.get_recommendations(n_recommendations=8)
+        except Exception as e:
+            logger.error(f"recommend_jobs tool failed: {e}")
+            return "معلش، معرفتش أجيب الترشيحات دلوقتي. جرّب تاني بعد شوية."
+
+        if not recs:
+            return "كمّل بروفايلك (مهارات + خبرة) وأنا هرشحلك وظايف مناسبة."
+        lines = ["دي أنسب وظايف ليك دلوقتي:"]
+        for r in recs[:8]:
+            title = r.get("title") or r.get("job_title") or "وظيفة"
+            company = r.get("company_name") or r.get("company") or ""
+            score = r.get("score") or r.get("match_score")
+            score_txt = f" — توافق {round(float(score))}%" if score else ""
+            lines.append(f"- {title} — {company}{score_txt}")
+        lines.append("\nتحب أشرحلك ليه وظيفة معينة مناسبة ليك؟")
+        return "\n".join(lines)
+
+
 RASHID_TOOLS = {
     'cv_review': CVReviewTool(),
     'cover_letter': CoverLetterTool(),
     'interview_prep': InterviewPrepTool(),
     'linkedin_optimizer': LinkedInOptimizerTool(),
     'course_advisor': CourseAdvisorTool(),
+    'search_jobs': SearchJobsTool(),
+    'get_job': GetJobTool(),
+    'recommend_jobs': RecommendJobsTool(),
 }
 
 

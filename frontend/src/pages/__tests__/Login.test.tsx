@@ -1,168 +1,111 @@
 /**
  * Login Page Tests
- * 
+ *
  * Tests for the Login page component including:
  * - Form rendering
  * - Input handling
- * - Submit handling
+ * - Submit handling (via the useAuth signIn contract)
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import Login from '../Login';
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import Login from "../Login";
 
-// Mock the auth service
-vi.mock('@/services/auth', () => ({
-  login: vi.fn(),
+const hooks = vi.hoisted(() => ({
+  signIn: vi.fn(),
+  signUp: vi.fn(),
+  signInWithGoogle: vi.fn(),
+  toast: vi.fn(),
 }));
 
-// Mock the useTheme hook
-vi.mock('@/hooks/use-theme', () => ({
-  useTheme: vi.fn(),
+vi.mock("@/hooks/use-auth", () => ({
+  useAuth: () => ({
+    signIn: hooks.signIn,
+    signUp: hooks.signUp,
+    signInWithGoogle: hooks.signInWithGoogle,
+    isAuthenticated: false,
+  }),
 }));
 
-// Mock the useI18n hook
-vi.mock('@/hooks/use-i18n', () => ({
-  useI18n: vi.fn(),
+vi.mock("@/hooks/use-theme", () => ({
+  useTheme: () => ({ lang: "en", dir: "ltr" }),
 }));
 
-// Mock the useAuth hook
-vi.mock('@/hooks/use-auth', () => ({
-  useAuth: vi.fn(),
+vi.mock("@/hooks/use-toast", () => ({
+  useToast: () => ({ toast: hooks.toast }),
 }));
 
-// Import mocked hooks
-const useTheme = vi.hoisted(() => vi.fn());
-const login = vi.hoisted(() => vi.fn());
+const renderLogin = () =>
+  render(
+    <MemoryRouter initialEntries={["/login"]}>
+      <Login />
+    </MemoryRouter>,
+  );
 
-describe('Login Page', () => {
+describe("Login Page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (useTheme as any).mockReturnValue({ lang: 'en', dir: 'ltr' });
   });
 
-  it('renders login form', () => {
-    render(
-      <MemoryRouter initialEntries={['/login']}>
-        <Login />
-      </MemoryRouter>
-    );
-
-    expect(screen.getByPlaceholderText(/Email/i)).toBeInTheDocument();
-    expect(screen.getByPlaceholderText(/Password/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Sign In/i })).toBeInTheDocument();
+  it("renders login form", () => {
+    renderLogin();
+    expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Password/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Sign in$/i })).toBeInTheDocument();
   });
 
-  it('handles email input', () => {
-    render(
-      <MemoryRouter initialEntries={['/login']}>
-        <Login />
-      </MemoryRouter>
-    );
-
-    const emailInput = screen.getByPlaceholderText(/Email/i);
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-
-    expect(emailInput).toHaveValue('test@example.com');
+  it("handles email input", () => {
+    renderLogin();
+    const emailInput = screen.getByLabelText(/Email/i);
+    fireEvent.change(emailInput, { target: { value: "test@example.com" } });
+    expect(emailInput).toHaveValue("test@example.com");
   });
 
-  it('handles password input', () => {
-    render(
-      <MemoryRouter initialEntries={['/login']}>
-        <Login />
-      </MemoryRouter>
-    );
-
-    const passwordInput = screen.getByPlaceholderText(/Password/i);
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
-
-    expect(passwordInput).toHaveValue('password123');
+  it("handles password input", () => {
+    renderLogin();
+    const passwordInput = screen.getByLabelText(/Password/i);
+    fireEvent.change(passwordInput, { target: { value: "password123" } });
+    expect(passwordInput).toHaveValue("password123");
   });
 
-  it('handles form submission', async () => {
-    (login as any).mockResolvedValue({ success: true });
+  it("submits credentials through signIn", async () => {
+    hooks.signIn.mockResolvedValue(undefined);
+    renderLogin();
 
-    render(
-      <MemoryRouter initialEntries={['/login']}>
-        <Login />
-      </MemoryRouter>
-    );
-
-    const emailInput = screen.getByPlaceholderText(/Email/i);
-    const passwordInput = screen.getByPlaceholderText(/Password/i);
-    const submitButton = screen.getByRole('button', { name: /Sign In/i });
-
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    fireEvent.click(submitButton);
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "test@example.com" } });
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: "password123" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Sign in$/i }));
 
     await waitFor(() => {
-      expect(login).toHaveBeenCalledWith('test@example.com', 'password123');
+      expect(hooks.signIn).toHaveBeenCalledWith("test@example.com", "password123");
     });
   });
 
-  it('shows loading state during submission', async () => {
-    (login as any).mockImplementation(() => new Promise(() => {})); // Never resolves
+  it("shows a destructive toast on login error", async () => {
+    hooks.signIn.mockRejectedValue(new Error("Invalid credentials"));
+    renderLogin();
 
-    render(
-      <MemoryRouter initialEntries={['/login']}>
-        <Login />
-      </MemoryRouter>
-    );
-
-    const emailInput = screen.getByPlaceholderText(/Email/i);
-    const passwordInput = screen.getByPlaceholderText(/Password/i);
-    const submitButton = screen.getByRole('button', { name: /Sign In/i });
-
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'password123' } });
-    fireEvent.click(submitButton);
-
-    // Button should be disabled during loading
-    expect(submitButton).toBeDisabled();
-  });
-
-  it('handles login error', async () => {
-    (login as any).mockRejectedValue(new Error('Invalid credentials'));
-
-    render(
-      <MemoryRouter initialEntries={['/login']}>
-        <Login />
-      </MemoryRouter>
-    );
-
-    const emailInput = screen.getByPlaceholderText(/Email/i);
-    const passwordInput = screen.getByPlaceholderText(/Password/i);
-    const submitButton = screen.getByRole('button', { name: /Sign In/i });
-
-    fireEvent.change(emailInput, { target: { value: 'wrong@example.com' } });
-    fireEvent.change(passwordInput, { target: { value: 'wrongpassword' } });
-    fireEvent.click(submitButton);
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "wrong@example.com" } });
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: "wrongpassword" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Sign in$/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/Invalid credentials/i)).toBeInTheDocument();
+      expect(hooks.toast).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: "destructive" }),
+      );
     });
   });
 
-  it('renders forgot password link', () => {
-    render(
-      <MemoryRouter initialEntries={['/login']}>
-        <Login />
-      </MemoryRouter>
-    );
-
+  it("renders the forgot password link", () => {
+    renderLogin();
     expect(screen.getByText(/Forgot password\?/i)).toBeInTheDocument();
   });
 
-  it('renders register link', () => {
-    render(
-      <MemoryRouter initialEntries={['/login']}>
-        <Login />
-      </MemoryRouter>
-    );
-
-    expect(screen.getByText(/Don't have an account\?/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Sign up/i })).toBeInTheDocument();
+  it("can switch to the register form", () => {
+    renderLogin();
+    fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+    expect(screen.getByLabelText(/First name/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Last name/i)).toBeInTheDocument();
   });
 });

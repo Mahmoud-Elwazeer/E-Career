@@ -4,24 +4,26 @@
 
 import { apiRequest } from './client';
 
+/**
+ * Flat recommendation shape returned by the backend recommendation engine
+ * (apps/search/recommendation_engine.get_recommendations). Explainability
+ * fields (match_reasons / explanation / match_factors) are always present.
+ */
 export interface RecommendedJob {
-  job: {
-    id: number;
-    title: string;
-    company: {
-      id: number;
-      name: string;
-      logo?: string;
-    };
-    location: string;
-    location_type?: string;
-    salary_min?: number;
-    salary_max?: number;
-    posted_date: string;
-    employment_type?: string;
-  };
-  match_score: number;
-  reasoning: string;
+  job_id: string;
+  job_title: string;
+  company_name: string;
+  location: string;
+  score: number;
+  collaborative_score?: number;
+  content_score?: number;
+  employment_type?: string;
+  work_arrangement?: string;
+  salary_min?: number | null;
+  salary_max?: number | null;
+  match_reasons?: string[];
+  explanation?: string;
+  match_factors?: Record<string, unknown>;
 }
 
 export interface RecommendationsResponse {

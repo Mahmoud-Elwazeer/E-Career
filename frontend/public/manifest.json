@@ -1,11 +1,11 @@
 {
-  "name": "USAM Career Compass",
-  "short_name": "Career Compass",
+  "name": "USAM — One search. Every opportunity.",
+  "short_name": "USAM",
   "description": "Your personal career companion for job searching, skill assessment, and career growth",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "theme_color": "#0A3836",
   "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "icons": [

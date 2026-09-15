@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Layout } from "@/components/Layout";
+import { useNavigate, Link } from "react-router-dom";
+import { AppShell } from "@/components/shells/AppShell";
+import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
 import { updateMe, changePassword, deleteAccount } from "@/services/auth";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, Lock, User, Shield, Loader2 } from "lucide-react";
+import { Bell, User, Shield, Loader2, ChevronRight } from "lucide-react";
 
 export default function Settings() {
   const { lang } = useTheme();
@@ -35,7 +34,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (user) {
-      setName(user.full_name || "");
+      setName(user.name || "");
       setEmail(user.email || "");
     }
   }, [user]);
@@ -88,16 +87,12 @@ export default function Settings() {
   };
 
   return (
-    <Layout>
+    <AppShell>
       <div className="container max-w-4xl py-8">
-        <div className="mb-8">
-          <h1 className="text-heading-1 mb-2">
-            {isAr ? "الإعدادات" : "Settings"}
-          </h1>
-          <p className="text-muted-foreground">
-            {isAr ? "إدارة تفضيلاتك وإعدادات الحساب" : "Manage your preferences and account settings"}
-          </p>
-        </div>
+        <PageHeader
+          title={isAr ? "الإعدادات" : "Settings"}
+          subtitle={isAr ? "إدارة تفضيلاتك وإعدادات الحساب" : "Manage your preferences and account settings"}
+        />
 
         <div className="space-y-6">
           {/* Account Settings */}
@@ -131,7 +126,8 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Notification Settings */}
+          {/* Notification Settings — delegate to the dedicated, fully-wired page
+              instead of duplicating toggles that could drift out of sync. */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -139,39 +135,29 @@ export default function Settings() {
                 <CardTitle>{isAr ? "الإشعارات" : "Notifications"}</CardTitle>
               </div>
               <CardDescription>
-                {isAr ? "إدارة تفضيلات الإشعارات" : "Manage your notification preferences"}
+                {isAr ? "إدارة تفضيلات الإشعارات والقنوات والتكرار" : "Manage channels, frequency, and notification types"}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>{isAr ? "فرص عمل جديدة" : "New Job Opportunities"}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {isAr ? "إشعارات عند نشر وظائف تطابق ملفك" : "Notify when jobs match your profile"}
-                  </p>
+            <CardContent>
+              <Link
+                to="/app/notification-preferences"
+                className="surface-card-interactive flex items-center justify-between p-4 group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary-muted p-2">
+                    <Bell className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-body font-medium">
+                      {isAr ? "تفضيلات الإشعارات" : "Notification preferences"}
+                    </p>
+                    <p className="text-caption text-muted-foreground">
+                      {isAr ? "البريد، داخل التطبيق، التكرار، وساعات الهدوء" : "Email, in-app, frequency & quiet hours"}
+                    </p>
+                  </div>
                 </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>{isAr ? "تحديثات الطلبات" : "Application Updates"}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {isAr ? "إشعارات عند تغيير حالة الطلب" : "Notify on application status changes"}
-                  </p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>{isAr ? "نصائح مهنية" : "Career Tips"}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {isAr ? "نصائح أسبوعية لتطوير مسارك المهني" : "Weekly tips to improve your career"}
-                  </p>
-                </div>
-                <Switch />
-              </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors rtl:rotate-180" />
+              </Link>
             </CardContent>
           </Card>
 
@@ -187,16 +173,6 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>{isAr ? "ملف شخصي عام" : "Public Profile"}</Label>
-                  <p className="text-sm text-muted-foreground">
-                    {isAr ? "السماح لأصحاب العمل برؤية ملفك" : "Allow employers to view your profile"}
-                  </p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
               <div className="space-y-2">
                 <Label>{isAr ? "تغيير كلمة المرور" : "Change Password"}</Label>
                 {!showPwForm ? (
@@ -274,6 +250,6 @@ export default function Settings() {
           </Card>
         </div>
       </div>
-    </Layout>
+    </AppShell>
   );
 }

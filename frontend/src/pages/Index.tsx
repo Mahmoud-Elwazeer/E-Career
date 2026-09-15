@@ -113,8 +113,11 @@ export default function Index() {
 
   return (
     <Layout>
-      {/* ═══ ONBOARDING FLOW ═══ */}
-      <OnboardingFlow onComplete={handleOnboardingComplete} />
+      {/* ═══ ONBOARDING FLOW ═══
+          Only for anonymous visitors on the landing page. Authenticated
+          onboarding is owned exclusively by <OnboardingWrapper> in App.tsx,
+          so the two never render simultaneously. */}
+      {!isAuthenticated && <OnboardingFlow onComplete={handleOnboardingComplete} />}
       {/* ═══ HERO — Cinematic Entrance ═══ */}
       <section ref={heroRef} className="relative overflow-hidden bg-primary text-primary-foreground">
         <WatermarkBackground variant="shimmer" opacity={0.04} inheritColor paused={isTyping} />

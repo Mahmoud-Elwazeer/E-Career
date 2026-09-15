@@ -41,11 +41,11 @@ interface Application {
 }
 
 const STATUS_CONFIG = {
-  pending: { label: "Pending", icon: Clock, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
-  reviewing: { label: "Under Review", icon: Mail, color: "text-blue-600 bg-blue-50 border-blue-200" },
-  interview: { label: "Interview", icon: Calendar, color: "text-purple-600 bg-purple-50 border-purple-200" },
-  rejected: { label: "Rejected", icon: XCircle, color: "text-red-600 bg-red-50 border-red-200" },
-  accepted: { label: "Accepted", icon: CheckCircle2, color: "text-green-600 bg-green-50 border-green-200" },
+  pending: { label: "Pending", icon: Clock, color: "text-warning-foreground bg-warning/10 border-yellow-200" },
+  reviewing: { label: "Under Review", icon: Mail, color: "text-primary bg-primary/10 border-primary/30" },
+  interview: { label: "Interview", icon: Calendar, color: "text-primary bg-primary/10 border-purple-200" },
+  rejected: { label: "Rejected", icon: XCircle, color: "text-destructive bg-destructive/10 border-destructive/30" },
+  accepted: { label: "Accepted", icon: CheckCircle2, color: "text-success bg-success/10 border-success/30" },
 };
 
 export default function Applications() {
@@ -122,7 +122,7 @@ export default function Applications() {
                       </p>
                       <p className="text-2xl font-bold">{stats.pending}</p>
                     </div>
-                    <Clock className="h-8 w-8 text-yellow-600" />
+                    <Clock className="h-8 w-8 text-warning-foreground" />
                   </div>
                 </CardContent>
               </Card>
@@ -136,7 +136,7 @@ export default function Applications() {
                       </p>
                       <p className="text-2xl font-bold">{stats.reviewing}</p>
                     </div>
-                    <Mail className="h-8 w-8 text-blue-600" />
+                    <Mail className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -150,7 +150,7 @@ export default function Applications() {
                   </p>
                   <p className="text-2xl font-bold">{stats.interview}</p>
                 </div>
-                <Calendar className="h-8 w-8 text-purple-600" />
+                <Calendar className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -164,7 +164,7 @@ export default function Applications() {
                       </p>
                       <p className="text-2xl font-bold">{stats.interview}</p>
                     </div>
-                    <Calendar className="h-8 w-8 text-purple-600" />
+                    <Calendar className="h-8 w-8 text-primary" />
                   </div>
                 </CardContent>
               </Card>

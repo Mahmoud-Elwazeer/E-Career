@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/services/client';
+import { AppShell } from '@/components/shells/AppShell';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -98,17 +99,20 @@ export default function NotificationPreferences() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin" />
-      </div>
+      <AppShell>
+        <div className="container flex items-center justify-center py-24" role="status" aria-live="polite">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </AppShell>
     );
   }
 
   return (
+    <AppShell>
     <div className="container mx-auto py-8">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Notification Preferences</h1>
-        <p className="text-gray-500">Manage how and when you receive notifications</p>
+        <h1 className="text-heading-1">Notification Preferences</h1>
+        <p className="text-muted-foreground mt-1">Manage how and when you receive notifications</p>
       </div>
 
       {showSuccess && (
@@ -179,7 +183,7 @@ export default function NotificationPreferences() {
             <div className="flex items-center justify-between">
               <div>
                 <Label>Email</Label>
-                <p className="text-sm text-gray-500">Receive notifications via email</p>
+                <p className="text-sm text-muted-foreground">Receive notifications via email</p>
               </div>
               <Switch
                 checked={preference?.email_enabled ?? true}
@@ -190,7 +194,7 @@ export default function NotificationPreferences() {
             <div className="flex items-center justify-between">
               <div>
                 <Label>In-App</Label>
-                <p className="text-sm text-gray-500">Show notifications in the app</p>
+                <p className="text-sm text-muted-foreground">Show notifications in the app</p>
               </div>
               <Switch
                 checked={preference?.in_app_enabled ?? true}
@@ -201,7 +205,7 @@ export default function NotificationPreferences() {
             <div className="flex items-center justify-between">
               <div>
                 <Label>Push</Label>
-                <p className="text-sm text-gray-500">Browser push notifications</p>
+                <p className="text-sm text-muted-foreground">Browser push notifications</p>
               </div>
               <Switch
                 checked={preference?.push_enabled ?? true}
@@ -223,7 +227,7 @@ export default function NotificationPreferences() {
             <div className="flex items-center justify-between">
               <div>
                 <Label>Enable Quiet Hours</Label>
-                <p className="text-sm text-gray-500">Silence notifications during sleep hours</p>
+                <p className="text-sm text-muted-foreground">Silence notifications during sleep hours</p>
               </div>
               <Switch
                 checked={preference?.quiet_hours_enabled ?? false}
@@ -336,15 +340,16 @@ export default function NotificationPreferences() {
         </Button>
       </div>
     </div>
+    </AppShell>
   );
 }
 
 function NotificationType({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+    <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent dark:hover:bg-accent transition-colors">
       <div>
         <Label className="font-medium">{label}</Label>
-        <p className="text-sm text-gray-500">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>

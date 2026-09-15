@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Save, Send, AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { createJobPosting, getJobPosting, updateJobPosting, publishJobPosting, CreateJobPostingData, CustomFormField } from '../../services/employer';
+import { AppShell } from '@/components/shells/AppShell';
 
 interface JobPostingFormProps {
   jobId?: number; // If provided, we're editing an existing job
@@ -145,8 +146,8 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
   const isLoading = createMutation.isPending || updateMutation.isPending || publishMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <AppShell>
+      <div className="container max-w-4xl py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <button
@@ -156,10 +157,10 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl font-bold text-foreground">
               {jobId ? 'Edit Job Posting' : 'Create Job Posting'}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               {jobId ? 'Update your job posting details' : 'Fill in the details for your new job posting'}
             </p>
           </div>
@@ -170,11 +171,11 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
           <div className="space-y-6">
             {/* Basic Info */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">Basic Information</h2>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Job Title *
                   </label>
                   <input
@@ -182,17 +183,17 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="e.g., Senior Software Engineer"
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.title ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
+                      errors.title ? 'border-red-500' : 'border-input'
                     }`}
                   />
                   {errors.title && (
-                    <p className="text-red-500 text-sm mt-1">{errors.title}</p>
+                    <p className="text-destructive text-sm mt-1">{errors.title}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Location *
                   </label>
                   <input
@@ -200,12 +201,12 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="e.g., Cairo, Egypt"
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.location ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
+                      errors.location ? 'border-red-500' : 'border-input'
                     }`}
                   />
                   {errors.location && (
-                    <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+                    <p className="text-destructive text-sm mt-1">{errors.location}</p>
                   )}
                 </div>
               </div>
@@ -213,17 +214,17 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
 
             {/* Classification */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Classification</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">Classification</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Employment Type
                   </label>
                   <select
                     value={formData.employment_type}
                     onChange={(e) => setFormData({ ...formData, employment_type: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                   >
                     <option value="full_time">Full Time</option>
                     <option value="part_time">Part Time</option>
@@ -234,13 +235,13 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Experience Level
                   </label>
                   <select
                     value={formData.experience_level}
                     onChange={(e) => setFormData({ ...formData, experience_level: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                   >
                     <option value="student">Student</option>
                     <option value="entry">Entry Level</option>
@@ -252,13 +253,13 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Work Type
                   </label>
                   <select
                     value={formData.remote_type}
                     onChange={(e) => setFormData({ ...formData, remote_type: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                   >
                     <option value="remote">Remote</option>
                     <option value="hybrid">Hybrid</option>
@@ -270,11 +271,11 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
 
             {/* Salary */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Salary (Optional)</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">Salary (Optional)</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Minimum Salary
                   </label>
                   <input
@@ -282,17 +283,17 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     value={formData.salary_min || ''}
                     onChange={(e) => setFormData({ ...formData, salary_min: e.target.value ? parseInt(e.target.value) : undefined })}
                     placeholder="e.g., 15000"
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.salary_min ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
+                      errors.salary_min ? 'border-red-500' : 'border-input'
                     }`}
                   />
                   {errors.salary_min && (
-                    <p className="text-red-500 text-sm mt-1">{errors.salary_min}</p>
+                    <p className="text-destructive text-sm mt-1">{errors.salary_min}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Maximum Salary
                   </label>
                   <input
@@ -300,18 +301,18 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     value={formData.salary_max || ''}
                     onChange={(e) => setFormData({ ...formData, salary_max: e.target.value ? parseInt(e.target.value) : undefined })}
                     placeholder="e.g., 25000"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Currency
                   </label>
                   <select
                     value={formData.salary_currency}
                     onChange={(e) => setFormData({ ...formData, salary_currency: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent"
                   >
                     <option value="EGP">EGP</option>
                     <option value="USD">USD</option>
@@ -325,11 +326,11 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
 
             {/* Description */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Job Details</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">Job Details</h2>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Job Description *
                   </label>
                   <textarea
@@ -337,17 +338,17 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={6}
                     placeholder="Describe the role, responsibilities, and what makes this opportunity exciting..."
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.description ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
+                      errors.description ? 'border-red-500' : 'border-input'
                     }`}
                   />
                   {errors.description && (
-                    <p className="text-red-500 text-sm mt-1">{errors.description}</p>
+                    <p className="text-destructive text-sm mt-1">{errors.description}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-foreground mb-1">
                     Requirements *
                   </label>
                   <textarea
@@ -355,12 +356,12 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     onChange={(e) => setFormData({ ...formData, requirements: e.target.value })}
                     rows={6}
                     placeholder="List the required skills, qualifications, and experience..."
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.requirements ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
+                      errors.requirements ? 'border-red-500' : 'border-input'
                     }`}
                   />
                   {errors.requirements && (
-                    <p className="text-red-500 text-sm mt-1">{errors.requirements}</p>
+                    <p className="text-destructive text-sm mt-1">{errors.requirements}</p>
                   )}
                 </div>
               </div>
@@ -368,10 +369,10 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
 
             {/* Application URL */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Application</h2>
+              <h2 className="text-lg font-semibold text-foreground mb-4">Application</h2>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Apply URL *
                 </label>
                 <input
@@ -379,14 +380,14 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                   value={formData.apply_url}
                   onChange={(e) => setFormData({ ...formData, apply_url: e.target.value })}
                   placeholder="https://your-company.com/careers/apply/..."
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    errors.apply_url ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
+                    errors.apply_url ? 'border-red-500' : 'border-input'
                   }`}
                 />
                 {errors.apply_url && (
-                  <p className="text-red-500 text-sm mt-1">{errors.apply_url}</p>
+                  <p className="text-destructive text-sm mt-1">{errors.apply_url}</p>
                 )}
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   <AlertCircle className="w-4 h-4 inline mr-1" />
                   URL must be on your company's official domain
                 </p>
@@ -395,16 +396,16 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
 
             {/* Screening Questions */}
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">Screening Questions</h2>
-              <p className="text-sm text-gray-500 mb-4">
+              <h2 className="text-lg font-semibold text-foreground mb-2">Screening Questions</h2>
+              <p className="text-sm text-muted-foreground mb-4">
                 Add custom questions for candidates. You can set knockout values to auto-reject applicants.
               </p>
 
               <div className="space-y-4">
                 {(formData.custom_form_fields || []).map((field, index) => (
-                  <div key={field.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                  <div key={field.id} className="border border-border rounded-lg p-4 space-y-3">
                     <div className="flex items-start justify-between">
-                      <span className="text-sm font-medium text-gray-500">Question {index + 1}</span>
+                      <span className="text-sm font-medium text-muted-foreground">Question {index + 1}</span>
                       <button
                         type="button"
                         onClick={() => {
@@ -412,7 +413,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                           updated.splice(index, 1);
                           setFormData({ ...formData, custom_form_fields: updated });
                         }}
-                        className="text-red-500 hover:text-red-700 p-1"
+                        className="text-destructive hover:text-red-700 p-1"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -420,7 +421,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Label</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Label</label>
                         <input
                           type="text"
                           value={field.label}
@@ -430,12 +431,12 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                             setFormData({ ...formData, custom_form_fields: updated });
                           }}
                           placeholder="e.g., Do you have a valid work permit?"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-3 py-2 border border-input rounded-lg text-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Type</label>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">Type</label>
                         <select
                           value={field.type}
                           onChange={(e) => {
@@ -443,7 +444,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                             updated[index] = { ...updated[index], type: e.target.value as CustomFormField['type'] };
                             setFormData({ ...formData, custom_form_fields: updated });
                           }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-3 py-2 border border-input rounded-lg text-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                         >
                           <option value="text">Short Text</option>
                           <option value="textarea">Long Text</option>
@@ -459,7 +460,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
 
                     {(field.type === 'select' || field.type === 'multiselect') && (
                       <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">
                           Options (comma-separated)
                         </label>
                         <input
@@ -474,7 +475,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                             setFormData({ ...formData, custom_form_fields: updated });
                           }}
                           placeholder="e.g., Option A, Option B, Option C"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-3 py-2 border border-input rounded-lg text-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                         />
                       </div>
                     )}
@@ -490,13 +491,13 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                             updated[index] = { ...updated[index], required: e.target.checked };
                             setFormData({ ...formData, custom_form_fields: updated });
                           }}
-                          className="rounded border-gray-300"
+                          className="rounded border-input"
                         />
-                        <label htmlFor={`required-${field.id}`} className="text-xs text-gray-600">Required</label>
+                        <label htmlFor={`required-${field.id}`} className="text-xs text-muted-foreground">Required</label>
                       </div>
 
                       <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                        <label className="block text-xs font-medium text-muted-foreground mb-1">
                           Knockout Value (auto-reject if matched)
                         </label>
                         <input
@@ -511,7 +512,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                             setFormData({ ...formData, custom_form_fields: updated });
                           }}
                           placeholder={field.type === 'yes_no' ? 'e.g., no' : 'Leave empty to disable'}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-3 py-2 border border-input rounded-lg text-sm focus:ring-2 focus:ring-ring focus:border-transparent"
                         />
                       </div>
                     </div>
@@ -532,7 +533,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                       custom_form_fields: [...(formData.custom_form_fields || []), newField],
                     });
                   }}
-                  className="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-blue-400 hover:text-blue-600 transition flex items-center justify-center gap-2"
+                  className="w-full px-4 py-3 border-2 border-dashed border-input rounded-lg text-muted-foreground hover:border-blue-400 hover:text-primary transition flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Add Screening Question
@@ -546,7 +547,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
             <button
               type="button"
               onClick={() => navigate(-1)}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
+              className="px-4 py-2 text-foreground hover:bg-accent rounded-lg transition"
             >
               Cancel
             </button>
@@ -556,7 +557,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                 type="button"
                 onClick={handleSaveDraft}
                 disabled={isLoading}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 border border-input text-foreground rounded-lg hover:bg-accent disabled:opacity-50 flex items-center gap-2"
               >
                 <Save className="w-4 h-4" />
                 Save as Draft
@@ -566,7 +567,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                 type="button"
                 onClick={handlePublish}
                 disabled={isLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
               >
                 <Send className="w-4 h-4" />
                 Submit for Review
@@ -575,7 +576,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
           </div>
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 };
 

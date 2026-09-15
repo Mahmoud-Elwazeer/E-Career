@@ -10,50 +10,71 @@ import { apiRequest } from "@/services/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin, RequireEmployer } from "@/components/RequireRole";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Loader2 } from "lucide-react";
+
+// First-paint critical routes stay eager.
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Jobs from "./pages/Jobs";
 import JobDetail from "./pages/JobDetail";
-import CompanyProfile from "./pages/CompanyProfile";
-import ProfilePage from "./pages/ProfilePage";
-import SavedJobs from "./pages/SavedJobs";
-import TalentScore from "./pages/TalentScore";
-import AdminDashboard from "./pages/AdminDashboard";
-import About from "./pages/About";
 import NotFound from "./pages/NotFound";
-import ResetPassword from "./pages/ResetPassword";
-import Alerts from "./pages/Alerts";
-import ApiDocs from "./pages/ApiDocs";
-import Recommendations from "./pages/Recommendations";
-import RashidChat from "./pages/RashidChat";
-import InterviewPractice from "./pages/InterviewPractice";
-import ResumeBuilder from "./pages/ResumeBuilder";
-import NotificationPreferences from "./pages/NotificationPreferences";
-import Notifications from "./pages/Notifications";
-import Settings from "./pages/Settings";
-import Applications from "./pages/Applications";
-import IntelligenceDashboard from "./pages/IntelligenceDashboard";
-import { EmployerDashboard, EmployerRegister, JobPostingForm, TalentSearch } from "./pages/employer";
-import CodingPractice from "./pages/CodingPractice";
-import SalaryInsights from "./pages/SalaryInsights";
-import Assessments from "./pages/Assessments";
+
+// Everything else is code-split so the initial bundle stays small.
+import { lazy, Suspense, useState, useEffect } from "react";
+const CompanyProfile = lazy(() => import("./pages/CompanyProfile"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const SavedJobs = lazy(() => import("./pages/SavedJobs"));
+const TalentScore = lazy(() => import("./pages/TalentScore"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const About = lazy(() => import("./pages/About"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Alerts = lazy(() => import("./pages/Alerts"));
+const ApiDocs = lazy(() => import("./pages/ApiDocs"));
+const Recommendations = lazy(() => import("./pages/Recommendations"));
+const RashidChat = lazy(() => import("./pages/RashidChat"));
+const InterviewPractice = lazy(() => import("./pages/InterviewPractice"));
+const ResumeBuilder = lazy(() => import("./pages/ResumeBuilder"));
+const NotificationPreferences = lazy(() => import("./pages/NotificationPreferences"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Applications = lazy(() => import("./pages/Applications"));
+const IntelligenceDashboard = lazy(() => import("./pages/IntelligenceDashboard"));
+const EmployerDashboard = lazy(() => import("./pages/employer/EmployerDashboard"));
+const EmployerRegister = lazy(() => import("./pages/employer/EmployerRegister"));
+const JobPostingForm = lazy(() => import("./pages/employer/JobPostingForm"));
+const TalentSearch = lazy(() => import("./pages/employer/TalentSearch"));
+const CodingPractice = lazy(() => import("./pages/CodingPractice"));
+const SalaryInsights = lazy(() => import("./pages/SalaryInsights"));
+const Assessments = lazy(() => import("./pages/Assessments"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+
 import { RashidWidget } from "./components/rashid/RashidWidget";
 import { RashidOnboarding } from "./components/rashid/RashidOnboarding";
 import { OnboardingFlow } from "./components/landing/OnboardingFlow";
 import { useI18nSync } from "@/hooks/use-i18n";
 import { useAuth } from "@/hooks/use-auth";
-import { useState, useEffect } from "react";
 
 const queryClient = new QueryClient();
+
+function RouteFallback() {
+  return (
+    <div className="flex items-center justify-center py-32" role="status" aria-live="polite">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <span className="sr-only">Loading…</span>
+    </div>
+  );
+}
 
 function AnimatedRoutes() {
   const location = useLocation();
   return (
     <AnimatePresence mode="wait" initial={false}>
+      <Suspense fallback={<RouteFallback />}>
       <Routes location={location} key={location.pathname}>
         {/* Public routes */}
         <Route path="/" element={<Index />} />
         <Route path="/about" element={<About />} />
+        <Route path="/pricing" element={<Pricing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
@@ -97,6 +118,7 @@ function AnimatedRoutes() {
 
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
     </AnimatePresence>
   );
 }

@@ -29,7 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AuthNavbar } from '@/components/AuthNavbar';
+import { AppShell } from '@/components/shells/AppShell';
 import {
   generateCodingProblem,
   submitCodingSolution,
@@ -42,9 +42,9 @@ import {
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const DIFFICULTIES = [
-  { value: 'easy', label: 'Easy', labelAr: 'سهل', color: 'text-green-600 border-green-600 bg-green-50 dark:bg-green-900/20' },
-  { value: 'medium', label: 'Medium', labelAr: 'متوسط', color: 'text-yellow-600 border-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' },
-  { value: 'hard', label: 'Hard', labelAr: 'صعب', color: 'text-red-600 border-red-600 bg-red-50 dark:bg-red-900/20' },
+  { value: 'easy', label: 'Easy', labelAr: 'سهل', color: 'text-success border-green-600 bg-success/10 dark:bg-green-900/20' },
+  { value: 'medium', label: 'Medium', labelAr: 'متوسط', color: 'text-warning-foreground border-yellow-600 bg-warning/10 dark:bg-yellow-900/20' },
+  { value: 'hard', label: 'Hard', labelAr: 'صعب', color: 'text-destructive border-red-600 bg-destructive/10 dark:bg-red-900/20' },
 ];
 
 const LANGUAGES = [
@@ -159,9 +159,7 @@ export default function CodingPractice() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AuthNavbar />
-
+    <AppShell>
       <div className="container mx-auto px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -171,10 +169,10 @@ export default function CodingPractice() {
           {/* Page header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Code2 className="h-8 w-8 text-blue-600" />
+              <Code2 className="h-8 w-8 text-primary" />
               {isAr ? 'تمرين البرمجة' : 'Coding Practice'}
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">
+            <p className="text-muted-foreground dark:text-gray-400 mt-2">
               {isAr
                 ? 'تدرب على مسائل البرمجة مع تنفيذ وتقييم مدعوم بالذكاء الاصطناعي'
                 : 'Practice coding problems with AI-powered execution and evaluation'}
@@ -211,7 +209,7 @@ export default function CodingPractice() {
                             'flex-1 py-2 px-4 rounded-lg border-2 font-medium transition-all',
                             difficulty === d.value
                               ? d.color
-                              : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                              : 'border-border dark:border-gray-700 hover:bg-accent dark:hover:bg-accent'
                           )}
                         >
                           {isAr ? d.labelAr : d.label}
@@ -231,8 +229,8 @@ export default function CodingPractice() {
                           className={cn(
                             'py-2 px-4 rounded-lg border-2 font-medium transition-all text-center',
                             language === l.value
-                              ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600'
-                              : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                              ? 'border-primary bg-primary/10 dark:bg-blue-900/20 text-primary'
+                              : 'border-border dark:border-gray-700 hover:bg-accent dark:hover:bg-accent'
                           )}
                         >
                           {l.label}
@@ -292,16 +290,16 @@ export default function CodingPractice() {
                   <div className="flex items-center gap-3">
                     <span className={cn(
                       'px-3 py-1 rounded-full text-xs font-semibold uppercase',
-                      problem.difficulty === 'easy' && 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-                      problem.difficulty === 'medium' && 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-                      problem.difficulty === 'hard' && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                      problem.difficulty === 'easy' && 'bg-success/15 text-success dark:bg-green-900/30 dark:text-green-400',
+                      problem.difficulty === 'medium' && 'bg-warning/15 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+                      problem.difficulty === 'hard' && 'bg-destructive/15 text-destructive dark:bg-red-900/30 dark:text-red-400',
                     )}>
                       {problem.difficulty}
                     </span>
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary dark:bg-blue-900/30 dark:text-blue-400">
                       {problem.language_name}
                     </span>
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground dark:bg-card dark:text-gray-300">
                       {problem.topic}
                     </span>
                   </div>
@@ -319,20 +317,20 @@ export default function CodingPractice() {
                         <CardTitle className="text-xl">{problem.title}</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                        <p className="text-foreground dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                           {problem.description}
                         </p>
 
                         {/* Examples */}
                         {problem.examples?.length > 0 && (
                           <div className="space-y-3">
-                            <h4 className="font-semibold text-sm uppercase text-gray-500">
+                            <h4 className="font-semibold text-sm uppercase text-muted-foreground">
                               {isAr ? 'أمثلة' : 'Examples'}
                             </h4>
                             {problem.examples.map((ex, i) => (
-                              <div key={i} className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 space-y-1 text-sm font-mono">
-                                <div><span className="text-gray-500">{isAr ? 'الإدخال:' : 'Input:'}</span> {ex.input}</div>
-                                <div><span className="text-gray-500">{isAr ? 'الإخراج:' : 'Output:'}</span> {ex.output}</div>
+                              <div key={i} className="bg-background dark:bg-gray-800/50 rounded-lg p-3 space-y-1 text-sm font-mono">
+                                <div><span className="text-muted-foreground">{isAr ? 'الإدخال:' : 'Input:'}</span> {ex.input}</div>
+                                <div><span className="text-muted-foreground">{isAr ? 'الإخراج:' : 'Output:'}</span> {ex.output}</div>
                               </div>
                             ))}
                           </div>
@@ -341,10 +339,10 @@ export default function CodingPractice() {
                         {/* Constraints */}
                         {problem.constraints?.length > 0 && (
                           <div className="space-y-2">
-                            <h4 className="font-semibold text-sm uppercase text-gray-500">
+                            <h4 className="font-semibold text-sm uppercase text-muted-foreground">
                               {isAr ? 'القيود' : 'Constraints'}
                             </h4>
-                            <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                            <ul className="list-disc list-inside text-sm text-muted-foreground dark:text-gray-400 space-y-1">
                               {problem.constraints.map((c, i) => (
                                 <li key={i}>{c}</li>
                               ))}
@@ -372,7 +370,7 @@ export default function CodingPractice() {
                           spellCheck={false}
                           className={cn(
                             'w-full min-h-[350px] p-4 font-mono text-sm leading-relaxed resize-y',
-                            'bg-gray-900 text-gray-100 focus:outline-none',
+                            'bg-card text-gray-100 focus:outline-none',
                             'border-0 rounded-none',
                             isAr ? 'text-left' : '' // Code is always LTR
                           )}
@@ -430,19 +428,19 @@ export default function CodingPractice() {
                               <Terminal className="w-4 h-4" />
                               {isAr ? 'نتيجة التنفيذ' : 'Execution Output'}
                               {executionResult.success ? (
-                                <CheckCircle2 className="w-4 h-4 text-green-500 ms-auto" />
+                                <CheckCircle2 className="w-4 h-4 text-success ms-auto" />
                               ) : (
-                                <XCircle className="w-4 h-4 text-red-500 ms-auto" />
+                                <XCircle className="w-4 h-4 text-destructive ms-auto" />
                               )}
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="space-y-3">
                             {executionResult.status && (
                               <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-500">{isAr ? 'الحالة:' : 'Status:'}</span>
+                                <span className="text-muted-foreground">{isAr ? 'الحالة:' : 'Status:'}</span>
                                 <span className={cn(
                                   'font-medium',
-                                  executionResult.success ? 'text-green-600' : 'text-red-600'
+                                  executionResult.success ? 'text-success' : 'text-destructive'
                                 )}>
                                   {executionResult.status}
                                 </span>
@@ -451,8 +449,8 @@ export default function CodingPractice() {
 
                             {executionResult.output && (
                               <div>
-                                <p className="text-xs font-semibold text-gray-500 mb-1 uppercase">{isAr ? 'الإخراج' : 'stdout'}</p>
-                                <pre className="bg-gray-900 text-gray-100 p-3 rounded-lg text-sm font-mono overflow-x-auto whitespace-pre-wrap">
+                                <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase">{isAr ? 'الإخراج' : 'stdout'}</p>
+                                <pre className="bg-card text-gray-100 p-3 rounded-lg text-sm font-mono overflow-x-auto whitespace-pre-wrap">
                                   {executionResult.output}
                                 </pre>
                               </div>
@@ -460,7 +458,7 @@ export default function CodingPractice() {
 
                             {executionResult.stderr && (
                               <div>
-                                <p className="text-xs font-semibold text-red-500 mb-1 uppercase">{isAr ? 'الأخطاء' : 'stderr'}</p>
+                                <p className="text-xs font-semibold text-destructive mb-1 uppercase">{isAr ? 'الأخطاء' : 'stderr'}</p>
                                 <pre className="bg-red-950 text-red-300 p-3 rounded-lg text-sm font-mono overflow-x-auto whitespace-pre-wrap">
                                   {executionResult.stderr}
                                 </pre>
@@ -468,12 +466,12 @@ export default function CodingPractice() {
                             )}
 
                             {executionResult.error && (
-                              <div className="text-sm text-red-600 dark:text-red-400">
+                              <div className="text-sm text-destructive dark:text-red-400">
                                 {executionResult.error}
                               </div>
                             )}
 
-                            <div className="flex gap-6 text-xs text-gray-500 pt-2 border-t border-gray-100 dark:border-gray-800">
+                            <div className="flex gap-6 text-xs text-muted-foreground pt-2 border-t border-border dark:border-gray-800">
                               <span className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
                                 {executionResult.execution_time}s
@@ -489,10 +487,10 @@ export default function CodingPractice() {
 
                       {/* Evaluation results */}
                       {evaluation && (
-                        <Card className="border-blue-200 dark:border-blue-900">
+                        <Card className="border-primary/30 dark:border-blue-900">
                           <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                              <Lightbulb className="w-5 h-5 text-blue-600" />
+                              <Lightbulb className="w-5 h-5 text-primary" />
                               {isAr ? 'نتيجة التقييم' : 'Evaluation Results'}
                             </CardTitle>
                           </CardHeader>
@@ -523,15 +521,15 @@ export default function CodingPractice() {
 
                             {/* Test results */}
                             <div className="flex items-center gap-4 text-sm">
-                              <span className="flex items-center gap-1 text-green-600">
+                              <span className="flex items-center gap-1 text-success">
                                 <CheckCircle2 className="w-4 h-4" />
                                 {evaluation.tests_passed} {isAr ? 'نجح' : 'passed'}
                               </span>
-                              <span className="flex items-center gap-1 text-red-600">
+                              <span className="flex items-center gap-1 text-destructive">
                                 <XCircle className="w-4 h-4" />
                                 {evaluation.tests_failed} {isAr ? 'فشل' : 'failed'}
                               </span>
-                              <span className="text-gray-500">
+                              <span className="text-muted-foreground">
                                 / {evaluation.total_tests} {isAr ? 'اختبار' : 'tests'}
                               </span>
                             </div>
@@ -539,12 +537,12 @@ export default function CodingPractice() {
                             {/* Suggestions */}
                             {evaluation.suggestions?.length > 0 && (
                               <div className="space-y-2">
-                                <h4 className="font-semibold text-sm uppercase text-gray-500">
+                                <h4 className="font-semibold text-sm uppercase text-muted-foreground">
                                   {isAr ? 'اقتراحات التحسين' : 'Suggestions'}
                                 </h4>
                                 <ul className="space-y-2">
                                   {evaluation.suggestions.map((s, i) => (
-                                    <li key={i} className="flex gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <li key={i} className="flex gap-2 text-sm text-foreground dark:text-gray-300">
                                       <Lightbulb className="w-4 h-4 text-yellow-500 shrink-0 mt-0.5" />
                                       {s}
                                     </li>
@@ -563,7 +561,7 @@ export default function CodingPractice() {
           )}
         </motion.div>
       </div>
-    </div>
+    </AppShell>
   );
 }
 
@@ -572,23 +570,23 @@ export default function CodingPractice() {
 function ScoreCard({ label, value, color }: { label: string; value: number; color: string }) {
   const pct = Math.round(value * 100);
   const colorMap: Record<string, string> = {
-    blue: 'text-blue-600',
-    green: 'text-green-600',
-    yellow: 'text-yellow-600',
-    purple: 'text-purple-600',
+    blue: 'text-primary',
+    green: 'text-success',
+    yellow: 'text-warning-foreground',
+    purple: 'text-primary',
   };
   const bgMap: Record<string, string> = {
-    blue: 'bg-blue-600',
-    green: 'bg-green-600',
+    blue: 'bg-primary',
+    green: 'bg-success',
     yellow: 'bg-yellow-600',
-    purple: 'bg-purple-600',
+    purple: 'bg-primary',
   };
 
   return (
     <div className="text-center space-y-2">
-      <p className="text-xs font-semibold text-gray-500 uppercase">{label}</p>
+      <p className="text-xs font-semibold text-muted-foreground uppercase">{label}</p>
       <p className={cn('text-2xl font-bold', colorMap[color])}>{pct}%</p>
-      <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+      <div className="w-full h-1.5 bg-muted dark:bg-gray-700 rounded-full overflow-hidden">
         <div
           className={cn('h-full rounded-full transition-all duration-500', bgMap[color])}
           style={{ width: `${pct}%` }}

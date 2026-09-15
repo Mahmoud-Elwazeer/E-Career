@@ -11,6 +11,14 @@ research was performed to produce this document — every claim below traces to 
 more of the 10 source reports. Where two reports disagreed, it is flagged explicitly
 rather than silently resolved.
 
+> **Current-source reconciliation (2026-09-10):** Read
+> `audit/CODE_VERIFIED_RECONCILIATION_2026-09-10.md` before treating a finding below as
+> current. It verifies the active `development` branch, GitHub branch divergence,
+> executable validation, current feature wiring, and frontend quality. It specifically
+> corrects several historical findings that active code has since changed (including
+> employer role assignment/stats, scraper field usage, hybrid search wiring, role
+> guards, and the complete absence of plan/subscription APIs).
+
 **Method note inherited from the audits:** findings are code-verified (direct reads,
 live `pytest`/`boto3`/ORM reproduction, `git log`/`git show`) — not derived from prior
 status docs. Per `AGENTS.md`, treat this document itself the same way: re-verify before

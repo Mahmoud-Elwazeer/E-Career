@@ -40,7 +40,9 @@ export function useSavedJobs() {
     try {
       const saved = await saveJob(jobId);
       setSavedJobs((prev) => [saved, ...prev]);
-    } catch {}
+    } catch {
+      /* ignore: save failure surfaces via reload; avoid noisy UI */
+    }
   }, [user]);
 
   const remove = useCallback(async (jobId: number | string) => {
@@ -50,7 +52,9 @@ export function useSavedJobs() {
     try {
       await unsaveJob(savedId);
       setSavedJobs((prev) => prev.filter((s) => s.id !== savedId));
-    } catch {}
+    } catch {
+      /* ignore: unsave failure surfaces via reload; avoid noisy UI */
+    }
   }, [user, getSavedId]);
 
   return { savedJobs, save, remove, isSaved, loading, reload: load };

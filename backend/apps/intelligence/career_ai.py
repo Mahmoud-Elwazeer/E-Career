@@ -13,6 +13,26 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def _build_operation_task_map():
+    """Map operation labels to router TaskTypes (lazy — router import optional)."""
+    try:
+        from apps.intelligence.model_router import TaskType
+    except Exception:
+        return {}
+    return {
+        "cv_parsing": TaskType.CV_PARSING,
+        "job_matching": TaskType.JOB_MATCHING,
+        "salary_guidance": TaskType.RESEARCH,
+        "interview_prep": TaskType.INTERVIEW_PREP,
+        "interview_eval": TaskType.INTERVIEW_PREP,
+        "ranking": TaskType.RANKING,
+        "assessment_feedback": TaskType.SUMMARY,
+    }
+
+
+_OPERATION_TASK_MAP = _build_operation_task_map()
+
+
 class CareerAIService:
     """AI-powered career services backed by apps.intelligence."""
 
@@ -31,13 +51,38 @@ class CareerAIService:
         from apps.intelligence.circuit_breaker import ai_circuit_breaker
         return ai_circuit_breaker.is_available()
 
-    def invoke_model(self, prompt, system_prompt=None, max_tokens=4096, temperature=0.3, user=None, operation=""):
+    def invoke_model(self, prompt, system_prompt=None, max_tokens=4096, temperature=0.3,
+                     user=None, operation="", task=None, quality=None):
+        """Invoke the LLM.
+
+        When a ``task`` (model_router.TaskType) is supplied, model selection and
+        default max_tokens/temperature are delegated to the centralized model
+        router (quality-first, then cost, admin-overridable). When omitted, the
+        historical default (sonnet) is preserved for backward compatibility.
+        """
         from apps.intelligence.llm_plugin import LLMRequest
+
+        model_alias = "sonnet"
+        # If no explicit task was passed, derive it from the operation label so
+        # existing callers get centralized routing without call-site changes.
+        if task is None and operation:
+            task = _OPERATION_TASK_MAP.get(operation)
+        if task is not None:
+            try:
+                from apps.intelligence.model_router import select_model, QualityLevel
+                sel = select_model(task, quality or QualityLevel.BALANCED)
+                model_alias = sel.model_alias
+                # Router-provided defaults only fill unset call-site values.
+                if max_tokens == 4096:
+                    max_tokens = sel.max_tokens
+            except Exception:
+                # Never let routing break a real AI call — fall back to sonnet.
+                model_alias = "sonnet"
 
         request = LLMRequest(
             prompt=prompt,
             system_prompt=system_prompt or "",
-            model="sonnet",
+            model=model_alias,
             max_tokens=max_tokens,
             temperature=temperature,
             user_id=getattr(user, 'id', None) if user else None,

@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { SlidersHorizontal, X, ArrowUpDown, SearchX, Loader2 } from "lucide-react";
+import { SlidersHorizontal, X, ArrowUpDown, SearchX, Loader2, AlertTriangle, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,6 +20,15 @@ import type { Job } from "@/services/jobs";
 
 const ITEMS_PER_PAGE = 8;
 type SortOption = "latest" | "salary-high" | "salary-low";
+
+/** Return up to 7 page numbers centered around the current page. */
+function getPageWindow(current: number, total: number, size = 7): number[] {
+  if (total <= size) return Array.from({ length: total }, (_, i) => i + 1);
+  let start = Math.max(1, current - Math.floor(size / 2));
+  const end = Math.min(total, start + size - 1);
+  start = Math.max(1, end - size + 1);
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+}
 
 function FilterControls({
   locationType, industry, experienceLevel, setParam
@@ -85,9 +94,10 @@ export default function Jobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const { lang } = useTheme();
   const isAr = lang === "ar";
-  const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
 
   usePageMeta(
     isAr ? "تصفح الوظائف" : "Browse Jobs",
@@ -100,6 +110,10 @@ export default function Jobs() {
   const experienceLevel = searchParams.get("experienceLevel") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
 
+  // Local, immediately-editable search text; committed to the URL after a debounce
+  // so we don't fire a request (and reset pagination) on every keystroke.
+  const [searchText, setSearchText] = useState(q);
+
   const { isSaved, save, remove } = useSavedJobs();
 
   const setParam = (key: string, value: string) => {
@@ -111,11 +125,30 @@ export default function Jobs() {
     setSearchParams(next);
   };
 
-  const clearFilters = () => setSearchParams({});
+  const clearFilters = () => {
+    setSearchText("");
+    setSearchParams({});
+  };
 
-  // Fetch jobs from DB
+  // Keep the local field in sync when the query is changed externally
+  // (e.g. arriving from the landing search or clearing filters).
   useEffect(() => {
+    setSearchText(q);
+  }, [q]);
+
+  // Debounce committing the typed query into the URL.
+  useEffect(() => {
+    if (searchText === q) return;
+    const timer = setTimeout(() => setParam("q", searchText), 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText]);
+
+  // Fetch jobs from DB (cancels stale responses so the newest query always wins).
+  useEffect(() => {
+    let active = true;
     setLoading(true);
+    setError(false);
     fetchJobs({
       q: q || undefined,
       work_mode: locationType || undefined,
@@ -125,15 +158,18 @@ export default function Jobs() {
       page_size: ITEMS_PER_PAGE,
       ordering: sort === 'latest' ? '-posted_at' : sort === 'salary-high' ? '-salary_max' : 'salary_min',
     }).then((res) => {
-      const data = res.results ?? [];
-      const count = res.count ?? 0;
-      setJobs(data);
-      setTotal(count);
+      if (!active) return;
+      setJobs(res.results ?? []);
+      setTotal(res.count ?? 0);
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {
+      if (!active) return;
+      setError(true);
+      setLoading(false);
+    });
 
-    return () => clearTimeout(searchTimeout.current);
-  }, [q, locationType, industry, experienceLevel, page, sort]);
+    return () => { active = false; };
+  }, [q, locationType, industry, experienceLevel, page, sort, reloadKey]);
 
   const activeFilters = [
     locationType && { key: "locationType", label: locationType },
@@ -150,8 +186,8 @@ export default function Jobs() {
         <div className="flex gap-2 mb-4">
           <SearchBarMotion>
             <Input
-              value={q}
-              onChange={(e) => setParam("q", e.target.value)}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
               placeholder={isAr ? "ابحث عن وظائف..." : "Search jobs..."}
               className="ps-11 h-11 rounded-xl border-border/60 focus-visible:ring-0 focus-visible:ring-offset-0"
             />
@@ -216,8 +252,27 @@ export default function Jobs() {
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center py-20">
+              <div className="flex items-center justify-center py-20" role="status" aria-live="polite">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="sr-only">{isAr ? "جاري التحميل" : "Loading"}</span>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="rounded-full bg-destructive/10 p-3 mb-4">
+                  <AlertTriangle className="h-6 w-6 text-destructive" />
+                </div>
+                <h3 className="text-heading-3 mb-1">
+                  {isAr ? "تعذّر تحميل الوظائف" : "Couldn't load jobs"}
+                </h3>
+                <p className="text-body text-muted-foreground mb-4 max-w-sm">
+                  {isAr
+                    ? "حدثت مشكلة في الاتصال بالخادم. تحقق من اتصالك وحاول مرة أخرى."
+                    : "Something went wrong reaching the server. Check your connection and try again."}
+                </p>
+                <Button onClick={() => setReloadKey((k) => k + 1)} className="press-feedback gap-2">
+                  <RotateCcw className="h-4 w-4" />
+                  {isAr ? "إعادة المحاولة" : "Try again"}
+                </Button>
               </div>
             ) : jobs.length > 0 ? (
               <div className="space-y-3">
@@ -241,14 +296,14 @@ export default function Jobs() {
               />
             )}
 
-            {totalPages > 1 && (
+            {!error && totalPages > 1 && (
               <div className="flex justify-center gap-2 mt-8">
                 <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setParam("page", String(page - 1))} className="press-feedback">
                   {isAr ? "السابق" : "Prev"}
                 </Button>
-                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => (
-                  <Button key={i} variant={page === i + 1 ? "default" : "outline"} size="sm" onClick={() => setParam("page", String(i + 1))} className="press-feedback w-9">
-                    {i + 1}
+                {getPageWindow(page, totalPages).map((p) => (
+                  <Button key={p} variant={page === p ? "default" : "outline"} size="sm" onClick={() => setParam("page", String(p))} className="press-feedback w-9">
+                    {p}
                   </Button>
                 ))}
                 <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setParam("page", String(page + 1))} className="press-feedback">

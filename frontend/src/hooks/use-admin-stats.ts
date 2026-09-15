@@ -20,7 +20,9 @@ export function useAdminStats() {
       const [s, c] = await Promise.all([fetchAdminStats(), fetchAdminCharts()]);
       setStats(s);
       setCharts(c);
-    } catch {}
+    } catch {
+      /* ignore: admin stats fall back to defaults below */
+    }
     finally { setIsLoading(false); }
   }, []);
 

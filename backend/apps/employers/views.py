@@ -308,16 +308,19 @@ class JobPostingViewSet(viewsets.ModelViewSet):
 
         try:
             from django.contrib.auth import get_user_model
-            from apps.users.models import Notification
+            from apps.notifications.service import create_and_deliver_notification
             User = get_user_model()
             admins = User.objects.filter(role='admin', is_active=True)
             for admin_user in admins:
-                Notification.objects.create(
+                # Write to the canonical UserNotification model so it reaches
+                # the in-app inbox (which reads notifications.UserNotification).
+                create_and_deliver_notification(
                     user=admin_user,
+                    notification_type='system',
                     title=f'New job submission: {job_post.title}',
-                    body=f'{job_post.company.name} submitted "{job_post.title}" for review.',
-                    type='system',
-                    metadata={'job_posting_id': job_post.id, 'company': job_post.company.name},
+                    message=f'{job_post.company.name} submitted "{job_post.title}" for review.',
+                    related_id=str(job_post.id),
+                    related_type='job_posting',
                 )
         except Exception:
             pass
@@ -716,7 +719,12 @@ class TalentPoolViewSet(viewsets.ModelViewSet):
         return TalentPoolSerializer
 
     def perform_create(self, serializer):
-        serializer.save(employer=self.request.user.employer_profile)
+        from apps.core.permissions import check_entitlement
+        employer = self.request.user.employer_profile
+        # Admin-configurable gate: plan.feature_flags["talent_pool"] == False blocks.
+        # No subscription / flag unset => allowed (keeps platform usable).
+        check_entitlement(employer.company, "feature", feature="talent_pool")
+        serializer.save(employer=employer)
 
     @action(detail=True, methods=['post'])
     def add_candidate(self, request, pk=None):

@@ -24,7 +24,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
 import { cn } from '@/lib/utils';
-import { AuthNavbar } from '@/components/AuthNavbar';
+import { AppShell } from '@/components/shells/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -512,7 +512,7 @@ export default function InterviewPractice() {
         <h2 className="text-3xl font-bold">
           {isAr ? 'ابدأ مقابلة تدريبية' : 'Start a Mock Interview'}
         </h2>
-        <p className="text-gray-500 dark:text-gray-400">
+        <p className="text-muted-foreground dark:text-gray-400">
           {isAr 
             ? 'اختر نوع المقابلة والوظيفة المستهدفة لبدء التدريب'
             : 'Select interview type and target role to begin practice'}
@@ -551,11 +551,11 @@ export default function InterviewPractice() {
                   className={cn(
                     'flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all',
                     selectedType === type.value
-                      ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                      ? 'border-primary bg-primary/10 dark:bg-blue-900/20'
+                      : 'border-border dark:border-gray-700 hover:border-blue-300'
                   )}
                 >
-                  <type.icon className="w-8 h-8 mb-2 text-blue-600" />
+                  <type.icon className="w-8 h-8 mb-2 text-primary" />
                   <span className="text-sm font-medium">{isAr ? type.labelAr : type.label}</span>
                 </button>
               ))}
@@ -573,8 +573,8 @@ export default function InterviewPractice() {
                   className={cn(
                     'flex-1 py-2 px-4 rounded-lg border transition-all',
                     selectedDifficulty === diff.value
-                      ? 'border-blue-600 bg-blue-600 text-white'
-                      : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border dark:border-gray-700 hover:bg-accent dark:hover:bg-accent'
                   )}
                 >
                   {isAr ? diff.labelAr : diff.label}
@@ -592,8 +592,8 @@ export default function InterviewPractice() {
                 className={cn(
                   'flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-all',
                   mode === 'text'
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border dark:border-gray-700 hover:bg-accent dark:hover:bg-accent'
                 )}
               >
                 <MessageSquare className="w-4 h-4" />
@@ -604,8 +604,8 @@ export default function InterviewPractice() {
                 className={cn(
                   'flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-all',
                   mode === 'voice'
-                    ? 'border-blue-600 bg-blue-600 text-white'
-                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border dark:border-gray-700 hover:bg-accent dark:hover:bg-accent'
                 )}
               >
                 <Mic className="w-4 h-4" />
@@ -650,12 +650,12 @@ export default function InterviewPractice() {
             {isAr ? 'عودة' : 'Back'}
           </Button>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-muted-foreground">
               {isAr ? 'سؤال' : 'Question'} {currentQuestionIndex + 1} / {totalQuestions}
             </span>
-            <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
               <div 
-                className="h-full bg-blue-600 transition-all duration-300"
+                className="h-full bg-primary transition-all duration-300"
                 style={{ width: `${((currentQuestionIndex + 1) / totalQuestions) * 100}%` }}
               />
             </div>
@@ -666,7 +666,7 @@ export default function InterviewPractice() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-blue-600" />
+              <MessageSquare className="w-5 h-5 text-primary" />
               {isAr ? 'السؤال' : 'Question'}
             </CardTitle>
           </CardHeader>
@@ -703,20 +703,20 @@ export default function InterviewPractice() {
                   className={cn(
                     'w-24 h-24 rounded-full flex items-center justify-center transition-all',
                     isRecording
-                      ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                      : 'bg-blue-600 hover:bg-blue-700',
+                      ? 'bg-destructive hover:bg-red-600 animate-pulse'
+                      : 'bg-primary hover:bg-primary/90',
                     isProcessing && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   {isProcessing ? (
-                    <Loader2 className="w-10 h-10 text-white animate-spin" />
+                    <Loader2 className="w-10 h-10 text-primary-foreground animate-spin" />
                   ) : isRecording ? (
-                    <MicOff className="w-10 h-10 text-white" />
+                    <MicOff className="w-10 h-10 text-primary-foreground" />
                   ) : (
-                    <Mic className="w-10 h-10 text-white" />
+                    <Mic className="w-10 h-10 text-primary-foreground" />
                   )}
                 </button>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {isProcessing
                     ? (isAr ? 'جاري المعالجة...' : 'Processing...')
                     : isRecording
@@ -726,11 +726,11 @@ export default function InterviewPractice() {
 
                 {/* Transcript Display */}
                 {voiceTranscript && (
-                  <div className="w-full p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <p className="text-sm font-medium text-gray-500 mb-1">
+                  <div className="w-full p-4 bg-background dark:bg-card rounded-lg">
+                    <p className="text-sm font-medium text-muted-foreground mb-1">
                       {isAr ? 'النص المستخرج:' : 'Transcript:'}
                     </p>
-                    <p className="text-gray-900 dark:text-gray-100">{voiceTranscript}</p>
+                    <p className="text-foreground dark:text-gray-100">{voiceTranscript}</p>
                   </div>
                 )}
 
@@ -800,9 +800,9 @@ export default function InterviewPractice() {
 
         {/* Previous Answer (if any) */}
         {currentQuestionIndex > 0 && (
-          <Card className="border-green-200 dark:border-green-900">
+          <Card className="border-success/30 dark:border-green-900">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-600">
+              <CardTitle className="flex items-center gap-2 text-success">
                 <CheckCircle className="w-5 h-5" />
                 {isAr ? 'السؤال السابق' : 'Previous Question'}
               </CardTitle>
@@ -811,12 +811,12 @@ export default function InterviewPractice() {
               <p className="font-medium mb-2">
                 {session?.questions[currentQuestionIndex - 1]?.question}
               </p>
-              <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
-                <p className="text-sm text-green-800 dark:text-green-200">
+              <div className="bg-success/10 dark:bg-green-900/20 p-3 rounded-lg">
+                <p className="text-sm text-success dark:text-green-200">
                   {isAr ? 'الإجابة:' : 'Answer:'} 
                   {session?.questions[currentQuestionIndex - 1]?.answer}
                 </p>
-                <p className="text-sm text-green-800 dark:text-green-200 mt-1">
+                <p className="text-sm text-success dark:text-green-200 mt-1">
                   {isAr ? 'النتيجة:' : 'Score:'} 
                   {session?.questions[currentQuestionIndex - 1]?.score}/10
                 </p>
@@ -843,13 +843,13 @@ export default function InterviewPractice() {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Results Header */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-blue-100 dark:bg-blue-900/30">
-            <Award className="w-12 h-12 text-blue-600" />
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary/10 dark:bg-blue-900/30">
+            <Award className="w-12 h-12 text-primary" />
           </div>
           <h2 className="text-4xl font-bold">
             {isAr ? 'نتيجة المقابلة' : 'Interview Results'}
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300">
+          <p className="text-xl text-muted-foreground dark:text-gray-300">
             {isAr ? 'ممتاز! لقد أتممت المقابلة' : 'Great job! You completed the interview'}
           </p>
         </div>
@@ -863,20 +863,20 @@ export default function InterviewPractice() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-5xl font-bold text-blue-600">
+              <div className="text-5xl font-bold text-primary">
                 {session.overall_score}/10
               </div>
               <div className="mt-2">
                 {session.overall_score! >= 8 ? (
-                  <span className="text-green-600 font-medium">
+                  <span className="text-success font-medium">
                     {isAr ? 'ممتاز' : 'Excellent'}
                   </span>
                 ) : session.overall_score! >= 6 ? (
-                  <span className="text-blue-600 font-medium">
+                  <span className="text-primary font-medium">
                     {isAr ? 'جيد جداً' : 'Very Good'}
                   </span>
                 ) : (
-                  <span className="text-yellow-600 font-medium">
+                  <span className="text-warning-foreground font-medium">
                     {isAr ? 'جيد' : 'Good'}
                   </span>
                 )}
@@ -891,10 +891,10 @@ export default function InterviewPractice() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-5xl font-bold text-gray-900 dark:text-white">
+              <div className="text-5xl font-bold text-foreground dark:text-white">
                 {session.score_breakdown.total_questions}
               </div>
-              <div className="mt-2 text-gray-500">
+              <div className="mt-2 text-muted-foreground">
                 {isAr ? 'تمت الإجابة' : 'Answered'}
               </div>
             </CardContent>
@@ -907,10 +907,10 @@ export default function InterviewPractice() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="text-2xl font-bold text-foreground dark:text-white">
                 {session.target_role}
               </div>
-              <div className="mt-2 text-gray-500 capitalize">
+              <div className="mt-2 text-muted-foreground capitalize">
                 {isAr 
                   ? INTERVIEW_TYPES.find(t => t.value === session.interview_type)?.labelAr 
                   : INTERVIEW_TYPES.find(t => t.value === session.interview_type)?.label}
@@ -924,7 +924,7 @@ export default function InterviewPractice() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-blue-600" />
+                <BarChart3 className="w-5 h-5 text-primary" />
                 {isAr ? 'تحليل الأداء' : 'Performance Analysis'}
               </CardTitle>
             </CardHeader>
@@ -964,7 +964,7 @@ export default function InterviewPractice() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-blue-600" />
+                <MessageSquare className="w-5 h-5 text-primary" />
                 {isAr ? 'ملخص التغذية الراجعة' : 'Feedback Summary'}
               </CardTitle>
             </CardHeader>
@@ -992,8 +992,7 @@ export default function InterviewPractice() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <AuthNavbar />
+    <AppShell>
       <div className="container mx-auto px-4 py-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -1004,7 +1003,7 @@ export default function InterviewPractice() {
             <h1 className="text-3xl font-bold">
               {isAr ? 'تدريب المقابلات' : 'Interview Practice'}
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-2">
+            <p className="text-muted-foreground dark:text-gray-400 mt-2">
               {isAr 
                 ? 'مارس مهاراتك مع الذكاء الاصطناعي' 
                 : 'Practice your skills with AI'}
@@ -1045,6 +1044,6 @@ export default function InterviewPractice() {
           </AnimatePresence>
         </motion.div>
       </div>
-    </div>
+    </AppShell>
   );
 }

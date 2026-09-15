@@ -94,7 +94,7 @@ export async function apiRequest<T = unknown>(
     });
   };
 
-  let token = auth ? getAccessToken() : null;
+  const token = auth ? getAccessToken() : null;
   let res = await makeRequest(token);
 
   // Auto-refresh on 401

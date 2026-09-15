@@ -350,6 +350,7 @@ class RecommendationEngine:
                         content_score * 0.4
                     )
                     
+                    explanation = self._explain_match(job)
                     recommendations.append({
                         'job_id': str(job.uuid),
                         'job_title': job.title,
@@ -358,6 +359,9 @@ class RecommendationEngine:
                         'score': round(hybrid_score, 3),
                         'collaborative_score': round(collaborative_score, 3),
                         'content_score': round(content_score, 3),
+                        'match_reasons': explanation['match_reasons'],
+                        'explanation': explanation['explanation'],
+                        'match_factors': explanation['factors'],
                         'employment_type': job.employment_type,
                         'work_arrangement': job.work_arrangement,
                         'salary_min': job.salary_min,
@@ -423,7 +427,55 @@ class RecommendationEngine:
                         break
         
         return min(score, 1.0)
-    
+
+    def _explain_match(self, job: Job) -> Dict[str, Any]:
+        """Build an explainable, evidence-grounded reason set for a recommendation.
+
+        Reuses the same signals as _calculate_content_score so the explanation
+        always matches how the score was actually computed (no opaque scores).
+        Returns {"match_reasons": [...], "explanation": str, "factors": {...}}.
+        """
+        reasons: list[str] = []
+        factors: Dict[str, Any] = {}
+
+        # Skill overlap (same computation as the score path)
+        try:
+            user_skill_ids = set(
+                s.skill.id for s in CareerUserSkill.objects.filter(user=self.user)
+            )
+            job_skill_ids = set(s.id for s in job.skills.all()) if hasattr(job, "skills") else set()
+            overlap = len(user_skill_ids & job_skill_ids)
+            if user_skill_ids and job_skill_ids:
+                pct = round(100 * overlap / max(1, len(job_skill_ids)))
+                factors["skills"] = {"matched": overlap, "required": len(job_skill_ids), "percent": pct}
+                if overlap:
+                    reasons.append(f"يطابق {overlap} من مهاراتك ({pct}% من متطلبات الوظيفة)")
+        except Exception:
+            pass
+
+        # Experience alignment
+        user_profile = getattr(self.user, "career_profile", None)
+        if user_profile and getattr(user_profile, "experience_years", None) is not None:
+            expected = {"entry": 1, "mid": 4, "senior": 8, "lead": 12}.get(job.experience_level, 4)
+            diff = abs(expected - user_profile.experience_years)
+            factors["experience"] = {"user_years": user_profile.experience_years, "expected": expected}
+            if diff <= 2:
+                reasons.append("مستوى خبرتك مناسب لهذه الوظيفة")
+
+        # Work model / location
+        if user_profile and getattr(user_profile, "open_to_remote", False) and job.work_arrangement in ("remote", "hybrid"):
+            factors["work_model"] = job.work_arrangement
+            reasons.append("نمط العمل (عن بعد/هجين) يناسب تفضيلك")
+
+        if not reasons:
+            reasons.append("مطابقة عامة بناءً على ملفك المهني")
+
+        return {
+            "match_reasons": reasons,
+            "explanation": " • ".join(reasons),
+            "factors": factors,
+        }
+
     def _get_fallback_recommendations(self, n_recommendations: int) -> List[Dict[str, Any]]:
         """
         Get fallback recommendations when ML model is not available.
@@ -494,8 +546,18 @@ class RecommendationEngine:
                 if len(final_recommendations) >= n_recommendations:
                     break
 
-        # Remove the job object from final output
+        # Attach explainability, then remove the job object from final output.
         for item in final_recommendations:
+            job_obj = item.get('job')
+            if job_obj is not None:
+                try:
+                    explanation = self._explain_match(job_obj)
+                    item['match_reasons'] = explanation['match_reasons']
+                    item['explanation'] = explanation['explanation']
+                    item['match_factors'] = explanation['factors']
+                except Exception:
+                    item.setdefault('match_reasons', [])
+                    item.setdefault('explanation', '')
             item.pop('job', None)
 
         return final_recommendations

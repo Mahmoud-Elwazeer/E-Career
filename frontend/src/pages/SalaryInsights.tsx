@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { AuthNavbar } from '@/components/AuthNavbar';
+import { AppShell } from '@/components/shells/AppShell';
 import { apiRequest } from '@/services/client';
 import { useTheme } from '@/hooks/use-theme';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,10 +72,10 @@ function BenchmarkCard({ isAr }: { isAr: boolean }) {
   const result = benchmark.data;
 
   const underpaidLabel: Record<string, { icon: typeof ArrowUp; color: string; text: string; textAr: string }> = {
-    yes: { icon: ArrowDown, color: 'text-red-500', text: 'Below Market', textAr: 'أقل من السوق' },
+    yes: { icon: ArrowDown, color: 'text-destructive', text: 'Below Market', textAr: 'أقل من السوق' },
     maybe: { icon: Minus, color: 'text-yellow-500', text: 'Near Market', textAr: 'قريب من السوق' },
-    fair: { icon: CheckCircle2, color: 'text-green-500', text: 'Fair', textAr: 'عادل' },
-    above: { icon: ArrowUp, color: 'text-blue-500', text: 'Above Market', textAr: 'أعلى من السوق' },
+    fair: { icon: CheckCircle2, color: 'text-success', text: 'Fair', textAr: 'عادل' },
+    above: { icon: ArrowUp, color: 'text-primary', text: 'Above Market', textAr: 'أعلى من السوق' },
   };
 
   return (
@@ -283,8 +283,7 @@ export default function SalaryInsightsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <AuthNavbar />
+    <AppShell>
       <main className="container py-8 space-y-6">
         <div>
           <h1 className="text-3xl font-bold">
@@ -378,6 +377,6 @@ export default function SalaryInsightsPage() {
           </div>
         </div>
       </main>
-    </div>
+    </AppShell>
   );
 }

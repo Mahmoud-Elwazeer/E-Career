@@ -44,7 +44,7 @@ import {
   Cell
 } from 'recharts';
 import scoresApi, { calculateGrade, getGradeColor, getTrendColor } from '../services/scores';
-import { AuthNavbar } from '@/components/AuthNavbar';
+import { AppShell } from '@/components/shells/AppShell';
 
 // Score dimension configuration
 const DIMENSION_CONFIG = {
@@ -192,7 +192,7 @@ export default function TalentScoreDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -200,12 +200,12 @@ export default function TalentScoreDashboard() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] p-8">
-        <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Scores</h2>
-        <p className="text-gray-600 mb-6">{error}</p>
+        <AlertCircle className="w-16 h-16 text-destructive mb-4" />
+        <h2 className="text-2xl font-bold text-foreground mb-2">Error Loading Scores</h2>
+        <p className="text-muted-foreground mb-6">{error}</p>
         <button
           onClick={loadScores}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-6 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
         >
           Try Again
         </button>
@@ -214,13 +214,12 @@ export default function TalentScoreDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <AuthNavbar />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <AppShell>
+      <div className="container py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Talent Score Dashboard</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-3xl font-bold text-foreground">Talent Score Dashboard</h1>
+          <p className="text-muted-foreground mt-2">
             Your comprehensive career intelligence profile
           </p>
         </div>
@@ -233,8 +232,8 @@ export default function TalentScoreDashboard() {
         >
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="text-center md:text-left mb-6 md:mb-0">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Overall Career Score</h2>
-              <p className="text-gray-600">
+              <h2 className="text-xl font-semibold text-foreground mb-2">Overall Career Score</h2>
+              <p className="text-muted-foreground">
                 {trendDirection === 'insufficient_data' 
                   ? 'Complete your profile to see trends'
                   : `Overall trend: ${trendDirection}`}
@@ -257,7 +256,7 @@ export default function TalentScoreDashboard() {
                 />
                 <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
                   <span 
-                    className="px-3 py-1 rounded-full text-lg font-bold text-white"
+                    className="px-3 py-1 rounded-full text-lg font-bold text-primary-foreground"
                     style={{ backgroundColor: overallGradeColor }}
                   >
                     {overallGrade}
@@ -268,12 +267,12 @@ export default function TalentScoreDashboard() {
               {/* Trend Indicator */}
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-2 mb-2">
-                  {trendDirection === 'improving' && <TrendingUp className="w-8 h-8 text-green-500" />}
-                  {trendDirection === 'declining' && <TrendingDown className="w-8 h-8 text-red-500" />}
-                  {trendDirection === 'stable' && <Activity className="w-8 h-8 text-gray-500" />}
-                  {trendDirection === 'insufficient_data' && <Target className="w-8 h-8 text-gray-500" />}
+                  {trendDirection === 'improving' && <TrendingUp className="w-8 h-8 text-success" />}
+                  {trendDirection === 'declining' && <TrendingDown className="w-8 h-8 text-destructive" />}
+                  {trendDirection === 'stable' && <Activity className="w-8 h-8 text-muted-foreground" />}
+                  {trendDirection === 'insufficient_data' && <Target className="w-8 h-8 text-muted-foreground" />}
                 </div>
-                <p className="text-sm text-gray-600">Trend</p>
+                <p className="text-sm text-muted-foreground">Trend</p>
                 <p className="text-lg font-semibold" style={{ color: trendColor }}>
                   {trendDirection.replace('_', ' ')}
                 </p>
@@ -283,7 +282,7 @@ export default function TalentScoreDashboard() {
               <button
                 onClick={handleRecalculate}
                 disabled={recalculating}
-                className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                className="flex items-center space-x-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-5 h-5 ${recalculating ? 'animate-spin' : ''}`} />
                 <span>Recalculate</span>
@@ -300,7 +299,7 @@ export default function TalentScoreDashboard() {
             animate={{ opacity: 1, x: 0 }}
             className="bg-white rounded-2xl shadow-lg p-6"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Score Breakdown</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Score Breakdown</h3>
             <div className="h-[400px]">
               {scores && radarData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
@@ -320,7 +319,7 @@ export default function TalentScoreDashboard() {
                   </RadarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="h-full flex items-center justify-center text-gray-500">
+                <div className="h-full flex items-center justify-center text-muted-foreground">
                   No data available
                 </div>
               )}
@@ -333,7 +332,7 @@ export default function TalentScoreDashboard() {
             animate={{ opacity: 1, x: 0 }}
             className="bg-white rounded-2xl shadow-lg p-6"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Dimension Scores</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Dimension Scores</h3>
             <div className="space-y-4">
               {scores && Object.entries(scores.dimension_breakdown).map(([key, value]) => {
                 const config = DIMENSION_CONFIG[key as keyof typeof DIMENSION_CONFIG];
@@ -344,13 +343,13 @@ export default function TalentScoreDashboard() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <config.icon className="w-5 h-5" style={{ color: config.color }} />
-                        <span className="font-medium text-gray-900">{config.label}</span>
+                        <span className="font-medium text-foreground">{config.label}</span>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-muted-foreground">
                           {(value * 100).toFixed(0)}%
                         </span>
-                        <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                           <div 
                             className="h-full rounded-full transition-all duration-500"
                             style={{ 
@@ -361,7 +360,7 @@ export default function TalentScoreDashboard() {
                         </div>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-500">{config.description}</p>
+                    <p className="text-sm text-muted-foreground">{config.description}</p>
                   </div>
                 );
               })}
@@ -376,7 +375,7 @@ export default function TalentScoreDashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-2xl shadow-lg p-6 mb-8"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Score Trends</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Score Trends</h3>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendData}>
@@ -415,7 +414,7 @@ export default function TalentScoreDashboard() {
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-2xl shadow-lg p-6"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recommended Actions</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Recommended Actions</h3>
             <div className="space-y-3">
               {actions.slice(0, 5).map((action, index) => (
                 <motion.div
@@ -423,7 +422,7 @@ export default function TalentScoreDashboard() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex items-start space-x-3 p-4 bg-gray-50 rounded-lg"
+                  className="flex items-start space-x-3 p-4 bg-background rounded-lg"
                 >
                   <div 
                     className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
@@ -440,7 +439,7 @@ export default function TalentScoreDashboard() {
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-1">
-                      <h4 className="font-medium text-gray-900">{action.title}</h4>
+                      <h4 className="font-medium text-foreground">{action.title}</h4>
                       <span className="text-xs px-2 py-1 rounded-full"
                         style={{ 
                           backgroundColor: action.priority === 'high' ? '#fee2e2' : 
@@ -452,8 +451,8 @@ export default function TalentScoreDashboard() {
                         {action.priority.toUpperCase()}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600 mb-2">{action.description}</p>
-                    <div className="flex items-center text-xs text-gray-500">
+                    <p className="text-sm text-muted-foreground mb-2">{action.description}</p>
+                    <div className="flex items-center text-xs text-muted-foreground">
                       <span className="uppercase font-medium mr-2">
                         {DIMENSION_CONFIG[action.dimension as keyof typeof DIMENSION_CONFIG]?.label || action.dimension}
                       </span>
@@ -467,6 +466,6 @@ export default function TalentScoreDashboard() {
           </motion.div>
         )}
       </div>
-    </div>
+    </AppShell>
   );
 }

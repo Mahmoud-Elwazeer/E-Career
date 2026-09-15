@@ -10,6 +10,7 @@ import { Users, Plus, Search, Trophy, AlertCircle, ArrowLeft, Briefcase } from '
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { AppShell } from '@/components/shells/AppShell';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -43,10 +44,10 @@ function ScoreBar({ label, value, color }: { label: string; value: number; color
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-gray-700">{label}</span>
-        <span className="text-gray-600">{percent}%</span>
+        <span className="font-medium text-foreground">{label}</span>
+        <span className="text-muted-foreground">{percent}%</span>
       </div>
-      <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${percent}%` }}
@@ -74,7 +75,7 @@ function RankingCard({ ranking }: { ranking: CandidateRanking }) {
             </div>
             <div className="flex items-center gap-2">
               {ranking.knockout_passed ? (
-                <Badge className="bg-green-100 text-green-800 border-green-200">Passed</Badge>
+                <Badge className="bg-success/15 text-success border-success/30">Passed</Badge>
               ) : (
                 <Badge variant="destructive">Knockout Failed</Badge>
               )}
@@ -98,7 +99,7 @@ function RankingCard({ ranking }: { ranking: CandidateRanking }) {
           {/* Knockout failures */}
           {ranking.knockout_failures.length > 0 && (
             <div className="mt-4">
-              <p className="text-sm font-medium text-red-700 mb-2">Knockout Failures:</p>
+              <p className="text-sm font-medium text-destructive mb-2">Knockout Failures:</p>
               <div className="flex flex-wrap gap-2">
                 {ranking.knockout_failures.map((failure, idx) => (
                   <Badge key={idx} variant="destructive" className="text-xs">
@@ -111,11 +112,11 @@ function RankingCard({ ranking }: { ranking: CandidateRanking }) {
 
           {/* Explanations */}
           {ranking.explanations && Object.keys(ranking.explanations).length > 0 && (
-            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-              <p className="text-sm font-medium text-gray-700 mb-2">Evidence:</p>
+            <div className="mt-4 p-3 bg-background rounded-lg">
+              <p className="text-sm font-medium text-foreground mb-2">Evidence:</p>
               <div className="space-y-1">
                 {Object.entries(ranking.explanations).map(([key, value]) => (
-                  <p key={key} className="text-sm text-gray-600">
+                  <p key={key} className="text-sm text-muted-foreground">
                     <span className="font-medium capitalize">{key.replace(/_/g, ' ')}:</span>{' '}
                     {value}
                   </p>
@@ -185,8 +186,8 @@ const TalentSearch: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <AppShell>
+      <div className="container py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
@@ -194,11 +195,11 @@ const TalentSearch: React.FC = () => {
               to="/app/employer/dashboard"
               className="p-2 hover:bg-gray-200 rounded-lg transition"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
             </Link>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Talent Pool</h1>
-              <p className="text-gray-600 mt-1">Manage candidate pools and rank talent</p>
+              <h1 className="text-3xl font-bold text-foreground">Talent Pool</h1>
+              <p className="text-muted-foreground mt-1">Manage candidate pools and rank talent</p>
             </div>
           </div>
         </div>
@@ -213,7 +214,7 @@ const TalentSearch: React.FC = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Users className="w-6 h-6 text-blue-600" />
+                  <Users className="w-6 h-6 text-primary" />
                   <CardTitle className="text-xl">Your Talent Pools</CardTitle>
                 </div>
                 <Button
@@ -229,7 +230,7 @@ const TalentSearch: React.FC = () => {
             <CardContent>
               {/* Create pool form */}
               {showCreatePool && (
-                <div className="flex items-center gap-3 mb-6 p-4 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-3 mb-6 p-4 bg-primary/10 rounded-lg">
                   <Input
                     placeholder="Pool name..."
                     value={newPoolName}
@@ -252,7 +253,7 @@ const TalentSearch: React.FC = () => {
               {/* Pool list */}
               {poolsLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               ) : pools && pools.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -262,15 +263,15 @@ const TalentSearch: React.FC = () => {
                       className="p-4 border rounded-lg hover:border-blue-300 hover:bg-blue-50/50 transition"
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-semibold text-gray-900">{pool.name}</h4>
+                        <h4 className="font-semibold text-foreground">{pool.name}</h4>
                         <Badge variant="secondary">
                           {pool.candidate_count} candidate{pool.candidate_count !== 1 ? 's' : ''}
                         </Badge>
                       </div>
                       {pool.description && (
-                        <p className="text-sm text-gray-600 line-clamp-2">{pool.description}</p>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{pool.description}</p>
                       )}
-                      <p className="text-xs text-gray-400 mt-2">
+                      <p className="text-xs text-muted-foreground mt-2">
                         Created {new Date(pool.created_at).toLocaleDateString()}
                       </p>
                     </div>
@@ -278,8 +279,8 @@ const TalentSearch: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No talent pools yet. Create one to get started.</p>
+                  <Users className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-muted-foreground">No talent pools yet. Create one to get started.</p>
                 </div>
               )}
             </CardContent>
@@ -295,7 +296,7 @@ const TalentSearch: React.FC = () => {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
-                <Trophy className="w-6 h-6 text-purple-600" />
+                <Trophy className="w-6 h-6 text-primary" />
                 <div>
                   <CardTitle className="text-xl">Rank Candidates</CardTitle>
                   <CardDescription>Select a job and rank all candidates against it</CardDescription>
@@ -322,7 +323,7 @@ const TalentSearch: React.FC = () => {
                 <Button
                   onClick={handleRankAll}
                   disabled={!selectedJobId || rankMutation.isPending}
-                  className="bg-purple-600 hover:bg-purple-700"
+                  className="bg-primary hover:bg-primary/90"
                 >
                   {rankMutation.isPending ? (
                     <>
@@ -340,9 +341,9 @@ const TalentSearch: React.FC = () => {
 
               {/* Error state */}
               {rankMutation.isError && (
-                <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-                  <p className="text-sm text-red-700">
+                <div className="mb-4 p-4 bg-destructive/10 border border-destructive/30 rounded-lg flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0" />
+                  <p className="text-sm text-destructive">
                     Failed to rank candidates. Please try again.
                   </p>
                 </div>
@@ -355,7 +356,7 @@ const TalentSearch: React.FC = () => {
                 </div>
               ) : rankings && rankings.length > 0 ? (
                 <div>
-                  <p className="text-sm text-gray-600 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     {rankings.length} candidate{rankings.length !== 1 ? 's' : ''} ranked
                   </p>
                   {rankings
@@ -366,21 +367,21 @@ const TalentSearch: React.FC = () => {
                 </div>
               ) : selectedJobId && !rankingsLoading ? (
                 <div className="text-center py-12">
-                  <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 mb-2">No rankings yet for this job.</p>
-                  <p className="text-sm text-gray-400">Click "Rank All" to generate candidate rankings.</p>
+                  <Briefcase className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-muted-foreground mb-2">No rankings yet for this job.</p>
+                  <p className="text-sm text-muted-foreground">Click "Rank All" to generate candidate rankings.</p>
                 </div>
               ) : (
                 <div className="text-center py-12">
-                  <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">Select a job to view or generate rankings.</p>
+                  <Trophy className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
+                  <p className="text-muted-foreground">Select a job to view or generate rankings.</p>
                 </div>
               )}
             </CardContent>
           </Card>
         </motion.div>
       </div>
-    </div>
+    </AppShell>
   );
 };
 

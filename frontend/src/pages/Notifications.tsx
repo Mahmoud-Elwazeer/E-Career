@@ -39,11 +39,11 @@ const NOTIFICATION_ICONS: Record<string, typeof Briefcase> = {
 };
 
 const NOTIFICATION_COLORS: Record<string, string> = {
-  job_match: "text-blue-600",
-  application_update: "text-green-600",
-  interview: "text-purple-600",
-  recommendation: "text-yellow-600",
-  system: "text-gray-600",
+  job_match: "text-primary",
+  application_update: "text-success",
+  interview: "text-primary",
+  recommendation: "text-warning-foreground",
+  system: "text-muted-foreground",
 };
 
 export default function Notifications() {
@@ -165,7 +165,7 @@ export default function Notifications() {
         <div className="space-y-2">
           {notifications.map((notification) => {
             const Icon = NOTIFICATION_ICONS[notification.type] || Bell;
-            const iconColor = NOTIFICATION_COLORS[notification.type] || "text-gray-600";
+            const iconColor = NOTIFICATION_COLORS[notification.type] || "text-muted-foreground";
 
             return (
               <Card
@@ -184,7 +184,7 @@ export default function Notifications() {
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-medium text-sm">{notification.title}</p>
                         {!notification.is_read && (
-                          <span className="h-2 w-2 rounded-full bg-blue-600 shrink-0 mt-1.5" />
+                          <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
                         )}
                       </div>
                       <p className="text-sm text-muted-foreground">{notification.message}</p>

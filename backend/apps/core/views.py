@@ -623,3 +623,34 @@ class GDPRDataAnonymizationViewSet(APIView):
         except Exception as e:
             logger.error("anonymize_user_data_failed", error=str(e))
             return Response({'success': False, 'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def public_plans(request):
+    """Public, read-only list of active subscription plans for the Pricing page.
+
+    GET /api/v1/core/plans/
+
+    Exposes only presentation-safe fields (no internal subscription data). This
+    is the marketing-facing counterpart to the admin-only /admin-api/plans/.
+    """
+    try:
+        from apps.core.models import SubscriptionPlan
+    except ImportError:
+        return Response({"success": True, "data": {"plans": []}})
+
+    plans = SubscriptionPlan.objects.filter(is_active=True).order_by("job_posting_limit")
+    data = [
+        {
+            "uuid": str(p.uuid),
+            "name": p.name,
+            "description": p.description,
+            "job_posting_limit": p.job_posting_limit,
+            "candidate_search_limit": p.candidate_search_limit,
+            "ai_features_enabled": p.ai_features_enabled,
+            "feature_flags": p.feature_flags or {},
+        }
+        for p in plans
+    ]
+    return Response({"success": True, "data": {"plans": data}})

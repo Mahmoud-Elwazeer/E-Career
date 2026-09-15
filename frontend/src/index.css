@@ -496,6 +496,52 @@
   /* Scrollbar hide utility */
   .scrollbar-none::-webkit-scrollbar { display: none; }
   .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* ─────────────────────────────────────────────
+     SHARED PAGE STRUCTURE (adopt across all pages
+     so legacy screens stop hard-coding gray/blue
+     palettes and inconsistent spacing)
+     ───────────────────────────────────────────── */
+
+  /* Standard authenticated page wrapper */
+  .page-shell {
+    @apply container py-8 md:py-10;
+  }
+
+  /* Page header block: title + optional description + actions */
+  .page-header {
+    @apply mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between;
+  }
+  .page-title {
+    @apply text-heading-1 text-foreground;
+  }
+  .page-subtitle {
+    @apply text-body text-muted-foreground mt-1 max-w-2xl;
+  }
+
+  /* Elevated surface card that respects tokens in every theme */
+  .surface-card {
+    @apply rounded-xl border bg-card text-card-foreground shadow-sm;
+  }
+  .surface-card-interactive {
+    @apply rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-normal hover:shadow-md hover:border-primary/25;
+  }
+
+  /* Stat tile used by dashboards */
+  .stat-tile {
+    @apply surface-card p-5 flex flex-col gap-1;
+  }
+  .stat-value {
+    @apply text-heading-2 text-foreground font-semibold;
+  }
+  .stat-label {
+    @apply text-caption text-muted-foreground;
+  }
+
+  /* Subtle section divider heading */
+  .section-heading {
+    @apply text-heading-3 text-foreground mb-4;
+  }
 }
 
 /* ═══════════════════════════════════════

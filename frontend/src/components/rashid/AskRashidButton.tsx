@@ -121,7 +121,7 @@ export function AskRashidCard({ jobSlug, isAr }: { jobSlug: string; isAr: boolea
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 rounded-2xl p-5"
+      className="bg-blue-50/50 dark:bg-blue-950/20 border border-primary/30 dark:border-blue-800/30 rounded-2xl p-5"
     >
       <div className="flex items-start gap-4">
         <RashidCharacter pose="presenting" size="sm" className="w-12 h-12" />

@@ -173,13 +173,13 @@ export function RashidWidget() {
               initial={{ opacity: 0, y: '100%' }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: '100%' }}
-              className="fixed inset-0 bg-white dark:bg-gray-900 z-[60] flex flex-col"
+              className="fixed inset-0 bg-background z-[60] flex flex-col"
             >
-              <div className="bg-blue-600 p-4 flex items-center justify-between">
-                <h2 className="text-white font-semibold text-lg">راشد</h2>
+              <div className="bg-primary text-primary-foreground p-4 flex items-center justify-between">
+                <h2 className="font-semibold text-lg">{lang === 'ar' ? 'رشيد' : 'Rasheed'}</h2>
                 <button
                   onClick={() => setIsExpanded(false)}
-                  className="text-white hover:bg-white/20 rounded-full p-2"
+                  className="text-primary-foreground hover:bg-primary-foreground/20 rounded-full p-2"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
