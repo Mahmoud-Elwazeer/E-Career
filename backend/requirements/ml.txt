@@ -1,0 +1,31 @@
+# Heavy document-AI / embedding stack — install SEPARATELY, not part of the
+# base resolve.
+#
+# WHY THIS FILE EXISTS:
+# These packages have a genuine, unresolvable conflict when pip tries to resolve
+# them together in one pass:
+#   - cohere 5.5.6      requires tokenizers <0.16  (i.e. 0.15.x)
+#   - docling 2.31.0    pulls transformers >=4.47, which requires tokenizers >=0.22
+# No single version set satisfies both in one resolve, yet both work fine at
+# runtime when installed incrementally (which is how the production venv was
+# built). Application code treats docling (CV parsing) and cohere (embeddings)
+# as OPTIONAL with graceful fallbacks:
+#   - apps/profiles/cv_parser.py       -> falls back to pdfplumber if docling absent
+#   - apps/intelligence/document_processor.py -> same pdfplumber fallback
+#   - cohere embeddings are optional; pgvector/Postgres search works without them
+#
+# HOW TO INSTALL (on a host that needs these features), letting pip resolve each
+# independently rather than all-at-once:
+#   pip install docling==2.31.0
+#   pip install easyocr==1.7.2
+#   pip install cohere==5.5.6
+# On the current production host these are ALREADY installed and working, so a
+# normal deploy does NOT need to reinstall them.
+#
+# Versions below match the verified, working production venv (pip freeze).
+
+docling==2.31.0
+easyocr==1.7.2
+cohere==5.5.6
+# torch / torchvision arrive transitively via easyocr/docling
+# (production host: torch 2.13.0, torchvision 0.28.0).

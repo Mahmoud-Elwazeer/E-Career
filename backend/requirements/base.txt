@@ -51,8 +51,9 @@ typesense==0.21.0
 # Vector search (pgvector via Django ORM — no external vector DB needed)
 # pgvector extension is managed at the PostgreSQL level
 
-# Cohere embeddings for semantic search
-cohere==5.5.6
+# Cohere embeddings for semantic search — see requirements/ml.txt
+# (cohere conflicts with docling's transformers/tokenizers on a clean resolve;
+#  installed separately, treated as optional at runtime)
 
 # Graph queries use recursive CTEs (no external extension needed)
 
@@ -63,16 +64,17 @@ tablib[html,ods,xls,xlsx,yaml]
 openpyxl==3.1.5
 
 # CV Parsing
-docling==2.31.0  # IBM Docling - MIT license (matches deployed/working venv)
-pdfplumber==0.11.0  # PDF text extraction
+# docling (IBM Docling) is in requirements/ml.txt — heavy AI stack, optional,
+# installed separately. pdfplumber is the always-available fallback parser.
+pdfplumber==0.11.0  # PDF text extraction (primary fallback, no heavy deps)
 
 # PDF Generation (resume export)
 xhtml2pdf==0.2.16
 
 # Monitoring & Observability
 sentry-sdk==2.13.0  # Error tracking and monitoring
-easyocr==1.7.0  # OCR for scanned/image CVs
-python-docx==1.1.2  # DOCX parsing (>=1.1.2 required by docling)
+# easyocr (OCR for scanned CVs) is in requirements/ml.txt (pulls torch/CUDA)
+python-docx==1.1.2  # DOCX parsing
 
 # Recommendation Engine
 # lightfm is OPTIONAL: the recommendation engine (apps/search/recommendation_engine.py)
@@ -81,8 +83,9 @@ python-docx==1.1.2  # DOCX parsing (>=1.1.2 required by docling)
 # C build toolchain + Python < 3.11, which is not available on all hosts.
 # To enable ML recommendations on a compatible host: pip install "lightfm==1.17"
 # lightfm==1.17
-# scipy/scikit-learn/numpy pinned to the deployed, docling-compatible set.
-# docling 2.31.0 requires scipy>=1.14.1; scikit-learn 1.7.x + numpy 2.x match.
+# numpy/scipy/scikit-learn are imported at module load by search/skills/core
+# services, so they stay in base (they do not conflict with each other).
+# Pinned to the working production venv.
 numpy==2.2.6
 scipy==1.15.3
 scikit-learn==1.7.2
