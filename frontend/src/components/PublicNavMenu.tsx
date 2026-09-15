@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   Search, MessageCircle, FileText, Mic, Sparkles, Target, DollarSign,
-  Award, Code2, Building2, PlusCircle, Users, BadgeCheck, Info, Bell,
+  Award, Code2, Building2, PlusCircle, Users, BadgeCheck, Info, Bell, Network,
 } from "lucide-react";
 import {
   NavigationMenu,
@@ -45,6 +45,8 @@ const individualFeatures: Feature[] = [
   { to: "/app/salary", gated: true, icon: DollarSign, en: "Salary Insights", ar: "رؤى الرواتب", descEn: "Benchmark your market value", descAr: "قارن قيمتك السوقية" },
   { to: "/app/assessments", gated: true, icon: Award, en: "Assessments", ar: "التقييمات", descEn: "Prove your skills with badges", descAr: "أثبت مهاراتك" },
   { to: "/app/coding-practice", gated: true, icon: Code2, en: "Coding Practice", ar: "تدريب البرمجة", descEn: "Sharpen skills with challenges", descAr: "تحدّيات برمجية" },
+  { to: "/app/companies", gated: true, icon: Building2, en: "Companies", ar: "الشركات", descEn: "Browse employers hiring now", descAr: "تصفّح الشركات التي توظّف" },
+  { to: "/app/career-graph", gated: true, icon: Network, en: "Career Graph", ar: "خريطة المسار", descEn: "Skills, gaps & growth paths", descAr: "المهارات والفجوات ومسارات النمو" },
 ];
 
 const employerFeatures: Feature[] = [

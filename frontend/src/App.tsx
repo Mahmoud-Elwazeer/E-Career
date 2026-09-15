@@ -47,6 +47,8 @@ const CodingPractice = lazy(() => import("./pages/CodingPractice"));
 const SalaryInsights = lazy(() => import("./pages/SalaryInsights"));
 const Assessments = lazy(() => import("./pages/Assessments"));
 const Pricing = lazy(() => import("./pages/Pricing"));
+const Companies = lazy(() => import("./pages/Companies"));
+const CareerGraph = lazy(() => import("./pages/CareerGraph"));
 
 import { RasheedCompanion } from "./components/rashid/RasheedCompanion";
 import { OnboardingTour } from "./components/OnboardingTour";
@@ -81,7 +83,9 @@ function AnimatedRoutes() {
         {/* Auth-protected app routes */}
         <Route path="/app/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />
         <Route path="/app/jobs/:id" element={<RequireAuth><JobDetail /></RequireAuth>} />
+        <Route path="/app/companies" element={<RequireAuth><Companies /></RequireAuth>} />
         <Route path="/app/companies/:id" element={<RequireAuth><CompanyProfile /></RequireAuth>} />
+        <Route path="/app/career-graph" element={<RequireAuth><CareerGraph /></RequireAuth>} />
         <Route path="/app/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
         <Route path="/app/career" element={<RequireAuth><TalentScore /></RequireAuth>} />
         <Route path="/app/talent-score" element={<RequireAuth><TalentScore /></RequireAuth>} />

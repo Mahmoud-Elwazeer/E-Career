@@ -4,7 +4,7 @@ import {
   MessageCircle, FileText, Mic, Sparkles,
   ClipboardList, Bookmark, Target, Bell,
   Settings as SettingsIcon, PlusCircle, Search,
-  LayoutDashboard, DollarSign, Award,
+  LayoutDashboard, DollarSign, Award, Building2, Network,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Logo } from "@/components/Logo";
@@ -48,10 +48,13 @@ const appPrimaryNav: NavItem[] = [
 const appSecondaryNav: NavItem[] = [
   { to: "/app/applications", label: "Applications", labelAr: "طلباتي", icon: ClipboardList },
   { to: "/app/saved", label: "Saved Jobs", labelAr: "المحفوظات", icon: Bookmark },
+  { to: "/app/companies", label: "Companies", labelAr: "الشركات", icon: Building2 },
   { to: "/app/talent-score", label: "Talent Score", labelAr: "نقاط الموهبة", icon: Target },
+  { to: "/app/career-graph", label: "Career Graph", labelAr: "خريطة المسار", icon: Network },
   { to: "/app/alerts", label: "Job Alerts", labelAr: "تنبيهات الوظائف", icon: Bell },
   { to: "/app/salary", label: "Salary Insights", labelAr: "رؤى الرواتب", icon: DollarSign },
   { to: "/app/assessments", label: "Assessments", labelAr: "التقييمات", icon: Award },
+  { to: "/app/notifications", label: "Notifications", labelAr: "الإشعارات", icon: Bell },
   { to: "/app/settings", label: "Settings", labelAr: "الإعدادات", icon: SettingsIcon },
 ];
 

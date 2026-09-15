@@ -1,4 +1,5 @@
 import { Bell } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,10 +9,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useTheme } from "@/hooks/use-theme";
 import { formatDistanceToNow } from "date-fns";
 
 export function NotificationBell() {
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications();
+  const { lang } = useTheme();
+  const isAr = lang === "ar";
 
   return (
     <DropdownMenu>
@@ -58,6 +62,12 @@ export function NotificationBell() {
             </DropdownMenuItem>
           ))
         )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="justify-center cursor-pointer">
+          <Link to="/app/notifications" className="w-full text-center text-sm font-medium text-primary">
+            {isAr ? "عرض كل الإشعارات" : "View all notifications"}
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
