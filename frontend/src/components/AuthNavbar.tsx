@@ -81,36 +81,42 @@ export function AuthNavbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/60 bg-card/80 glass supports-[backdrop-filter]:bg-card/70">
-      <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 press-feedback" aria-label="USAM home">
+      <div className="container flex h-16 items-center gap-4">
+        {/* Zone 1 — logo (start) */}
+        <Link to="/" className="flex items-center gap-2 press-feedback shrink-0" aria-label="USAM home">
           <Logo className="h-8" />
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-0.5">
+        {/* Zone 2 — primary navigation (centered, fills space) */}
+        <div className="hidden md:flex flex-1 items-center justify-center">
           {!isAuthenticated ? (
             <PublicNavMenu />
           ) : (
-            primaryNav.map((item) => {
-              const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
-              return (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-body font-medium transition-all duration-fast ${
-                    active
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-foreground/60 hover:text-foreground hover:bg-accent"
-                  }`}
-                >
-                  <item.icon className="h-3.5 w-3.5" />
-                  {isAr ? item.labelAr : item.label}
-                </Link>
-              );
-            })
+            <nav className="flex items-center gap-0.5">
+              {primaryNav.map((item) => {
+                const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-body font-medium transition-all duration-fast ${
+                      active
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-foreground/60 hover:text-foreground hover:bg-accent"
+                    }`}
+                  >
+                    <item.icon className="h-3.5 w-3.5" />
+                    {isAr ? item.labelAr : item.label}
+                  </Link>
+                );
+              })}
+            </nav>
           )}
+        </div>
 
-          <div className="flex items-center gap-0.5 ms-2 border-s ps-2 border-border">
+        {/* Zone 3 — actions (end) */}
+        <div className="hidden md:flex items-center gap-0.5 shrink-0">
+          <div className="flex items-center gap-0.5">
             <LangToggle />
             <ThemeToggle />
             {isAuthenticated && <NotificationBell />}
@@ -169,7 +175,10 @@ export function AuthNavbar() {
               </Button>
             )}
           </div>
-        </nav>
+        </div>
+
+        {/* Spacer pushes mobile controls to the end */}
+        <div className="flex-1 md:hidden" />
 
         {/* Mobile nav */}
         <div className="flex items-center gap-1 md:hidden">

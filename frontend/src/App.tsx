@@ -48,7 +48,7 @@ const SalaryInsights = lazy(() => import("./pages/SalaryInsights"));
 const Assessments = lazy(() => import("./pages/Assessments"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 
-import { RashidWidget } from "./components/rashid/RashidWidget";
+import { RasheedCompanion } from "./components/rashid/RasheedCompanion";
 import { RashidOnboarding } from "./components/rashid/RashidOnboarding";
 import { OnboardingFlow } from "./components/landing/OnboardingFlow";
 import { useI18nSync } from "@/hooks/use-i18n";
@@ -164,7 +164,7 @@ function AppContent() {
         <Sonner />
         <BrowserRouter>
           <AnimatedRoutes />
-          <RashidWidget />
+          <RasheedCompanion />
           <RashidOnboarding />
           <OnboardingWrapper />
         </BrowserRouter>
