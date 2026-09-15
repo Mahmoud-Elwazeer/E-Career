@@ -75,7 +75,12 @@ easyocr==1.7.0  # OCR for scanned/image CVs
 python-docx==1.1.0  # DOCX parsing
 
 # Recommendation Engine
-lightfm==1.17.2
+# lightfm is OPTIONAL: the recommendation engine (apps/search/recommendation_engine.py)
+# falls back gracefully when it is not installed. It is left commented because
+# version 1.17.2 does not exist on PyPI (latest is 1.17) and lightfm requires a
+# C build toolchain + Python < 3.11, which is not available on all hosts.
+# To enable ML recommendations on a compatible host: pip install "lightfm==1.17"
+# lightfm==1.17
 scipy==1.11.4
 scikit-learn==1.4.2
 
