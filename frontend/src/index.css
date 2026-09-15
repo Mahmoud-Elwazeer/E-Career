@@ -494,13 +494,24 @@
 
   /* Page header block: title + optional description + actions */
   .page-header {
-    @apply mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between;
+    @apply mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between;
   }
   .page-title {
-    @apply text-heading-1 text-foreground;
+    @apply text-heading-1 text-foreground relative ps-4;
+  }
+  /* Brand accent bar before the page title */
+  .page-title::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0.15em;
+    bottom: 0.15em;
+    width: 4px;
+    border-radius: 9999px;
+    background: linear-gradient(180deg, hsl(var(--primary-hover)), hsl(var(--primary)));
   }
   .page-subtitle {
-    @apply text-body text-muted-foreground mt-1 max-w-2xl;
+    @apply text-body text-muted-foreground mt-1.5 max-w-2xl ps-4;
   }
 
   /* Elevated surface card that respects tokens in every theme */

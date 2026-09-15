@@ -4,10 +4,10 @@ import { Bookmark, Bell, FileText, ExternalLink, Shield, Lock, DollarSign, Eye, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LoginCareerGuide } from "@/components/LoginCareerGuide";
+import { Logo } from "@/components/Logo";
+import { RasheedAvatar } from "@/components/rashid/RasheedAvatar";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
-import { WatermarkBackground } from "@/components/WatermarkBackground";
 import { useEffect, useState } from "react";
 import { MOTION } from "@/lib/motion-tokens";
 import { useToast } from "@/hooks/use-toast";
@@ -73,23 +73,37 @@ export default function Login() {
       };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">
-      <WatermarkBackground variant="shimmer" opacity={0.03} />
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background p-4">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5" />
 
       <motion.div
-        className="relative z-10 w-full max-w-4xl mx-auto px-4 py-8 flex flex-col lg:flex-row items-stretch gap-6"
+        className="relative z-10 w-full max-w-5xl mx-auto grid lg:grid-cols-2 items-stretch rounded-3xl overflow-hidden border border-border/60 shadow-2xl bg-card"
         variants={cardVariants}
         initial="hidden"
         animate="visible"
       >
-        {/* Left: Career Guide teaser */}
-        <div className="hidden lg:flex flex-col flex-1">
-          <LoginCareerGuide />
+        {/* Left: branded showcase */}
+        <div className="hidden lg:flex flex-col justify-between hero-gradient hero-grid relative overflow-hidden p-10 text-primary-foreground">
+          <div className="glow-blob" style={{ width: 300, height: 300, top: -100, insetInlineEnd: -60, background: "hsl(var(--secondary) / 0.3)" }} />
+          <div className="relative z-10">
+            <Logo variant="onDark" className="h-8 mb-8" />
+            <h2 className="text-heading-1 leading-tight mb-3">
+              {isAr ? "رحلتك المهنية تبدأ هنا" : "Your career journey starts here"}
+            </h2>
+            <p className="text-body-lg opacity-80 max-w-sm">
+              {isAr ? "انضم لآلاف المحترفين واكتشف فرصاً موثوقة مع مساعدك الذكي رشيد." : "Join thousands of professionals and discover verified roles with Rasheed, your AI coach."}
+            </p>
+          </div>
+          <div className="relative z-10 mt-8 flex items-center gap-4">
+            <RasheedAvatar expression="greeting" size={72} />
+            <div className="glass-panel rounded-2xl rounded-bs-md px-4 py-3 max-w-[220px]">
+              <p className="text-body">{isAr ? "أهلاً! سجّل الدخول وسأساعدك تبدأ." : "Hi! Sign in and I'll help you get started."}</p>
+            </div>
+          </div>
         </div>
 
         {/* Right: Auth form */}
-        <div className="flex-1 bg-card rounded-2xl border shadow-xl p-8 flex flex-col justify-center">
+        <div className="bg-card p-8 md:p-10 flex flex-col justify-center">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-foreground">
               {mode === "login"

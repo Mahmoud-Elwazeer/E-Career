@@ -182,19 +182,33 @@ export default function Jobs() {
 
   return (
     <Layout>
+      {/* Page header band */}
+      <div className="hero-gradient hero-grid relative overflow-hidden text-primary-foreground">
+        <div className="glow-blob" style={{ width: 320, height: 320, top: -120, insetInlineEnd: "10%", background: "hsl(var(--secondary) / 0.25)" }} />
+        <div className="container relative z-10 py-10 md:py-12">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3 py-1 text-caption font-medium backdrop-blur-sm mb-3">
+            {isAr ? "استكشف الفرص" : "Explore opportunities"}
+          </span>
+          <h1 className="text-heading-1">{isAr ? "تصفح الوظائف" : "Browse jobs"}</h1>
+          <p className="text-body-lg opacity-80 mt-1">
+            {isAr ? "وظائف موثوقة من مصادر متعددة عبر المنطقة" : "Verified roles from multiple sources across MENA"}
+          </p>
+        </div>
+      </div>
+
       <div className="container py-8">
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-2 mb-4 -mt-14 relative z-20">
           <SearchBarMotion>
             <Input
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder={isAr ? "ابحث عن وظائف..." : "Search jobs..."}
-              className="ps-11 h-11 rounded-xl border-border/60 focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="ps-11 h-12 rounded-xl border-border/60 bg-card shadow-lg focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </SearchBarMotion>
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="md:hidden h-11 w-11 rounded-xl shrink-0">
+              <Button variant="outline" size="icon" className="md:hidden h-12 w-12 rounded-xl shrink-0 bg-card shadow-lg">
                 <SlidersHorizontal className="h-4 w-4" />
               </Button>
             </SheetTrigger>
@@ -224,13 +238,15 @@ export default function Jobs() {
         )}
 
         <div className="flex gap-6">
-          <aside className="hidden md:block w-56 shrink-0 space-y-4">
-            <FilterControls locationType={locationType} industry={industry} experienceLevel={experienceLevel} setParam={setParam} />
-            {hasFilters && (
-              <button onClick={clearFilters} className="text-caption text-primary hover:underline flex items-center gap-1">
-                <X className="h-3 w-3" /> {isAr ? "مسح الكل" : "Clear all"}
-              </button>
-            )}
+          <aside className="hidden md:block w-60 shrink-0">
+            <div className="card-premium p-5 sticky top-20">
+              <FilterControls locationType={locationType} industry={industry} experienceLevel={experienceLevel} setParam={setParam} />
+              {hasFilters && (
+                <button onClick={clearFilters} className="mt-4 text-caption text-primary hover:underline flex items-center gap-1">
+                  <X className="h-3 w-3" /> {isAr ? "مسح الكل" : "Clear all"}
+                </button>
+              )}
+            </div>
           </aside>
 
           <div className="flex-1">
