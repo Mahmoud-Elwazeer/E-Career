@@ -3,7 +3,8 @@ import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion
 import { useNavigate, Link } from "react-router-dom";
 import { Search, ArrowRight, ArrowLeft, Briefcase, Laptop, Stethoscope, PenTool, DollarSign, GraduationCap, Wrench, Users, TrendingUp, Shield, Zap, Globe, Bell, MousePointerClick, Filter, Send, LogIn, Building2, Sparkles, CheckCircle2 } from "lucide-react";
 import { StatsStrip, WhyUsamSection } from "@/components/landing/ScrollSections";
-import { CareerGuide } from "@/components/landing/CareerGuide";
+import { HeroAssistant } from "@/components/landing/HeroAssistant";
+import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/Layout";
 import { WatermarkBackground } from "@/components/WatermarkBackground";
@@ -35,9 +36,6 @@ const categoryMeta: { label: string; labelAr: string; value: Industry; icon: Rea
 
 export default function Index() {
   const [query, setQuery] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
-  const [hoverSearch, setHoverSearch] = useState(false);
-  const [clickSearch, setClickSearch] = useState(false);
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { lang, dir } = useTheme();
@@ -207,9 +205,6 @@ export default function Index() {
                 query={query}
                 setQuery={setQuery}
                 onSubmit={handleSearch}
-                onFocusChange={setSearchFocused}
-                onHoverSearch={setHoverSearch}
-                onClickSearch={() => { setClickSearch(true); setTimeout(() => setClickSearch(false), 700); }}
               />
             </motion.div>
 
@@ -233,28 +228,9 @@ export default function Index() {
             </motion.div>
           </div>
 
-          {/* Career Guide character */}
-          <div className="hidden lg:flex absolute end-8 xl:end-12 top-1/2 -translate-y-1/2 w-[380px] xl:w-[440px] h-[85%] items-center justify-center">
-            <motion.div
-              className="w-full h-full"
-              initial={reduced ? {} : { opacity: 0, scale: 0.92, x: 30 }}
-              animate={{ opacity: 1, scale: 1, x: 0 }}
-              transition={{
-                type: "spring",
-                stiffness: 60,
-                damping: 20,
-                mass: 1.5,
-                delay: 0.4,
-              }}
-            >
-              <CareerGuide
-                isSearchFocused={searchFocused}
-                isTyping={isTyping}
-                isHoverSearch={hoverSearch}
-                isClickSearch={clickSearch}
-                resultsState={0}
-              />
-            </motion.div>
+          {/* AI career-coach persona */}
+          <div className="hidden lg:flex absolute end-4 xl:end-10 top-1/2 -translate-y-1/2 w-[400px] xl:w-[440px] items-center justify-center">
+            <HeroAssistant />
           </div>
         </motion.div>
       </section>
@@ -268,7 +244,7 @@ export default function Index() {
       </section>
 
       {/* ═══ HOW IT WORKS ═══ */}
-      <section className="how-it-works bg-surface-2/50 pb-14 md:pb-[72px] lg:pb-24">
+      <section className="how-it-works section-band section-y">
         <div className="mx-auto max-w-[1120px] px-6">
           <HowItWorks
             steps={howItWorksSteps}
@@ -277,6 +253,9 @@ export default function Index() {
           />
         </div>
       </section>
+
+      {/* ═══ PLATFORM FEATURE SHOWCASE ═══ */}
+      <FeatureShowcase />
 
       {/* ═══ CAREER TRACKS ═══ */}
       <CareerTracks />
@@ -360,7 +339,7 @@ export default function Index() {
                 : "Join as an employer to post jobs and reach top talent across the region"}
             </p>
             <Button asChild size="lg" className="relative rounded-xl px-8 h-12 font-medium press-feedback">
-              <Link to="/login">
+              <Link to="/login" state={{ from: "/app/employer/register" }}>
                 <Building2 className="h-4 w-4 me-2" />
                 {isAr ? "ابدأ التوظيف" : "Start hiring"} <Arrow className="h-4 w-4 ms-1" />
               </Link>

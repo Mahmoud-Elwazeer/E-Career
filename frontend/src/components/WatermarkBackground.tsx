@@ -30,14 +30,14 @@ const SHIMMER_PEAK: Record<Theme, number> = {
   night: 0.04,
 };
 
-/* ── SVG data-uri tile generator ── */
-function createWatermarkTile(color: string, fontSize: number = 48): string {
-  const w = fontSize * 4.5;
-  const h = fontSize * 2.4;
+/* ── SVG data-uri tile generator ──
+   A subtle, tasteful dotted-grid pattern (no text). Replaces the old
+   "US US" lettering the design team removed. */
+function createWatermarkTile(color: string): string {
+  const size = 28;
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
-      <text x="0" y="${fontSize * 0.85}" font-family="Poppins,sans-serif" font-weight="700" font-size="${fontSize}" fill="${color}" letter-spacing="${fontSize * 0.6}">US US US</text>
-      <text x="${fontSize * 1.3}" y="${fontSize * 2.05}" font-family="Poppins,sans-serif" font-weight="700" font-size="${fontSize}" fill="${color}" letter-spacing="${fontSize * 0.6}">US US US</text>
+    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <circle cx="2" cy="2" r="1.4" fill="${color}"/>
     </svg>
   `.trim().replace(/\n\s*/g, "");
 
@@ -73,12 +73,6 @@ export function WatermarkBackground({
   const shimmerPeak = SHIMMER_PEAK[theme];
 
   // Color: use a neutral that works as SVG fill
-  const color = inheritColor
-    ? "currentColor"
-    : theme === "light"
-    ? "%230A3836"
-    : "%23BECFCF";
-
   const tileUrl = createWatermarkTile(inheritColor ? "currentColor" : (theme === "light" ? "%230A3836" : "%23BECFCF"));
 
   /* ── Tilt: cursor tracking via rAF ── */

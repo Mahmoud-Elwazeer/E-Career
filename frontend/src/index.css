@@ -387,27 +387,11 @@
    ═══════════════════════════════════════ */
 
 @layer components {
-  /* US watermark pattern */
+  /* (Removed the "US US" text watermark per design direction.)
+     Kept as an inert relative container in case any legacy markup
+     still references the class. */
   .us-watermark {
     position: relative;
-    overflow: hidden;
-  }
-
-  .us-watermark::before {
-    content: 'US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US US';
-    position: absolute;
-    inset: 0;
-    font-family: 'Poppins', sans-serif;
-    font-weight: 700;
-    font-size: 3rem;
-    line-height: 3.5rem;
-    letter-spacing: 1.5rem;
-    word-spacing: 2rem;
-    color: currentColor;
-    opacity: 0.04;
-    pointer-events: none;
-    z-index: 0;
-    white-space: normal;
     overflow: hidden;
   }
 

@@ -7,7 +7,7 @@ export default function About() {
 
   return (
     <Layout>
-      <section className="us-watermark bg-primary text-primary-foreground py-16">
+      <section className="hero-gradient hero-grid relative overflow-hidden text-primary-foreground py-16">
         <div className="container relative z-10 max-w-3xl text-center">
           <h1 className="text-3xl md:text-4xl font-medium mb-4">About USAM</h1>
           <p className="text-lg font-light opacity-80">

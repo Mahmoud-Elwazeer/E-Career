@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Logo } from "@/components/Logo";
+import { PublicNavMenu, MOBILE_PUBLIC_GROUPS, publicHref, publicState } from "@/components/PublicNavMenu";
 import { useState } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -87,23 +88,27 @@ export function AuthNavbar() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-0.5">
-          {primaryNav.map((item) => {
-            const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-body font-medium transition-all duration-fast ${
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-foreground/60 hover:text-foreground hover:bg-accent"
-                }`}
-              >
-                <item.icon className="h-3.5 w-3.5" />
-                {isAr ? item.labelAr : item.label}
-              </Link>
-            );
-          })}
+          {!isAuthenticated ? (
+            <PublicNavMenu />
+          ) : (
+            primaryNav.map((item) => {
+              const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-body font-medium transition-all duration-fast ${
+                    active
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-foreground/60 hover:text-foreground hover:bg-accent"
+                  }`}
+                >
+                  <item.icon className="h-3.5 w-3.5" />
+                  {isAr ? item.labelAr : item.label}
+                </Link>
+              );
+            })
+          )}
 
           <div className="flex items-center gap-0.5 ms-2 border-s ps-2 border-border">
             <LangToggle />
@@ -200,24 +205,56 @@ export function AuthNavbar() {
               )}
 
               <nav className="flex flex-col gap-1">
-                {mobileNav.map((item) => {
-                  const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
-                  return (
+                {!isAuthenticated ? (
+                  <>
+                    {MOBILE_PUBLIC_GROUPS.map((group) => (
+                      <div key={group.titleEn} className="mb-2">
+                        <p className="px-4 pt-2 pb-1 text-overline tracking-widest text-muted-foreground">
+                          {isAr ? group.titleAr : group.titleEn}
+                        </p>
+                        {group.items.map((f) => (
+                          <Link
+                            key={f.to}
+                            to={publicHref(f)}
+                            {...publicState(f)}
+                            onClick={() => setOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-all duration-fast"
+                          >
+                            <f.icon className="h-4 w-4 text-primary" />
+                            {isAr ? f.ar : f.en}
+                          </Link>
+                        ))}
+                      </div>
+                    ))}
                     <Link
-                      key={item.to}
-                      to={item.to}
+                      to="/about"
                       onClick={() => setOpen(false)}
-                      className={`flex items-center gap-2.5 px-4 py-3 rounded-lg text-body font-medium transition-all duration-fast ${
-                        active
-                          ? "bg-primary text-primary-foreground"
-                          : "text-foreground/60 hover:text-foreground hover:bg-accent"
-                      }`}
+                      className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-all duration-fast"
                     >
-                      <item.icon className="h-4 w-4" />
-                      {isAr ? item.labelAr : item.label}
+                      <Info className="h-4 w-4 text-primary" />
+                      {isAr ? "عن USAM" : "About"}
                     </Link>
-                  );
-                })}
+                  </>
+                ) : (
+                  mobileNav.map((item) => {
+                    const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setOpen(false)}
+                        className={`flex items-center gap-2.5 px-4 py-3 rounded-lg text-body font-medium transition-all duration-fast ${
+                          active
+                            ? "bg-primary text-primary-foreground"
+                            : "text-foreground/60 hover:text-foreground hover:bg-accent"
+                        }`}
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {isAr ? item.labelAr : item.label}
+                      </Link>
+                    );
+                  })
+                )}
 
                 {isAuthenticated && (
                   <>
