@@ -40,8 +40,11 @@ export function Footer() {
   const linkCls = "text-body opacity-75 hover:opacity-100 transition-opacity link-underline w-fit";
 
   return (
-    <footer className="hero-gradient border-t border-primary-foreground/10 text-primary-foreground">
-      <div className="container relative z-10 py-14">
+    <footer className="hero-gradient relative overflow-hidden border-t border-primary-foreground/10 text-primary-foreground">
+      <div className="glow-blob" style={{ width: 420, height: 420, top: -160, insetInlineEnd: "8%", background: "hsl(var(--secondary) / 0.16)" }} aria-hidden />
+      {/* top hairline accent */}
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary-foreground/25 to-transparent" aria-hidden />
+      <div className="container relative z-10 py-16">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-12">
           {/* Brand */}
           <div className="md:col-span-4 max-w-sm">

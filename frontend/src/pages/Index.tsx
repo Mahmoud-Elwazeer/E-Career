@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
-import { Search, ArrowRight, ArrowLeft, Briefcase, Laptop, Stethoscope, PenTool, DollarSign, GraduationCap, Wrench, Users, TrendingUp, Shield, Zap, Globe, Bell, MousePointerClick, Filter, Send, LogIn, Building2, Sparkles, CheckCircle2 } from "lucide-react";
+import { Search, ArrowRight, ArrowLeft, Briefcase, Laptop, Stethoscope, PenTool, DollarSign, GraduationCap, Wrench, Users, TrendingUp, Shield, Zap, Globe, MousePointerClick, Filter, Send, Building2, Sparkles, CheckCircle2 } from "lucide-react";
 import { StatsStrip, WhyUsamSection } from "@/components/landing/ScrollSections";
 import { HeroAssistant } from "@/components/landing/HeroAssistant";
 import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
+import { RasheedAvatar } from "@/components/rashid/RasheedAvatar";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/Layout";
 import { WatermarkBackground } from "@/components/WatermarkBackground";
@@ -348,104 +349,58 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ═══ CTA BANNER ═══ */}
-      <motion.section
-        className="hero-gradient hero-grid relative overflow-hidden text-primary-foreground"
-        initial={reduced ? {} : { opacity: 0 }}
-        whileInView={{ opacity: 1 }}
-        viewport={{ once: true, amount: 0.3 }}
-        transition={{ duration: 0.6 }}
-      >
-        <div className="glow-blob" style={{ width: 380, height: 380, top: -120, insetInlineStart: "40%", background: "hsl(var(--secondary) / 0.25)" }} />
-        <WatermarkBackground variant="drift" opacity={0.04} inheritColor />
-        <div className="container relative z-10 py-16 text-center">
-          {isAuthenticated ? (
-            <>
-              <motion.div
-                initial={reduced ? {} : { scale: 0.8, opacity: 0 }}
-                whileInView={{ scale: 1, opacity: 0.6 }}
-                viewport={{ once: true }}
-                transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.1 }}
-              >
-                <Bell className="h-10 w-10 mx-auto mb-4" />
-              </motion.div>
-              <motion.h2
-                className="text-heading-1 mb-3"
-                initial={reduced ? {} : { opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                {isAr ? "لا تفوت أي فرصة" : "Never miss an opportunity"}
-              </motion.h2>
-              <motion.p
-                className="text-body-lg opacity-75 mb-8 max-w-md mx-auto"
-                initial={reduced ? {} : { opacity: 0, y: 16 }}
-                whileInView={{ opacity: 0.75, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                {isAr ? "أنشئ تنبيهاً واحصل على إشعار فوري عند توفر وظيفة مناسبة" : "Create an alert and get instantly notified when a matching job appears"}
-              </motion.p>
-              <motion.div
-                initial={reduced ? {} : { opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: 0.45 }}
-              >
-                <Button asChild size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 press-feedback rounded-xl px-8 h-12 font-medium cta-glow">
-                  <Link to="/app/alerts">
-                    {isAr ? "أنشئ تنبيهاً مجانياً" : "Create a free alert"} <Arrow className="h-4 w-4 ms-1" />
-                  </Link>
-                </Button>
-              </motion.div>
-            </>
-          ) : (
-            <>
-              <motion.div
-                initial={reduced ? {} : { scale: 0.8, opacity: 0 }}
-                whileInView={{ scale: 1, opacity: 0.6 }}
-                viewport={{ once: true }}
-                transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.1 }}
-              >
-                <LogIn className="h-10 w-10 mx-auto mb-4" />
-              </motion.div>
-              <motion.h2
-                className="text-heading-1 mb-3"
-                initial={reduced ? {} : { opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                {isAr ? "ابدأ رحلتك المهنية" : "Start your career journey"}
-              </motion.h2>
-              <motion.p
-                className="text-body-lg opacity-75 mb-8 max-w-md mx-auto"
-                initial={reduced ? {} : { opacity: 0, y: 16 }}
-                whileInView={{ opacity: 0.75, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-              >
-                {isAr
-                  ? "أنشئ حساباً مجانياً واحصل على وصول كامل لجميع الوظائف والتنبيهات"
-                  : "Create a free account and get full access to all jobs and alerts"}
-              </motion.p>
-              <motion.div
-                initial={reduced ? {} : { opacity: 0, y: 12 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: 0.45 }}
-              >
-                <Button asChild size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 press-feedback rounded-xl px-8 h-12 font-medium cta-glow">
-                  <Link to="/login">
-                    {isAr ? "سجّل الآن" : "Sign up now"} <Arrow className="h-4 w-4 ms-1" />
-                  </Link>
-                </Button>
-              </motion.div>
-            </>
-          )}
+      {/* ═══ FINAL CTA ═══ */}
+      <section className="section-y">
+        <div className="container">
+          <motion.div
+            className="hero-gradient relative overflow-hidden rounded-[2rem] px-8 py-12 md:px-14 md:py-16 text-primary-foreground"
+            initial={reduced ? {} : { opacity: 0, y: 24 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="glow-blob" style={{ width: 360, height: 360, top: -120, insetInlineEnd: -60, background: "hsl(var(--secondary) / 0.3)" }} />
+            <div className="glow-blob" style={{ width: 260, height: 260, bottom: -100, insetInlineStart: "20%", background: "hsl(var(--primary-hover) / 0.5)" }} />
+
+            <div className="relative z-10 grid items-center gap-8 md:grid-cols-[1fr_auto]">
+              <div className="max-w-xl">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3 py-1 text-caption font-medium backdrop-blur-sm mb-4">
+                  {isAr ? "ابدأ اليوم" : "Get started today"}
+                </span>
+                <h2 className="text-heading-1 leading-tight mb-3">
+                  {isAuthenticated
+                    ? (isAr ? "لا تفوت أي فرصة" : "Never miss an opportunity")
+                    : (isAr ? "رحلتك المهنية تبدأ الآن" : "Your career journey starts now")}
+                </h2>
+                <p className="text-body-lg opacity-80 mb-7">
+                  {isAuthenticated
+                    ? (isAr ? "أنشئ تنبيهاً واحصل على إشعار فوري عند توفر وظيفة مناسبة." : "Create an alert and get notified the moment a matching role appears.")
+                    : (isAr ? "أنشئ حساباً مجانياً واحصل على وصول كامل للوظائف والتوصيات ومساعدك رشيد." : "Create a free account for full access to jobs, matches, and Rasheed — your AI coach.")}
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button asChild size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 press-feedback rounded-xl px-8 h-12 font-medium cta-glow">
+                    <Link to={isAuthenticated ? "/app/alerts" : "/login"}>
+                      {isAuthenticated
+                        ? (isAr ? "أنشئ تنبيهاً مجانياً" : "Create a free alert")
+                        : (isAr ? "سجّل الآن" : "Sign up now")}
+                      <Arrow className="h-4 w-4 ms-1" />
+                    </Link>
+                  </Button>
+                  {!isAuthenticated && (
+                    <Button asChild size="lg" variant="outline" className="rounded-xl px-6 h-12 font-medium border-primary-foreground/25 bg-primary-foreground/5 text-primary-foreground hover:bg-primary-foreground/10">
+                      <Link to="/pricing">{isAr ? "شاهد الباقات" : "See plans"}</Link>
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="hidden md:block shrink-0">
+                <RasheedAvatar expression="greeting" size={132} />
+              </div>
+            </div>
+          </motion.div>
         </div>
-      </motion.section>
+      </section>
     </Layout>
   );
 }

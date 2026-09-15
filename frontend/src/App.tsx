@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
+import { RouteTransition } from "@/components/motion/RouteTransition";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/hooks/use-auth";
 import { apiRequest } from "@/services/client";
@@ -49,7 +49,7 @@ const Assessments = lazy(() => import("./pages/Assessments"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 
 import { RasheedCompanion } from "./components/rashid/RasheedCompanion";
-import { RashidOnboarding } from "./components/rashid/RashidOnboarding";
+import { OnboardingTour } from "./components/OnboardingTour";
 import { OnboardingFlow } from "./components/landing/OnboardingFlow";
 import { useI18nSync } from "@/hooks/use-i18n";
 import { useAuth } from "@/hooks/use-auth";
@@ -68,9 +68,9 @@ function RouteFallback() {
 function AnimatedRoutes() {
   const location = useLocation();
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <RouteTransition>
       <Suspense fallback={<RouteFallback />}>
-      <Routes location={location} key={location.pathname}>
+      <Routes location={location}>
         {/* Public routes */}
         <Route path="/" element={<Index />} />
         <Route path="/about" element={<About />} />
@@ -119,7 +119,7 @@ function AnimatedRoutes() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
-    </AnimatePresence>
+    </RouteTransition>
   );
 }
 
@@ -137,17 +137,26 @@ function OnboardingWrapper() {
     }
   }, [user]);
 
-  const handleOnboardingComplete = (preferences: { track: string; mode: string; location: string }) => {
-    apiRequest("/career/onboarding/", {
-      method: "PATCH",
-      body: {
-        step_id: "preferences",
-        career_stage: preferences.track,
-        primary_interest: preferences.mode,
-      },
-    }).catch(() => {});
-    localStorage.setItem("usam_onboarding_complete", "true");
-    setShowOnboarding(false);
+  const handleOnboardingComplete = async (preferences: { track: string; mode: string; location: string }) => {
+    // Persist the job-search preferences the flow actually collects (track/mode/
+    // location) so they can drive the initial jobs query. We mark the backend
+    // "preferences" onboarding step complete with a VALID step_id — we do NOT
+    // jam these into career_stage/primary_interest (different enums/concepts).
+    try {
+      localStorage.setItem("usam_job_prefs", JSON.stringify(preferences));
+      await apiRequest("/career/onboarding/", {
+        method: "PATCH",
+        body: { step_id: "preferences" },
+      });
+    } catch {
+      // Non-fatal: onboarding UX shouldn't block the user if the step write fails.
+    } finally {
+      localStorage.setItem("usam_onboarding_complete", "true");
+      setShowOnboarding(false);
+      // Kick off the guided section tour right after preferences.
+      localStorage.removeItem("usam_tour_done");
+      window.dispatchEvent(new CustomEvent("usam:start-tour"));
+    }
   };
 
   if (!showOnboarding) return null;
@@ -165,8 +174,8 @@ function AppContent() {
         <BrowserRouter>
           <AnimatedRoutes />
           <RasheedCompanion />
-          <RashidOnboarding />
           <OnboardingWrapper />
+          <OnboardingTour />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
