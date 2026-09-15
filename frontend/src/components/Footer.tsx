@@ -9,12 +9,12 @@ export function Footer() {
   const jobsPath = isAuthenticated ? "/app/jobs" : "/login";
 
   return (
-    <footer className="us-watermark border-t bg-primary text-primary-foreground">
-      <div className="container relative z-10 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div>
+    <footer className="us-watermark hero-gradient border-t border-primary-foreground/10 text-primary-foreground">
+      <div className="container relative z-10 py-14">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div className="max-w-sm">
             <Logo variant="onDark" className="h-9 mb-4" />
-            <p className="text-body opacity-80">
+            <p className="text-body opacity-75 leading-relaxed">
               {lang === "ar"
                 ? "بحث واحد. كل الفرص. نجمع الوظائف من أفضل المنصات في منطقة الشرق الأوسط."
                 : "One search. Every opportunity. Aggregating jobs across MENA for students and professionals."}

@@ -119,7 +119,8 @@ export function WhyUsamSection({
       <WatermarkBackground variant="tilt" />
       <div className="container">
         <ScrollReveal>
-          <div className="text-center mb-10">
+          <div className="flex flex-col items-center text-center mb-12">
+            <span className="eyebrow mb-3">{isAr ? "لماذا نحن" : "Why choose us"}</span>
             <h2 className="text-heading-2">{isAr ? "لماذا USAM؟" : "Why USAM?"}</h2>
             <p className="text-body text-muted-foreground mt-2 max-w-md mx-auto">
               {isAr ? "نوفر لك الوقت والجهد في البحث عن عمل" : "We save you time and effort in your job search"}
@@ -154,19 +155,10 @@ export function WhyUsamSection({
                 delay: reduced ? 0 : i * 0.14,
                 ease: [0.16, 1, 0.3, 1],
               }}
-              whileHover={
-                reduced
-                  ? {}
-                  : {
-                      y: -4,
-                      boxShadow: "var(--shadow-lg)",
-                      transition: { duration: 0.25, ease: [0, 0, 0.2, 1] },
-                    }
-              }
-              className="bg-card rounded-xl border p-6 h-full transition-colors duration-200"
+              className="card-premium card-accent-top p-7 h-full"
             >
               <motion.div
-                className="rounded-lg bg-primary-muted p-3 w-fit mb-4"
+                className="icon-tile p-3 w-fit mb-5"
                 whileHover={reduced ? {} : { rotate: [0, -6, 6, 0], scale: 1.05 }}
                 transition={{ duration: 0.45 }}
               >

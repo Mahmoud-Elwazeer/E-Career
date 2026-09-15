@@ -67,12 +67,13 @@ export function CareerTracks() {
   const counts = getTrackCounts();
 
   return (
-    <section className="py-14">
+    <section className="section-y">
       <div className="container">
         <ScrollReveal>
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-heading-2">{isAr ? "مسارات مهنية رائجة" : "Popular Career Paths"}</h2>
+              <span className="eyebrow mb-3">{isAr ? "المسارات" : "Career tracks"}</span>
+              <h2 className="text-heading-2 mt-3">{isAr ? "مسارات مهنية رائجة" : "Popular Career Paths"}</h2>
               <p className="text-body text-muted-foreground mt-1">
                 {isAr ? "اكتشف المسارات الأكثر طلباً في السوق" : "Explore the most in-demand career tracks"}
               </p>
@@ -87,10 +88,10 @@ export function CareerTracks() {
                 <AnimatedCard>
                   <Link
                     to={`${jobsPath}?q=${track.keywords[0]}`}
-                    className="flex flex-col p-5 rounded-xl border bg-card hover:border-primary/30 transition-all duration-200 group h-full"
+                    className="card-premium card-accent-top flex flex-col p-5 group h-full"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div className="rounded-lg bg-primary-muted p-2.5">
+                      <div className="icon-tile p-2.5">
                         <track.icon className="h-5 w-5 text-primary" />
                       </div>
                       {track.trending && (

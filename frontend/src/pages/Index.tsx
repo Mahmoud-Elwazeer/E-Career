@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
-import { Search, ArrowRight, ArrowLeft, Briefcase, Laptop, Stethoscope, PenTool, DollarSign, GraduationCap, Wrench, Users, TrendingUp, Shield, Zap, Globe, Bell, MousePointerClick, Filter, Send, LogIn, Building2 } from "lucide-react";
+import { Search, ArrowRight, ArrowLeft, Briefcase, Laptop, Stethoscope, PenTool, DollarSign, GraduationCap, Wrench, Users, TrendingUp, Shield, Zap, Globe, Bell, MousePointerClick, Filter, Send, LogIn, Building2, Sparkles, CheckCircle2 } from "lucide-react";
 import { StatsStrip, WhyUsamSection } from "@/components/landing/ScrollSections";
 import { CareerGuide } from "@/components/landing/CareerGuide";
 import { Button } from "@/components/ui/button";
@@ -119,8 +119,12 @@ export default function Index() {
           so the two never render simultaneously. */}
       {!isAuthenticated && <OnboardingFlow onComplete={handleOnboardingComplete} />}
       {/* ═══ HERO — Cinematic Entrance ═══ */}
-      <section ref={heroRef} className="relative overflow-hidden bg-primary text-primary-foreground">
+      <section ref={heroRef} className="hero-gradient hero-grid relative overflow-hidden text-primary-foreground">
         <WatermarkBackground variant="shimmer" opacity={0.04} inheritColor paused={isTyping} />
+
+        {/* Ambient glow blobs for depth */}
+        <div className="glow-blob" style={{ width: 480, height: 480, top: -140, insetInlineEnd: -120, background: "hsl(var(--secondary) / 0.35)" }} />
+        <div className="glow-blob" style={{ width: 360, height: 360, bottom: -120, insetInlineStart: -80, background: "hsl(var(--primary-hover) / 0.6)" }} />
 
         {/* Gradient breathing overlay */}
         <div
@@ -136,15 +140,18 @@ export default function Index() {
           style={reduced ? {} : { y: heroY, opacity: heroOpacity }}
         >
           <div className="max-w-2xl">
-            {/* Overline */}
-            <motion.p
-              className="text-overline tracking-widest opacity-60 mb-4"
+            {/* Eyebrow chip */}
+            <motion.div
+              className="mb-5"
               initial={reduced ? {} : { opacity: 0, y: 12 }}
-              animate={{ opacity: 0.6, y: 0 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1, ease: [0, 0, 0.2, 1] }}
             >
-              {isAr ? "منصة تجميع الوظائف" : "JOBS AGGREGATOR PLATFORM"}
-            </motion.p>
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3.5 py-1.5 text-caption font-medium backdrop-blur-sm">
+                <Sparkles className="h-3.5 w-3.5 text-secondary" />
+                {isAr ? "منصة تجميع الوظائف الذكية" : "AI-powered jobs aggregator"}
+              </span>
+            </motion.div>
 
             {/* H1 */}
             <motion.h1
@@ -164,9 +171,9 @@ export default function Index() {
 
             {/* Subtitle */}
             <motion.p
-              className="text-display leading-[1.08] mb-5 font-extralight opacity-75"
+              className="text-display leading-[1.08] mb-5 font-light text-secondary"
               initial={reduced ? {} : { opacity: 0, y: 50, scale: 0.97 }}
-              animate={{ opacity: 0.75, y: 0, scale: 1 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{
                 type: "spring",
                 stiffness: 80,
@@ -204,6 +211,25 @@ export default function Index() {
                 onHoverSearch={setHoverSearch}
                 onClickSearch={() => { setClickSearch(true); setTimeout(() => setClickSearch(false), 700); }}
               />
+            </motion.div>
+
+            {/* Trust micro-row */}
+            <motion.div
+              className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-caption text-primary-foreground/70"
+              initial={reduced ? {} : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.75, ease: [0, 0, 0.2, 1] }}
+            >
+              {[
+                isAr ? "تقديم مباشر للمصدر" : "Direct-to-source apply",
+                isAr ? "بدون وسطاء" : "No middleman",
+                isAr ? "تحديث مستمر" : "Continuously verified",
+              ].map((t) => (
+                <span key={t} className="inline-flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-secondary" />
+                  {t}
+                </span>
+              ))}
             </motion.div>
           </div>
 
@@ -256,28 +282,29 @@ export default function Index() {
       <CareerTracks />
 
       {/* ═══ CATEGORIES ═══ */}
-      <section className="bg-surface-2 py-14">
+      <section className="section-band section-y">
         <div className="container">
           <ScrollReveal>
-            <div className="flex items-center justify-between mb-8">
+            <div className="flex items-end justify-between mb-8">
               <div>
-                <h2 className="text-heading-2">{isAr ? "تصفح حسب التصنيف" : "Browse by Category"}</h2>
+                <span className="eyebrow mb-3">{isAr ? "التصنيفات" : "Categories"}</span>
+                <h2 className="text-heading-2 mt-3">{isAr ? "تصفح حسب التصنيف" : "Browse by Category"}</h2>
                 <p className="text-body text-muted-foreground mt-1">{isAr ? "اختر المجال الذي يناسبك" : "Find roles in your preferred industry"}</p>
               </div>
-              <Link to={jobsPath} className="text-body text-primary font-medium flex items-center gap-1 link-underline">
+              <Link to={jobsPath} className="text-body text-primary font-medium flex items-center gap-1 link-underline shrink-0">
                 {isAr ? "عرض الكل" : "View all"} <Arrow className="h-3 w-3" />
               </Link>
             </div>
           </ScrollReveal>
-          <StaggerContainer className="grid grid-cols-2 sm:grid-cols-4 gap-3" staggerDelay={0.06}>
+          <StaggerContainer className="grid grid-cols-2 sm:grid-cols-4 gap-4" staggerDelay={0.06}>
             {categories.map((cat) => (
               <StaggerItem key={cat.value}>
                 <AnimatedCard>
                   <Link
                     to={`${jobsPath}?industry=${cat.value}`}
-                    className="flex items-center gap-3.5 p-4 rounded-xl border bg-card hover:border-primary/30 transition-colors duration-normal group"
+                    className="card-premium flex items-center gap-3.5 p-4 group"
                   >
-                    <div className="rounded-lg bg-primary-muted p-2.5">
+                    <div className="icon-tile p-2.5">
                       <cat.icon className="h-5 w-5 text-primary" />
                     </div>
                     <div>
@@ -317,34 +344,40 @@ export default function Index() {
       <WhyUsamSection isAr={isAr} reduced={reduced} />
 
       {/* ═══ EMPLOYER CTA ═══ */}
-      <section className="py-16 bg-accent/30">
-        <div className="container text-center max-w-2xl">
-          <Building2 className="h-10 w-10 mx-auto mb-4 text-primary opacity-60" />
-          <h2 className="text-heading-2 mb-3">
-            {isAr ? "هل تبحث عن مواهب؟" : "Looking to hire?"}
-          </h2>
-          <p className="text-body-lg text-muted-foreground mb-6">
-            {isAr
-              ? "انضم كصاحب عمل وابدأ في نشر وظائفك والوصول إلى أفضل المرشحين"
-              : "Join as an employer to post jobs and reach top talent across the region"}
-          </p>
-          <Button asChild size="lg" variant="outline" className="rounded-xl px-8 h-12 font-medium">
-            <Link to="/login">
-              <Building2 className="h-4 w-4 me-2" />
-              {isAr ? "ابدأ التوظيف" : "Start hiring"} <Arrow className="h-4 w-4 ms-1" />
-            </Link>
-          </Button>
+      <section className="section-y">
+        <div className="container">
+          <div className="card-premium relative overflow-hidden mx-auto max-w-4xl text-center p-10 md:p-14">
+            <div className="glow-blob" style={{ width: 300, height: 300, top: -100, insetInlineEnd: -60, background: "hsl(var(--primary) / 0.12)" }} />
+            <div className="icon-tile relative mx-auto mb-5 h-14 w-14">
+              <Building2 className="h-6 w-6 text-primary" />
+            </div>
+            <h2 className="text-heading-2 mb-3 relative">
+              {isAr ? "هل تبحث عن مواهب؟" : "Looking to hire?"}
+            </h2>
+            <p className="text-body-lg text-muted-foreground mb-7 max-w-lg mx-auto relative">
+              {isAr
+                ? "انضم كصاحب عمل وابدأ في نشر وظائفك والوصول إلى أفضل المرشحين"
+                : "Join as an employer to post jobs and reach top talent across the region"}
+            </p>
+            <Button asChild size="lg" className="relative rounded-xl px-8 h-12 font-medium press-feedback">
+              <Link to="/login">
+                <Building2 className="h-4 w-4 me-2" />
+                {isAr ? "ابدأ التوظيف" : "Start hiring"} <Arrow className="h-4 w-4 ms-1" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
       {/* ═══ CTA BANNER ═══ */}
       <motion.section
-        className="relative overflow-hidden bg-primary text-primary-foreground"
+        className="hero-gradient hero-grid relative overflow-hidden text-primary-foreground"
         initial={reduced ? {} : { opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true, amount: 0.3 }}
         transition={{ duration: 0.6 }}
       >
+        <div className="glow-blob" style={{ width: 380, height: 380, top: -120, insetInlineStart: "40%", background: "hsl(var(--secondary) / 0.25)" }} />
         <WatermarkBackground variant="drift" opacity={0.04} inheritColor />
         <div className="container relative z-10 py-16 text-center">
           {isAuthenticated ? (

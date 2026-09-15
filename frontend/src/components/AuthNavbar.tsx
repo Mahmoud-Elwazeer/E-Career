@@ -79,8 +79,8 @@ export function AuthNavbar() {
   const mobileNav = !isAuthenticated ? publicNavItems : [...primaryNav, ...secondaryNav];
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-card/95 glass supports-[backdrop-filter]:bg-card/80">
-      <div className="container flex h-14 items-center justify-between">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-card/80 glass supports-[backdrop-filter]:bg-card/70">
+      <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center gap-2 press-feedback" aria-label="USAM home">
           <Logo className="h-8" />
         </Link>
@@ -159,7 +159,7 @@ export function AuthNavbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button asChild variant="default" size="sm" className="ms-2 rounded-lg press-feedback">
+              <Button asChild variant="default" size="sm" className="ms-2 rounded-lg px-5 shadow-sm press-feedback">
                 <Link to="/login">{isAr ? "دخول" : "Sign in"}</Link>
               </Button>
             )}

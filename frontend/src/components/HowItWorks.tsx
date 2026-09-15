@@ -43,7 +43,7 @@ export function HowItWorks({ steps, sectionTitle, sectionSubtitle, className }: 
         {steps.map((step, i) => (
           <motion.div
             key={step.title}
-            className="relative bg-card border rounded-xl p-6 text-center hover:shadow-md transition-shadow"
+            className="card-premium card-accent-top p-8 text-center"
             initial={reduced ? false : { opacity: 0, y: 24 }}
             animate={isInView ? { opacity: 1, y: 0 } : undefined}
             transition={{
@@ -51,12 +51,11 @@ export function HowItWorks({ steps, sectionTitle, sectionSubtitle, className }: 
               delay: reduced ? 0 : 0.15 + i * 0.12,
               ease: MOTION.ease.out,
             }}
-            whileHover={reduced ? {} : MOTION.presets.hoverLift}
           >
             {/* Number badge */}
-            <div className="mx-auto w-16 h-16 rounded-full bg-primary-muted flex items-center justify-center relative mb-5">
+            <div className="icon-tile mx-auto w-16 h-16 relative mb-5">
               <step.icon className="h-7 w-7 text-primary" />
-              <span className="absolute -top-1 -end-1 w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center shadow-sm">
+              <span className="absolute -top-1.5 -end-1.5 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-semibold flex items-center justify-center shadow-md ring-2 ring-card">
                 {i + 1}
               </span>
             </div>

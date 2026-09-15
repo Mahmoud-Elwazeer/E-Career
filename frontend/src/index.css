@@ -542,6 +542,113 @@
   .section-heading {
     @apply text-heading-3 text-foreground mb-4;
   }
+
+  /* ─────────────────────────────────────────────
+     PREMIUM VISUAL PRIMITIVES (landing + marketing)
+     Brand-color only. Add depth, gradient, glow.
+     ───────────────────────────────────────────── */
+
+  /* Rich layered hero background: deep teal + radial glows + soft mesh.
+     Uses brand tokens so it adapts to light/dark/night. */
+  .hero-gradient {
+    position: relative;
+    background:
+      radial-gradient(120% 120% at 85% 10%, hsl(var(--primary-hover) / 0.55) 0%, transparent 55%),
+      radial-gradient(90% 90% at 15% 90%, hsl(var(--secondary) / 0.18) 0%, transparent 50%),
+      linear-gradient(160deg, hsl(var(--primary)) 0%, hsl(var(--primary-hover)) 55%, hsl(var(--primary) / 0.92) 100%);
+  }
+  /* Faint dotted grid overlay for depth (place inside a relative container) */
+  .hero-grid::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(hsl(var(--primary-foreground) / 0.10) 1px, transparent 1px);
+    background-size: 26px 26px;
+    -webkit-mask-image: radial-gradient(ellipse at 40% 30%, black 0%, transparent 75%);
+    mask-image: radial-gradient(ellipse at 40% 30%, black 0%, transparent 75%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Ambient blurred color blob (decorative) */
+  .glow-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(64px);
+    opacity: 0.5;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Section wrapper with generous rhythm */
+  .section-y {
+    @apply py-16 md:py-24;
+  }
+
+  /* Eyebrow chip above section titles */
+  .eyebrow {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-primary/5 px-3 py-1 text-caption font-medium text-primary;
+  }
+
+  /* Premium elevated card: soft ring + layered shadow + lift on hover */
+  .card-premium {
+    @apply relative rounded-2xl border border-border/60 bg-card text-card-foreground;
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--duration-normal) var(--ease-out),
+                box-shadow var(--duration-normal) var(--ease-out),
+                border-color var(--duration-normal) var(--ease-out);
+  }
+  .card-premium:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-xl);
+    border-color: hsl(var(--primary) / 0.25);
+  }
+
+  /* Gradient hairline top accent for feature cards */
+  .card-accent-top::after {
+    content: '';
+    position: absolute;
+    inset-inline: 1.25rem;
+    top: 0;
+    height: 2px;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, transparent, hsl(var(--primary) / 0.5), transparent);
+    opacity: 0;
+    transition: opacity var(--duration-normal) var(--ease-out);
+  }
+  .card-premium.card-accent-top:hover::after {
+    opacity: 1;
+  }
+
+  /* Icon tile with subtle gradient + ring */
+  .icon-tile {
+    @apply inline-flex items-center justify-center rounded-xl;
+    background: linear-gradient(140deg, hsl(var(--primary) / 0.14), hsl(var(--primary) / 0.05));
+    box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.12);
+  }
+
+  /* Frosted panel for hero cards / stats on colored bg */
+  .glass-panel {
+    background: hsl(var(--primary-foreground) / 0.08);
+    border: 1px solid hsl(var(--primary-foreground) / 0.14);
+    backdrop-filter: blur(var(--blur-md));
+    -webkit-backdrop-filter: blur(var(--blur-md));
+  }
+
+  /* Gradient text (brand) */
+  .text-gradient-brand {
+    background: linear-gradient(120deg, hsl(var(--primary)), hsl(var(--primary-hover)) 60%, hsl(var(--secondary-foreground)));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Soft divider band between light sections */
+  .section-band {
+    background:
+      linear-gradient(180deg, hsl(var(--surface-2) / 0.6), transparent 30%),
+      hsl(var(--background));
+  }
 }
 
 /* ═══════════════════════════════════════
