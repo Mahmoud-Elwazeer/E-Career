@@ -2,8 +2,10 @@ import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useGLTF, useAnimations, Environment, ContactShadows } from "@react-three/drei";
 import * as THREE from "three";
+import type { GLTF } from "three-stdlib";
 import { useRasheed, type RasheedStateName, type RasheedExpressionName } from "./rasheed-state";
 import { RASHEED_GLB_URL } from "./glb-url";
+import { validateRasheedGlb, formatReport } from "./validateRasheedGlb";
 
 /**
  * RasheedAvatar3D — the real-time 3D renderer for the Rasheed character.
@@ -82,10 +84,35 @@ function collectMorphMeshes(root: THREE.Object3D): MorphTarget[] {
   return out;
 }
 
+/** Thrown when a GLB loads but does not satisfy the Rasheed contract. */
+export class RasheedGlbInvalidError extends Error {
+  constructor(msg: string) {
+    super(msg);
+    this.name = "RasheedGlbInvalidError";
+  }
+}
+
 function RasheedModel() {
   const rasheed = useRasheed();
-  const { scene, animations } = useGLTF(RASHEED_GLB_URL);
+  const gltf = useGLTF(RASHEED_GLB_URL) as unknown as GLTF;
+  const { scene, animations } = gltf;
   const groupRef = useRef<THREE.Group>(null);
+
+  // Validate the asset against the integration contract ONCE. A GLB that loads
+  // but is missing rig/morphs/clips is NOT acceptable — throw so the parent
+  // reverts to the vector fallback instead of showing a broken character.
+  useMemo(() => {
+    const report = validateRasheedGlb(gltf);
+    // Surface the full report in the console for asset producers.
+    // eslint-disable-next-line no-console
+    console[report.pass ? "info" : "warn"](formatReport(report));
+    if (!report.pass) {
+      throw new RasheedGlbInvalidError(
+        "rasheed.glb failed validation — see console for the PASS/FAIL report. " +
+          "Fallback vector character will be used.",
+      );
+    }
+  }, [gltf]);
 
   // Clone so the same cache entry can be mounted more than once safely.
   const model = useMemo(() => {

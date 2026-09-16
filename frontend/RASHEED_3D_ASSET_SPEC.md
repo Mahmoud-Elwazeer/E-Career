@@ -1,16 +1,33 @@
-# Rasheed — 3D Interactive Character Asset Spec (v1)
+# Rasheed — 3D Interactive Character Asset Spec (v2, production)
 
-This is the **authoritative brief** for the production 3D asset that powers the
-Rasheed character system on E-Career (jobs.usamif.com). The frontend integration
-(React Three Fiber renderer + semantic state machine) is already built and ships
-with a graceful fallback. **The moment a GLB matching this spec is placed at the
-path below, Rasheed becomes fully 3D with zero further frontend changes.**
+This is the **authoritative production brief** for the Rasheed 3D character asset.
+The frontend integration (React Three Fiber renderer + semantic state machine +
+graceful fallback) is **already built and deployed**. This document is the exact
+contract the asset must satisfy. The integration code is the source of truth;
+every requirement below is enforced by the automated validator
+(`src/components/rashid/validateRasheedGlb.ts`) and reported in dev via the
+`?rasheedCheck=1` overlay.
 
-> Identity reference: keep Rasheed's existing concept — a warm, professional
-> Middle‑Eastern **male HR / career coach**, brand teal `#0A3836` suit + tie,
-> approachable smile. Use the current vector character and the product
-> screenshots as the visual reference; make the 3D version a realistic,
-> professional evolution of that identity (not a random new person).
+> **Status:** the production `rasheed.glb` does **not exist yet**. Until a file
+> that PASSES validation is placed at `frontend/public/models/rasheed.glb`, the
+> app deliberately stays on the animated vector fallback. A GLB that loads but
+> is missing rig/morphs/clips is **not** an acceptable deliverable.
+
+> **Identity:** Rasheed is a warm, professional Middle‑Eastern **male HR / career
+> coach** for the USAM platform (jobs.usamif.com). Brand teal `#0A3836` suit,
+> `#2A8F88` tie, off-white shirt, approachable confident smile, short dark hair,
+> neat short beard. Use the existing vector Rasheed + the product screenshots as
+> the identity reference. This must read as **Rasheed specifically**, not a
+> generic avatar.
+
+---
+
+## 0. Why this spec changed (verify, don't assume)
+
+Ready Player Me — previously the fastest path — **shut down its public platform
+and APIs on 31 January 2026** after being acquired by Netflix. It is no longer a
+viable production source. This v2 spec removes RPM and lists only tools verified
+active as of this writing. Re-verify any tool's status before committing budget.
 
 ---
 
@@ -18,101 +35,106 @@ path below, Rasheed becomes fully 3D with zero further frontend changes.**
 
 | Item | Requirement |
 |---|---|
-| **Format** | glTF 2.0 **binary `.glb`** (single self-contained file, embedded textures) |
-| **File path** | `frontend/public/models/rasheed.glb` (served at `/models/rasheed.glb`) |
-| **Optional LOD** | `rasheed-low.glb` (mobile) at same folder — optional |
-| **File size budget** | ≤ **6 MB** compressed (Draco/meshopt allowed); hard cap 10 MB |
-| **Triangles** | ≤ ~50k tris (half-body) / ≤ ~90k (full-body) |
-| **Textures** | PBR metal-rough, ≤ 2048² albedo, packed ORM; KTX2/Basis preferred |
-| **Draco/meshopt** | Draco or meshopt compression on geometry is supported by the loader |
+| **Format** | glTF 2.0 **binary `.glb`**, single self-contained file, embedded textures |
+| **Drop-in path** | `frontend/public/models/rasheed.glb` (served at `/models/rasheed.glb`) |
+| **Optional mobile LOD** | `frontend/public/models/rasheed-low.glb` (optional) |
+| **File size** | ≤ **6 MB** target, **10 MB hard cap** (Draco or meshopt compression OK) |
+| **Triangles** | ≤ ~50k (half-body) / ≤ ~90k (full-body) |
+| **Textures** | PBR metal-rough, ≤ 2048² albedo, ORM packed; KTX2/Basis preferred |
+| **Draw calls** | ≤ ~6 meshes/materials (body, head, hair, eyes, teeth, prop) |
 
-## 2. Framing & transform
+## 2. Orientation, scale, framing
 
-- **Composition:** half-body (waist-up) is preferred for the hero + companion;
-  full-body is acceptable (renderer frames the upper body). Include the
-  **right hand + forearm** clearly (he holds a phone/screen — see §6).
-- **Up axis:** Y-up. **Forward:** −Z (faces the camera/viewer).
-- **Scale:** meters; head-to-waist ≈ 0.8–1.0 units. Origin at feet or hips.
-- **Rest pose:** relaxed T/A-pose or a natural standing idle; symmetrical.
+- **Y-up, faces −Z** (toward camera). Real-world **meters**.
+- Standing height ~1.7–1.8 units; the renderer frames the **bust** by default
+  (camera target ~`y=1.45`) and can switch to `full`. Deliver **full-body** so
+  both framings work; the app crops to the bust for hero/companion.
+- Origin at feet (hips acceptable). Symmetrical A/T rest pose.
 
-## 3. Skeleton / rig (body)
+## 3. Skeleton / rig — REQUIRED (validator checks bone names)
 
-- **Humanoid skeleton, Mixamo-compatible bone names** (`mixamorig:Hips`,
-  `Spine`, `Spine1`, `Spine2`, `Neck`, `Head`, `LeftArm/ForeArm/Hand`,
-  `RightArm/ForeArm/Hand`, finger bones, etc.). Mixamo naming lets us retarget
-  any Mixamo clip without remapping.
-- Skinned mesh must reference these bones. Include **neck + head bones** (used
-  for head-tracking toward the pointer) and **finger bones** (holding/pointing).
+- **Humanoid, Mixamo-compatible bone names.** Prefix `mixamorig:` is expected but
+  the validator also accepts unprefixed standard names.
+- **Must contain a head bone** named `Head` / `mixamorig:Head` (NOT only
+  `HeadTop_End`). The renderer rotates this bone for head-gaze.
+- Required core chain: `Hips, Spine, Spine1, Spine2, Neck, Head`,
+  `LeftShoulder/Arm/ForeArm/Hand`, `RightShoulder/Arm/ForeArm/Hand`,
+  `Left/RightUpLeg/Leg/Foot`. Fingers strongly recommended (pointing/holding).
+- The body mesh must be a **skinned mesh** bound to this skeleton (the renderer
+  deep-clones with skeleton rebinding — non-skinned static meshes will not
+  animate).
 
-## 4. Facial rig (blendshapes / morph targets) — REQUIRED for expressions + lip-sync
+## 4. Facial morph targets — REQUIRED (validator checks morph names)
 
-Provide **ARKit 52 blendshapes** with the standard names on the face mesh's
-`morphTargetDictionary`, e.g.:
+The face mesh's `morphTargetDictionary` **must** contain these names (exact,
+case-sensitive). These are the ones the renderer reads directly:
 
+**Expressions / gaze / blink (required — 21):**
 ```
-browInnerUp, browDownLeft, browDownRight, browOuterUpLeft, browOuterUpRight,
-eyeBlinkLeft, eyeBlinkRight, eyeLookUpLeft, eyeLookUpRight, eyeLookDownLeft,
-eyeLookDownRight, eyeLookInLeft, eyeLookInRight, eyeLookOutLeft, eyeLookOutRight,
-eyeSquintLeft, eyeSquintRight, eyeWideLeft, eyeWideRight, cheekPuff,
-cheekSquintLeft, cheekSquintRight, noseSneerLeft, noseSneerRight, jawOpen,
-jawForward, jawLeft, jawRight, mouthClose, mouthFunnel, mouthPucker,
-mouthLeft, mouthRight, mouthSmileLeft, mouthSmileRight, mouthFrownLeft,
-mouthFrownRight, mouthDimpleLeft, mouthDimpleRight, mouthStretchLeft,
-mouthStretchRight, mouthRollLower, mouthRollUpper, mouthShrugLower,
-mouthShrugUpper, mouthPressLeft, mouthPressRight, mouthLowerDownLeft,
-mouthLowerDownRight, mouthUpperUpLeft, mouthUpperUpRight, tongueOut
+mouthSmileLeft, mouthSmileRight, mouthFrownLeft, mouthFrownRight,
+cheekSquintLeft, cheekSquintRight, browInnerUp, browOuterUpLeft,
+browOuterUpRight, browDownLeft, browDownRight, eyeSquintLeft, eyeSquintRight,
+eyeBlinkLeft, eyeBlinkRight, eyeLookOutLeft, eyeLookOutRight, eyeLookInLeft,
+eyeLookInRight, eyeLookUpLeft, eyeLookUpRight
 ```
+(plus `eyeLookDownLeft, eyeLookDownRight, jawOpen`)
 
-Additionally provide (either as separate morphs OR derivable from ARKit) the
-**15 Oculus visemes** (`viseme_sil, viseme_PP, viseme_FF, viseme_TH, viseme_DD,
-viseme_kk, viseme_CH, viseme_SS, viseme_nn, viseme_RR, viseme_aa, viseme_E,
-viseme_I, viseme_O, viseme_U`). These drive future TTS lip-sync. Ready Player Me
-avatars already ship both sets — an RPM half-body GLB is the fastest way to meet
-this section.
+**Full ARKit 52** is strongly recommended (superset of the above) so future
+expressions/capture work without re-exporting. Standard ARKit naming.
 
-## 5. Named animation clips (baked into the GLB, or supplied as Mixamo FBX)
+**Lip-sync visemes (required for talking — 15 Oculus):**
+```
+viseme_sil, viseme_PP, viseme_FF, viseme_TH, viseme_DD, viseme_kk,
+viseme_CH, viseme_SS, viseme_nn, viseme_RR, viseme_aa, viseme_E,
+viseme_I, viseme_O, viseme_U
+```
+If only ARKit is present, `jawOpen` alone yields a basic talking flap, but
+**visemes are required for real lip-sync** and are part of the acceptance bar.
 
-The renderer selects clips **by semantic state**, so clip **names must match**
-(case-insensitive contains-match is used, but exact names are safest):
+## 5. Animation clips — REQUIRED (validator checks clip names)
 
-| State | Clip name | Behavior |
-|---|---|---|
-| `idle` | `Idle` | relaxed breathing loop; occasional weight shift |
-| `greeting` | `Greeting` (or `Wave`) | friendly wave / nod, then settle to idle |
-| `talking` | `Talking` | conversational hand gestures loop (lip-sync layered on top) |
-| `listening` | `Listening` | attentive lean-in, subtle nods |
-| `thinking` | `Thinking` | hand-to-chin / look-up ponder loop |
-| `pointing` | `Pointing` | points toward UI (right hand) |
-| `holdingScreen` | `HoldingScreen` (or `Presenting`) | holds phone/tablet up, presents it |
-| `reacting` | `Reacting` | quick positive acknowledgement |
-| `celebrating` | `Celebrating` | fist-pump / thumbs-up celebration |
+Clips baked into the GLB (or delivered as named Mixamo FBX for retarget). The
+renderer matches by **case-insensitive substring**, so any listed alias works;
+exact names in the left column are safest.
 
-- All loops seamless. `greeting/reacting/celebrating` may be one-shots that
-  auto-return to `idle` (renderer handles the return).
-- If clips are delivered as **separate Mixamo FBX** files instead of baked into
-  the GLB, name the files exactly as the clip names above; we'll retarget.
+| Semantic state | Clip name (or alias the name contains) |
+|---|---|
+| `idle` | `Idle` (`breathing`, `stand`) |
+| `greeting` | `Greeting` (`wave`, `hello`) |
+| `talking` | `Talking` (`talk`, `speak`, `gesture`) |
+| `listening` | `Listening` (`listen`, `attentive`) |
+| `thinking` | `Thinking` (`think`, `ponder`, `idea`) |
+| `pointing` | `Pointing` (`point`) |
+| `holdingScreen` | `HoldingScreen` (`presenting`, `present`, `showing`, `phone`) |
+| `reacting` | `Reacting` (`react`, `nod`, `acknowledge`) |
+| `celebrating` | `Celebrating` (`celebrate`, `cheer`, `victory`, `fistpump`) |
 
-## 6. The phone / screen prop (for holdingScreen + presenting)
+- `idle/talking/listening/thinking/holdingScreen` loop seamlessly.
+- `greeting/reacting/celebrating/pointing` may be one-shots (the app auto-returns
+  to idle). Mixamo Library clips retargeted onto the rig satisfy this section.
 
-- Include a **right-hand-parented empty/socket node** named `RightHandProp`
-  (or bone `mixamorig:RightHand` we can attach to) positioned in the palm.
-- Optionally include a simple **phone mesh** parented to that node named
-  `PhoneScreen` with a **flat front quad** whose material we can replace with a
-  live render target (so the app draws real UI cards on the screen). If omitted,
-  the app overlays an HTML card anchored to the projected `RightHandProp`
-  position (fallback path already implemented).
+## 6. Prop socket (phone/screen) — RECOMMENDED
+
+- A node named `RightHandProp` parented to the right hand, positioned in the
+  palm, so the app can attach a phone/screen and draw live UI on it.
+- Optional low-poly phone mesh `PhoneScreen` with a flat front quad whose
+  material the app can swap for a render target. If absent, the app anchors an
+  HTML card to the projected socket position (already implemented).
 
 ## 7. Materials / look
 
-- PBR metal-rough. Skin: subsurface-ish albedo, low metalness, mid roughness.
-- Suit teal aligned to brand `#0A3836`; shirt off-white; tie `#2A8F88`.
-- No baked harsh shadows in textures (scene lights handle it). Single-sided ok.
-- Eyes as separate material with specular highlight; corneal bulge optional.
+- PBR metal-rough. Skin: mid roughness, low metalness, subtle SSS look.
+- Suit teal `#0A3836`; tie `#2A8F88`; shirt off-white. Eyes separate material
+  with spec highlight. No harsh baked shadows in albedo (scene lights handle it).
+- **CC4 caveat:** Character Creator exports can carry non-uniform bone scale that
+  stretches limbs in three.js during procedural bone control. If using CC4,
+  apply the community fix (e.g. Auto-Avatar-Fixer) / bake uniform scale before
+  export, and re-run the validator.
 
-## 8. Interaction contract (what the app drives — already implemented)
+## 8. Interaction contract (already implemented — do NOT rebuild)
 
-The app never references clip timelines directly. It sets **semantic state** and
-optional inputs; the renderer maps them to clips + blendshapes:
+The app drives Rasheed by **semantic state only**, never by timeline. This is
+the stable contract the asset plugs into:
 
 ```ts
 type RasheedStateName =
@@ -121,36 +143,52 @@ type RasheedStateName =
 
 interface RasheedInputs {
   state: RasheedStateName;
-  gaze?: { x: number; y: number };   // -1..1, head/eye look target (pointer)
-  visemes?: Float32Array;            // 15 Oculus viseme weights (future TTS)
+  gaze?: { x: number; y: number };   // -1..1 head/eye look target (pointer)
+  visemes?: Float32Array;            // 15 Oculus viseme weights (TTS lip-sync)
   expression?: "neutral" | "happy" | "encouraging" | "focused";
-  message?: string;                  // optional speech-bubble text
+  message?: string;
 }
 ```
 
-Requirements this places on the asset: named clips (§5), ARKit + viseme
-blendshapes (§4), neck/head + eye bones or eyeLook* morphs (§4) for gaze,
-right-hand socket (§6).
+Implemented in `rasheed-state.tsx` (`useRasheed`), consumed by
+`RasheedAvatar3D.tsx`. Future TTS/AI: write `state` + per-frame `visemes` from a
+backend agent — no renderer change needed.
 
-## 9. How to produce the asset (fastest → most custom)
+## 9. How to actually PRODUCE Rasheed (verified-active options, ranked)
 
-1. **Ready Player Me (fastest):** create a male half-body avatar from a photo/
-   config, export **GLB** with **ARKit + Oculus visemes** enabled. Add Mixamo
-   body clips (upload the GLB to Mixamo or retarget) named per §5. Style the
-   suit to brand teal.
-2. **Mixamo + Blender:** any rigged humanoid → add FaceIt ARKit + Oculus visemes
-   (see met4citizen/TalkingHead FaceIt guide) → export GLB.
-3. **Custom 3D artist / MetaHuman → GLB:** highest fidelity; must still export
-   glTF 2.0 with ARKit blendshapes + Mixamo-named skeleton + clips per §5.
+The requirement is a **custom Rasheed identity**, not a generic avatar. Ranked by
+fit for "custom + realistic + web-ready + rigged + affordable":
 
-## 10. Acceptance checklist
+1. **Reallusion Character Creator 4 + Headshot 3 (recommended in-house path).**
+   Build a realistic male digital human, use Headshot to shape the face toward
+   Rasheed's identity from reference images, style the teal suit, auto-includes
+   facial blendshapes; export **GLB**. Add Mixamo body clips (§5). Apply the CC4
+   bone-scale fix (§7) and validate. Active, commercial, one-time license.
+2. **Freelance 3D character artist (recommended if no in-house 3D skills).**
+   Commission a custom Rasheed to THIS spec. A real market exists for exactly
+   this deliverable ("rig avatar for webapp, ARKit52 + Oculus visemes, three.js
+   GLB"). Hand them this file as the brief + acceptance checklist.
+3. **Blender (free) full custom.** Model/sculpt or start from a base mesh
+   (MakeHuman/HumanGen) → Rigify or Mixamo auto-rig → add ARKit shape keys
+   (ARKit-Creator addon) + Oculus visemes → export GLB. Most control, most labor.
+4. **MetaHuman (secondary).** Highest photoreal fidelity but Unreal-centric; GLB
+   export is not first-class and needs conversion + rig/blendshape remap. Use
+   only if photoreal cinematic quality is the priority and someone owns the
+   conversion pipeline.
 
-- [ ] `frontend/public/models/rasheed.glb` loads in three.js GLTFLoader
-- [ ] Skinned mesh + Mixamo-named skeleton present
-- [ ] `morphTargetDictionary` contains the ARKit 52 (and/or Oculus 15 visemes)
-- [ ] Animation clips named per §5 (baked in GLB or supplied as named FBX)
-- [ ] `RightHandProp` socket (and optional `PhoneScreen`) present
-- [ ] ≤ 6 MB, ≤ budget tris, textures ≤ 2048²
-- [ ] Faces −Z, Y-up, reasonable scale
+**Do not** use a generic/stock avatar as the shipped Rasheed.
 
-Once this checklist passes, drop the file in and Rasheed is live in 3D.
+## 10. Acceptance checklist (must ALL pass — enforced by the validator)
+
+- [ ] File at `frontend/public/models/rasheed.glb`, loads in GLTFLoader, ≤ 10 MB
+- [ ] Skinned mesh + Mixamo-named skeleton incl. a real `Head` bone
+- [ ] `morphTargetDictionary` contains all 24 required expression/gaze/jaw morphs (§4)
+- [ ] 15 Oculus `viseme_*` morphs present (real lip-sync)
+- [ ] Animation clips resolve for all 9 semantic states (§5)
+- [ ] Faces −Z, Y-up, meters, sensible scale; full-body
+- [ ] (Recommended) `RightHandProp` socket present
+- [ ] Reads as **Rasheed** (identity, brand palette), professional public quality
+
+Run the validator: open the site with `?rasheedCheck=1` (dev) — it prints a
+PASS/FAIL report of every item above against the actual file. Only a PASS means
+the Rasheed 3D task is truly complete.

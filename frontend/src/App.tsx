@@ -51,6 +51,10 @@ const Pricing = lazy(() => import("./pages/Pricing"));
 const Companies = lazy(() => import("./pages/Companies"));
 const CareerGraph = lazy(() => import("./pages/CareerGraph"));
 const SkillsExplorer = lazy(() => import("./pages/SkillsExplorer"));
+// Dev/QA-only: Rasheed 3D asset validation overlay (?rasheedCheck=1).
+const RasheedGlbCheck = lazy(() =>
+  import("@/components/rashid/RasheedGlbCheck").then((m) => ({ default: m.RasheedGlbCheck })),
+);
 
 import { RasheedCompanion } from "./components/rashid/RasheedCompanion";
 import { OnboardingTour } from "./components/OnboardingTour";
@@ -173,6 +177,9 @@ function OnboardingWrapper() {
 function AppContent() {
   useI18nSync();
 
+  const showRasheedCheck =
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).has("rasheedCheck");
+
   return (
     <AuthProvider>
       <RasheedProvider>
@@ -185,6 +192,11 @@ function AppContent() {
             <OnboardingWrapper />
             <OnboardingTour />
           </BrowserRouter>
+          {showRasheedCheck && (
+            <Suspense fallback={null}>
+              <RasheedGlbCheck />
+            </Suspense>
+          )}
         </TooltipProvider>
       </RasheedProvider>
     </AuthProvider>
