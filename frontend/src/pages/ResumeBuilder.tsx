@@ -22,6 +22,7 @@ import {
 import ResumePreview from '@/components/resume/ResumePreview';
 
 import { apiRequest } from '@/services/client';
+import { useToast } from '@/hooks/use-toast';
 
 interface Experience {
   id: string;
@@ -88,6 +89,7 @@ function generateId() {
 
 export default function ResumeBuilder() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const previewRef = useRef<HTMLDivElement>(null);
 
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
@@ -114,7 +116,9 @@ export default function ResumeBuilder() {
         setSelectedResumeId(res.id);
         setLocalData(res);
       }
+      toast({ title: 'Resume created', description: 'Start filling in your details.' });
     },
+    onError: () => toast({ title: 'Could not create resume', description: 'Please try again.', variant: 'destructive' }),
   });
 
   const updateMutation = useMutation({
@@ -135,12 +139,16 @@ export default function ResumeBuilder() {
       queryClient.invalidateQueries({ queryKey: ['user-resumes'] });
       setSelectedResumeId(null);
       setLocalData(null);
+      toast({ title: 'Resume deleted' });
     },
+    onError: () => toast({ title: 'Could not delete resume', variant: 'destructive' }),
   });
 
   const exportMutation = useMutation({
     mutationFn: ({ resumeId, format }: { resumeId: string; format: string }) =>
       apiRequest(`/resume/export/`, { method: 'POST', body: { resume_id: resumeId, format } }),
+    onSuccess: () => toast({ title: 'Export ready', description: 'Your resume was exported.' }),
+    onError: () => toast({ title: 'Export failed', description: 'Please try again.', variant: 'destructive' }),
   });
 
   // Select first resume on load
@@ -197,10 +205,18 @@ export default function ResumeBuilder() {
   };
 
   const handleImportFromCV = async () => {
+    if (!localData) {
+      toast({ title: 'Create or select a resume first', description: 'Then import your parsed CV into it.' });
+      return;
+    }
     try {
       const res = await apiRequest<{ cv_parsed_data?: any }>('/career/cv/status/');
-      if (res?.cv_parsed_data) {
-        const parsed = res.cv_parsed_data;
+      const parsed = res?.cv_parsed_data;
+      if (!parsed || Object.keys(parsed).length === 0) {
+        toast({ title: 'No parsed CV found', description: 'Upload your CV on the Profile page first.', variant: 'destructive' });
+        return;
+      }
+      {
         setLocalData(prev => {
           if (!prev) return prev;
           const updated = {
@@ -240,9 +256,10 @@ export default function ResumeBuilder() {
           scheduleAutoSave(updated);
           return updated;
         });
+        toast({ title: 'CV imported', description: 'Your parsed CV details were filled in.' });
       }
     } catch {
-      // CV not parsed yet
+      toast({ title: 'Import failed', description: 'Could not read your parsed CV. Try again.', variant: 'destructive' });
     }
   };
 

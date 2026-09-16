@@ -112,30 +112,35 @@ export interface UpdatePreferencesData {
 // Profile API functions
 export const profileApi = {
   /**
-   * Get current user's profile
+   * Get current user's profile.
+   * The app is mounted at /profile/ and the DRF router registers the ViewSet
+   * under `profile`, so the real collection URL is /profile/profile/ (the
+   * ViewSet.list() returns the current user's own profile).
    */
   getProfile: async (): Promise<UserProfile> => {
-    return apiRequest<UserProfile>('/profile/');
+    return apiRequest<UserProfile>('/profile/profile/');
   },
 
   /**
-   * Update profile
+   * Update profile. DRF maps update/partial_update to the detail route
+   * (/profile/profile/{id}/); the ViewSet resolves the object to the current
+   * user regardless of id, so we pass the loaded profile id.
    */
-  updateProfile: async (data: UpdateProfileData): Promise<UserProfile> => {
-    return apiRequest<UserProfile>('/profile/', {
+  updateProfile: async (id: number, data: UpdateProfileData): Promise<UserProfile> => {
+    return apiRequest<UserProfile>(`/profile/profile/${id}/`, {
       method: 'PATCH',
       body: data,
     });
   },
 
   /**
-   * Upload CV file
+   * Upload CV file (detail=False action -> /profile/profile/upload_cv/)
    */
   uploadCV: async (file: File): Promise<{ status: string; message: string; profile: UserProfile }> => {
     const formData = new FormData();
     formData.append('cv_file', file);
 
-    return apiRequest<{ status: string; message: string; profile: UserProfile }>('/profile/upload_cv/', {
+    return apiRequest<{ status: string; message: string; profile: UserProfile }>('/profile/profile/upload_cv/', {
       method: 'POST',
       formData,
     });
@@ -145,14 +150,14 @@ export const profileApi = {
    * Get profile completion status
    */
   getCompletion: async (): Promise<ProfileCompletion> => {
-    return apiRequest<ProfileCompletion>('/profile/completion/');
+    return apiRequest<ProfileCompletion>('/profile/profile/completion/');
   },
 
   /**
    * Update skills manually
    */
   updateSkills: async (skills: string[]): Promise<{ status: string; skills: string[] }> => {
-    return apiRequest<{ status: string; skills: string[] }>('/profile/skills/', {
+    return apiRequest<{ status: string; skills: string[] }>('/profile/profile/skills/', {
       method: 'POST',
       body: { skills },
     });
@@ -162,17 +167,17 @@ export const profileApi = {
    * Update job preferences
    */
   updatePreferences: async (data: UpdatePreferencesData): Promise<UserProfile> => {
-    return apiRequest<UserProfile>('/profile/preferences/', {
+    return apiRequest<UserProfile>('/profile/profile/preferences/', {
       method: 'POST',
       body: data,
     });
   },
 
   /**
-   * Get job matches
+   * Get job matches (JobMatchViewSet is registered at `matches` -> /profile/matches/)
    */
   getMatches: async (limit = 20, minScore = 50): Promise<JobMatch[]> => {
-    return apiRequest<JobMatch[]>('/profile/matches/', {
+    return apiRequest<JobMatch[]>('/profile/profile/matches/', {
       params: { limit, min_score: minScore },
     });
   },
@@ -181,7 +186,7 @@ export const profileApi = {
    * Calculate match scores
    */
   calculateMatches: async (): Promise<{ status: string; matches_calculated: number }> => {
-    return apiRequest<{ status: string; matches_calculated: number }>('/profile/calculate_matches/', {
+    return apiRequest<{ status: string; matches_calculated: number }>('/profile/profile/calculate_matches/', {
       method: 'POST',
     });
   },

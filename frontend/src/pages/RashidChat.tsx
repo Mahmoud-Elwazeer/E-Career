@@ -55,7 +55,6 @@ export default function RashidChat() {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [showSidebar, setShowSidebar] = useState(true);
@@ -68,6 +67,8 @@ export default function RashidChat() {
    const inputRef = useRef<HTMLInputElement>(null);
    const [useWebSocket, setUseWebSocket] = useState(true);
    const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'rest' | 'error'>('connecting');
+   // Chat is usable when the socket is connected OR we've fallen back to REST.
+   const isConnected = connectionStatus === 'connected' || connectionStatus === 'rest';
    const [restMessages, setRestMessages] = useState<Message[]>([]);
    const [restProcessing, setRestProcessing] = useState(false);
    const restIntervalRef = useRef<NodeJS.Timeout | null>(null);

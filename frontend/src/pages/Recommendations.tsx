@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Target, TrendingUp, Lightbulb, AlertCircle, ChevronRight } from "lucide-react";
@@ -30,18 +31,18 @@ function MatchBadge({ score }: { score: number }) {
 // Job recommendation card
 function RecommendationCard({ 
   recommendation, 
-  onViewBreakdown 
 }: { 
   recommendation: RecommendedJob;
-  onViewBreakdown: (jobId: string) => void;
 }) {
   const {
     job_id, job_title, company_name, location, score,
     employment_type, work_arrangement, salary_min, salary_max,
-    match_reasons, explanation,
+    match_reasons, explanation, match_factors,
   } = recommendation;
   const matchScore = Math.round(score <= 1 ? score * 100 : score);
   const reasons = match_reasons && match_reasons.length ? match_reasons : (explanation ? [explanation] : []);
+  const [expanded, setExpanded] = useState(false);
+  const factorEntries = match_factors ? Object.entries(match_factors).filter(([, v]) => v != null && v !== "") : [];
 
   return (
     <div className="bg-card border rounded-lg overflow-hidden hover:shadow-md transition-shadow">
@@ -96,10 +97,30 @@ function RecommendationCard({
           </div>
         )}
 
+        {/* Expandable factor breakdown */}
+        {expanded && factorEntries.length > 0 && (
+          <div className="mb-3 rounded-lg border border-border bg-muted/40 p-3">
+            <p className="text-sm font-medium text-foreground mb-2">Match breakdown</p>
+            <div className="space-y-1.5">
+              {factorEntries.map(([k, v]) => (
+                <div key={k} className="flex items-center justify-between text-sm">
+                  <span className="capitalize text-muted-foreground">{k.replace(/_/g, " ")}</span>
+                  <span className="font-medium text-foreground">
+                    {typeof v === "number" ? `${Math.round(v <= 1 ? v * 100 : v)}%` : String(v)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {expanded && factorEntries.length === 0 && (
+          <p className="mb-3 text-sm text-muted-foreground">No additional breakdown available — see the reasons above.</p>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => onViewBreakdown(job_id)}>
-            View Breakdown
+          <Button variant="outline" size="sm" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? "Hide breakdown" : "View breakdown"}
           </Button>
           <Button asChild size="sm">
             <Link to={`/app/jobs/${job_id}`}>
@@ -155,8 +176,7 @@ function EmptyState() {
 export default function Recommendations() {
   const { lang } = useTheme();
   const isAr = lang === "ar";
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
-  
+
   // Fetch recommendations
   const { data, isLoading, error } = useQuery({
     queryKey: ['recommendations'],
@@ -257,7 +277,6 @@ export default function Recommendations() {
                 <RecommendationCard 
                   key={rec.job_id} 
                   recommendation={rec}
-                  onViewBreakdown={(jobId) => setSelectedJobId(jobId)}
                 />
               ))}
             </div>
