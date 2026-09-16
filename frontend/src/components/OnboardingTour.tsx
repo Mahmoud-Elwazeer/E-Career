@@ -4,7 +4,6 @@ import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { X, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { RasheedAvatar } from "@/components/rashid/RasheedAvatar";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 
 /**
@@ -23,6 +22,8 @@ const TOUR_KEY = "usam_tour_done";
 
 interface Step {
   to: string;
+  /** Warms the route's lazy chunk before we navigate, so "Next" is instant. */
+  preload?: () => Promise<unknown>;
   en: { title: string; body: string };
   ar: { title: string; body: string };
 }
@@ -35,28 +36,31 @@ const STEPS: Step[] = [
   },
   {
     to: "/app/recommendations",
+    preload: () => import("@/pages/Recommendations"),
     en: { title: "Matches picked for you", body: "I rank roles against your profile and explain why each one fits." },
     ar: { title: "توصيات مختارة لك", body: "أرتّب الوظائف حسب ملفك وأشرح لماذا تناسبك كل واحدة." },
   },
   {
     to: "/app/resume",
+    preload: () => import("@/pages/ResumeBuilder"),
     en: { title: "Build a standout CV", body: "Create and export an ATS-ready resume — I'll review and improve it with you." },
     ar: { title: "أنشئ سيرة مميزة", body: "أنشئ سيرة متوافقة مع أنظمة التوظيف — وسأراجعها وأحسّنها معك." },
   },
   {
     to: "/app/interviews",
+    preload: () => import("@/pages/InterviewPractice"),
     en: { title: "Practice interviews", body: "Rehearse with an AI voice coach and get feedback before the real thing." },
     ar: { title: "تدرّب على المقابلات", body: "تدرّب مع مدرب صوتي ذكي واحصل على ملاحظات قبل المقابلة الحقيقية." },
   },
   {
     to: "/app/profile",
+    preload: () => import("@/pages/ProfilePage"),
     en: { title: "Complete your profile", body: "Upload your CV and fill your profile so matches and Talent Score get sharper." },
     ar: { title: "أكمل ملفك", body: "ارفع سيرتك واملأ ملفك لتصبح التوصيات ونقاط الموهبة أدق." },
   },
 ];
 
 export function OnboardingTour() {
-  const { isAuthenticated } = useAuth();
   const { lang } = useTheme();
   const isAr = lang === "ar";
   const reduced = useReducedMotion();
@@ -82,6 +86,13 @@ export function OnboardingTour() {
     navigate(STEPS[next].to);
   }, [navigate]);
 
+  // Warm the NEXT step's lazy route chunk while the user reads the current card,
+  // so advancing navigates instantly instead of blocking on a chunk download.
+  useEffect(() => {
+    if (!active) return;
+    STEPS[i + 1]?.preload?.().catch(() => {});
+  }, [active, i]);
+
   // Explicit trigger from the preference flow.
   useEffect(() => {
     const handler = () => start();
@@ -89,16 +100,10 @@ export function OnboardingTour() {
     return () => window.removeEventListener("usam:start-tour", handler);
   }, [start]);
 
-  // Auto-start once for authenticated users who haven't seen the tour.
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    if (localStorage.getItem(TOUR_KEY) === "true") return;
-    // give the app a moment to settle after auth/onboarding
-    const t = setTimeout(() => {
-      if (localStorage.getItem(TOUR_KEY) !== "true") start();
-    }, 1200);
-    return () => clearTimeout(t);
-  }, [isAuthenticated, start]);
+  // NOTE: we intentionally do NOT auto-start the tour on a timer. Auto-starting
+  // yanked authenticated users to /app/jobs from whatever page they were on.
+  // The tour now starts ONLY from the explicit `usam:start-tour` event fired
+  // right after preference onboarding completes (see OnboardingWrapper).
 
   if (!active) return null;
   const step = STEPS[i];
@@ -107,9 +112,11 @@ export function OnboardingTour() {
 
   return (
     <>
-      {/* Dim scrim (non-blocking click closes) */}
+      {/* Dim scrim (non-blocking click closes). No backdrop-blur: blurring a
+          full-screen layer over pages that are simultaneously mounting/fetching
+          during tour navigation was a real jank source on lower-end devices. */}
       <motion.div
-        className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-[2px]"
+        className="fixed inset-0 z-[90] bg-black/40"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
