@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { RouteTransition } from "@/components/motion/RouteTransition";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/hooks/use-auth";
+import { RasheedProvider } from "@/components/rashid/rasheed-state";
 import { apiRequest } from "@/services/client";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin, RequireEmployer } from "@/components/RequireRole";
@@ -174,16 +175,18 @@ function AppContent() {
 
   return (
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AnimatedRoutes />
-          <RasheedCompanion />
-          <OnboardingWrapper />
-          <OnboardingTour />
-        </BrowserRouter>
-      </TooltipProvider>
+      <RasheedProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AnimatedRoutes />
+            <RasheedCompanion />
+            <OnboardingWrapper />
+            <OnboardingTour />
+          </BrowserRouter>
+        </TooltipProvider>
+      </RasheedProvider>
     </AuthProvider>
   );
 }
