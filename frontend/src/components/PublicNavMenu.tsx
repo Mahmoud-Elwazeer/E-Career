@@ -47,6 +47,7 @@ const individualFeatures: Feature[] = [
   { to: "/app/coding-practice", gated: true, icon: Code2, en: "Coding Practice", ar: "تدريب البرمجة", descEn: "Sharpen skills with challenges", descAr: "تحدّيات برمجية" },
   { to: "/app/companies", gated: true, icon: Building2, en: "Companies", ar: "الشركات", descEn: "Browse employers hiring now", descAr: "تصفّح الشركات التي توظّف" },
   { to: "/app/career-graph", gated: true, icon: Network, en: "Career Graph", ar: "خريطة المسار", descEn: "Skills, gaps & growth paths", descAr: "المهارات والفجوات ومسارات النمو" },
+  { to: "/app/skills", gated: true, icon: Sparkles, en: "Skills Explorer", ar: "مستكشف المهارات", descEn: "Browse the skills taxonomy", descAr: "تصفّح تصنيف المهارات" },
 ];
 
 const employerFeatures: Feature[] = [

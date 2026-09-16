@@ -51,6 +51,7 @@ const appSecondaryNav: NavItem[] = [
   { to: "/app/companies", label: "Companies", labelAr: "الشركات", icon: Building2 },
   { to: "/app/talent-score", label: "Talent Score", labelAr: "نقاط الموهبة", icon: Target },
   { to: "/app/career-graph", label: "Career Graph", labelAr: "خريطة المسار", icon: Network },
+  { to: "/app/skills", label: "Skills Explorer", labelAr: "مستكشف المهارات", icon: Sparkles },
   { to: "/app/alerts", label: "Job Alerts", labelAr: "تنبيهات الوظائف", icon: Bell },
   { to: "/app/salary", label: "Salary Insights", labelAr: "رؤى الرواتب", icon: DollarSign },
   { to: "/app/assessments", label: "Assessments", labelAr: "التقييمات", icon: Award },

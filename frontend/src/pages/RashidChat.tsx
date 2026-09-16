@@ -13,6 +13,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { getAccessToken } from '@/services/client';
 import { cn } from '@/lib/utils';
 import ToolSelector from '@/components/rashid/ToolSelector';
+import { RasheedAvatar } from '@/components/rashid/RasheedAvatar';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
@@ -560,18 +561,34 @@ export default function RashidChat() {
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="relative flex-1 overflow-y-auto p-4 space-y-4" style={{ background: "radial-gradient(120% 80% at 50% -10%, hsl(var(--primary) / 0.05), transparent 60%)" }}>
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-                <MessageSquare className="h-12 w-12 mb-4 opacity-50" />
-                <p className="text-lg font-medium">
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <RasheedAvatar expression="greeting" size={104} />
+                <p className="mt-5 text-xl font-semibold text-foreground">
                   {isAr ? 'ابدأ محادثة مع رشيد' : 'Start a conversation with Rasheed'}
                 </p>
-                <p className="text-sm">
+                <p className="mt-1 text-sm text-muted-foreground max-w-sm">
                   {isAr
                     ? 'اسأل عن أي سؤال مهني - سيرتك الذاتية، المقابلات، أو المسار المهني'
-                    : 'Ask about anything career-related - CVs, interviews, or career paths'}
+                    : 'Ask about anything career-related — your CV, interviews, or career path'}
                 </p>
+                {/* Quick-start prompts */}
+                <div className="mt-6 flex flex-wrap justify-center gap-2 max-w-md">
+                  {(isAr
+                    ? ['راجع سيرتي الذاتية', 'جهّزني لمقابلة', 'اقترح مسار مهني', 'اكتب خطاب تقديم']
+                    : ['Review my CV', 'Prep me for an interview', 'Suggest a career path', 'Write a cover letter']
+                  ).map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => { setInputMessage(s); setTimeout(handleSendMessage, 0); }}
+                      disabled={!isConnected}
+                      className="rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50 transition-colors"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
