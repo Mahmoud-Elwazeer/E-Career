@@ -50,11 +50,23 @@ export function RasheedScene({ className = "" }: { className?: string }) {
   const { lang } = useTheme();
   const isAr = lang === "ar";
   const [i, setI] = useState(0);
+  const [gaze, setGaze] = useState({ x: 0, y: 0 });
 
   // Cycle the in-hand screen content.
   useEffect(() => {
     if (reduced) return;
     const t = setInterval(() => setI((v) => (v + 1) % SCREENS.length), 2600);
+    return () => clearInterval(t);
+  }, [reduced]);
+
+  // Subtle life: occasional micro eye-saccades (small random gaze shifts).
+  useEffect(() => {
+    if (reduced) return;
+    const t = setInterval(() => {
+      setGaze({ x: (Math.random() - 0.5) * 2.4, y: (Math.random() - 0.5) * 1.6 });
+      // settle back toward center shortly after
+      setTimeout(() => setGaze({ x: 0, y: 0 }), 900);
+    }, 3400);
     return () => clearInterval(t);
   }, [reduced]);
 
@@ -152,13 +164,19 @@ export function RasheedScene({ className = "" }: { className?: string }) {
             animate={reduced ? undefined : { scaleY: [1, 1, 0.1, 1, 1] }}
             transition={{ duration: 5, repeat: Infinity, times: [0, 0.6, 0.64, 0.68, 1] }}
           >
-            <g transform={presenting ? "translate(3,1)" : "translate(0,0)"}>
+            <g>
               <ellipse cx="182" cy="198" rx="6" ry="6.5" fill="#FBF7F2" />
               <ellipse cx="218" cy="198" rx="6" ry="6.5" fill="#FBF7F2" />
-              <circle cx="184" cy="199" r="3.1" fill={C.iris} />
-              <circle cx="220" cy="199" r="3.1" fill={C.iris} />
-              <circle cx="185.3" cy="197.7" r="1" fill="#fff" />
-              <circle cx="221.3" cy="197.7" r="1" fill="#fff" />
+              {/* Pupils track a subtle gaze + shift toward the device when presenting */}
+              <motion.g
+                animate={reduced ? undefined : { x: (presenting ? 2.4 : 0) + gaze.x, y: (presenting ? 1 : 0) + gaze.y }}
+                transition={{ type: "spring", stiffness: 120, damping: 16 }}
+              >
+                <circle cx="184" cy="199" r="3.1" fill={C.iris} />
+                <circle cx="220" cy="199" r="3.1" fill={C.iris} />
+                <circle cx="185.3" cy="197.7" r="1" fill="#fff" />
+                <circle cx="221.3" cy="197.7" r="1" fill="#fff" />
+              </motion.g>
             </g>
           </motion.g>
 
@@ -216,15 +234,17 @@ export function RasheedScene({ className = "" }: { className?: string }) {
         </AnimatePresence>
       </div>
 
-      {/* Floating status pill that swaps with the screen */}
+      {/* Floating status pill — anchored near the device (bottom-end), swaps
+          with the screen. Positioned away from the hero's identity badge so
+          they never overlap. */}
       <AnimatePresence mode="wait">
         <motion.div
           key={screen.key + "-pill"}
-          initial={reduced ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.9 }}
+          initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ type: "spring", stiffness: 240, damping: 18 }}
-          className="absolute top-6 start-2 inline-flex items-center gap-1.5 rounded-full bg-card/95 border border-border/60 px-3 py-1.5 text-caption font-medium text-foreground shadow-lg backdrop-blur-sm"
+          className="absolute bottom-8 end-1 inline-flex items-center gap-1.5 rounded-full bg-card/95 border border-border/60 px-3 py-1.5 text-caption font-medium text-foreground shadow-lg backdrop-blur-sm"
         >
           <TrendingUp className="h-3.5 w-3.5 text-primary" />
           {isAr ? screen.ar : screen.en}

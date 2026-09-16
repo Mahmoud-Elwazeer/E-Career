@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Briefcase, Info, Menu, User, LogOut, CheckCircle2,
   MessageCircle, FileText, Mic, Sparkles,
@@ -71,7 +71,9 @@ const employerSecondaryNav: NavItem[] = [
 
 export function AuthNavbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [navQuery, setNavQuery] = useState("");
   const { lang } = useTheme();
   const { user, isAuthenticated, signOut } = useAuth();
   const isAr = lang === "ar";
@@ -91,29 +93,52 @@ export function AuthNavbar() {
         </Link>
 
         {/* Zone 2 — primary navigation (centered, fills space) */}
-        <div className="hidden md:flex flex-1 items-center justify-center">
+        <div className="hidden md:flex flex-1 items-center justify-center gap-3">
           {!isAuthenticated ? (
             <PublicNavMenu />
           ) : (
-            <nav className="flex items-center gap-0.5">
-              {primaryNav.map((item) => {
-                const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
-                return (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-body font-medium transition-all duration-fast ${
-                      active
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "text-foreground/60 hover:text-foreground hover:bg-accent"
-                    }`}
-                  >
-                    <item.icon className="h-3.5 w-3.5" />
-                    {isAr ? item.labelAr : item.label}
-                  </Link>
-                );
-              })}
-            </nav>
+            <>
+              {/* Global job search — the primary global action for signed-in users */}
+              {!isEmployer && (
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const q = navQuery.trim();
+                    navigate(q ? `/app/jobs?q=${encodeURIComponent(q)}` : "/app/jobs");
+                  }}
+                  className="relative hidden lg:block w-full max-w-xs"
+                  role="search"
+                >
+                  <Search className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    value={navQuery}
+                    onChange={(e) => setNavQuery(e.target.value)}
+                    placeholder={isAr ? "ابحث عن وظائف…" : "Search jobs…"}
+                    aria-label={isAr ? "ابحث عن وظائف" : "Search jobs"}
+                    className="w-full h-9 rounded-full border border-border/60 bg-muted/60 ps-9 pe-3 text-body focus:outline-none focus:ring-2 focus:ring-ring focus:bg-card transition-colors"
+                  />
+                </form>
+              )}
+              <nav className="flex items-center gap-0.5">
+                {primaryNav.map((item) => {
+                  const active = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to);
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-body font-medium transition-all duration-fast ${
+                        active
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-foreground/60 hover:text-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <item.icon className="h-3.5 w-3.5" />
+                      {isAr ? item.labelAr : item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </>
           )}
         </div>
 
