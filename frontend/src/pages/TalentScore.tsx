@@ -228,7 +228,7 @@ export default function TalentScoreDashboard() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-lg p-8 mb-8"
+          className="paper-card p-8 mb-8"
         >
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="text-center md:text-left mb-6 md:mb-0">
@@ -282,7 +282,7 @@ export default function TalentScoreDashboard() {
               <button
                 onClick={handleRecalculate}
                 disabled={recalculating}
-                className="flex items-center space-x-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                className="flex items-center space-x-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-5 h-5 ${recalculating ? 'animate-spin' : ''}`} />
                 <span>Recalculate</span>
@@ -297,7 +297,7 @@ export default function TalentScoreDashboard() {
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white rounded-2xl shadow-lg p-6"
+            className="paper-card p-6"
           >
             <h3 className="text-lg font-semibold text-foreground mb-4">Score Breakdown</h3>
             <div className="h-[400px]">
@@ -330,7 +330,7 @@ export default function TalentScoreDashboard() {
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-white rounded-2xl shadow-lg p-6"
+            className="paper-card p-6"
           >
             <h3 className="text-lg font-semibold text-foreground mb-4">Dimension Scores</h3>
             <div className="space-y-4">
@@ -373,7 +373,7 @@ export default function TalentScoreDashboard() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-lg p-6 mb-8"
+            className="paper-card p-6 mb-8"
           >
             <h3 className="text-lg font-semibold text-foreground mb-4">Score Trends</h3>
             <div className="h-[300px]">
@@ -412,7 +412,7 @@ export default function TalentScoreDashboard() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-2xl shadow-lg p-6"
+            className="paper-card p-6"
           >
             <h3 className="text-lg font-semibold text-foreground mb-4">Recommended Actions</h3>
             <div className="space-y-3">

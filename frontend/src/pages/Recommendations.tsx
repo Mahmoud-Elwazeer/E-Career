@@ -10,7 +10,7 @@ import { getRecommendations, RecommendedJob } from "@/services/recommendations";
 
 // Match score badge component
 function MatchBadge({ score }: { score: number }) {
-  let bgColor = "bg-gray-500";
+  let bgColor = "bg-muted-foreground";
   const textColor = "text-primary-foreground";
 
   if (score >= 90) {
@@ -18,7 +18,7 @@ function MatchBadge({ score }: { score: number }) {
   } else if (score >= 75) {
     bgColor = "bg-primary";
   } else if (score >= 60) {
-    bgColor = "bg-yellow-500";
+    bgColor = "bg-signal";
   }
   
   return (

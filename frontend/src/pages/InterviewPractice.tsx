@@ -553,8 +553,8 @@ export default function InterviewPractice() {
                   className={cn(
                     'flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all',
                     selectedType === type.value
-                      ? 'border-primary bg-primary/10 dark:bg-blue-900/20'
-                      : 'border-border dark:border-gray-700 hover:border-blue-300'
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:border-primary/40'
                   )}
                 >
                   <type.icon className="w-8 h-8 mb-2 text-primary" />
@@ -845,7 +845,7 @@ export default function InterviewPractice() {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Results Header */}
         <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary/10 dark:bg-blue-900/30">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-primary/10">
             <Award className="w-12 h-12 text-primary" />
           </div>
           <h2 className="text-4xl font-bold">
@@ -1002,10 +1002,10 @@ export default function InterviewPractice() {
           transition={{ duration: 0.5 }}
         >
           <div className="mb-8">
-            <h1 className="text-3xl font-bold">
+            <h1 className="font-display text-4xl font-semibold">
               {isAr ? 'تدريب المقابلات' : 'Interview Practice'}
             </h1>
-            <p className="text-muted-foreground dark:text-gray-400 mt-2">
+            <p className="text-muted-foreground mt-2">
               {isAr 
                 ? 'مارس مهاراتك مع الذكاء الاصطناعي' 
                 : 'Practice your skills with AI'}
