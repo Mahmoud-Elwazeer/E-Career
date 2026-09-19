@@ -41,14 +41,14 @@ export default function Companies() {
   return (
     <Layout>
       {/* Header band */}
-      <div className="hero-gradient hero-grid relative overflow-hidden text-primary-foreground">
+      <div className="chamber chamber-grid relative overflow-hidden text-primary-foreground">
         <div className="glow-blob" style={{ width: 320, height: 320, top: -120, insetInlineEnd: "12%", background: "hsl(var(--secondary) / 0.25)" }} />
-        <div className="container relative z-10 py-10 md:py-12">
+        <div className="container relative z-10 py-12 md:py-14">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3 py-1 text-caption font-medium backdrop-blur-sm mb-3">
             {isAr ? "الشركات" : "Companies"}
           </span>
-          <h1 className="text-heading-1">{isAr ? "الشركات التي تُوظّف" : "Companies hiring now"}</h1>
-          <p className="text-body-lg opacity-80 mt-1">
+          <h1 className="text-display-serif mt-3">{isAr ? "الشركات التي تُوظّف" : "Companies hiring now"}</h1>
+          <p className="text-body-lg opacity-80 mt-2">
             {isAr ? "اكتشف الشركات وتعرّف على وظائفها المفتوحة" : "Discover employers and explore their open roles"}
           </p>
         </div>

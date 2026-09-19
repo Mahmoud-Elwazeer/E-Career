@@ -34,14 +34,14 @@ export default function SkillsExplorer() {
   return (
     <Layout>
       {/* Header band */}
-      <div className="hero-gradient hero-grid relative overflow-hidden text-primary-foreground">
+      <div className="chamber chamber-grid relative overflow-hidden text-primary-foreground">
         <div className="glow-blob" style={{ width: 300, height: 300, top: -110, insetInlineEnd: "12%", background: "hsl(var(--secondary) / 0.25)" }} />
-        <div className="container relative z-10 py-10 md:py-12">
+        <div className="container relative z-10 py-12 md:py-14">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3 py-1 text-caption font-medium backdrop-blur-sm mb-3">
             <Sparkles className="h-3.5 w-3.5" /> {isAr ? "المهارات" : "Skills"}
           </span>
-          <h1 className="text-heading-1">{isAr ? "مستكشف المهارات" : "Skills Explorer"}</h1>
-          <p className="text-body-lg opacity-80 mt-1">
+          <h1 className="text-display-serif mt-3">{isAr ? "مستكشف المهارات" : "Skills Explorer"}</h1>
+          <p className="text-body-lg opacity-80 mt-2">
             {isAr ? "ابحث في تصنيف المهارات واكتشف المهارات المرتبطة" : "Search the skills taxonomy and discover related skills"}
           </p>
         </div>

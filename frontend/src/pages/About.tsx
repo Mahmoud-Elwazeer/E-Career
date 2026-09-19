@@ -7,11 +7,12 @@ export default function About() {
 
   return (
     <Layout>
-      <section className="hero-gradient hero-grid relative overflow-hidden text-primary-foreground py-16">
+      <section className="chamber chamber-grid relative overflow-hidden text-primary-foreground py-20">
         <div className="container relative z-10 max-w-3xl text-center">
-          <h1 className="text-3xl md:text-4xl font-medium mb-4">About USAM</h1>
-          <p className="text-lg font-light opacity-80">
-            One search. Every opportunity. We aggregate jobs from top platforms across MENA so you never miss a relevant posting.
+          <span className="eyebrow-mono text-primary-foreground/70 mb-4 justify-center"><span className="signal-dot" /> ABOUT USAM</span>
+          <h1 className="text-display-serif mt-3 mb-4">One search. <span className="serif-accent text-secondary">Every opportunity.</span></h1>
+          <p className="text-body-lg opacity-80">
+            We aggregate jobs from top platforms across MENA so you never miss a relevant posting — with Rasheed, your AI career coach, guiding every step.
           </p>
         </div>
       </section>

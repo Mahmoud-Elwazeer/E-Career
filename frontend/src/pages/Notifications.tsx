@@ -171,7 +171,7 @@ export default function Notifications() {
               <Card
                 key={notification.uuid}
                 className={`cursor-pointer transition-colors hover:bg-accent ${
-                  !notification.is_read ? "bg-blue-50/50 dark:bg-blue-950/20 border-blue-200/50" : ""
+                  !notification.is_read ? "bg-primary/5 border-primary/20" : ""
                 }`}
                 onClick={() => !notification.is_read && markAsRead(notification.uuid)}
               >

@@ -229,8 +229,8 @@ export default function CodingPractice() {
                           className={cn(
                             'py-2 px-4 rounded-lg border-2 font-medium transition-all text-center',
                             language === l.value
-                              ? 'border-primary bg-primary/10 dark:bg-blue-900/20 text-primary'
-                              : 'border-border dark:border-gray-700 hover:bg-accent dark:hover:bg-accent'
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-border hover:bg-accent'
                           )}
                         >
                           {l.label}
@@ -296,7 +296,7 @@ export default function CodingPractice() {
                     )}>
                       {problem.difficulty}
                     </span>
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary dark:bg-blue-900/30 dark:text-blue-400">
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">
                       {problem.language_name}
                     </span>
                     <span className="px-3 py-1 rounded-full text-xs font-semibold bg-muted text-foreground dark:bg-card dark:text-gray-300">
