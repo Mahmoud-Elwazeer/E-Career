@@ -527,7 +527,13 @@
     @apply mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between;
   }
   .page-title {
-    @apply text-heading-1 text-foreground relative ps-4;
+    @apply text-foreground relative ps-4;
+    font-family: 'Fraunces', Georgia, serif;
+    font-optical-sizing: auto;
+    font-size: 2.25rem;
+    line-height: 1.1;
+    font-weight: 500;
+    letter-spacing: -0.02em;
   }
   /* Brand accent bar before the page title */
   .page-title::before {
