@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { Search, Sparkles, FileText, CheckCircle2, TrendingUp } from "lucide-react";
+import { Search, Sparkles, FileText, CheckCircle2 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 
 /**
@@ -234,20 +234,25 @@ export function RasheedScene({ className = "" }: { className?: string }) {
         </AnimatePresence>
       </div>
 
-      {/* Floating status pill — anchored near the device (bottom-end), swaps
-          with the screen. Positioned away from the hero's identity badge so
-          they never overlap. */}
+      {/* Floating status chip — a single, clean, well-anchored card that swaps
+          with the in-hand screen. Redesigned (was a cramped low-contrast pill)
+          into a crisp paper chip with a live signal dot, matching the new
+          editorial system. Positioned bottom-start so it never crowds the
+          device or the hero identity badge. */}
       <AnimatePresence mode="wait">
         <motion.div
           key={screen.key + "-pill"}
-          initial={reduced ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.9 }}
+          initial={reduced ? { opacity: 0 } : { opacity: 0, y: 10, scale: 0.94 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.9 }}
-          transition={{ type: "spring", stiffness: 240, damping: 18 }}
-          className="absolute bottom-8 end-1 inline-flex items-center gap-1.5 rounded-full bg-card/95 border border-border/60 px-3 py-1.5 text-caption font-medium text-foreground shadow-lg backdrop-blur-sm"
+          exit={{ opacity: 0, scale: 0.94 }}
+          transition={{ type: "spring", stiffness: 240, damping: 20 }}
+          className="absolute bottom-6 start-0 inline-flex items-center gap-2 rounded-2xl border border-border bg-card/95 px-3.5 py-2 shadow-lg backdrop-blur-sm"
         >
-          <TrendingUp className="h-3.5 w-3.5 text-primary" />
-          {isAr ? screen.ar : screen.en}
+          <span className="signal-dot" />
+          <span className="flex flex-col leading-tight">
+            <span className="text-caption font-semibold text-foreground">{isAr ? screen.ar : screen.en}</span>
+            <span className="text-[10px] text-muted-foreground">{isAr ? screen.metaAr : screen.metaEn}</span>
+          </span>
         </motion.div>
       </AnimatePresence>
     </figure>

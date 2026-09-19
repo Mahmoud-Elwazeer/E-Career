@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Sparkles } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { Rasheed3DOrFallback } from "@/components/rashid/Rasheed3DOrFallback";
 import { useRasheed } from "@/components/rashid/rasheed-state";
@@ -34,15 +33,23 @@ export function HeroAssistant({ className = "" }: HeroAssistantProps) {
 
   return (
     <div className={`relative w-full max-w-[440px] mx-auto ${className}`}>
-      {/* Identity badge */}
+      {/* Identity badge — refined: live signal + serif name, on the teal hero.
+          Reads as a real product persona chip, not a generic pill. */}
       <motion.div
-        className="relative z-10 mx-auto mb-2 w-fit inline-flex items-center gap-1.5 rounded-full bg-secondary px-4 py-1.5 text-caption font-semibold text-[hsl(var(--primary))] shadow-md"
+        className="relative z-10 mx-auto mb-3 w-fit inline-flex items-center gap-2.5 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-2 backdrop-blur-sm"
         initial={reduced ? {} : { opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.5 }}
       >
-        <Sparkles className="h-3.5 w-3.5" />
-        {isAr ? "رشيد · مساعدك المهني" : "Rasheed · AI Career Coach"}
+        <span className="signal-dot" />
+        <span className="flex items-baseline gap-1.5">
+          <span className="font-display text-base font-semibold text-primary-foreground leading-none">
+            {isAr ? "رشيد" : "Rasheed"}
+          </span>
+          <span className="text-caption text-primary-foreground/70">
+            {isAr ? "مساعدك المهني" : "AI Career Coach"}
+          </span>
+        </span>
       </motion.div>
 
       {/* Interactive scene */}
