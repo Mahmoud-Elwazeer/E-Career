@@ -238,7 +238,7 @@ export default function Index() {
       <section className="section-y">
         <div className="container">
           <motion.div
-            className="hero-gradient relative overflow-hidden rounded-[2rem] px-8 py-12 md:px-14 md:py-16 text-primary-foreground"
+            className="chamber chamber-grid relative overflow-hidden rounded-[2rem] px-8 py-12 md:px-14 md:py-16 text-primary-foreground"
             initial={reduced ? {} : { opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
