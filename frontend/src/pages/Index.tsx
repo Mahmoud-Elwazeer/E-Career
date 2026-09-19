@@ -1,16 +1,14 @@
-import { useState, useRef, useCallback } from "react";
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import { useState, useCallback } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
-import { Search, ArrowRight, ArrowLeft, Briefcase, Laptop, Stethoscope, PenTool, DollarSign, GraduationCap, Wrench, Users, TrendingUp, Shield, Zap, Globe, MousePointerClick, Filter, Send, Building2, Sparkles, CheckCircle2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, Laptop, Stethoscope, PenTool, DollarSign, GraduationCap, Wrench, Users, TrendingUp, MousePointerClick, Filter, Send, Building2 } from "lucide-react";
 import { StatsStrip, WhyUsamSection } from "@/components/landing/ScrollSections";
-import { HeroAssistant } from "@/components/landing/HeroAssistant";
+import { HeroSection } from "@/components/landing/HeroSection";
 import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
 import { RasheedAvatar } from "@/components/rashid/RasheedAvatar";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/Layout";
-import { WatermarkBackground } from "@/components/WatermarkBackground";
 import { HowItWorks } from "@/components/HowItWorks";
-import { SmartSearch } from "@/components/landing/SmartSearch";
 import { OnboardingFlow } from "@/components/landing/OnboardingFlow";
 import { QuickFilters } from "@/components/landing/QuickFilters";
 import { FeaturedCarousel } from "@/components/landing/FeaturedCarousel";
@@ -52,11 +50,6 @@ export default function Index() {
   const industryCounts = landing?.industryCounts ?? {};
   const categories = categoryMeta.map((cat) => ({ ...cat, count: industryCounts[cat.value] || 0 }));
 
-  // Hero parallax scroll
-  const heroRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const heroY = useTransform(scrollYProgress, [0, 1], [0, 80]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
 
   // useOrganizationStructuredData();
   // useWebSiteStructuredData();
@@ -109,8 +102,6 @@ export default function Index() {
     }
   }, [isAuthenticated, navigate]);
 
-  const isTyping = query.length > 0;
-
   return (
     <Layout>
       {/* ═══ ONBOARDING FLOW ═══
@@ -118,141 +109,14 @@ export default function Index() {
           onboarding is owned exclusively by <OnboardingWrapper> in App.tsx,
           so the two never render simultaneously. */}
       {!isAuthenticated && <OnboardingFlow onComplete={handleOnboardingComplete} />}
-      {/* ═══ HERO — Cinematic Entrance ═══ */}
-      <section ref={heroRef} className="hero-gradient hero-grid relative overflow-hidden text-primary-foreground">
-        <WatermarkBackground variant="shimmer" opacity={0.04} inheritColor paused={isTyping} />
-
-        {/* Ambient glow blobs for depth */}
-        <div className="glow-blob" style={{ width: 480, height: 480, top: -140, insetInlineEnd: -120, background: "hsl(var(--secondary) / 0.35)" }} />
-        <div className="glow-blob" style={{ width: 360, height: 360, bottom: -120, insetInlineStart: -80, background: "hsl(var(--primary-hover) / 0.6)" }} />
-
-        {/* Gradient breathing overlay */}
-        <div
-          className="absolute inset-0 pointer-events-none z-[1]"
-          style={{
-            background: "radial-gradient(ellipse at 30% 50%, hsl(var(--primary-hover) / 0.08), transparent 70%)",
-            animation: isTyping || reduced ? "none" : "gradient-breathe 6s ease-in-out infinite",
-          }}
-        />
-
-        <motion.div
-          className="container relative z-10 py-16 md:py-24 lg:py-28 grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8"
-          style={reduced ? {} : { y: heroY, opacity: heroOpacity }}
-        >
-          <div className="max-w-2xl">
-            {/* Eyebrow chip — mono, with live signal dot */}
-            <motion.div
-              className="mb-6"
-              initial={reduced ? {} : { opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.1, ease: [0, 0, 0.2, 1] }}
-            >
-              <span className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3.5 py-1.5 text-overline tracking-widest font-mono-data backdrop-blur-sm">
-                <span className="signal-dot" />
-                {isAr ? "منصة المسار المهني الذكية" : "THE AI CAREER OPERATING SYSTEM"}
-              </span>
-            </motion.div>
-
-            {/* Editorial serif headline */}
-            <motion.h1
-              className="text-hero-serif mb-6"
-              initial={reduced ? {} : { opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 80, damping: 18, mass: 1.1, delay: 0.2 }}
-            >
-              {isAr ? (
-                <>
-                  بحث واحد.
-                  <br />
-                  <span className="text-secondary serif-accent">كل الفرص.</span>
-                </>
-              ) : (
-                <>
-                  One search.
-                  <br />
-                  <span className="text-secondary serif-accent">Every opportunity.</span>
-                </>
-              )}
-            </motion.h1>
-
-            {/* Body text */}
-            <motion.p
-              className="text-body-lg opacity-80 mb-9 max-w-lg"
-              initial={reduced ? {} : { opacity: 0, y: 20 }}
-              animate={{ opacity: 0.8, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.45, ease: [0, 0, 0.2, 1] }}
-            >
-              {isAr
-                ? "وظائف موثقة مجمّعة من أفضل المصادر عبر الشرق الأوسط — مع رشيد، مساعدك المهني الذكي، من البحث حتى التوظيف والنمو."
-                : "Verified jobs aggregated from top sources across MENA — plus Rasheed, your AI career coach, from search to hire to growth."}
-            </motion.p>
-
-            {/* Search bar */}
-            <motion.div
-              initial={reduced ? {} : { opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.6, ease: [0, 0, 0.2, 1] }}
-            >
-              <SmartSearch
-                query={query}
-                setQuery={setQuery}
-                onSubmit={handleSearch}
-              />
-            </motion.div>
-
-            {/* Trust micro-row */}
-            <motion.div
-              className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-caption text-primary-foreground/70"
-              initial={reduced ? {} : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.75, ease: [0, 0, 0.2, 1] }}
-            >
-              {[
-                isAr ? "تقديم مباشر للمصدر" : "Direct-to-source apply",
-                isAr ? "بدون وسطاء" : "No middleman",
-                isAr ? "تحديث مستمر" : "Continuously verified",
-              ].map((t) => (
-                <span key={t} className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-secondary" />
-                  {t}
-                </span>
-              ))}
-            </motion.div>
-
-            {/* Live metric strip — real data from useLandingData */}
-            <motion.div
-              className="mt-8 flex items-center gap-6 border-t border-primary-foreground/12 pt-6"
-              initial={reduced ? {} : { opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.85, ease: [0, 0, 0.2, 1] }}
-            >
-              {[
-                { v: landing?.totalJobs ?? 0, s: "+", l: isAr ? "وظيفة" : "jobs" },
-                { v: landing?.sourcesCount ?? 0, s: "", l: isAr ? "مصادر" : "sources" },
-                { v: Object.keys(industryCounts).length || 0, s: "", l: isAr ? "قطاعات" : "industries" },
-              ].map((m) => (
-                <div key={m.l} className="flex flex-col">
-                  <span className="font-mono-data text-xl font-medium text-primary-foreground">
-                    {m.v}
-                    {m.s}
-                  </span>
-                  <span className="text-[11px] uppercase tracking-widest text-primary-foreground/55">{m.l}</span>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-
-          {/* AI career-coach persona — first-class hero column, framed */}
-          <motion.div
-            className="hidden lg:flex items-center justify-center"
-            initial={reduced ? {} : { opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, delay: 0.5, ease: [0, 0, 0.2, 1] }}
-          >
-            <HeroAssistant />
-          </motion.div>
-        </motion.div>
-      </section>
+      {/* ═══ HERO — centered editorial opener + product-proof panel ═══ */}
+      <HeroSection
+        query={query}
+        setQuery={setQuery}
+        onSubmit={handleSearch}
+        landing={landing}
+        industryCount={Object.keys(industryCounts).length || 0}
+      />
 
       {/* ═══ QUICK FILTERS ═══ */}
       <QuickFilters />

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchJobs, fetchCompanies, fetchSources } from "@/services/jobs";
 import type { Job, Company } from "@/services/jobs";
 
-interface LandingData {
+export interface LandingData {
   featuredJobs: Job[];
   totalJobs: number;
   companiesWithCounts: { company: Company; count: number }[];
