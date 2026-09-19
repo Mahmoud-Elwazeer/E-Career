@@ -44,7 +44,7 @@ export function JobCard({ job, isSaved, onToggleSave }: JobCardProps) {
   const postedAgo = job.posted_ago || formatPostedAgo(job.posted_at);
 
   return (
-    <Card className="group hover:shadow-md hover:border-primary/20 transition-all duration-normal border-border/60 animate-fade-in relative overflow-hidden">
+    <Card className="group hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5 transition-all duration-normal animate-fade-in relative overflow-hidden">
       <CardContent className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -104,12 +104,12 @@ export function JobCard({ job, isSaved, onToggleSave }: JobCardProps) {
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
-            {/* Match Score - Phase 1C */}
+            {/* Match Score — brand-aligned */}
             {job.match_score !== null && job.match_score !== undefined && (
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 dark:bg-emerald-950 border border-emerald-200 dark:border-emerald-800 rounded-lg">
-                <Star className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="text-caption font-semibold text-emerald-700 dark:text-emerald-300">
-                  {job.match_score}% Match
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20">
+                <Star className="h-3.5 w-3.5 text-primary" />
+                <span className="text-caption font-semibold text-primary">
+                  {job.match_score}% <span className="font-normal">Match</span>
                 </span>
               </div>
             )}

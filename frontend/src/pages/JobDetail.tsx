@@ -46,7 +46,7 @@ function JobHeader({ job, isAr, reduced, expired }: any) {
           />
         )}
         <div className="flex-1">
-          <h1 className="text-heading-1">
+          <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-tight leading-tight">
             <motion.span
               layoutId={reduced ? undefined : `job-${job.id}-title`}
               transition={{ type: "spring", stiffness: 300, damping: 26 }}

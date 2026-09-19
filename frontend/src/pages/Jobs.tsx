@@ -41,7 +41,7 @@ function FilterControls({
 
   return (
     <div className="space-y-4">
-      <h3 className="text-body font-medium">{isAr ? "عوامل التصفية" : "Filters"}</h3>
+      <h3 className="eyebrow-mono">{isAr ? "عوامل التصفية" : "FILTERS"}</h3>
       <div>
         <label className="text-caption text-muted-foreground mb-1.5 block">{isAr ? "نوع الموقع" : "Location Type"}</label>
         <Select value={locationType || "all"} onValueChange={(v) => setParam("locationType", v === "all" ? "" : v)}>
@@ -182,15 +182,15 @@ export default function Jobs() {
 
   return (
     <Layout>
-      {/* Page header band */}
-      <div className="hero-gradient hero-grid relative overflow-hidden text-primary-foreground">
+      {/* Page header band — editorial chamber */}
+      <div className="chamber chamber-grid relative overflow-hidden text-primary-foreground">
         <div className="glow-blob" style={{ width: 320, height: 320, top: -120, insetInlineEnd: "10%", background: "hsl(var(--secondary) / 0.25)" }} />
-        <div className="container relative z-10 py-10 md:py-12">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3 py-1 text-caption font-medium backdrop-blur-sm mb-3">
-            {isAr ? "استكشف الفرص" : "Explore opportunities"}
+        <div className="container relative z-10 py-12 md:py-14">
+          <span className="eyebrow-mono text-primary-foreground/70 mb-3">
+            <span className="signal-dot" /> {isAr ? "استكشف الفرص" : "EXPLORE OPPORTUNITIES"}
           </span>
-          <h1 className="text-heading-1">{isAr ? "تصفح الوظائف" : "Browse jobs"}</h1>
-          <p className="text-body-lg opacity-80 mt-1">
+          <h1 className="text-display-serif mt-3">{isAr ? "تصفح الوظائف" : "Browse jobs"}</h1>
+          <p className="text-body-lg opacity-80 mt-2">
             {isAr ? "وظائف موثوقة من مصادر متعددة عبر المنطقة" : "Verified roles from multiple sources across MENA"}
           </p>
         </div>
@@ -238,8 +238,8 @@ export default function Jobs() {
         )}
 
         <div className="flex gap-6">
-          <aside className="hidden md:block w-60 shrink-0">
-            <div className="card-premium p-5 sticky top-20">
+          <aside className="hidden md:block w-64 shrink-0">
+            <div className="paper-card p-5 sticky top-20">
               <FilterControls locationType={locationType} industry={industry} experienceLevel={experienceLevel} setParam={setParam} />
               {hasFilters && (
                 <button onClick={clearFilters} className="mt-4 text-caption text-primary hover:underline flex items-center gap-1">
