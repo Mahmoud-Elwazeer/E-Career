@@ -105,22 +105,46 @@ export function PublicNavMenu() {
       <NavigationMenuList className="gap-0.5">
         {/* For Individuals */}
         <NavigationMenuItem>
-          <NavigationMenuTrigger className="h-9 rounded-lg bg-transparent px-3 text-body font-medium text-foreground/70 hover:text-foreground data-[state=open]:text-foreground">
+          <NavigationMenuTrigger className="h-9 rounded-full bg-transparent px-3 text-body font-medium text-foreground/70 hover:text-foreground data-[state=open]:text-foreground">
             {isAr ? "للأفراد" : "For Individuals"}
           </NavigationMenuTrigger>
           <NavigationMenuContent>
-            <div className="p-2">
-              <p className="px-3 pt-2 pb-1 text-overline tracking-widest text-muted-foreground">
-                {isAr ? "أدوات مهنية مدعومة بالذكاء الاصطناعي" : "AI-powered career tools"}
-              </p>
-              <FeatureGrid items={individualFeatures} cols={2} />
+            <div className="flex p-2">
+              {/* Featured panel */}
+              <div className="hidden lg:flex w-[220px] shrink-0 flex-col justify-between rounded-xl chamber chamber-grid m-1 p-4 overflow-hidden">
+                <div className="relative">
+                  <span className="eyebrow-mono text-primary-foreground/80">
+                    <span className="signal-dot" /> {isAr ? "مساعدك" : "YOUR COACH"}
+                  </span>
+                  <p className="font-display text-xl leading-tight mt-2 text-primary-foreground">
+                    {isAr ? "قابل رشيد" : "Meet Rasheed"}
+                  </p>
+                  <p className="text-caption text-primary-foreground/75 mt-1.5 leading-relaxed">
+                    {isAr ? "مساعدك المهني الذكي طوال اليوم." : "Your AI career coach, 24/7."}
+                  </p>
+                </div>
+                <Link
+                  to="/login"
+                  state={{ from: "/app/rashid" }}
+                  className="relative mt-4 inline-flex items-center gap-1 rounded-full bg-primary-foreground/12 border border-primary-foreground/20 px-3 py-1.5 text-caption font-medium text-primary-foreground hover:bg-primary-foreground/20 transition-colors w-fit"
+                >
+                  {isAr ? "جرّب رشيد" : "Try Rasheed"}
+                </Link>
+              </div>
+              {/* Feature grid */}
+              <div className="p-1">
+                <p className="px-3 pt-2 pb-1 eyebrow-mono">
+                  {isAr ? "أدوات مهنية بالذكاء الاصطناعي" : "AI-POWERED CAREER TOOLS"}
+                </p>
+                <FeatureGrid items={individualFeatures} cols={2} />
+              </div>
             </div>
           </NavigationMenuContent>
         </NavigationMenuItem>
 
         {/* For Employers */}
         <NavigationMenuItem>
-          <NavigationMenuTrigger className="h-9 rounded-lg bg-transparent px-3 text-body font-medium text-foreground/70 hover:text-foreground data-[state=open]:text-foreground">
+          <NavigationMenuTrigger className="h-9 rounded-full bg-transparent px-3 text-body font-medium text-foreground/70 hover:text-foreground data-[state=open]:text-foreground">
             {isAr ? "لأصحاب العمل" : "For Employers"}
           </NavigationMenuTrigger>
           <NavigationMenuContent>
@@ -151,7 +175,7 @@ export function PublicNavMenu() {
           <NavigationMenuLink asChild>
             <Link
               to="/pricing"
-              className="inline-flex h-9 items-center rounded-lg px-3 text-body font-medium text-foreground/70 hover:text-foreground transition-colors"
+              className="inline-flex h-9 items-center rounded-full px-3 text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
             >
               {isAr ? "الأسعار" : "Pricing"}
             </Link>
@@ -161,7 +185,7 @@ export function PublicNavMenu() {
           <NavigationMenuLink asChild>
             <Link
               to="/about"
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-body font-medium text-foreground/70 hover:text-foreground transition-colors"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
             >
               {isAr ? "عن USAM" : "About"}
             </Link>

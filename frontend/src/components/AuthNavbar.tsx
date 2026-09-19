@@ -7,9 +7,9 @@ import {
   LayoutDashboard, DollarSign, Award, Building2, Network,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
-import { Logo } from "@/components/Logo";
+import { Logo, LogoLockup } from "@/components/Logo";
 import { PublicNavMenu, MOBILE_PUBLIC_GROUPS, publicHref, publicState } from "@/components/PublicNavMenu";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
@@ -85,12 +85,26 @@ export function AuthNavbar() {
   const secondaryNav = isEmployer ? employerSecondaryNav : appSecondaryNav;
   const mobileNav = !isAuthenticated ? publicNavItems : [...primaryNav, ...secondaryNav];
 
+  // Scroll-aware chrome: transparent-ish at top, solid + hairline once scrolled.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-card/80 glass supports-[backdrop-filter]:bg-card/70">
+    <header
+      className={`sticky top-0 z-50 transition-all duration-normal glass supports-[backdrop-filter]:bg-card/70 ${
+        scrolled ? "border-b border-border/70 bg-card/85 shadow-sm" : "border-b border-transparent bg-card/60"
+      }`}
+    >
       <div className="container flex h-16 items-center gap-4">
         {/* Zone 1 — logo (start) */}
         <Link to="/" className="flex items-center gap-2 press-feedback shrink-0" aria-label="USAM home">
-          <Logo className="h-8" />
+          <LogoLockup className="hidden sm:inline-flex" />
+          <Logo className="h-7 sm:hidden" />
         </Link>
 
         {/* Zone 2 — primary navigation (centered, fills space) */}
@@ -127,14 +141,20 @@ export function AuthNavbar() {
                     <Link
                       key={item.to}
                       to={item.to}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-body font-medium transition-all duration-fast ${
+                      className={`relative flex items-center gap-1.5 px-3 py-2 rounded-full text-body font-medium transition-all duration-fast ${
                         active
-                          ? "bg-primary text-primary-foreground shadow-sm"
+                          ? "bg-primary/10 text-primary"
                           : "text-foreground/60 hover:text-foreground hover:bg-accent"
                       }`}
                     >
                       <item.icon className="h-3.5 w-3.5" />
                       {isAr ? item.labelAr : item.label}
+                      {active && (
+                        <motion.span
+                          layoutId="nav-active-dot"
+                          className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-primary"
+                        />
+                      )}
                     </Link>
                   );
                 })}
@@ -199,9 +219,16 @@ export function AuthNavbar() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Button asChild variant="default" size="sm" className="ms-2 rounded-lg px-5 shadow-sm press-feedback">
-                <Link to="/login">{isAr ? "دخول" : "Sign in"}</Link>
-              </Button>
+              <div className="flex items-center gap-1.5 ms-2">
+                <Button asChild variant="ghost" size="sm" className="rounded-full px-4 text-foreground/70 hover:text-foreground">
+                  <Link to="/login">{isAr ? "دخول" : "Sign in"}</Link>
+                </Button>
+                <Button asChild variant="default" size="sm" className="rounded-full px-5 shadow-sm press-feedback">
+                  <Link to="/login" state={{ from: "/app/jobs" }}>
+                    {isAr ? "ابدأ مجاناً" : "Sign up free"}
+                  </Link>
+                </Button>
+              </div>
             )}
           </div>
         </div>
