@@ -62,15 +62,15 @@ function AnalyticsTab() {
         <StaggerContainer className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StaggerItem><Card><CardContent className="p-5">
             <p className="text-caption text-muted-foreground">Total Views</p>
-            <p className="text-heading-1">{conversionData.total_views}</p>
+            <p className="font-mono-data text-3xl font-medium text-foreground">{conversionData.total_views}</p>
           </CardContent></Card></StaggerItem>
           <StaggerItem><Card><CardContent className="p-5">
             <p className="text-caption text-muted-foreground">Total Clicks</p>
-            <p className="text-heading-1">{conversionData.total_clicks}</p>
+            <p className="font-mono-data text-3xl font-medium text-foreground">{conversionData.total_clicks}</p>
           </CardContent></Card></StaggerItem>
           <StaggerItem><Card><CardContent className="p-5">
             <p className="text-caption text-muted-foreground">Conversion Rate</p>
-            <p className="text-heading-1">{conversionData.conversion_rate}</p>
+            <p className="font-mono-data text-3xl font-medium text-foreground">{conversionData.conversion_rate}</p>
           </CardContent></Card></StaggerItem>
         </StaggerContainer>
       )}
@@ -1728,7 +1728,7 @@ export default function AdminDashboard() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-heading-1">{kpi.value}</p>
+                            <p className="font-mono-data text-3xl font-medium text-foreground">{kpi.value}</p>
                             <p className="text-caption text-muted-foreground mt-1">{kpi.label}</p>
                           </CardContent>
                         </Card>

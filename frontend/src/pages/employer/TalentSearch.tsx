@@ -193,7 +193,7 @@ const TalentSearch: React.FC = () => {
           <div className="flex items-center gap-4">
             <Link
               to="/app/employer/dashboard"
-              className="p-2 hover:bg-gray-200 rounded-lg transition"
+              className="p-2 hover:bg-accent rounded-lg transition"
             >
               <ArrowLeft className="w-5 h-5 text-muted-foreground" />
             </Link>
@@ -260,7 +260,7 @@ const TalentSearch: React.FC = () => {
                   {pools.map((pool) => (
                     <div
                       key={pool.id}
-                      className="p-4 border rounded-lg hover:border-blue-300 hover:bg-blue-50/50 transition"
+                      className="p-4 border rounded-lg hover:border-primary/40 hover:bg-primary/5 transition"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-semibold text-foreground">{pool.name}</h4>

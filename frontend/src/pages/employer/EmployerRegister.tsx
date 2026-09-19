@@ -99,7 +99,7 @@ const EmployerRegister: React.FC = () => {
 
         {/* Step 1: Find Company */}
         {step === 1 && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="paper-card p-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">
               Find Your Company
             </h2>
@@ -164,7 +164,7 @@ const EmployerRegister: React.FC = () => {
 
         {/* Step 2: Your Details */}
         {step === 2 && (
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="paper-card p-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">
               Your Details
             </h2>
