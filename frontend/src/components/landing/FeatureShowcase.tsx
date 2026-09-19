@@ -40,7 +40,7 @@ export function FeatureShowcase() {
   ];
 
   return (
-    <section className="section-y">
+    <section id="platform" className="section-y scroll-mt-20">
       <div className="container">
         <ScrollReveal>
           <div className="flex flex-col items-center text-center mb-12">

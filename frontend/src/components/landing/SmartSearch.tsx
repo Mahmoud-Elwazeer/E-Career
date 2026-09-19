@@ -234,8 +234,8 @@ export function SmartSearch({ query, setQuery, onSubmit, onFocusChange, onHoverS
         </Button>
       </form>
 
-      {/* Suggested chips */}
-      <div className="flex flex-wrap gap-2 max-w-lg">
+      {/* Suggested chips — tokenized so they read on the light paper hero */}
+      <div className="flex flex-wrap justify-center gap-2">
         {SUGGESTED_CHIPS.map((chip) => (
           <button
             key={chip.en}
@@ -243,7 +243,7 @@ export function SmartSearch({ query, setQuery, onSubmit, onFocusChange, onHoverS
             onClick={() => {
               setQuery(isAr ? chip.ar : chip.en);
             }}
-            className="px-3 py-1 text-caption rounded-full border border-primary-foreground/20 text-primary-foreground/70 hover:text-primary-foreground hover:border-primary-foreground/40 hover:bg-primary-foreground/5 transition-all"
+            className="px-3 py-1 text-caption rounded-full border border-border bg-card text-foreground/70 hover:text-primary hover:border-primary/40 transition-all"
           >
             {isAr ? chip.ar : chip.en}
           </button>

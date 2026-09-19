@@ -1,24 +1,25 @@
-import { useRef } from "react";
-import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
-import { CheckCircle2 } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import { CheckCircle2, ArrowRight, ArrowLeft } from "lucide-react";
 import { SmartSearch } from "@/components/landing/SmartSearch";
 import { HeroAssistant } from "@/components/landing/HeroAssistant";
-import { WatermarkBackground } from "@/components/WatermarkBackground";
 import { useTheme } from "@/hooks/use-theme";
 import type { LandingData } from "@/hooks/use-landing-data";
 
 /**
- * HeroSection — a from-scratch, CENTERED landing opener (replaces the previous
- * side-by-side split). Structure, top → bottom:
- *   1. centered mono eyebrow with live signal
- *   2. centered editorial serif headline
- *   3. centered subtext
- *   4. centered search (the primary action, front-and-centre)
- *   5. trust row
- *   6. a WIDE product-proof panel below the fold-line: framed Rasheed console
- *      flanked by a live metric readout — the "show the product" moment.
+ * HeroSection — rebuilt from zero.
  *
- * All data is real (LandingData). Search is delegated to the parent via props.
+ * Fixes the two problems in the previous version:
+ *   1) NAVBAR OVERLAP — the header is sticky, so the hero opens on a LIGHT paper
+ *      canvas with explicit top clearance (no giant headline hiding under the
+ *      nav on first paint).
+ *   2) ALL-DARK WALL — instead of a full teal block, the opener sits on the warm
+ *      paper canvas (brand ink on paper), and the deep-teal "chamber" is used
+ *      only for the product-proof panel below. This gives real light↔dark
+ *      rhythm using the SAME brand colours (teal primary, warm paper, amber
+ *      signal), per the design system (Increase/Subframe/Wispr direction).
+ *
+ * Layout: centered editorial opener → search (primary action) → trust row,
+ * then a full-width teal chamber card holding live metrics + the Rasheed console.
  */
 
 interface HeroSectionProps {
@@ -31,13 +32,9 @@ interface HeroSectionProps {
 
 export function HeroSection({ query, setQuery, onSubmit, landing, industryCount }: HeroSectionProps) {
   const reduced = useReducedMotion();
-  const { lang } = useTheme();
+  const { lang, dir } = useTheme();
   const isAr = lang === "ar";
-  const isTyping = query.length > 0;
-
-  const heroRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const proofY = useTransform(scrollYProgress, [0, 1], [0, 60]);
+  const Arrow = dir === "rtl" ? ArrowLeft : ArrowRight;
 
   const metrics = [
     { v: landing?.totalJobs ?? 0, s: "+", l: isAr ? "وظيفة" : "jobs" },
@@ -53,18 +50,29 @@ export function HeroSection({ query, setQuery, onSubmit, landing, industryCount 
   ];
 
   return (
-    <section ref={heroRef} className="chamber chamber-grid relative overflow-hidden text-primary-foreground">
-      <WatermarkBackground variant="shimmer" opacity={0.04} inheritColor paused={isTyping} />
-      {/* Ambient depth */}
-      <div className="glow-blob" style={{ width: 560, height: 560, top: -180, insetInlineStart: "50%", transform: "translateX(-50%)", background: "hsl(var(--secondary) / 0.25)" }} aria-hidden />
-      <div className="glow-blob" style={{ width: 420, height: 420, bottom: -160, insetInlineEnd: -80, background: "hsl(var(--primary-hover) / 0.5)" }} aria-hidden />
+    <section className="relative overflow-hidden bg-background">
+      {/* Soft warm-paper wash + faint teal aura (light, not a dark wall) */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        aria-hidden
+        style={{
+          background:
+            "radial-gradient(60% 55% at 50% 0%, hsl(var(--primary) / 0.06) 0%, transparent 70%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        aria-hidden
+        style={{ background: "linear-gradient(90deg, transparent, hsl(var(--border)), transparent)" }}
+      />
 
-      <div className="container relative z-10 pt-20 md:pt-28 pb-16 md:pb-20">
-        {/* ── Centered editorial opener ── */}
+      {/* pt clears the sticky navbar (h-16) with room to breathe */}
+      <div className="container relative z-10 pt-16 md:pt-20 pb-16 md:pb-24">
+        {/* ── Centered editorial opener on paper ── */}
         <div className="mx-auto max-w-3xl text-center">
           <motion.span
-            className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3.5 py-1.5 text-overline tracking-widest font-mono-data backdrop-blur-sm mb-7"
-            initial={reduced ? {} : { opacity: 0, y: 12 }}
+            className="eyebrow-mono justify-center mb-6"
+            initial={reduced ? {} : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.05 }}
           >
@@ -73,73 +81,76 @@ export function HeroSection({ query, setQuery, onSubmit, landing, industryCount 
           </motion.span>
 
           <motion.h1
-            className="text-hero-serif"
-            initial={reduced ? {} : { opacity: 0, y: 36 }}
+            className="text-hero-serif text-foreground"
+            initial={reduced ? {} : { opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 82, damping: 18, mass: 1.05, delay: 0.15 }}
+            transition={{ type: "spring", stiffness: 82, damping: 18, mass: 1.05, delay: 0.12 }}
           >
             {isAr ? (
-              <>بحث واحد، <span className="serif-accent text-secondary">كل الفرص.</span></>
+              <>بحث واحد، <span className="serif-accent text-primary">كل الفرص.</span></>
             ) : (
-              <>One search, <span className="serif-accent text-secondary">every opportunity.</span></>
+              <>One search, <span className="serif-accent text-primary">every opportunity.</span></>
             )}
           </motion.h1>
 
           <motion.p
-            className="mx-auto mt-6 max-w-xl text-body-lg opacity-80"
-            initial={reduced ? {} : { opacity: 0, y: 18 }}
-            animate={{ opacity: 0.8, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.35 }}
+            className="mx-auto mt-6 max-w-xl text-body-lg text-muted-foreground"
+            initial={reduced ? {} : { opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
           >
             {isAr
               ? "وظائف موثقة مجمّعة من أفضل المصادر عبر الشرق الأوسط — مع رشيد، مساعدك المهني الذكي، من البحث حتى التوظيف والنمو."
               : "Verified jobs aggregated from top sources across MENA — plus Rasheed, your AI career coach, from search to hire to growth."}
           </motion.p>
 
-          {/* Search — the primary action, centred */}
+          {/* Search — the primary action */}
           <motion.div
-            className="mx-auto mt-9 max-w-xl"
-            initial={reduced ? {} : { opacity: 0, y: 20 }}
+            className="mx-auto mt-8 max-w-xl"
+            initial={reduced ? {} : { opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
+            transition={{ duration: 0.5, delay: 0.42 }}
           >
             <SmartSearch query={query} setQuery={setQuery} onSubmit={onSubmit} />
           </motion.div>
 
           {/* Trust row */}
           <motion.div
-            className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-caption text-primary-foreground/70"
+            className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-caption text-muted-foreground"
             initial={reduced ? {} : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.65 }}
+            transition={{ duration: 0.5, delay: 0.55 }}
           >
             {trust.map((t) => (
               <span key={t} className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-secondary" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
                 {t}
               </span>
             ))}
           </motion.div>
         </div>
 
-        {/* ── Product-proof panel (below the opener) ── */}
+        {/* ── Product-proof panel: the single teal chamber (light→dark rhythm) ── */}
         <motion.div
-          className="relative mx-auto mt-16 max-w-4xl"
-          style={reduced ? {} : { y: proofY }}
-          initial={reduced ? {} : { opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.6, ease: [0, 0, 0.2, 1] }}
+          className="chamber chamber-grid relative mx-auto mt-14 max-w-5xl overflow-hidden rounded-[2rem] text-primary-foreground shadow-xl"
+          initial={reduced ? {} : { opacity: 0, y: 32 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: [0, 0, 0.2, 1] }}
         >
-          <div className="grid items-center gap-6 rounded-[2rem] border border-primary-foreground/12 bg-primary-foreground/[0.04] p-4 backdrop-blur-sm md:grid-cols-[1fr_0.85fr] md:p-6">
-            {/* Live metric readout */}
-            <div className="order-2 px-2 md:order-1 md:px-4">
-              <p className="eyebrow-mono text-primary-foreground/60 mb-5">
-                {isAr ? "المنصة الآن" : "PLATFORM · LIVE"}
+          <div className="grid items-center gap-8 p-6 md:grid-cols-[1fr_0.9fr] md:p-9">
+            {/* Left: headline + live metrics + CTA */}
+            <div className="order-2 md:order-1">
+              <p className="eyebrow-mono text-primary-foreground/60 mb-4">
+                <span className="signal-dot" /> {isAr ? "المنصة الآن" : "PLATFORM · LIVE"}
               </p>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+              <h2 className="font-display text-2xl md:text-3xl font-semibold leading-tight mb-6">
+                {isAr ? "كل ما تحتاجه لمسارك المهني في مكان واحد" : "Everything for your career, in one place"}
+              </h2>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-6 mb-7">
                 {metrics.map((m) => (
                   <div key={m.l}>
-                    <div className="font-mono-data text-3xl font-medium leading-none text-primary-foreground">
+                    <div className="font-mono-data text-3xl font-medium leading-none">
                       {m.v}
                       {m.s}
                     </div>
@@ -149,9 +160,15 @@ export function HeroSection({ query, setQuery, onSubmit, landing, industryCount 
                   </div>
                 ))}
               </div>
+              <a
+                href="#platform"
+                className="inline-flex items-center gap-2 rounded-full bg-secondary px-5 py-2.5 text-body font-medium text-[hsl(var(--primary))] shadow-sm transition-transform hover:scale-[1.02] press-feedback w-fit"
+              >
+                {isAr ? "اكتشف المنصة" : "Explore the platform"} <Arrow className="h-4 w-4" />
+              </a>
             </div>
 
-            {/* Framed Rasheed console */}
+            {/* Right: framed Rasheed console */}
             <div className="order-1 md:order-2">
               <HeroAssistant />
             </div>
