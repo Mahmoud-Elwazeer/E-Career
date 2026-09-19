@@ -30,8 +30,8 @@ export function HowItWorks({ steps, sectionTitle, sectionSubtitle, className }: 
         animate={isInView ? { opacity: 1, y: 0 } : undefined}
         transition={{ duration: MOTION.duration.slow, ease: MOTION.ease.out }}
       >
-        <span className="eyebrow mb-4">{sectionTitle}</span>
-        <h2 className="text-heading-1 tracking-tight mb-3 max-w-xl">
+        <span className="eyebrow-mono mb-4">{sectionTitle}</span>
+        <h2 className="text-display-serif mb-3 max-w-xl">
           {sectionSubtitle}
         </h2>
       </motion.div>

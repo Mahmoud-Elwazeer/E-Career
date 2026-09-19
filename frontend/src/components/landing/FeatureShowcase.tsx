@@ -44,11 +44,15 @@ export function FeatureShowcase() {
       <div className="container">
         <ScrollReveal>
           <div className="flex flex-col items-center text-center mb-12">
-            <span className="eyebrow mb-4">{isAr ? "منصة متكاملة" : "One platform"}</span>
-            <h2 className="text-heading-1 tracking-tight max-w-2xl">
-              {isAr ? "أكثر من مجرد بحث عن وظيفة" : "More than a job search — a career operating system"}
+            <span className="eyebrow-mono mb-4">{isAr ? "منصة متكاملة" : "ONE PLATFORM"}</span>
+            <h2 className="text-display-serif max-w-2xl">
+              {isAr ? (
+                <>أكثر من مجرد <span className="serif-accent text-primary">بحث</span> عن وظيفة</>
+              ) : (
+                <>More than a job search — a <span className="serif-accent text-primary">career OS</span></>
+              )}
             </h2>
-            <p className="text-body-lg text-muted-foreground mt-3 max-w-xl">
+            <p className="text-body-lg text-muted-foreground mt-4 max-w-xl">
               {isAr
                 ? "أدوات مدعومة بالذكاء الاصطناعي ترافقك من البحث حتى التوظيف والنمو."
                 : "AI-powered tools that guide you from search to hire to growth."}

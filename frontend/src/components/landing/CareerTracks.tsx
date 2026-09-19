@@ -72,9 +72,9 @@ export function CareerTracks() {
         <ScrollReveal>
           <div className="flex items-center justify-between mb-8">
             <div>
-              <span className="eyebrow mb-3">{isAr ? "المسارات" : "Career tracks"}</span>
-              <h2 className="text-heading-2 mt-3">{isAr ? "مسارات مهنية رائجة" : "Popular Career Paths"}</h2>
-              <p className="text-body text-muted-foreground mt-1">
+              <span className="eyebrow-mono mb-3">{isAr ? "المسارات" : "CAREER TRACKS"}</span>
+              <h2 className="text-display-serif mt-3">{isAr ? "مسارات مهنية رائجة" : "Popular career paths"}</h2>
+              <p className="text-body-lg text-muted-foreground mt-2">
                 {isAr ? "اكتشف المسارات الأكثر طلباً في السوق" : "Explore the most in-demand career tracks"}
               </p>
             </div>

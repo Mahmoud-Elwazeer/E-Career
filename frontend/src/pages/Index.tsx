@@ -17,6 +17,7 @@ import { FeaturedCarousel } from "@/components/landing/FeaturedCarousel";
 import { CareerTracks } from "@/components/landing/CareerTracks";
 import { CompanySpotlight } from "@/components/landing/CompanySpotlight";
 import { SavedJobsTeaser } from "@/components/landing/SavedJobsTeaser";
+import { FaqSection } from "@/components/landing/FaqSection";
 import { ScrollReveal, StaggerContainer, StaggerItem, AnimatedCard, TextReveal, CountUp } from "@/components/motion";
 import { useLandingData } from "@/hooks/use-landing-data";
 import { useAuth } from "@/hooks/use-auth";
@@ -135,65 +136,55 @@ export default function Index() {
         />
 
         <motion.div
-          className="container relative z-10 py-20 md:py-32"
+          className="container relative z-10 py-20 md:py-28 lg:py-32"
           style={reduced ? {} : { y: heroY, opacity: heroOpacity }}
         >
           <div className="max-w-2xl">
-            {/* Eyebrow chip */}
+            {/* Eyebrow chip — mono, with live signal dot */}
             <motion.div
-              className="mb-5"
+              className="mb-6"
               initial={reduced ? {} : { opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1, ease: [0, 0, 0.2, 1] }}
             >
-              <span className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3.5 py-1.5 text-caption font-medium backdrop-blur-sm">
-                <Sparkles className="h-3.5 w-3.5 text-secondary" />
-                {isAr ? "منصة تجميع الوظائف الذكية" : "AI-powered jobs aggregator"}
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3.5 py-1.5 text-overline tracking-widest font-mono-data backdrop-blur-sm">
+                <span className="signal-dot" />
+                {isAr ? "منصة المسار المهني الذكية" : "THE AI CAREER OPERATING SYSTEM"}
               </span>
             </motion.div>
 
-            {/* H1 */}
+            {/* Editorial serif headline */}
             <motion.h1
-              className="text-display leading-[1.08] mb-5"
-              initial={reduced ? {} : { opacity: 0, y: 60, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{
-                type: "spring",
-                stiffness: 80,
-                damping: 18,
-                mass: 1.2,
-                delay: 0.2,
-              }}
+              className="text-hero-serif mb-6"
+              initial={reduced ? {} : { opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 80, damping: 18, mass: 1.1, delay: 0.2 }}
             >
-              {isAr ? "بحث واحد." : "One search."}
+              {isAr ? (
+                <>
+                  بحث واحد.
+                  <br />
+                  <span className="text-secondary serif-accent">كل الفرص.</span>
+                </>
+              ) : (
+                <>
+                  One search.
+                  <br />
+                  <span className="text-secondary serif-accent">Every opportunity.</span>
+                </>
+              )}
             </motion.h1>
-
-            {/* Subtitle */}
-            <motion.p
-              className="text-display leading-[1.08] mb-5 font-light text-secondary"
-              initial={reduced ? {} : { opacity: 0, y: 50, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{
-                type: "spring",
-                stiffness: 80,
-                damping: 18,
-                mass: 1.2,
-                delay: 0.35,
-              }}
-            >
-              {isAr ? "كل الفرص." : "Every opportunity."}
-            </motion.p>
 
             {/* Body text */}
             <motion.p
-              className="text-body-lg opacity-75 mb-10 max-w-lg"
+              className="text-body-lg opacity-80 mb-9 max-w-lg"
               initial={reduced ? {} : { opacity: 0, y: 20 }}
-              animate={{ opacity: 0.75, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.5, ease: [0, 0, 0.2, 1] }}
+              animate={{ opacity: 0.8, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.45, ease: [0, 0, 0.2, 1] }}
             >
               {isAr
-                ? "اكتشف آلاف الوظائف المجمعة من أفضل المنصات في منطقة الشرق الأوسط وشمال أفريقيا."
-                : "Discover thousands of jobs aggregated from top platforms across MENA. No more tab overload."}
+                ? "وظائف موثقة مجمّعة من أفضل المصادر عبر الشرق الأوسط — مع رشيد، مساعدك المهني الذكي، من البحث حتى التوظيف والنمو."
+                : "Verified jobs aggregated from top sources across MENA — plus Rasheed, your AI career coach, from search to hire to growth."}
             </motion.p>
 
             {/* Search bar */}
@@ -267,9 +258,9 @@ export default function Index() {
           <ScrollReveal>
             <div className="flex items-end justify-between mb-8">
               <div>
-                <span className="eyebrow mb-3">{isAr ? "التصنيفات" : "Categories"}</span>
-                <h2 className="text-heading-2 mt-3">{isAr ? "تصفح حسب التصنيف" : "Browse by Category"}</h2>
-                <p className="text-body text-muted-foreground mt-1">{isAr ? "اختر المجال الذي يناسبك" : "Find roles in your preferred industry"}</p>
+                <span className="eyebrow-mono mb-3">{isAr ? "التصنيفات" : "CATEGORIES"}</span>
+                <h2 className="text-display-serif mt-3">{isAr ? "تصفح حسب التصنيف" : "Browse by category"}</h2>
+                <p className="text-body-lg text-muted-foreground mt-2">{isAr ? "اختر المجال الذي يناسبك" : "Find roles in your preferred industry"}</p>
               </div>
               <Link to={jobsPath} className="text-body text-primary font-medium flex items-center gap-1 link-underline shrink-0">
                 {isAr ? "عرض الكل" : "View all"} <Arrow className="h-3 w-3" />
@@ -323,6 +314,9 @@ export default function Index() {
       {/* ═══ WHY USAM ═══ */}
       <WhyUsamSection isAr={isAr} reduced={reduced} />
 
+      {/* ═══ FAQ ═══ */}
+      <FaqSection />
+
       {/* ═══ EMPLOYER CTA ═══ */}
       <section className="section-y">
         <div className="container">
@@ -331,7 +325,7 @@ export default function Index() {
             <div className="icon-tile relative mx-auto mb-5 h-14 w-14">
               <Building2 className="h-6 w-6 text-primary" />
             </div>
-            <h2 className="text-heading-2 mb-3 relative">
+            <h2 className="text-display-serif mb-3 relative">
               {isAr ? "هل تبحث عن مواهب؟" : "Looking to hire?"}
             </h2>
             <p className="text-body-lg text-muted-foreground mb-7 max-w-lg mx-auto relative">
@@ -367,7 +361,7 @@ export default function Index() {
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-3 py-1 text-caption font-medium backdrop-blur-sm mb-4">
                   {isAr ? "ابدأ اليوم" : "Get started today"}
                 </span>
-                <h2 className="text-heading-1 leading-tight mb-3">
+                <h2 className="text-display-serif leading-tight mb-3">
                   {isAuthenticated
                     ? (isAr ? "لا تفوت أي فرصة" : "Never miss an opportunity")
                     : (isAr ? "رحلتك المهنية تبدأ الآن" : "Your career journey starts now")}

@@ -27,12 +27,14 @@ export function StatsStrip({
   });
 
   return (
-    <section className="py-20" ref={ref}>
+    <section className="section-y" ref={ref}>
       <div className="container">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {stats.map((s, i) => (
-            <StatCard key={s.label} stat={s} index={i} reduced={reduced} scrollProgress={scrollYProgress} />
-          ))}
+        <div className="chamber chamber-grid relative overflow-hidden rounded-[2rem] px-6 py-12 md:px-12 md:py-14">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 relative z-10">
+            {stats.map((s, i) => (
+              <StatCard key={s.label} stat={s} index={i} reduced={reduced} scrollProgress={scrollYProgress} />
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -65,15 +67,15 @@ function StatCard({
       <CountUp
         target={stat.n}
         suffix={stat.suffix}
-        className="text-display text-primary"
+        className="text-display font-mono-data text-primary-foreground"
         separator={false}
         duration={1400}
       />
-      <p className="text-body text-muted-foreground mt-1">{stat.label}</p>
+      <p className="text-caption text-primary-foreground/70 mt-1 uppercase tracking-widest">{stat.label}</p>
       {/* Scroll-driven progress underline */}
-      <div className="mx-auto mt-3 h-[2px] w-10 rounded-full bg-border">
+      <div className="mx-auto mt-3 h-[2px] w-10 rounded-full bg-primary-foreground/20">
         <motion.div
-          className="h-full rounded-full bg-primary origin-left"
+          className="h-full rounded-full bg-secondary origin-left"
           style={{ scaleX: reduced ? 1 : underlineScale }}
         />
       </div>
@@ -120,9 +122,9 @@ export function WhyUsamSection({
       <div className="container">
         <ScrollReveal>
           <div className="flex flex-col items-center text-center mb-12">
-            <span className="eyebrow mb-3">{isAr ? "لماذا نحن" : "Why choose us"}</span>
-            <h2 className="text-heading-2">{isAr ? "لماذا USAM؟" : "Why USAM?"}</h2>
-            <p className="text-body text-muted-foreground mt-2 max-w-md mx-auto">
+            <span className="eyebrow-mono mb-3">{isAr ? "لماذا نحن" : "WHY CHOOSE US"}</span>
+            <h2 className="text-display-serif">{isAr ? "لماذا USAM؟" : "Why USAM?"}</h2>
+            <p className="text-body-lg text-muted-foreground mt-3 max-w-md mx-auto">
               {isAr ? "نوفر لك الوقت والجهد في البحث عن عمل" : "We save you time and effort in your job search"}
             </p>
           </div>
