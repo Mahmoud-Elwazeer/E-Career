@@ -25,8 +25,8 @@ export function QuickFilters() {
       <div className="container py-5">
         <ScrollReveal>
           <div className="flex items-center gap-3 overflow-x-auto pb-1 scrollbar-none">
-            <span className="text-caption text-muted-foreground whitespace-nowrap shrink-0">
-              {isAr ? "فلتر سريع:" : "Quick filter:"}
+            <span className="eyebrow-mono whitespace-nowrap shrink-0">
+              {isAr ? "فلتر سريع" : "QUICK FILTER"}
             </span>
             {filters.map((f, i) => (
               <motion.div

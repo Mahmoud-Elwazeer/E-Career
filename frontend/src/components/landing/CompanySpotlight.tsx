@@ -38,19 +38,20 @@ export function CompanySpotlight() {
       <div className="container">
         <ScrollReveal>
           <div className="mb-8">
-            <h2 className="text-heading-2">{isAr ? "شركة مميزة" : "Company Spotlight"}</h2>
-            <p className="text-body text-muted-foreground mt-1">
+            <span className="eyebrow-mono mb-3">{isAr ? "شركة مميزة" : "COMPANY SPOTLIGHT"}</span>
+            <h2 className="text-display-serif mt-3">{isAr ? "شركات توظّف الآن" : "Companies hiring now"}</h2>
+            <p className="text-body-lg text-muted-foreground mt-2">
               {isAr ? "تعرّف على أبرز الشركات التي توظف الآن" : "Get to know top companies hiring now"}
             </p>
           </div>
         </ScrollReveal>
         <ScrollReveal delay={0.1}>
           <AnimatedCard>
-            <div className="rounded-2xl border bg-card p-6 md:p-8 flex flex-col md:flex-row items-start gap-6">
+            <div className="paper-card paper-card-interactive p-6 md:p-8 flex flex-col md:flex-row items-start gap-6">
               <img
                 src={spotlight.company.logo_url}
                 alt={spotlight.company.name}
-                className="h-16 w-16 rounded-xl object-cover shrink-0"
+                className="h-16 w-16 rounded-xl object-cover shrink-0 border border-border"
               />
               <div className="flex-1 min-w-0">
                 <h3 className="text-heading-3 mb-1">{spotlight.company.name}</h3>

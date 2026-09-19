@@ -23,10 +23,10 @@ export function SavedJobsTeaser() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Saved Jobs card */}
             <motion.div
-              className="bg-card border rounded-xl p-6 flex items-start gap-4"
+              className="paper-card paper-card-interactive p-6 flex items-start gap-4"
               whileHover={reduced ? {} : MOTION.presets.hoverLift}
             >
-              <div className="rounded-lg bg-primary-muted p-3 shrink-0">
+              <div className="icon-tile h-12 w-12 shrink-0">
                 <Bookmark className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
@@ -66,10 +66,10 @@ export function SavedJobsTeaser() {
 
             {/* Alerts teaser card */}
             <motion.div
-              className="bg-card border rounded-xl p-6 flex items-start gap-4"
+              className="paper-card paper-card-interactive p-6 flex items-start gap-4"
               whileHover={reduced ? {} : MOTION.presets.hoverLift}
             >
-              <div className="rounded-lg bg-primary-muted p-3 shrink-0">
+              <div className="icon-tile h-12 w-12 shrink-0">
                 <Bell className="h-5 w-5 text-primary" />
               </div>
               <div className="flex-1">
