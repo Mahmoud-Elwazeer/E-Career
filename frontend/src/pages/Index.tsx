@@ -136,7 +136,7 @@ export default function Index() {
         />
 
         <motion.div
-          className="container relative z-10 py-20 md:py-28 lg:py-32"
+          className="container relative z-10 py-16 md:py-24 lg:py-28 grid items-center gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8"
           style={reduced ? {} : { y: heroY, opacity: heroOpacity }}
         >
           <div className="max-w-2xl">
@@ -218,12 +218,39 @@ export default function Index() {
                 </span>
               ))}
             </motion.div>
+
+            {/* Live metric strip — real data from useLandingData */}
+            <motion.div
+              className="mt-8 flex items-center gap-6 border-t border-primary-foreground/12 pt-6"
+              initial={reduced ? {} : { opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.85, ease: [0, 0, 0.2, 1] }}
+            >
+              {[
+                { v: landing?.totalJobs ?? 0, s: "+", l: isAr ? "وظيفة" : "jobs" },
+                { v: landing?.sourcesCount ?? 0, s: "", l: isAr ? "مصادر" : "sources" },
+                { v: Object.keys(industryCounts).length || 0, s: "", l: isAr ? "قطاعات" : "industries" },
+              ].map((m) => (
+                <div key={m.l} className="flex flex-col">
+                  <span className="font-mono-data text-xl font-medium text-primary-foreground">
+                    {m.v}
+                    {m.s}
+                  </span>
+                  <span className="text-[11px] uppercase tracking-widest text-primary-foreground/55">{m.l}</span>
+                </div>
+              ))}
+            </motion.div>
           </div>
 
-          {/* AI career-coach persona */}
-          <div className="hidden lg:flex absolute end-4 xl:end-10 top-1/2 -translate-y-1/2 w-[400px] xl:w-[440px] items-center justify-center">
+          {/* AI career-coach persona — first-class hero column, framed */}
+          <motion.div
+            className="hidden lg:flex items-center justify-center"
+            initial={reduced ? {} : { opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.5, ease: [0, 0, 0.2, 1] }}
+          >
             <HeroAssistant />
-          </div>
+          </motion.div>
         </motion.div>
       </section>
 

@@ -32,34 +32,39 @@ export function HeroAssistant({ className = "" }: HeroAssistantProps) {
   }, []);
 
   return (
-    <div className={`relative w-full max-w-[440px] mx-auto ${className}`}>
-      {/* Identity badge — refined: live signal + serif name, on the teal hero.
-          Reads as a real product persona chip, not a generic pill. */}
-      <motion.div
-        className="relative z-10 mx-auto mb-3 w-fit inline-flex items-center gap-2.5 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-2 backdrop-blur-sm"
-        initial={reduced ? {} : { opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.5 }}
-      >
-        <span className="signal-dot" />
-        <span className="flex items-baseline gap-1.5">
-          <span className="font-display text-base font-semibold text-primary-foreground leading-none">
-            {isAr ? "رشيد" : "Rasheed"}
+    <motion.div
+      className={`relative w-full max-w-[440px] mx-auto ${className}`}
+      initial={reduced ? {} : { opacity: 0, scale: 0.96, y: 16 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 70, damping: 18, delay: 0.35 }}
+    >
+      {/* Framed product surface — Rasheed lives inside a glass console with a
+          real header, so the hero's right column reads as a designed product
+          panel rather than a floating figure. */}
+      <div className="glass-panel relative overflow-hidden rounded-[1.75rem] p-3">
+        {/* Header bar: persona identity + live status */}
+        <div className="flex items-center justify-between px-2 pt-1 pb-3">
+          <span className="flex items-center gap-2.5">
+            <span className="signal-dot" />
+            <span className="flex items-baseline gap-1.5">
+              <span className="font-display text-base font-semibold text-primary-foreground leading-none">
+                {isAr ? "رشيد" : "Rasheed"}
+              </span>
+              <span className="text-caption text-primary-foreground/70">
+                {isAr ? "مساعدك المهني" : "AI Career Coach"}
+              </span>
+            </span>
           </span>
-          <span className="text-caption text-primary-foreground/70">
-            {isAr ? "مساعدك المهني" : "AI Career Coach"}
+          <span className="font-mono-data text-[10px] uppercase tracking-widest text-primary-foreground/50">
+            {isAr ? "متصل" : "ONLINE"}
           </span>
-        </span>
-      </motion.div>
+        </div>
 
-      {/* Interactive scene */}
-      <motion.div
-        initial={reduced ? {} : { opacity: 0, scale: 0.94, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 70, damping: 18, delay: 0.35 }}
-      >
-        <Rasheed3DOrFallback frame="bust" />
-      </motion.div>
-    </div>
+        {/* Interactive scene inside the console */}
+        <div className="relative rounded-2xl bg-primary-foreground/5 border border-primary-foreground/10 overflow-hidden">
+          <Rasheed3DOrFallback frame="bust" />
+        </div>
+      </div>
+    </motion.div>
   );
 }
