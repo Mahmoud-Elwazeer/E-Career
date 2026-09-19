@@ -61,13 +61,13 @@ export default function ResetPassword() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md bg-card rounded-2xl border shadow-xl p-8">
+      <div className="w-full max-w-md paper-card p-8 shadow-lg">
         <div className="flex items-center gap-3 mb-6">
-          <div className="rounded-xl bg-primary/10 p-2.5">
+          <div className="icon-tile h-11 w-11">
             <Lock className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">
+            <h1 className="font-display text-2xl font-semibold">
               {isConfirmMode
                 ? (isAr ? "كلمة مرور جديدة" : "Set new password")
                 : (isAr ? "إعادة تعيين كلمة المرور" : "Reset your password")}
@@ -106,8 +106,8 @@ export default function ResetPassword() {
               <Label>{isAr ? "تأكيد كلمة المرور" : "Confirm password"}</Label>
               <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required className="mt-1" />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "..." : (isAr ? "حفظ كلمة المرور" : "Save password")}
+            <Button type="submit" size="xl" className="w-full rounded-xl" loading={loading}>
+              {isAr ? "حفظ كلمة المرور" : "Save password"}
             </Button>
           </form>
         ) : (
@@ -116,8 +116,8 @@ export default function ResetPassword() {
               <Label>{isAr ? "البريد الإلكتروني" : "Email address"}</Label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="mt-1" placeholder="you@example.com" />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "..." : (isAr ? "إرسال رابط الاسترداد" : "Send reset link")}
+            <Button type="submit" size="xl" className="w-full rounded-xl" loading={loading}>
+              {isAr ? "إرسال رابط الاسترداد" : "Send reset link"}
             </Button>
             <Link to="/login" className="block text-center text-sm text-primary hover:underline">
               {isAr ? "العودة لتسجيل الدخول" : "Back to login"}

@@ -82,13 +82,20 @@ export default function Login() {
         initial="hidden"
         animate="visible"
       >
-        {/* Left: branded showcase */}
-        <div className="hidden lg:flex flex-col justify-between hero-gradient hero-grid relative overflow-hidden p-10 text-primary-foreground">
+        {/* Left: branded editorial showcase (chamber) */}
+        <div className="hidden lg:flex flex-col justify-between chamber chamber-grid relative overflow-hidden p-10 text-primary-foreground">
           <div className="glow-blob" style={{ width: 300, height: 300, top: -100, insetInlineEnd: -60, background: "hsl(var(--secondary) / 0.3)" }} />
           <div className="relative z-10">
-            <Logo variant="onDark" className="h-8 mb-8" />
-            <h2 className="text-heading-1 leading-tight mb-3">
-              {isAr ? "رحلتك المهنية تبدأ هنا" : "Your career journey starts here"}
+            <Logo variant="onDark" className="h-8 mb-10" />
+            <span className="eyebrow-mono text-primary-foreground/70 mb-4">
+              <span className="signal-dot" /> {isAr ? "منصة المسار المهني" : "CAREER OPERATING SYSTEM"}
+            </span>
+            <h2 className="text-display-serif leading-tight mb-4 mt-3">
+              {isAr ? (
+                <>رحلتك المهنية <span className="serif-accent text-secondary">تبدأ هنا</span></>
+              ) : (
+                <>Your career <span className="serif-accent text-secondary">starts here</span></>
+              )}
             </h2>
             <p className="text-body-lg opacity-80 max-w-sm">
               {isAr ? "انضم لآلاف المحترفين واكتشف فرصاً موثوقة مع مساعدك الذكي رشيد." : "Join thousands of professionals and discover verified roles with Rasheed, your AI coach."}
@@ -105,7 +112,7 @@ export default function Login() {
         {/* Right: Auth form */}
         <div className="bg-card p-8 md:p-10 flex flex-col justify-center">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="font-display text-3xl font-semibold text-foreground">
               {mode === "login"
                 ? (isAr ? "تسجيل الدخول" : "Sign in")
                 : (isAr ? "إنشاء حساب" : "Create account")}
@@ -188,12 +195,10 @@ export default function Login() {
               )}
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading
-                ? (isAr ? "جاري التحميل..." : "Loading...")
-                : mode === "login"
-                  ? (isAr ? "تسجيل الدخول" : "Sign in")
-                  : (isAr ? "إنشاء الحساب" : "Create account")}
+            <Button type="submit" size="xl" className="w-full rounded-xl" loading={loading}>
+              {mode === "login"
+                ? (isAr ? "تسجيل الدخول" : "Sign in")
+                : (isAr ? "إنشاء الحساب" : "Create account")}
             </Button>
           </form>
 
