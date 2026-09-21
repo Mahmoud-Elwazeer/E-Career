@@ -95,7 +95,7 @@ export function JobCard({ job, isSaved, onToggleSave }: JobCardProps) {
                   {formatDistanceToNow(new Date(job.posted_at), { addSuffix: true })}
                 </span>
                 {salaryLabel && (
-                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  <span className="flex items-center gap-1 text-success">
                     <DollarSign className="h-3 w-3" />
                     {salaryLabel}
                   </span>
@@ -142,8 +142,8 @@ export function JobCard({ job, isSaved, onToggleSave }: JobCardProps) {
         
         {/* Legitimacy Warning - Phase 1C */}
         {job.legitimacy_score !== null && job.legitimacy_score !== undefined && job.legitimacy_score < 0.5 && (
-          <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
-            <p className="text-caption text-amber-800 dark:text-amber-200 flex items-center gap-1.5">
+          <div className="mt-3 p-2 bg-warning/10 border border-warning/30 rounded-lg">
+            <p className="text-caption text-warning-foreground flex items-center gap-1.5">
               <AlertTriangle className="h-3.5 w-3.5" />
               This job has been flagged for potential issues. Please verify before applying.
             </p>

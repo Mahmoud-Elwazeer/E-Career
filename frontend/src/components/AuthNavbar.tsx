@@ -38,6 +38,7 @@ const publicNavItems: NavItem[] = [
 ];
 
 const appPrimaryNav: NavItem[] = [
+  { to: "/app/dashboard", label: "Home", labelAr: "الرئيسية", icon: LayoutDashboard },
   { to: "/app/jobs", label: "Jobs", labelAr: "الوظائف", icon: Briefcase },
   { to: "/app/rashid", label: "Rasheed", labelAr: "رشيد", icon: MessageCircle },
   { to: "/app/resume", label: "Resume", labelAr: "السيرة الذاتية", icon: FileText },
@@ -47,6 +48,7 @@ const appPrimaryNav: NavItem[] = [
 
 const appSecondaryNav: NavItem[] = [
   { to: "/app/applications", label: "Applications", labelAr: "طلباتي", icon: ClipboardList },
+  { to: "/app/cover-letters", label: "Cover Letters", labelAr: "خطابات التغطية", icon: FileText },
   { to: "/app/saved", label: "Saved Jobs", labelAr: "المحفوظات", icon: Bookmark },
   { to: "/app/companies", label: "Companies", labelAr: "الشركات", icon: Building2 },
   { to: "/app/talent-score", label: "Talent Score", labelAr: "نقاط الموهبة", icon: Target },

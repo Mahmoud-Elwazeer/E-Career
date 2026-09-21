@@ -14,17 +14,17 @@ interface MatchScoreCardProps {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 80) return "text-emerald-600 dark:text-emerald-400";
-  if (score >= 60) return "text-blue-600 dark:text-blue-400";
-  if (score >= 40) return "text-amber-600 dark:text-amber-400";
-  return "text-red-600 dark:text-red-400";
+  if (score >= 80) return "text-success";
+  if (score >= 60) return "text-info";
+  if (score >= 40) return "text-warning-foreground";
+  return "text-destructive";
 }
 
 function progressColor(score: number): string {
-  if (score >= 80) return "bg-emerald-500";
-  if (score >= 60) return "bg-blue-500";
-  if (score >= 40) return "bg-amber-500";
-  return "bg-red-500";
+  if (score >= 80) return "bg-success";
+  if (score >= 60) return "bg-info";
+  if (score >= 40) return "bg-warning";
+  return "bg-destructive";
 }
 
 export function MatchScoreCard({ jobId, matchScore, isAr }: MatchScoreCardProps) {
@@ -41,20 +41,20 @@ export function MatchScoreCard({ jobId, matchScore, isAr }: MatchScoreCardProps)
   if (!overall && overall !== 0) return null;
 
   return (
-    <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/50">
+    <Card className="border-success/30 bg-success/5">
       <CardContent className="p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+            <div className="h-12 w-12 rounded-full bg-success/15 flex items-center justify-center">
               <span className={`text-lg font-bold ${scoreColor(overall)}`}>
                 {Math.round(overall)}
               </span>
             </div>
             <div>
-              <h3 className="text-body font-semibold text-emerald-800 dark:text-emerald-200">
+              <h3 className="text-body font-semibold text-foreground">
                 {isAr ? "نقاط التطابق" : "Match Score"}
               </h3>
-              <p className="text-caption text-emerald-600 dark:text-emerald-400">
+              <p className="text-caption text-muted-foreground">
                 {overall >= 80
                   ? (isAr ? "تطابق ممتاز" : "Excellent match")
                   : overall >= 60
@@ -67,7 +67,7 @@ export function MatchScoreCard({ jobId, matchScore, isAr }: MatchScoreCardProps)
             variant="ghost"
             size="sm"
             onClick={() => setExpanded(!expanded)}
-            className="text-emerald-700 dark:text-emerald-300"
+            className="text-success"
           >
             {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
@@ -77,7 +77,7 @@ export function MatchScoreCard({ jobId, matchScore, isAr }: MatchScoreCardProps)
           <div className="mt-4 space-y-4">
             {isLoading ? (
               <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-emerald-600" />
+                <Loader2 className="h-5 w-5 animate-spin text-success" />
               </div>
             ) : breakdown ? (
               <>
@@ -105,14 +105,14 @@ export function MatchScoreCard({ jobId, matchScore, isAr }: MatchScoreCardProps)
 
                 {breakdown.strengths.length > 0 && (
                   <div className="pt-2">
-                    <p className="text-caption font-medium text-emerald-700 dark:text-emerald-300 mb-1.5">
+                    <p className="text-caption font-medium text-success mb-1.5">
                       <TrendingUp className="h-3.5 w-3.5 inline me-1" />
                       {isAr ? "نقاط القوة" : "Strengths"}
                     </p>
                     <ul className="text-caption text-muted-foreground space-y-1">
                       {breakdown.strengths.map((s, i) => (
                         <li key={i} className="flex items-start gap-1.5">
-                          <span className="text-emerald-500 mt-0.5">+</span>
+                          <span className="text-success mt-0.5">+</span>
                           {s}
                         </li>
                       ))}
@@ -122,14 +122,14 @@ export function MatchScoreCard({ jobId, matchScore, isAr }: MatchScoreCardProps)
 
                 {breakdown.gaps.length > 0 && (
                   <div>
-                    <p className="text-caption font-medium text-amber-700 dark:text-amber-300 mb-1.5">
+                    <p className="text-caption font-medium text-warning-foreground mb-1.5">
                       <AlertCircle className="h-3.5 w-3.5 inline me-1" />
                       {isAr ? "فجوات" : "Gaps"}
                     </p>
                     <ul className="text-caption text-muted-foreground space-y-1">
                       {breakdown.gaps.map((g, i) => (
                         <li key={i} className="flex items-start gap-1.5">
-                          <span className="text-amber-500 mt-0.5">-</span>
+                          <span className="text-warning-foreground mt-0.5">-</span>
                           {g}
                         </li>
                       ))}

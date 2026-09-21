@@ -54,16 +54,19 @@ interface ActiveSession {
 }
 
 const difficultyColor: Record<string, string> = {
-  easy: 'bg-green-500/10 text-success border-green-500/20',
-  medium: 'bg-yellow-500/10 text-warning-foreground border-yellow-500/20',
-  hard: 'bg-red-500/10 text-destructive border-red-500/20',
+  easy: 'bg-success/10 text-success border-success/20',
+  medium: 'bg-warning/10 text-warning-foreground border-warning/20',
+  hard: 'bg-destructive/10 text-destructive border-destructive/20',
 };
 
+// Badge tiers keep a metallic gradient (decorative, semantically "reward" not a
+// status). Tokenized where a semantic exists; tiers without one use the signal
+// accent family so they still adapt with the brand rather than a raw palette.
 const badgeLevelColor: Record<string, string> = {
-  bronze: 'from-orange-700 to-orange-500',
-  silver: 'from-gray-400 to-gray-300',
-  gold: 'from-yellow-500 to-yellow-400',
-  platinum: 'from-cyan-400 to-blue-400',
+  bronze: 'from-signal/70 to-signal/40',
+  silver: 'from-muted-foreground/50 to-muted-foreground/30',
+  gold: 'from-signal to-signal/70',
+  platinum: 'from-primary to-primary-hover',
 };
 
 export default function AssessmentsPage() {
@@ -351,7 +354,7 @@ export default function AssessmentsPage() {
                             )
                           )}
                           {!a.completed_at && (
-                            <span className="text-xs px-2 py-1 rounded-full bg-yellow-500/10 text-warning-foreground">
+                            <span className="text-xs px-2 py-1 rounded-full bg-warning/10 text-warning-foreground">
                               {isAr ? 'قيد التنفيذ' : 'In Progress'}
                             </span>
                           )}

@@ -53,14 +53,14 @@ export function EmptyState({
       <p className={`text-muted-foreground max-w-sm ${classes.description}`}>{description}</p>
 
       {showRashid && (
-        <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800/30 max-w-xs mx-auto">
+        <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/15 max-w-xs mx-auto">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-2xl">👋</span>
-            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+            <span className="text-sm font-medium text-primary">
               Rasheed says:
             </span>
           </div>
-          <p className="text-xs text-blue-600 dark:text-blue-400 mb-2">
+          <p className="text-xs text-primary/80 mb-2">
             {rashidMessage}
           </p>
           <Button

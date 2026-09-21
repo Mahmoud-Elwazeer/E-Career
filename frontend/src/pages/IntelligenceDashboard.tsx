@@ -74,7 +74,7 @@ export default function IntelligenceDashboard() {
                   <span className="text-sm">AI Service</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className={`h-2.5 w-2.5 rounded-full ${health.circuit_breaker?.available ? "bg-success" : "bg-yellow-500"}`} />
+                  <div className={`h-2.5 w-2.5 rounded-full ${health.circuit_breaker?.available ? "bg-success" : "bg-warning"}`} />
                   <span className="text-sm">Circuit Breaker: {health.circuit_breaker?.state}</span>
                 </div>
                 <div className="flex items-center gap-2">

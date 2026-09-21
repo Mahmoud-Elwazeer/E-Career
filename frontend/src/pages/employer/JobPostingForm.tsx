@@ -184,7 +184,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     placeholder="e.g., Senior Software Engineer"
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
-                      errors.title ? 'border-red-500' : 'border-input'
+                      errors.title ? 'border-destructive' : 'border-input'
                     }`}
                   />
                   {errors.title && (
@@ -202,7 +202,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="e.g., Cairo, Egypt"
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
-                      errors.location ? 'border-red-500' : 'border-input'
+                      errors.location ? 'border-destructive' : 'border-input'
                     }`}
                   />
                   {errors.location && (
@@ -284,7 +284,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     onChange={(e) => setFormData({ ...formData, salary_min: e.target.value ? parseInt(e.target.value) : undefined })}
                     placeholder="e.g., 15000"
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
-                      errors.salary_min ? 'border-red-500' : 'border-input'
+                      errors.salary_min ? 'border-destructive' : 'border-input'
                     }`}
                   />
                   {errors.salary_min && (
@@ -339,7 +339,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     rows={6}
                     placeholder="Describe the role, responsibilities, and what makes this opportunity exciting..."
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
-                      errors.description ? 'border-red-500' : 'border-input'
+                      errors.description ? 'border-destructive' : 'border-input'
                     }`}
                   />
                   {errors.description && (
@@ -357,7 +357,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                     rows={6}
                     placeholder="List the required skills, qualifications, and experience..."
                     className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
-                      errors.requirements ? 'border-red-500' : 'border-input'
+                      errors.requirements ? 'border-destructive' : 'border-input'
                     }`}
                   />
                   {errors.requirements && (
@@ -381,7 +381,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                   onChange={(e) => setFormData({ ...formData, apply_url: e.target.value })}
                   placeholder="https://your-company.com/careers/apply/..."
                   className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-ring focus:border-transparent ${
-                    errors.apply_url ? 'border-red-500' : 'border-input'
+                    errors.apply_url ? 'border-destructive' : 'border-input'
                   }`}
                 />
                 {errors.apply_url && (
@@ -413,7 +413,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                           updated.splice(index, 1);
                           setFormData({ ...formData, custom_form_fields: updated });
                         }}
-                        className="text-destructive hover:text-red-700 p-1"
+                        className="text-destructive hover:text-destructive/80 p-1"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -533,7 +533,7 @@ const JobPostingForm: React.FC<JobPostingFormProps> = ({ jobId }) => {
                       custom_form_fields: [...(formData.custom_form_fields || []), newField],
                     });
                   }}
-                  className="w-full px-4 py-3 border-2 border-dashed border-input rounded-lg text-muted-foreground hover:border-blue-400 hover:text-primary transition flex items-center justify-center gap-2"
+                  className="w-full px-4 py-3 border-2 border-dashed border-input rounded-lg text-muted-foreground hover:border-primary/40 hover:text-primary transition flex items-center justify-center gap-2"
                 >
                   <Plus className="w-4 h-4" />
                   Add Screening Question

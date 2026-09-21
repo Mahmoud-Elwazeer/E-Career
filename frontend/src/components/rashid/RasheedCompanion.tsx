@@ -5,7 +5,7 @@ import { Send, X, Sparkles, ArrowRight, Loader2 } from "lucide-react";
 import { RasheedAvatar, type RasheedExpression } from "./RasheedAvatar";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
-import { getAccessToken } from "@/services/client";
+import { apiRequest } from "@/services/client";
 
 /**
  * RasheedCompanion — a persistent, interactive assistant present on EVERY page
@@ -19,11 +19,48 @@ import { getAccessToken } from "@/services/client";
  * - Bilingual (EN/AR), RTL-aware, reduced-motion safe.
  */
 
-const API_BASE_URL = (import.meta.env.VITE_API_URL || "") + "/api/v1";
-
 interface ChatMsg {
   role: "user" | "assistant";
   content: string;
+}
+
+/** Tool identifiers dispatched by AskRashidButton / AskRashidCard. */
+type RashidTool =
+  | "analyze_job"
+  | "cover_letter"
+  | "interview_prep"
+  | "cv_review"
+  | "linkedin_optimizer"
+  | "course_advisor"
+  | "career_path";
+
+/**
+ * Build a natural-language prompt for a tool request so the existing LLM chat
+ * endpoint handles it — no new backend contract needed. Job context (slug) is
+ * folded into the message when present.
+ */
+function toolPrompt(tool: RashidTool, context: Record<string, unknown>, isAr: boolean): string {
+  const slug = typeof context?.jobSlug === "string" ? context.jobSlug : undefined;
+  const jobRef = slug ? (isAr ? ` (الوظيفة: ${slug})` : ` (job: ${slug})`) : "";
+  const en: Record<RashidTool, string> = {
+    analyze_job: `Analyze this job and how well it fits my profile${jobRef}.`,
+    cover_letter: `Help me write a cover letter for this job${jobRef}.`,
+    interview_prep: `Prepare me for an interview for this job${jobRef}.`,
+    cv_review: `Review my CV and suggest improvements${jobRef}.`,
+    linkedin_optimizer: `Help me optimize my LinkedIn profile.`,
+    course_advisor: `Recommend courses to close my skill gaps${jobRef}.`,
+    career_path: `Map out a career path for me${jobRef}.`,
+  };
+  const ar: Record<RashidTool, string> = {
+    analyze_job: `حلّل هذه الوظيفة ومدى ملاءمتها لملفي${jobRef}.`,
+    cover_letter: `ساعدني في كتابة خطاب تغطية لهذه الوظيفة${jobRef}.`,
+    interview_prep: `جهّزني لمقابلة هذه الوظيفة${jobRef}.`,
+    cv_review: `راجع سيرتي الذاتية واقترح تحسينات${jobRef}.`,
+    linkedin_optimizer: `ساعدني في تحسين ملفي على لينكدإن.`,
+    course_advisor: `اقترح دورات لسدّ فجوات مهاراتي${jobRef}.`,
+    career_path: `ارسم لي مساراً مهنياً${jobRef}.`,
+  };
+  return (isAr ? ar : en)[tool] ?? (isAr ? "ساعدني." : "Help me.");
 }
 
 /* Proactive nudges shown periodically, keyed by route intent. */
@@ -141,12 +178,10 @@ export function RasheedCompanion() {
 
     try {
       if (isAuthenticated) {
-        const res = await fetch(`${API_BASE_URL}/intelligence/rashid/chat/`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAccessToken()}` },
-          body: JSON.stringify({ message: q, language: isAr ? "ar" : "en" }),
-        });
-        const data = await res.json();
+        const data = await apiRequest<{ response?: string; message?: string }>(
+          "/intelligence/rashid/chat/",
+          { method: "POST", body: { message: q, language: isAr ? "ar" : "en" } }
+        );
         const reply = data.response || data.message || (isAr ? "عذراً، حصل خطأ بسيط. حاول مرة أخرى." : "Sorry, something went wrong. Please try again.");
         setExpr("talking");
         setMessages((m) => [...m, { role: "assistant", content: reply }]);
@@ -169,6 +204,33 @@ export function RasheedCompanion() {
       return !o;
     });
   };
+
+  // Listen for tool/open requests dispatched by AskRashidButton / AskRashidCard
+  // elsewhere in the app (e.g. Job Detail). This is what makes "Ask Rasheed
+  // about this job" actually do something — previously these events had no
+  // listener because the old RashidWidget was never mounted.
+  useEffect(() => {
+    const openTool = (e: Event) => {
+      const detail = (e as CustomEvent).detail ?? {};
+      const tool = detail.tool as RashidTool | undefined;
+      const context = (detail.context ?? {}) as Record<string, unknown>;
+      setBubble(null);
+      setOpen(true);
+      greet();
+      if (tool) {
+        // Let the panel mount, then send the tool prompt through the normal path.
+        setTimeout(() => send(toolPrompt(tool, context, isAr)), 150);
+      }
+    };
+    const openChat = () => { setBubble(null); setOpen(true); greet(); };
+
+    window.addEventListener("rashid:open-tool", openTool as EventListener);
+    window.addEventListener("rashid:open", openChat as EventListener);
+    return () => {
+      window.removeEventListener("rashid:open-tool", openTool as EventListener);
+      window.removeEventListener("rashid:open", openChat as EventListener);
+    };
+  }, [greet, send, isAr]);
 
   const side = dir === "rtl" ? "start-4 md:start-6" : "end-4 md:end-6";
 

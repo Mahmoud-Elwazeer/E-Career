@@ -44,22 +44,22 @@ export function MatchBreakdownModal({ jobId, jobTitle, onClose }: MatchBreakdown
   const overallScore = data?.overall_score || 0;
   
   // Determine score color
-  let scoreColor = "text-gray-500";
-  let scoreBg = "bg-gray-100";
-  let scoreBorder = "border-gray-300";
+  let scoreColor = "text-muted-foreground";
+  let scoreBg = "bg-muted";
+  let scoreBorder = "border-border";
   
   if (overallScore >= 90) {
-    scoreColor = "text-green-600";
-    scoreBg = "bg-green-50";
-    scoreBorder = "border-green-500";
+    scoreColor = "text-success";
+    scoreBg = "bg-success/10";
+    scoreBorder = "border-success/50";
   } else if (overallScore >= 75) {
-    scoreColor = "text-blue-600";
-    scoreBg = "bg-blue-50";
-    scoreBorder = "border-blue-500";
+    scoreColor = "text-info";
+    scoreBg = "bg-info/10";
+    scoreBorder = "border-info/50";
   } else if (overallScore >= 60) {
-    scoreColor = "text-yellow-600";
-    scoreBg = "bg-yellow-50";
-    scoreBorder = "border-yellow-500";
+    scoreColor = "text-warning-foreground";
+    scoreBg = "bg-warning/10";
+    scoreBorder = "border-warning/50";
   }
   
   return (
@@ -112,13 +112,13 @@ export function MatchBreakdownModal({ jobId, jobTitle, onClose }: MatchBreakdown
           {data?.strengths && data.strengths.length > 0 && (
             <div>
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-5 w-5 text-success" />
                 Your Strengths
               </h3>
               <ul className="space-y-2">
                 {data.strengths.map((strength, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-foreground">
-                    <span className="text-green-600 mt-1">✓</span>
+                    <span className="text-success mt-1">✓</span>
                     <span>{strength}</span>
                   </li>
                 ))}
@@ -130,13 +130,13 @@ export function MatchBreakdownModal({ jobId, jobTitle, onClose }: MatchBreakdown
           {data?.gaps && data.gaps.length > 0 && (
             <div>
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                <AlertTriangle className="h-5 w-5 text-warning-foreground" />
                 Areas to Improve
               </h3>
               <ul className="space-y-2">
                 {data.gaps.map((gap, idx) => (
                   <li key={idx} className="flex items-start gap-2 text-foreground">
-                    <span className="text-yellow-600 mt-1">!</span>
+                    <span className="text-warning-foreground mt-1">!</span>
                     <span>{gap}</span>
                   </li>
                 ))}

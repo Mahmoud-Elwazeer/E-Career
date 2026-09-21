@@ -41,9 +41,9 @@ interface Application {
 }
 
 const STATUS_CONFIG = {
-  pending: { label: "Pending", icon: Clock, color: "text-warning-foreground bg-warning/10 border-yellow-200" },
-  reviewing: { label: "Under Review", icon: Mail, color: "text-primary bg-primary/10 border-primary/30" },
-  interview: { label: "Interview", icon: Calendar, color: "text-primary bg-primary/10 border-purple-200" },
+  pending: { label: "Pending", icon: Clock, color: "text-warning-foreground bg-warning/10 border-warning/30" },
+  reviewing: { label: "Under Review", icon: Mail, color: "text-info bg-info/10 border-info/30" },
+  interview: { label: "Interview", icon: Calendar, color: "text-primary bg-primary/10 border-primary/30" },
   rejected: { label: "Rejected", icon: XCircle, color: "text-destructive bg-destructive/10 border-destructive/30" },
   accepted: { label: "Accepted", icon: CheckCircle2, color: "text-success bg-success/10 border-success/30" },
 };
@@ -54,10 +54,15 @@ export default function Applications() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const { data: applications = [], isLoading } = useQuery({
+  const { data: applications = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["applications"],
     queryFn: async () => {
-      return apiRequest<Application[]>("/applications/");
+      // Real endpoint is /users/me/applications/ (DRF-paginated). The old
+      // /applications/ path 404'd and silently rendered an empty list.
+      const res = await apiRequest<Application[] | { results: Application[] }>(
+        "/users/me/applications/"
+      );
+      return Array.isArray(res) ? res : res?.results ?? [];
     },
   });
 
@@ -137,23 +142,9 @@ export default function Applications() {
                       <p className="text-2xl font-bold">{stats.reviewing}</p>
                     </div>
                     <Mail className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-caption text-muted-foreground mb-1">
-                    {isAr ? "مقابلات" : "Interviews"}
-                  </p>
-                  <p className="text-2xl font-bold">{stats.interview}</p>
-                </div>
-                <Calendar className="h-8 w-8 text-primary" />
-              </div>
-            </CardContent>
-          </Card>
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card>
                 <CardContent className="pt-6">
@@ -221,6 +212,23 @@ export default function Applications() {
               <ApplicationCardSkeleton />
               <ApplicationCardSkeleton />
             </>
+          ) : isError ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <XCircle className="h-10 w-10 text-destructive mx-auto mb-3" />
+                <p className="font-medium mb-1">
+                  {isAr ? "تعذر تحميل الطلبات" : "Couldn't load your applications"}
+                </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {isAr
+                    ? "حدث خطأ أثناء جلب البيانات. حاول مرة أخرى."
+                    : "Something went wrong fetching your data. Please try again."}
+                </p>
+                <Button variant="outline" size="sm" onClick={() => refetch()}>
+                  {isAr ? "إعادة المحاولة" : "Retry"}
+                </Button>
+              </CardContent>
+            </Card>
           ) : filteredApplications.length === 0 ? (
             <EmptyStates.NoApplications />
           ) : (

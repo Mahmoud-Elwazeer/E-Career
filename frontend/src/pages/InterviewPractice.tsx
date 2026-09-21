@@ -40,8 +40,7 @@ import {
   ResponsiveContainer,
   Tooltip
 } from 'recharts';
-
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1';
+import { apiRequest, apiRequestBlob, ApiError } from '@/services/client';
 
 type InterviewType = 'technical' | 'behavioral' | 'coding' | 'system_design' | 'case_study';
 type Difficulty = 'easy' | 'medium' | 'hard';
@@ -138,50 +137,46 @@ export default function InterviewPractice() {
     
     setIsProcessing(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/interviews/start/`, {
+      const data = await apiRequest<any>(`/interviews/start/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
-        },
-        body: JSON.stringify({
+        body: {
           interview_type: selectedType,
           target_role: targetRole,
           difficulty: selectedDifficulty,
           mode,
           language: isAr ? 'ar' : 'en',
-        }),
+        },
       });
-
-      if (response.ok) {
-        const json = await response.json();
-        const data = json.data ?? json;
-        setSession({
-          id: data.session_id,
-          interview_type: data.interview_type,
-          target_role: data.target_role,
-          difficulty: data.difficulty,
-          questions: data.current_question ? [{
-            id: data.current_question.id,
-            index: data.current_question.index,
-            question: data.current_question.question,
-          }] : [],
-        });
-        setStep(2);
-        setCurrentQuestionIndex(0);
-        // Read first question aloud in voice mode
-        if (mode === 'voice' && data.current_question?.question && 'speechSynthesis' in window) {
-          const utter = new SpeechSynthesisUtterance(data.current_question.question);
-          utter.lang = isAr ? 'ar-SA' : 'en-US';
-          window.speechSynthesis.speak(utter);
-        }
-      } else {
-        const err = await response.json().catch(() => null);
-        toast({ title: isAr ? 'فشل بدء المقابلة' : 'Failed to start interview', description: isAr ? 'حاول مرة أخرى.' : 'Please try again.', variant: 'destructive' });
-        console.error('Start interview error:', err);
+      setSession({
+        id: data.session_id,
+        interview_type: data.interview_type,
+        target_role: data.target_role,
+        difficulty: data.difficulty,
+        questions: data.current_question ? [{
+          id: data.current_question.id,
+          index: data.current_question.index,
+          question: data.current_question.question,
+        }] : [],
+      });
+      setStep(2);
+      setCurrentQuestionIndex(0);
+      // Read first question aloud in voice mode
+      if (mode === 'voice' && data.current_question?.question && 'speechSynthesis' in window) {
+        const utter = new SpeechSynthesisUtterance(data.current_question.question);
+        utter.lang = isAr ? 'ar-SA' : 'en-US';
+        window.speechSynthesis.speak(utter);
       }
     } catch (error) {
-      toast({ title: isAr ? 'خطأ في الاتصال' : 'Connection error', description: isAr ? 'تحقق من الإنترنت.' : 'Check your internet.', variant: 'destructive' });
+      const isConn = !(error instanceof ApiError);
+      toast({
+        title: isConn
+          ? (isAr ? 'خطأ في الاتصال' : 'Connection error')
+          : (isAr ? 'فشل بدء المقابلة' : 'Failed to start interview'),
+        description: isConn
+          ? (isAr ? 'تحقق من الإنترنت.' : 'Check your internet.')
+          : (isAr ? 'حاول مرة أخرى.' : 'Please try again.'),
+        variant: 'destructive',
+      });
       console.error('Error starting interview:', error);
     } finally {
       setIsProcessing(false);
@@ -194,53 +189,45 @@ export default function InterviewPractice() {
     
     setIsProcessing(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/interviews/${session.id}/answer/`, {
+      const data = await apiRequest<any>(`/interviews/${session.id}/answer/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
-        },
-        body: JSON.stringify({ answer }),
+        body: { answer },
       });
 
-      if (response.ok) {
-        const json = await response.json();
-        const data = json.data ?? json;
+      // Update current question with score
+      const updatedQuestions = [...session.questions];
+      updatedQuestions[currentQuestionIndex] = {
+        ...updatedQuestions[currentQuestionIndex],
+        answer,
+        score: data.score,
+        feedback: data.feedback,
+        dimensions: data.dimensions,
+      };
 
-        // Update current question with score
-        const updatedQuestions = [...session.questions];
-        updatedQuestions[currentQuestionIndex] = {
-          ...updatedQuestions[currentQuestionIndex],
-          answer,
-          score: data.score,
-          feedback: data.feedback,
-          dimensions: data.dimensions,
+      setSession({
+        ...session,
+        questions: updatedQuestions,
+      });
+
+      if (data.next_question) {
+        // Add next question
+        const nextQuestion = {
+          id: data.next_question.id,
+          index: data.next_question.index,
+          question: data.next_question.question,
         };
-
         setSession({
           ...session,
-          questions: updatedQuestions,
+          questions: [...updatedQuestions, nextQuestion],
         });
-
-        if (data.next_question) {
-          // Add next question
-          const nextQuestion = {
-            id: data.next_question.id,
-            index: data.next_question.index,
-            question: data.next_question.question,
-          };
-          setSession({
-            ...session,
-            questions: [...updatedQuestions, nextQuestion],
-          });
-          setCurrentQuestionIndex(currentQuestionIndex + 1);
-          setAnswer('');
-        } else {
-          // All questions answered, go to results
-          await completeInterview();
-        }
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        setAnswer('');
+      } else {
+        // All questions answered, go to results
+        await completeInterview();
       }
     } catch (error) {
+      toast({ title: isAr ? 'تعذر إرسال الإجابة' : 'Couldn\'t submit answer', description: isAr ? 'حاول مرة أخرى.' : 'Please try again.', variant: 'destructive' });
       console.error('Error submitting answer:', error);
     } finally {
       setIsProcessing(false);
@@ -253,25 +240,18 @@ export default function InterviewPractice() {
     
     setIsProcessing(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/interviews/${session.id}/complete/`, {
+      const data = await apiRequest<any>(`/interviews/${session.id}/complete/`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
-        },
       });
-
-      if (response.ok) {
-        const json = await response.json();
-        const data = json.data ?? json;
-        setSession({
-          ...session,
-          overall_score: data.overall_score,
-          score_breakdown: data.score_breakdown,
-          feedback_summary: data.feedback_summary,
-        });
-        setStep(3);
-      }
+      setSession({
+        ...session,
+        overall_score: data.overall_score,
+        score_breakdown: data.score_breakdown,
+        feedback_summary: data.feedback_summary,
+      });
+      setStep(3);
     } catch (error) {
+      toast({ title: isAr ? 'تعذر إنهاء المقابلة' : 'Couldn\'t finish interview', description: isAr ? 'حاول مرة أخرى.' : 'Please try again.', variant: 'destructive' });
       console.error('Error completing interview:', error);
     } finally {
       setIsProcessing(false);
@@ -372,48 +352,41 @@ export default function InterviewPractice() {
     if (!text.trim() || !session) return;
     setIsProcessing(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/interviews/${session.id}/answer/`, {
+      const data = await apiRequest<any>(`/interviews/${session.id}/answer/`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
-        },
-        body: JSON.stringify({ answer: text }),
+        body: { answer: text },
       });
-      if (response.ok) {
-        const json = await response.json();
-        const data = json.data ?? json;
-        const updatedQuestions = [...session.questions];
-        updatedQuestions[currentQuestionIndex] = {
-          ...updatedQuestions[currentQuestionIndex],
-          answer: text,
-          score: data.score,
-          feedback: data.feedback,
-          dimensions: data.dimensions,
-        };
-        setSession({ ...session, questions: updatedQuestions });
-        if (data.next_question) {
-          setSession({
-            ...session,
-            questions: [...updatedQuestions, {
-              id: data.next_question.id,
-              index: data.next_question.index,
-              question: data.next_question.question,
-            }],
-          });
-          setCurrentQuestionIndex(currentQuestionIndex + 1);
-          setVoiceTranscript('');
-          // Read next question aloud using browser TTS
-          if ('speechSynthesis' in window) {
-            const utter = new SpeechSynthesisUtterance(data.next_question.question);
-            utter.lang = isAr ? 'ar-SA' : 'en-US';
-            window.speechSynthesis.speak(utter);
-          }
-        } else {
-          await completeInterview();
+      const updatedQuestions = [...session.questions];
+      updatedQuestions[currentQuestionIndex] = {
+        ...updatedQuestions[currentQuestionIndex],
+        answer: text,
+        score: data.score,
+        feedback: data.feedback,
+        dimensions: data.dimensions,
+      };
+      setSession({ ...session, questions: updatedQuestions });
+      if (data.next_question) {
+        setSession({
+          ...session,
+          questions: [...updatedQuestions, {
+            id: data.next_question.id,
+            index: data.next_question.index,
+            question: data.next_question.question,
+          }],
+        });
+        setCurrentQuestionIndex(currentQuestionIndex + 1);
+        setVoiceTranscript('');
+        // Read next question aloud using browser TTS
+        if ('speechSynthesis' in window) {
+          const utter = new SpeechSynthesisUtterance(data.next_question.question);
+          utter.lang = isAr ? 'ar-SA' : 'en-US';
+          window.speechSynthesis.speak(utter);
         }
+      } else {
+        await completeInterview();
       }
     } catch (error) {
+      toast({ title: isAr ? 'تعذر إرسال الإجابة' : 'Couldn\'t submit answer', description: isAr ? 'حاول مرة أخرى.' : 'Please try again.', variant: 'destructive' });
       console.error('Error submitting voice text answer:', error);
     } finally {
       setIsProcessing(false);
@@ -429,18 +402,12 @@ export default function InterviewPractice() {
       formData.append('audio', audioBlob, 'recording.webm');
       formData.append('language', isAr ? 'ar' : 'en');
 
-      const response = await fetch(`${API_BASE_URL}/interviews/${session.id}/voice-answer/`, {
+      const data = await apiRequest<any>(`/interviews/${session.id}/voice-answer/`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
-        },
-        body: formData,
+        formData,
       });
 
-      if (response.ok) {
-        const json = await response.json();
-        const data = json.data ?? json;
-
+      {
         // Show transcript
         setVoiceTranscript(data.transcript || '');
 
@@ -483,6 +450,7 @@ export default function InterviewPractice() {
         }
       }
     } catch (error) {
+      toast({ title: isAr ? 'تعذر إرسال التسجيل' : 'Couldn\'t submit recording', description: isAr ? 'حاول مرة أخرى.' : 'Please try again.', variant: 'destructive' });
       console.error('Error submitting voice answer:', error);
     } finally {
       setIsProcessing(false);
@@ -514,7 +482,7 @@ export default function InterviewPractice() {
         <h2 className="text-3xl font-bold">
           {isAr ? 'ابدأ مقابلة تدريبية' : 'Start a Mock Interview'}
         </h2>
-        <p className="text-muted-foreground dark:text-gray-400">
+        <p className="text-muted-foreground">
           {isAr 
             ? 'اختر نوع المقابلة والوظيفة المستهدفة لبدء التدريب'
             : 'Select interview type and target role to begin practice'}
@@ -576,7 +544,7 @@ export default function InterviewPractice() {
                     'flex-1 py-2 px-4 rounded-lg border transition-all',
                     selectedDifficulty === diff.value
                       ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-border dark:border-gray-700 hover:bg-accent dark:hover:bg-accent'
+                      : 'border-border hover:bg-accent'
                   )}
                 >
                   {isAr ? diff.labelAr : diff.label}
@@ -595,7 +563,7 @@ export default function InterviewPractice() {
                   'flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-all',
                   mode === 'text'
                     ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border dark:border-gray-700 hover:bg-accent dark:hover:bg-accent'
+                    : 'border-border hover:bg-accent'
                 )}
               >
                 <MessageSquare className="w-4 h-4" />
@@ -607,7 +575,7 @@ export default function InterviewPractice() {
                   'flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg border transition-all',
                   mode === 'voice'
                     ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border dark:border-gray-700 hover:bg-accent dark:hover:bg-accent'
+                    : 'border-border hover:bg-accent'
                 )}
               >
                 <Mic className="w-4 h-4" />
@@ -705,7 +673,7 @@ export default function InterviewPractice() {
                   className={cn(
                     'w-24 h-24 rounded-full flex items-center justify-center transition-all',
                     isRecording
-                      ? 'bg-destructive hover:bg-red-600 animate-pulse'
+                      ? 'bg-destructive hover:bg-destructive/90 animate-pulse'
                       : 'bg-primary hover:bg-primary/90',
                     isProcessing && 'opacity-50 cursor-not-allowed'
                   )}
@@ -732,7 +700,7 @@ export default function InterviewPractice() {
                     <p className="text-sm font-medium text-muted-foreground mb-1">
                       {isAr ? 'النص المستخرج:' : 'Transcript:'}
                     </p>
-                    <p className="text-foreground dark:text-gray-100">{voiceTranscript}</p>
+                    <p className="text-foreground">{voiceTranscript}</p>
                   </div>
                 )}
 
@@ -742,13 +710,11 @@ export default function InterviewPractice() {
                   size="sm"
                   onClick={() => {
                     if (session && currentQuestion) {
-                      fetch(`${API_BASE_URL}/interviews/${session.id}/question-audio/${currentQuestion.index}/?language=${isAr ? 'ar' : 'en'}`, {
-                        headers: {
-                          'Authorization': `Bearer ${localStorage.getItem('usam_access')}`,
-                        },
-                      })
-                        .then(res => res.blob())
-                        .then(blob => {
+                      apiRequestBlob(
+                        `/interviews/${session.id}/question-audio/${currentQuestion.index}/`,
+                        { params: { language: isAr ? 'ar' : 'en' } }
+                      )
+                        .then(({ blob }) => {
                           const url = URL.createObjectURL(blob);
                           const audio = new Audio(url);
                           audioPlayerRef.current = audio;
@@ -802,7 +768,7 @@ export default function InterviewPractice() {
 
         {/* Previous Answer (if any) */}
         {currentQuestionIndex > 0 && (
-          <Card className="border-success/30 dark:border-green-900">
+          <Card className="border-success/30">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-success">
                 <CheckCircle className="w-5 h-5" />
@@ -813,12 +779,12 @@ export default function InterviewPractice() {
               <p className="font-medium mb-2">
                 {session?.questions[currentQuestionIndex - 1]?.question}
               </p>
-              <div className="bg-success/10 dark:bg-green-900/20 p-3 rounded-lg">
-                <p className="text-sm text-success dark:text-green-200">
+              <div className="bg-success/10 p-3 rounded-lg">
+                <p className="text-sm text-success">
                   {isAr ? 'الإجابة:' : 'Answer:'} 
                   {session?.questions[currentQuestionIndex - 1]?.answer}
                 </p>
-                <p className="text-sm text-success dark:text-green-200 mt-1">
+                <p className="text-sm text-success mt-1">
                   {isAr ? 'النتيجة:' : 'Score:'} 
                   {session?.questions[currentQuestionIndex - 1]?.score}/10
                 </p>
@@ -851,7 +817,7 @@ export default function InterviewPractice() {
           <h2 className="text-4xl font-bold">
             {isAr ? 'نتيجة المقابلة' : 'Interview Results'}
           </h2>
-          <p className="text-xl text-muted-foreground dark:text-gray-300">
+          <p className="text-xl text-muted-foreground">
             {isAr ? 'ممتاز! لقد أتممت المقابلة' : 'Great job! You completed the interview'}
           </p>
         </div>

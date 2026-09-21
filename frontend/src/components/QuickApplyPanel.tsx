@@ -62,24 +62,24 @@ export function QuickApplyPanel({ jobId, jobTitle, atsPlatform, applyUrl, isAr }
 
   return (
     <>
-      <Card className="border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/50">
+      <Card className="border-signal/30 bg-signal/5">
         <CardContent className="p-5">
           <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center">
-              <Zap className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+            <div className="h-10 w-10 rounded-full bg-signal/15 flex items-center justify-center">
+              <Zap className="h-5 w-5 text-signal" />
             </div>
             <div>
-              <h3 className="text-body font-semibold text-orange-800 dark:text-orange-200">
+              <h3 className="text-body font-semibold text-foreground">
                 {isAr ? "تقديم سريع" : "Quick Apply"}
               </h3>
-              <p className="text-caption text-orange-600 dark:text-orange-400">
+              <p className="text-caption text-muted-foreground">
                 {isAr ? "عبر" : "via"} {atsPlatform}
               </p>
             </div>
           </div>
           <Button
             variant="outline"
-            className="w-full rounded-xl press-feedback border-orange-300 dark:border-orange-700"
+            className="w-full rounded-xl press-feedback border-signal/40"
             onClick={() => prepareMutation.mutate()}
             disabled={prepareMutation.isPending}
           >
@@ -138,7 +138,7 @@ export function QuickApplyPanel({ jobId, jobTitle, atsPlatform, applyUrl, isAr }
                       className="shrink-0 p-1.5 rounded-lg hover:bg-muted transition-colors"
                     >
                       {copiedField === key ? (
-                        <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        <Check className="h-3.5 w-3.5 text-success" />
                       ) : (
                         <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                       )}

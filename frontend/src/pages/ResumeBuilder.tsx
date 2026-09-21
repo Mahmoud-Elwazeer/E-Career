@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import ResumePreview from '@/components/resume/ResumePreview';
 
-import { apiRequest } from '@/services/client';
+import { apiRequest, apiRequestBlob, downloadBlob } from '@/services/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface Experience {
@@ -145,9 +145,18 @@ export default function ResumeBuilder() {
   });
 
   const exportMutation = useMutation({
-    mutationFn: ({ resumeId, format }: { resumeId: string; format: string }) =>
-      apiRequest(`/resume/export/`, { method: 'POST', body: { resume_id: resumeId, format } }),
-    onSuccess: () => toast({ title: 'Export ready', description: 'Your resume was exported.' }),
+    mutationFn: async ({ resumeId, format }: { resumeId: string; format: string }) => {
+      // The export endpoint returns raw file bytes (PDF/DOCX), NOT JSON — using
+      // apiRequest here would decode the binary as text and corrupt it. Use the
+      // blob-aware helper so we can actually save the file.
+      const { blob, filename } = await apiRequestBlob(`/resume/export/`, {
+        method: 'POST',
+        body: { resume_id: resumeId, format },
+      });
+      const title = (localData?.title || 'resume').replace(/[^\w.-]+/g, '_');
+      downloadBlob(blob, filename || `${title}.${format === 'docx' ? 'docx' : 'pdf'}`);
+    },
+    onSuccess: () => toast({ title: 'Export ready', description: 'Your resume download has started.' }),
     onError: () => toast({ title: 'Export failed', description: 'Please try again.', variant: 'destructive' }),
   });
 

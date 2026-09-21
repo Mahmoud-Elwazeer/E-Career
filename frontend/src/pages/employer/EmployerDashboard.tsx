@@ -159,7 +159,11 @@ export default function EmployerDashboard() {
 
           <div className="divide-y divide-border">
             {jobs?.slice(0, 6).map((job) => (
-              <div key={job.id} className="p-5 hover:bg-accent/40 transition-colors">
+              <Link
+                key={job.id}
+                to={`/app/employer/jobs/${job.id}/edit`}
+                className="block p-5 hover:bg-accent/40 transition-colors"
+              >
                 <div className="flex items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <h3 className="text-body-lg font-medium text-foreground truncate">{job.title}</h3>
@@ -175,7 +179,7 @@ export default function EmployerDashboard() {
                     {job.status_display}
                   </Badge>
                 </div>
-              </div>
+              </Link>
             ))}
 
             {(!jobs || jobs.length === 0) && (

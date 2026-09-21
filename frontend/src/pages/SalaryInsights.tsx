@@ -73,7 +73,7 @@ function BenchmarkCard({ isAr }: { isAr: boolean }) {
 
   const underpaidLabel: Record<string, { icon: typeof ArrowUp; color: string; text: string; textAr: string }> = {
     yes: { icon: ArrowDown, color: 'text-destructive', text: 'Below Market', textAr: 'أقل من السوق' },
-    maybe: { icon: Minus, color: 'text-yellow-500', text: 'Near Market', textAr: 'قريب من السوق' },
+    maybe: { icon: Minus, color: 'text-warning', text: 'Near Market', textAr: 'قريب من السوق' },
     fair: { icon: CheckCircle2, color: 'text-success', text: 'Fair', textAr: 'عادل' },
     above: { icon: ArrowUp, color: 'text-primary', text: 'Above Market', textAr: 'أعلى من السوق' },
   };
@@ -277,9 +277,9 @@ export default function SalaryInsightsPage() {
   });
 
   const priorityColor: Record<string, string> = {
-    high: 'border-red-500/30 bg-red-500/5',
-    medium: 'border-yellow-500/30 bg-yellow-500/5',
-    low: 'border-green-500/30 bg-green-500/5',
+    high: 'border-destructive/30 bg-destructive/5',
+    medium: 'border-warning/30 bg-warning/5',
+    low: 'border-success/30 bg-success/5',
   };
 
   return (
@@ -305,7 +305,7 @@ export default function SalaryInsightsPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  <AlertTriangle className="h-5 w-5 text-warning" />
                   {isAr ? 'رؤى شخصية' : 'Personal Insights'}
                 </CardTitle>
               </CardHeader>

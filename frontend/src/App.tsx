@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation, useParams } from "react-router-dom";
 import { RouteTransition } from "@/components/motion/RouteTransition";
 import { ThemeProvider } from "@/hooks/use-theme";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -39,6 +39,8 @@ const NotificationPreferences = lazy(() => import("./pages/NotificationPreferenc
 const Notifications = lazy(() => import("./pages/Notifications"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Applications = lazy(() => import("./pages/Applications"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const CoverLetters = lazy(() => import("./pages/CoverLetters"));
 const IntelligenceDashboard = lazy(() => import("./pages/IntelligenceDashboard"));
 const EmployerDashboard = lazy(() => import("./pages/employer/EmployerDashboard"));
 const EmployerRegister = lazy(() => import("./pages/employer/EmployerRegister"));
@@ -73,6 +75,13 @@ function RouteFallback() {
   );
 }
 
+/** Wraps JobPostingForm for the edit route, passing the numeric job id from the URL. */
+function EditJobPosting() {
+  const { id } = useParams<{ id: string }>();
+  const jobId = id ? Number(id) : undefined;
+  return <JobPostingForm jobId={Number.isFinite(jobId) ? jobId : undefined} />;
+}
+
 function AnimatedRoutes() {
   const location = useLocation();
   return (
@@ -87,6 +96,8 @@ function AnimatedRoutes() {
         <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Auth-protected app routes */}
+        <Route path="/app/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+        <Route path="/app/cover-letters" element={<RequireAuth><CoverLetters /></RequireAuth>} />
         <Route path="/app/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />
         <Route path="/app/jobs/:id" element={<RequireAuth><JobDetail /></RequireAuth>} />
         <Route path="/app/companies" element={<RequireAuth><Companies /></RequireAuth>} />
@@ -117,6 +128,7 @@ function AnimatedRoutes() {
         <Route path="/app/salary" element={<RequireAuth><SalaryInsights /></RequireAuth>} />
         <Route path="/app/assessments" element={<RequireAuth><Assessments /></RequireAuth>} />
         <Route path="/app/employer/post-job" element={<RequireEmployer><JobPostingForm /></RequireEmployer>} />
+        <Route path="/app/employer/jobs/:id/edit" element={<RequireEmployer><EditJobPosting /></RequireEmployer>} />
         <Route path="/app/employer/talent-search" element={<RequireEmployer><TalentSearch /></RequireEmployer>} />
 
         {/* Legacy redirects */}

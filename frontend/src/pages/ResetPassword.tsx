@@ -82,7 +82,7 @@ export default function ResetPassword() {
 
         {done ? (
           <div className="text-center py-6">
-            <p className="text-green-600 font-medium">✅ {isAr ? "تم تغيير كلمة المرور!" : "Password changed!"}</p>
+            <p className="text-success font-medium">✅ {isAr ? "تم تغيير كلمة المرور!" : "Password changed!"}</p>
             <p className="text-sm text-muted-foreground mt-1">{isAr ? "جاري التحويل..." : "Redirecting to login..."}</p>
           </div>
         ) : sent && !isConfirmMode ? (

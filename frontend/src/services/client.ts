@@ -1,5 +1,5 @@
 /**
- * Core Axios client — handles base URL, JWT auth headers,
+ * Core HTTP client (fetch-based) — handles base URL, JWT auth headers,
  * and automatic token refresh on 401.
  */
 
@@ -76,10 +76,15 @@ async function doRefresh(): Promise<string | null> {
   }
 }
 
-export async function apiRequest<T = unknown>(
+/**
+ * Perform a fetch with automatic JWT attach + single-flight 401 refresh/retry.
+ * Shared by both the JSON `apiRequest` and the binary `apiRequestBlob` helpers
+ * so every network call gets the same auth behavior.
+ */
+async function fetchWithAuth(
   path: string,
-  options: RequestOptions = {}
-): Promise<T> {
+  options: RequestOptions
+): Promise<Response> {
   const { method = "GET", body, formData, auth = true, params } = options;
 
   const makeRequest = async (token: string | null): Promise<Response> => {
@@ -120,6 +125,15 @@ export async function apiRequest<T = unknown>(
     }
   }
 
+  return res;
+}
+
+export async function apiRequest<T = unknown>(
+  path: string,
+  options: RequestOptions = {}
+): Promise<T> {
+  const res = await fetchWithAuth(path, options);
+
   // Parse response
   const contentType = res.headers.get("Content-Type") ?? "";
   const isJson = contentType.includes("application/json");
@@ -138,6 +152,73 @@ export async function apiRequest<T = unknown>(
     return (data as any).data as T;
   }
   return data as T;
+}
+
+export interface BlobResponse {
+  blob: Blob;
+  filename: string | null;
+  contentType: string;
+}
+
+/**
+ * Request a binary/file response (PDF, DOCX, etc.) with the same auth + refresh
+ * behavior as `apiRequest`. Returns the raw Blob plus a filename parsed from the
+ * Content-Disposition header, so callers can trigger a real browser download.
+ * Using `apiRequest` for binary endpoints corrupts the bytes (it decodes them as
+ * text), so any file-download endpoint must use this instead.
+ */
+export async function apiRequestBlob(
+  path: string,
+  options: RequestOptions = {}
+): Promise<BlobResponse> {
+  const res = await fetchWithAuth(path, options);
+
+  if (!res.ok) {
+    // Error bodies are JSON even for a binary endpoint — surface the message.
+    let message = `Request failed with status ${res.status}`;
+    let data: unknown = null;
+    try {
+      data = await res.json();
+      message = (data as any)?.message || (data as any)?.detail || message;
+    } catch {
+      /* non-JSON error body; keep default message */
+    }
+    throw new ApiError(message, res.status, data);
+  }
+
+  const contentType = res.headers.get("Content-Type") ?? "application/octet-stream";
+  const disposition = res.headers.get("Content-Disposition") ?? "";
+  const filename = parseFilename(disposition);
+  const blob = await res.blob();
+  return { blob, filename, contentType };
+}
+
+/** Extract a filename from a Content-Disposition header, if present. */
+function parseFilename(disposition: string): string | null {
+  // Prefer RFC 5987 filename*=UTF-8''... then fall back to filename="..."
+  const utf8Match = /filename\*=(?:UTF-8'')?["']?([^"';]+)/i.exec(disposition);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      return utf8Match[1];
+    }
+  }
+  const plainMatch = /filename=["']?([^"';]+)/i.exec(disposition);
+  return plainMatch?.[1] ?? null;
+}
+
+/** Trigger a browser download for a fetched Blob. */
+export function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Give the browser a tick to start the download before revoking.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 export class ApiError extends Error {

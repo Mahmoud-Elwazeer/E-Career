@@ -126,20 +126,20 @@ function LegitimacyWarning({ job, isAr }: any) {
   if (!job.legitimacy_score || job.legitimacy_score >= 0.5) return null;
   
   return (
-    <div className="p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-xl">
+    <div className="p-4 bg-warning/10 border border-warning/30 rounded-xl">
       <div className="flex items-start gap-3">
-        <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <AlertTriangle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
         <div>
-          <h4 className="text-body font-medium text-amber-800 dark:text-amber-200">
+          <h4 className="text-body font-medium text-warning-foreground">
             {isAr ? "تحذير" : "Warning"}
           </h4>
-          <p className="text-caption text-amber-700 dark:text-amber-300 mt-1">
+          <p className="text-caption text-warning-foreground/80 mt-1">
             {isAr 
               ? "تم وضع علامة على هذه الوظيفة لوجود مشاكل محتملة. يرجى التحقق قبل التقديم."
               : "This job has been flagged for potential issues. Please verify before applying."}
           </p>
           {job.legitimacy_flags?.length > 0 && (
-            <ul className="mt-2 text-caption text-amber-600 dark:text-amber-400">
+            <ul className="mt-2 text-caption text-warning-foreground/80">
               {job.legitimacy_flags.map((flag: string, i: number) => (
                 <li key={i} className="flex items-center gap-1.5">
                   <XCircle className="h-3 w-3" />
@@ -495,9 +495,9 @@ export default function JobDetail() {
               {applicationResult ? (
                 <div className="text-center py-8 space-y-4">
                   {applicationResult.status === 'applied' || applicationResult.status === 'shortlisted' ? (
-                    <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto" />
+                    <CheckCircle className="h-12 w-12 text-success mx-auto" />
                   ) : (
-                    <AlertTriangle className="h-12 w-12 text-amber-500 mx-auto" />
+                    <AlertTriangle className="h-12 w-12 text-warning mx-auto" />
                   )}
                   <p className="text-body font-medium">{applicationResult.message}</p>
                   <Button

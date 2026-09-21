@@ -181,7 +181,7 @@ const EmployerRegister: React.FC = () => {
               </div>
               <button
                 onClick={() => setStep(1)}
-                className="text-sm text-primary hover:text-blue-700 mt-2"
+                className="text-sm text-primary hover:text-primary-hover mt-2"
               >
                 Change company
               </button>

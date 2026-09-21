@@ -33,7 +33,7 @@ export function DirectApplyBadge({
     const badge = (
       <Badge
         variant="default"
-        className={`${sizeClasses[size]} gap-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 hover:bg-green-200 dark:hover:bg-green-900/50`}
+        className={`${sizeClasses[size]} gap-1.5 bg-success/15 text-success border-success/30 hover:bg-success/25`}
       >
         <CheckCircle className={iconSizes[size]} />
         <span className="font-medium">Direct Apply</span>
@@ -62,7 +62,7 @@ export function DirectApplyBadge({
   const badge = (
     <Badge
       variant="outline"
-      className={`${sizeClasses[size]} gap-1.5 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800`}
+      className={`${sizeClasses[size]} gap-1.5 bg-warning/10 text-warning-foreground border-warning/30`}
     >
       <AlertTriangle className={iconSizes[size]} />
       <span className="font-medium">External Source</span>
@@ -103,7 +103,7 @@ export function DirectApplyText({
 }) {
   if (isVerified) {
     return (
-      <span className={`inline-flex items-center gap-1 text-sm text-green-600 dark:text-green-400 ${className}`}>
+      <span className={`inline-flex items-center gap-1 text-sm text-success ${className}`}>
         <CheckCircle className="h-3.5 w-3.5" />
         <span>Apply directly at company website</span>
       </span>
@@ -111,7 +111,7 @@ export function DirectApplyText({
   }
 
   return (
-    <span className={`inline-flex items-center gap-1 text-sm text-yellow-600 dark:text-yellow-400 ${className}`}>
+    <span className={`inline-flex items-center gap-1 text-sm text-warning-foreground ${className}`}>
       <ExternalLink className="h-3.5 w-3.5" />
       <span>Apply via external platform</span>
     </span>

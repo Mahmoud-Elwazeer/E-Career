@@ -68,8 +68,8 @@ export function TailorResumePanel({ jobId, jobTitle, isAr }: TailorResumePanelPr
       <Card>
         <CardContent className="p-5">
           <div className="flex items-center gap-3 mb-3">
-            <div className="h-10 w-10 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center">
-              <FileText className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <FileText className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h3 className="text-body font-semibold">
@@ -106,10 +106,10 @@ export function TailorResumePanel({ jobId, jobTitle, isAr }: TailorResumePanelPr
   }
 
   return (
-    <Card className="border-violet-200 dark:border-violet-800">
+    <Card className="border-primary/30">
       <CardContent className="p-5 space-y-4">
         <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+          <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="text-body font-semibold">
             {isAr ? "نتائج تخصيص السيرة" : "Resume Tailoring Results"}
           </h3>
@@ -121,13 +121,13 @@ export function TailorResumePanel({ jobId, jobTitle, isAr }: TailorResumePanelPr
             <p className="text-caption text-muted-foreground">{isAr ? "قبل" : "Before"}</p>
           </div>
           <div className="flex items-center gap-1">
-            <TrendingUp className="h-5 w-5 text-emerald-500" />
-            <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+            <TrendingUp className="h-5 w-5 text-success" />
+            <span className="text-lg font-bold text-success">
               +{Math.round(result.score_delta)}
             </span>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{Math.round(result.tailored_score)}</p>
+            <p className="text-2xl font-bold text-success">{Math.round(result.tailored_score)}</p>
             <p className="text-caption text-muted-foreground">{isAr ? "بعد" : "After"}</p>
           </div>
         </div>
@@ -135,7 +135,7 @@ export function TailorResumePanel({ jobId, jobTitle, isAr }: TailorResumePanelPr
         {result.missing_skills.length > 0 && (
           <div>
             <p className="text-caption font-medium mb-1.5">
-              <AlertCircle className="h-3.5 w-3.5 inline me-1 text-amber-500" />
+              <AlertCircle className="h-3.5 w-3.5 inline me-1 text-warning" />
               {isAr ? "مهارات مفقودة" : "Missing Skills"}
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -156,7 +156,7 @@ export function TailorResumePanel({ jobId, jobTitle, isAr }: TailorResumePanelPr
             <ul className="text-caption text-muted-foreground space-y-1.5">
               {result.suggestions.slice(0, 5).map((s, i) => (
                 <li key={i} className="flex items-start gap-1.5">
-                  <span className="text-violet-500 mt-0.5 shrink-0">{i + 1}.</span>
+                  <span className="text-primary mt-0.5 shrink-0">{i + 1}.</span>
                   {s}
                 </li>
               ))}

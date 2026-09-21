@@ -529,12 +529,12 @@ export default function RashidChat() {
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   {isConnected ? (
                     <>
-                      <Wifi className="h-3 w-3 text-green-500" />
+                      <Wifi className="h-3 w-3 text-success" />
                       {isAr ? 'متصل' : 'Connected'}
                     </>
                   ) : (
                     <>
-                      <WifiOff className="h-3 w-3 text-red-500" />
+                      <WifiOff className="h-3 w-3 text-destructive" />
                       {isAr ? 'غير متصل' : 'Disconnected'}
                     </>
                   )}

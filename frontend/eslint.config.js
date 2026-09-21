@@ -26,6 +26,27 @@ export default tseslint.config(
       // while we incrementally introduce typed domain models.
       "@typescript-eslint/no-explicit-any": "warn",
       "react-hooks/exhaustive-deps": "warn",
+      // ── Design-system guard ──────────────────────────────────────────────
+      // Block raw Tailwind palette classes (bg-gray-100, text-blue-600,
+      // dark:border-red-500, …). They only define one/two shades and DON'T theme
+      // across light/dark/night. Use semantic tokens instead — see DESIGN_SYSTEM.md
+      // §2 cheatsheet (muted-foreground, destructive, success, warning, info,
+      // signal, primary, border, surface-*). Warn-level: tracked debt, not a gate.
+      "no-restricted-syntax": [
+        "warn",
+        {
+          selector:
+            "Literal[value=/(^|[\\s\"'`:])(bg|text|border|from|via|to|ring|fill|stroke|divide|placeholder|shadow|outline|decoration|accent|caret)-(gray|slate|zinc|neutral|stone|blue|indigo|violet|purple|fuchsia|pink|rose|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky)-(50|[1-9]00|950)\\b/]",
+          message:
+            "Raw Tailwind palette class detected — it won't theme across light/dark/night. Use a semantic token (see DESIGN_SYSTEM.md §2: muted-foreground, destructive, success, warning, info, signal, primary, border, surface-*).",
+        },
+        {
+          selector:
+            "TemplateElement[value.raw=/(^|[\\s\"'`:])(bg|text|border|from|via|to|ring|fill|stroke|divide|placeholder)-(gray|slate|zinc|neutral|stone|blue|indigo|violet|purple|fuchsia|pink|rose|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky)-(50|[1-9]00|950)\\b/]",
+          message:
+            "Raw Tailwind palette class in a template string — use a semantic token instead (see DESIGN_SYSTEM.md §2).",
+        },
+      ],
     },
   },
   {

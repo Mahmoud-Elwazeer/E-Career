@@ -70,8 +70,8 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
     return (
       <div ref={ref} className="resume-preview bg-white text-foreground p-8 min-h-[1056px] w-full max-w-[816px] mx-auto shadow-sm text-[11px] leading-relaxed font-[system-ui]">
         {/* Header */}
-        <div className={`mb-4 pb-3 border-b-2 ${template === 'creative' ? 'border-indigo-500' : template === 'minimalist' ? 'border-input' : 'border-primary'}`}>
-          <h1 className={`text-2xl font-bold ${template === 'creative' ? 'text-indigo-700' : 'text-foreground'}`}>
+        <div className={`mb-4 pb-3 border-b-2 ${template === 'creative' ? 'border-primary-hover' : template === 'minimalist' ? 'border-input' : 'border-primary'}`}>
+          <h1 className={`text-2xl font-bold ${template === 'creative' ? 'text-primary-hover' : 'text-foreground'}`}>
             {personal_info.full_name || 'Your Name'}
           </h1>
           <div className="flex flex-wrap gap-3 mt-1.5 text-muted-foreground text-[10px]">
@@ -93,7 +93,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
         {/* Summary */}
         {summary && (
           <div className="mb-4">
-            <h2 className={`text-xs font-bold uppercase tracking-wider mb-1 ${template === 'creative' ? 'text-indigo-600' : 'text-primary'}`}>
+            <h2 className={`text-xs font-bold uppercase tracking-wider mb-1 ${template === 'creative' ? 'text-primary' : 'text-primary'}`}>
               Professional Summary
             </h2>
             <p className="text-foreground">{summary}</p>
@@ -103,7 +103,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
         {/* Experience */}
         {experience.length > 0 && (
           <div className="mb-4">
-            <h2 className={`text-xs font-bold uppercase tracking-wider mb-2 ${template === 'creative' ? 'text-indigo-600' : 'text-primary'}`}>
+            <h2 className={`text-xs font-bold uppercase tracking-wider mb-2 ${template === 'creative' ? 'text-primary' : 'text-primary'}`}>
               Experience
             </h2>
             <div className="space-y-3">
@@ -130,7 +130,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
         {/* Education */}
         {education.length > 0 && (
           <div className="mb-4">
-            <h2 className={`text-xs font-bold uppercase tracking-wider mb-2 ${template === 'creative' ? 'text-indigo-600' : 'text-primary'}`}>
+            <h2 className={`text-xs font-bold uppercase tracking-wider mb-2 ${template === 'creative' ? 'text-primary' : 'text-primary'}`}>
               Education
             </h2>
             <div className="space-y-2">
@@ -155,13 +155,13 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
         {/* Skills */}
         {skills.length > 0 && (
           <div className="mb-4">
-            <h2 className={`text-xs font-bold uppercase tracking-wider mb-1 ${template === 'creative' ? 'text-indigo-600' : 'text-primary'}`}>
+            <h2 className={`text-xs font-bold uppercase tracking-wider mb-1 ${template === 'creative' ? 'text-primary' : 'text-primary'}`}>
               Skills
             </h2>
             <div className="flex flex-wrap gap-1.5">
               {skills.map((skill, i) => (
-                <span key={i} className={`px-2 py-0.5 rounded text-[10px] ${
-                  template === 'creative' ? 'bg-indigo-50 text-indigo-700' :
+                <span key={i} className={`px-2 py-0.5 rounded text-[10px] leading-normal ${
+                  template === 'creative' ? 'bg-primary/10 text-primary' :
                   template === 'minimalist' ? 'bg-muted text-foreground' :
                   'bg-primary/10 text-primary'
                 }`}>
@@ -175,7 +175,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
         {/* Projects */}
         {projects.length > 0 && (
           <div className="mb-4">
-            <h2 className={`text-xs font-bold uppercase tracking-wider mb-2 ${template === 'creative' ? 'text-indigo-600' : 'text-primary'}`}>
+            <h2 className={`text-xs font-bold uppercase tracking-wider mb-2 ${template === 'creative' ? 'text-primary' : 'text-primary'}`}>
               Projects
             </h2>
             <div className="space-y-2">
@@ -198,7 +198,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
         {/* Certifications */}
         {certifications.length > 0 && (
           <div className="mb-4">
-            <h2 className={`text-xs font-bold uppercase tracking-wider mb-1 ${template === 'creative' ? 'text-indigo-600' : 'text-primary'}`}>
+            <h2 className={`text-xs font-bold uppercase tracking-wider mb-1 ${template === 'creative' ? 'text-primary' : 'text-primary'}`}>
               Certifications
             </h2>
             <ul className="list-disc list-inside text-foreground">
@@ -212,7 +212,7 @@ const ResumePreview = forwardRef<HTMLDivElement, ResumePreviewProps>(
         {/* Languages */}
         {languages.length > 0 && (
           <div className="mb-4">
-            <h2 className={`text-xs font-bold uppercase tracking-wider mb-1 ${template === 'creative' ? 'text-indigo-600' : 'text-primary'}`}>
+            <h2 className={`text-xs font-bold uppercase tracking-wider mb-1 ${template === 'creative' ? 'text-primary' : 'text-primary'}`}>
               Languages
             </h2>
             <p className="text-foreground">{languages.join(' • ')}</p>

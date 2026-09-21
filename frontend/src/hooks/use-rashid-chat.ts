@@ -1,12 +1,13 @@
 /**
  * useRashidChat Hook
- * Manages Rashid chat interactions across the app
+ * Opens the live RasheedCompanion assistant (globally mounted) via custom
+ * events. `rashid:open-tool` carries a tool + context; `rashid:open` just
+ * opens the chat. RasheedCompanion listens for both.
  */
 
 import { useState, useCallback } from 'react';
-import { useRashidWidget } from '@/hooks/use-rashid-widget';
 
-export type RashidTool = 
+export type RashidTool =
   | 'cv_review'
   | 'cover_letter'
   | 'interview_prep'
@@ -17,19 +18,20 @@ export type RashidTool =
 
 export interface RashidChatOptions {
   tool?: RashidTool;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 export function useRashidChat() {
-  const { openWidget } = useRashidWidget();
   const [currentTool, setCurrentTool] = useState<RashidTool | null>(null);
-  const [context, setContext] = useState<Record<string, any> | null>(null);
+  const [context, setContext] = useState<Record<string, unknown> | null>(null);
 
-  const openRashidChat = useCallback((tool: RashidTool, contextData?: Record<string, any>) => {
+  const openRashidChat = useCallback((tool: RashidTool, contextData?: Record<string, unknown>) => {
     setCurrentTool(tool);
     setContext(contextData || {});
-    openWidget();
-  }, [openWidget]);
+    window.dispatchEvent(
+      new CustomEvent('rashid:open-tool', { detail: { tool, context: contextData || {} } }),
+    );
+  }, []);
 
   const closeRashidChat = useCallback(() => {
     setCurrentTool(null);

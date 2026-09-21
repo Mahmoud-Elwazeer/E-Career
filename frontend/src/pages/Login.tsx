@@ -30,7 +30,7 @@ export default function Login() {
   const isAr = lang === "ar";
   const reduced = useReducedMotion();
   const { toast } = useToast();
-  const from = (location.state as any)?.from || "/app/jobs";
+  const from = (location.state as any)?.from || "/app/dashboard";
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState("");

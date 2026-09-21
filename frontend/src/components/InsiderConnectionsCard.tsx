@@ -31,17 +31,17 @@ export function InsiderConnectionsCard({ companyId, companyName, isAr }: Insider
   if (error || !data || data.total_connections === 0) return null;
 
   return (
-    <Card className="border-sky-200 dark:border-sky-800 bg-sky-50/50 dark:bg-sky-950/50">
+    <Card className="border-info/30 bg-info/5">
       <CardContent className="p-5">
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 rounded-full bg-sky-100 dark:bg-sky-900 flex items-center justify-center">
-            <Users className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+          <div className="h-10 w-10 rounded-full bg-info/15 flex items-center justify-center">
+            <Users className="h-5 w-5 text-info" />
           </div>
           <div>
-            <h3 className="text-body font-semibold text-sky-800 dark:text-sky-200">
+            <h3 className="text-body font-semibold text-foreground">
               {isAr ? "اتصالات داخلية" : "Insider Connections"}
             </h3>
-            <p className="text-caption text-sky-600 dark:text-sky-400">
+            <p className="text-caption text-muted-foreground">
               {data.total_connections} {isAr ? "جهة اتصال في" : "contacts at"} {companyName}
             </p>
           </div>
@@ -51,9 +51,9 @@ export function InsiderConnectionsCard({ companyId, companyName, isAr }: Insider
           <div className="space-y-2.5 mb-3">
             {data.ecareer_connections.slice(0, 4).map((conn) => (
               <div key={conn.user_id} className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-full bg-sky-100 dark:bg-sky-900 flex items-center justify-center shrink-0">
+                <div className="h-8 w-8 rounded-full bg-info/15 flex items-center justify-center shrink-0">
                   {conn.connection_type === "current_employee" ? (
-                    <UserCheck className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                    <UserCheck className="h-4 w-4 text-info" />
                   ) : (
                     <UserMinus className="h-4 w-4 text-muted-foreground" />
                   )}
