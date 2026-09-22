@@ -3,9 +3,11 @@ import {
   MessageCircle, FileText, Mic, Sparkles, Target, ShieldCheck,
   ArrowRight, ArrowLeft, Building2, UserRound,
 } from "lucide-react";
+import { Briefcase, Users2, ListChecks } from "lucide-react";
 import { ScrollReveal, StaggerContainer, StaggerItem } from "@/components/motion";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
+import { useAudience } from "./AudienceSwitcher";
 
 /**
  * FeatureShowcase — surfaces the flagship product features that the landing
@@ -25,12 +27,13 @@ interface FeatureCard {
 export function FeatureShowcase() {
   const { lang, dir } = useTheme();
   const { isAuthenticated } = useAuth();
+  const { audience } = useAudience();
   const isAr = lang === "ar";
   const Arrow = dir === "rtl" ? ArrowLeft : ArrowRight;
   const gate = (to: string) => (isAuthenticated ? to : "/login");
   const gateState = (to: string) => (isAuthenticated ? {} : { state: { from: to } });
 
-  const features: FeatureCard[] = [
+  const individualFeatures: FeatureCard[] = [
     { icon: MessageCircle, en: "Rasheed — your AI career coach", ar: "رشيد — مساعدك المهني", descEn: "Chat 24/7 for CV feedback, job matches, cover letters and interview prep — grounded in your real profile.", descAr: "دردش على مدار الساعة للحصول على مراجعة سيرتك، وظائف مطابقة، ورسائل تقديم وتحضير للمقابلات.", to: "/app/rashid", span: true },
     { icon: FileText, en: "Resume Builder", ar: "منشئ السيرة الذاتية", descEn: "Craft and export an ATS-ready CV.", descAr: "أنشئ سيرة متوافقة مع أنظمة التوظيف.", to: "/app/resume" },
     { icon: Mic, en: "Interview Practice", ar: "تدريب المقابلات", descEn: "Rehearse with an AI voice coach.", descAr: "تدرّب بمساعدة مدرب صوتي ذكي.", to: "/app/interviews" },
@@ -39,6 +42,17 @@ export function FeatureShowcase() {
     { icon: ShieldCheck, en: "Verified direct-apply", ar: "تقديم مباشر موثّق", descEn: "Every job links to the real employer source — no aggregator middlemen.", descAr: "كل وظيفة مرتبطة بالمصدر الأصلي لصاحب العمل — بدون وسطاء.", to: "/app/jobs", span: true },
   ];
 
+  const businessFeatures: FeatureCard[] = [
+    { icon: Briefcase, en: "Post verified roles", ar: "انشر وظائف موثقة", descEn: "Publish jobs that link to your own domain — candidates apply directly, no aggregator middlemen.", descAr: "انشر وظائف مرتبطة بنطاقك الرسمي — يتقدّم المرشحون مباشرة بدون وسطاء.", to: "/app/employer/register", span: true },
+    { icon: ListChecks, en: "Auto candidate ranking", ar: "ترتيب تلقائي للمرشحين", descEn: "Rank applicants by skill, experience and fit — with knockout rules and evidence.", descAr: "رتّب المتقدمين بالمهارة والخبرة والملاءمة مع قواعد استبعاد وأدلة.", to: "/app/employer/talent-search" },
+    { icon: Users2, en: "Talent pools", ar: "قوائم المواهب", descEn: "Build and search reusable candidate pools.", descAr: "أنشئ وابحث في قوائم مرشحين قابلة لإعادة الاستخدام.", to: "/app/employer/talent-search" },
+    { icon: Sparkles, en: "Match intelligence", ar: "ذكاء المطابقة", descEn: "See the strongest candidates against each role, with reasons.", descAr: "شاهد أقوى المرشحين لكل وظيفة مع الأسباب.", to: "/app/employer/talent-search" },
+    { icon: Target, en: "Screening questions", ar: "أسئلة الفرز", descEn: "Add knockout questions to filter automatically.", descAr: "أضف أسئلة استبعاد للتصفية تلقائياً.", to: "/app/employer/post-job" },
+    { icon: ShieldCheck, en: "Domain-verified posting", ar: "نشر موثّق بالنطاق", descEn: "Your apply URL is verified against your company domain for trust.", descAr: "يتم التحقق من رابط التقديم مقابل نطاق شركتك لبناء الثقة.", to: "/app/employer/register", span: true },
+  ];
+
+  const features = audience === "businesses" ? businessFeatures : individualFeatures;
+
   return (
     <section id="platform" className="section-y scroll-mt-20">
       <div className="container">
@@ -46,16 +60,19 @@ export function FeatureShowcase() {
           <div className="flex flex-col items-center text-center mb-12">
             <span className="eyebrow-mono mb-4">{isAr ? "منصة متكاملة" : "ONE PLATFORM"}</span>
             <h2 className="text-display-serif max-w-2xl">
-              {isAr ? (
+              {audience === "businesses" ? (
+                isAr ? (<>وظّف أسرع بـ<span className="serif-accent text-primary">ذكاء</span></>)
+                     : (<>Hire faster with <span className="serif-accent text-primary">intelligence</span></>)
+              ) : isAr ? (
                 <>أكثر من مجرد <span className="serif-accent text-primary">بحث</span> عن وظيفة</>
               ) : (
                 <>More than a job search — a <span className="serif-accent text-primary">career OS</span></>
               )}
             </h2>
             <p className="text-body-lg text-muted-foreground mt-4 max-w-xl">
-              {isAr
-                ? "أدوات مدعومة بالذكاء الاصطناعي ترافقك من البحث حتى التوظيف والنمو."
-                : "AI-powered tools that guide you from search to hire to growth."}
+              {audience === "businesses"
+                ? (isAr ? "أدوات توظيف مدعومة بالذكاء: نشر موثّق، ترتيب المرشحين، وقواعد مواهب." : "AI hiring tools: verified posting, candidate ranking, and talent pools.")
+                : (isAr ? "أدوات مدعومة بالذكاء الاصطناعي ترافقك من البحث حتى التوظيف والنمو." : "AI-powered tools that guide you from search to hire to growth.")}
             </p>
           </div>
         </ScrollReveal>

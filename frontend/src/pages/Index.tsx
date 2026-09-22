@@ -5,6 +5,8 @@ import { ArrowRight, ArrowLeft, Laptop, Stethoscope, PenTool, DollarSign, Gradua
 import { StatsStrip, WhyUsamSection } from "@/components/landing/ScrollSections";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
+import { AudienceProvider, AudienceSwitcher } from "@/components/landing/AudienceSwitcher";
+import { ProductStory } from "@/components/landing/ProductStory";
 import { RasheedAvatar } from "@/components/rashid/RasheedAvatar";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/Layout";
@@ -104,6 +106,7 @@ export default function Index() {
 
   return (
     <Layout>
+     <AudienceProvider>
       {/* ═══ ONBOARDING FLOW ═══
           Only for anonymous visitors on the landing page. Authenticated
           onboarding is owned exclusively by <OnboardingWrapper> in App.tsx,
@@ -117,6 +120,11 @@ export default function Index() {
         landing={landing}
         industryCount={Object.keys(industryCounts).length || 0}
       />
+
+      {/* ═══ AUDIENCE SWITCHER — reframes features + story per audience ═══ */}
+      <div className="container -mt-6 md:-mt-8 relative z-10">
+        <AudienceSwitcher />
+      </div>
 
       {/* ═══ QUICK FILTERS ═══ */}
       <QuickFilters />
@@ -136,6 +144,9 @@ export default function Index() {
           />
         </div>
       </section>
+
+      {/* ═══ INTERACTIVE PRODUCT STORY — scroll-linked workflow demo ═══ */}
+      <ProductStory />
 
       {/* ═══ PLATFORM FEATURE SHOWCASE ═══ */}
       <FeatureShowcase />
@@ -286,6 +297,7 @@ export default function Index() {
           </motion.div>
         </div>
       </section>
+     </AudienceProvider>
     </Layout>
   );
 }
