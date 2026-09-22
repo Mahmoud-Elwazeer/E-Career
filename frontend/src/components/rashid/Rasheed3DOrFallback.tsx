@@ -26,11 +26,23 @@ const RasheedAvatar3D = lazy(() =>
 
 type Probe = "checking" | "present" | "absent";
 
+/**
+ * 3D is OPT-IN. The previously-shipped rasheed.glb is a placeholder model that
+ * overrode the designed vector character everywhere — so the character redesign
+ * never showed. We now render the polished, art-directable vector <RasheedScene/>
+ * by default and only use the 3D path when a real, approved model is in place
+ * AND this flag is explicitly enabled (set VITE_RASHEED_3D=on at build time).
+ * This keeps the 3D pipeline intact for the future without letting a stand-in
+ * asset hijack the hero.
+ */
+const ENABLE_3D = import.meta.env.VITE_RASHEED_3D === "on";
+
 // Module-level cache so we probe once per session, not per mount.
-let cachedProbe: Probe = "checking";
+let cachedProbe: Probe = ENABLE_3D ? "checking" : "absent";
 let probePromise: Promise<Probe> | null = null;
 
 function probeAsset(): Promise<Probe> {
+  if (!ENABLE_3D) return Promise.resolve("absent");
   if (cachedProbe !== "checking") return Promise.resolve(cachedProbe);
   if (probePromise) return probePromise;
   probePromise = fetch(RASHEED_GLB_URL, { method: "HEAD" })

@@ -18,6 +18,7 @@ const C = {
   skinShade: "#D3A784",
   skinLight: "#F2D6BB",
   hair: "#241D18",
+  hairHi: "#3A2E25",
   suit: "#0C403D",
   suitHi: "#155F5A",
   shirt: "#F2F7F6",
@@ -145,44 +146,54 @@ export function RasheedScene({ className = "" }: { className?: string }) {
           transition={{ rotate: { type: "spring", stiffness: 60, damping: 14 }, y: { duration: 5, repeat: Infinity, ease: "easeInOut" } }}
           style={{ transformOrigin: "200px 200px" }}
         >
-          <ellipse cx="200" cy="196" rx="52" ry="56" fill="url(#rs-skin)" />
+          {/* Head — tapered jaw for a mature, defined face (matches RasheedAvatar) */}
+          <path d="M150 188 Q150 134 200 132 Q250 134 250 188 Q250 226 228 246 Q214 258 200 258 Q186 258 172 246 Q150 226 150 188 Z" fill="url(#rs-skin)" />
           {/* Ears */}
-          <ellipse cx="149" cy="200" rx="9" ry="14" fill={C.skinShade} />
-          <ellipse cx="251" cy="200" rx="9" ry="14" fill={C.skinShade} />
-          {/* Hair */}
-          <path d="M147 190 Q149 132 200 130 Q251 132 253 190 Q236 162 200 160 Q164 162 147 190 Z" fill={C.hair} />
+          <ellipse cx="150" cy="196" rx="8" ry="13" fill={C.skinShade} />
+          <ellipse cx="250" cy="196" rx="8" ry="13" fill={C.skinShade} />
+
+          {/* Groomed beard along the jaw */}
+          <path d="M158 202 Q158 244 200 258 Q242 244 242 202 Q242 228 228 242 Q214 253 200 253 Q186 253 172 242 Q158 228 158 202 Z" fill={C.hair} />
+          <path d="M166 198 Q182 220 200 222 Q218 220 234 198 Q220 208 200 208 Q180 208 166 198 Z" fill="url(#rs-skin)" />
+
+          {/* Hair — modern short crop, defined hairline */}
+          <path d="M149 188 Q147 133 200 130 Q253 133 251 188 Q251 176 240 166 Q231 148 200 147 Q169 148 160 166 Q149 176 149 188 Z" fill={C.hair} />
+          <path d="M156 172 Q174 154 200 154 Q190 160 176 164 Q162 168 156 178 Z" fill={C.hairHi} opacity="0.55" />
 
           {/* Eyebrows (raise when presenting) */}
-          <motion.g animate={reduced ? undefined : { y: presenting ? -2 : 0 }} transition={{ duration: 0.4 }}>
-            <path d="M170 184 Q182 178 194 183" stroke={C.brow} strokeWidth="3.4" fill="none" strokeLinecap="round" />
-            <path d="M206 183 Q218 178 230 184" stroke={C.brow} strokeWidth="3.4" fill="none" strokeLinecap="round" />
+          <motion.g animate={reduced ? undefined : { y: presenting ? -2.5 : 0 }} transition={{ duration: 0.4 }}>
+            <path d="M168 182 Q180 176 192 181" stroke={C.brow} strokeWidth="3.4" fill="none" strokeLinecap="round" />
+            <path d="M208 181 Q220 176 232 182" stroke={C.brow} strokeWidth="3.4" fill="none" strokeLinecap="round" />
           </motion.g>
 
-          {/* Eyes with blink + gaze toward device */}
+          {/* Eyes — almond shaped with lids (not round cartoon dots) */}
           <motion.g
-            style={{ transformOrigin: "200px 198px" }}
-            animate={reduced ? undefined : { scaleY: [1, 1, 0.1, 1, 1] }}
+            style={{ transformOrigin: "200px 196px" }}
+            animate={reduced ? undefined : { scaleY: [1, 1, 0.08, 1, 1] }}
             transition={{ duration: 5, repeat: Infinity, times: [0, 0.6, 0.64, 0.68, 1] }}
           >
-            <g>
-              <ellipse cx="182" cy="198" rx="6" ry="6.5" fill="#FBF7F2" />
-              <ellipse cx="218" cy="198" rx="6" ry="6.5" fill="#FBF7F2" />
-              {/* Pupils track a subtle gaze + shift toward the device when presenting */}
-              <motion.g
-                animate={reduced ? undefined : { x: (presenting ? 2.4 : 0) + gaze.x, y: (presenting ? 1 : 0) + gaze.y }}
-                transition={{ type: "spring", stiffness: 120, damping: 16 }}
-              >
-                <circle cx="184" cy="199" r="3.1" fill={C.iris} />
-                <circle cx="220" cy="199" r="3.1" fill={C.iris} />
-                <circle cx="185.3" cy="197.7" r="1" fill="#fff" />
-                <circle cx="221.3" cy="197.7" r="1" fill="#fff" />
-              </motion.g>
-            </g>
+            <motion.g
+              animate={reduced ? undefined : { x: (presenting ? 2.4 : 0) + gaze.x, y: (presenting ? 1 : 0) + gaze.y }}
+              transition={{ type: "spring", stiffness: 120, damping: 16 }}
+            >
+              {/* left */}
+              <path d="M170 196 Q182 189 194 196 Q182 202 170 196 Z" fill="#FCFAF6" />
+              <circle cx="182" cy="196" r="4.4" fill={C.iris} />
+              <circle cx="183.6" cy="194.2" r="1.5" fill="#fff" />
+              <path d="M170 196 Q182 189 194 196" stroke={C.skinShade} strokeWidth="1.4" fill="none" opacity="0.7" />
+              {/* right */}
+              <path d="M206 196 Q218 189 230 196 Q218 202 206 196 Z" fill="#FCFAF6" />
+              <circle cx="218" cy="196" r="4.4" fill={C.iris} />
+              <circle cx="219.6" cy="194.2" r="1.5" fill="#fff" />
+              <path d="M206 196 Q218 189 230 196" stroke={C.skinShade} strokeWidth="1.4" fill="none" opacity="0.7" />
+            </motion.g>
           </motion.g>
 
-          {/* Nose + smile */}
-          <path d="M200 202 Q202 214 193 218" stroke={C.skinShade} strokeWidth="2.4" fill="none" strokeLinecap="round" />
-          <path d="M181 226 Q200 238 219 226" stroke={C.mouth} strokeWidth="3.4" fill="none" strokeLinecap="round" />
+          {/* Nose */}
+          <path d="M200 200 L198 214 Q200 217 204 215" stroke={C.skinShade} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+
+          {/* Smile (sits within the beard) */}
+          <path d="M184 226 Q200 236 216 226" stroke={C.mouth} strokeWidth="3.2" fill="none" strokeLinecap="round" />
         </motion.g>
 
         {/* ── The interactive device in hand ── */}
