@@ -1,17 +1,18 @@
 import { motion, useReducedMotion } from "framer-motion";
 
 /**
- * RasheedAvatar — a polished, professional AI career-coach avatar.
+ * RasheedAvatar — the platform's AI career-coach identity.
  *
- * A framed circular headshot (the pattern used by modern AI assistants and
- * professional networks) with soft shading, brand-aligned styling, subtle
- * ambient ring, and expression states. Designed to read as a competent HR
- * professional rather than a cartoon mascot.
+ * A framed circular headshot redesigned to read as a poised, modern HR
+ * professional (almond eyes with real lids, groomed beard, tailored collar &
+ * tie, refined head geometry) rather than a cartoon mascot. Brand-aligned teal
+ * backdrop, soft studio lighting, subtle depth. Same expression-state API as
+ * before so every consumer keeps working.
  *
  * States:
  *  - idle: gentle breathing + occasional blink
- *  - greeting: warm smile, slight head tilt
- *  - thinking: eyes up, brow raised
+ *  - greeting: warm smile, brighter eyes
+ *  - thinking: eyes up, brow raised, thinking dots
  *  - talking: subtle mouth motion
  */
 
@@ -27,22 +28,22 @@ interface RasheedAvatarProps {
 }
 
 const C = {
-  bgTop: "#12514D",
-  bgBottom: "#0A3836",
-  skin: "#E7C2A0",
-  skinShade: "#D3A784",
-  skinLight: "#F2D6BB",
-  hair: "#241D18",
-  hairHi: "#3A2E25",
-  suit: "#0C403D",
-  suitHi: "#155F5A",
-  shirt: "#F2F7F6",
-  tie: "#2A8F88",
-  brow: "#241D18",
-  eyeWhite: "#FBF7F2",
-  iris: "#3B2C21",
-  mouth: "#A85C54",
-  teeth: "#FFF8F2",
+  skin: "#D9A87E",
+  skinShade: "#C08F66",
+  skinLight: "#ECC49A",
+  hair: "#1E1712",
+  hairHi: "#332720",
+  beard: "#241B14",
+  suit: "#0A3836",
+  suitHi: "#12514D",
+  collar: "#F4F8F7",
+  tie: "#E4B65B", // signal amber tie — a single warm accent
+  brow: "#241B14",
+  eyeWhite: "#FCFAF6",
+  iris: "#4A3627",
+  lid: "#C08F66",
+  mouth: "#9E5049",
+  teeth: "#FFFBF6",
 };
 
 export function RasheedAvatar({
@@ -58,7 +59,6 @@ export function RasheedAvatar({
 
   return (
     <div className={`relative inline-flex ${className}`} style={{ width: size, height: size }}>
-      {/* Ambient status ring */}
       {ring && (
         <motion.span
           aria-hidden
@@ -79,108 +79,122 @@ export function RasheedAvatar({
         height={size}
         className="rounded-full"
         initial={false}
-        animate={reduced ? undefined : { y: [0, -1.2, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+        animate={reduced ? undefined : { y: [0, -1, 0] }}
+        transition={{ duration: 4.5, repeat: Infinity, ease: "easeInOut" }}
         role="img"
         aria-label="Rasheed, AI career coach"
       >
         <defs>
-          <radialGradient id="ra-bg" cx="0.5" cy="0.35" r="0.75">
-            <stop offset="0" stopColor={C.bgTop} />
-            <stop offset="1" stopColor={C.bgBottom} />
+          <radialGradient id="ra-bg" cx="0.5" cy="0.3" r="0.85">
+            <stop offset="0" stopColor="#15605B" />
+            <stop offset="0.6" stopColor="#0C433F" />
+            <stop offset="1" stopColor="#082E2C" />
           </radialGradient>
-          <linearGradient id="ra-skin" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id="ra-skin" x1="0.3" y1="0" x2="0.7" y2="1">
             <stop offset="0" stopColor={C.skinLight} />
+            <stop offset="0.55" stopColor={C.skin} />
             <stop offset="1" stopColor={C.skinShade} />
           </linearGradient>
-          <linearGradient id="ra-suit" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="ra-suit" x1="0" y1="0" x2="0.5" y2="1">
             <stop offset="0" stopColor={C.suitHi} />
             <stop offset="1" stopColor={C.suit} />
           </linearGradient>
+          <radialGradient id="ra-light" cx="0.38" cy="0.32" r="0.5">
+            <stop offset="0" stopColor="#fff" stopOpacity="0.22" />
+            <stop offset="1" stopColor="#fff" stopOpacity="0" />
+          </radialGradient>
           <clipPath id="ra-clip"><circle cx="60" cy="60" r="60" /></clipPath>
         </defs>
 
         <g clipPath="url(#ra-clip)">
-          {/* Background */}
           <rect width="120" height="120" fill="url(#ra-bg)" />
-          {/* soft vignette */}
-          <circle cx="60" cy="46" r="46" fill="#fff" opacity="0.05" />
+          {/* studio key light */}
+          <rect width="120" height="120" fill="url(#ra-light)" />
 
-          {/* Shoulders / suit */}
-          <path d="M18 120 Q22 92 60 86 Q98 92 102 120 Z" fill="url(#ra-suit)" />
-          {/* Shirt */}
-          <path d="M50 90 L60 104 L70 90 L70 120 L50 120 Z" fill={C.shirt} />
-          {/* Tie */}
-          <path d="M60 104 L55 110 L60 120 L65 110 Z" fill={C.tie} />
-          {/* Lapels */}
-          <path d="M50 90 L60 104 L52 106 L42 94 Z" fill={C.suit} />
-          <path d="M70 90 L60 104 L68 106 L78 94 Z" fill={C.suit} />
+          {/* Shoulders / tailored suit */}
+          <path d="M14 120 Q18 90 60 84 Q102 90 106 120 Z" fill="url(#ra-suit)" />
+          {/* shoulder seam highlights */}
+          <path d="M60 84 Q40 90 30 118" stroke={C.suitHi} strokeWidth="1.4" fill="none" opacity="0.5" />
+          <path d="M60 84 Q80 90 90 118" stroke={C.suitHi} strokeWidth="1.4" fill="none" opacity="0.5" />
+          {/* Collar */}
+          <path d="M48 88 L60 100 L72 88 L70 120 L50 120 Z" fill={C.collar} />
+          {/* Tie knot + tie */}
+          <path d="M60 100 L55 105 L60 120 L65 105 Z" fill={C.tie} />
+          <path d="M56 100 L60 104 L64 100 L60 97 Z" fill={C.tie} />
+          {/* Lapels over collar */}
+          <path d="M48 88 L60 100 L51 103 L40 92 Z" fill={C.suit} />
+          <path d="M72 88 L60 100 L69 103 L80 92 Z" fill={C.suit} />
 
           {/* Neck */}
-          <path d="M52 78 h16 v10 q-8 6 -16 0 Z" fill={C.skinShade} />
+          <path d="M53 76 h14 v11 q-7 5 -14 0 Z" fill={C.skinShade} />
 
-          {/* Head */}
-          <ellipse cx="60" cy="54" rx="24" ry="26" fill="url(#ra-skin)" />
+          {/* Head — slightly tapered jaw for a mature, defined face */}
+          <path d="M38 50 Q38 28 60 27 Q82 28 82 50 Q82 68 72 78 Q66 84 60 84 Q54 84 48 78 Q38 68 38 50 Z" fill="url(#ra-skin)" />
+          {/* cheek/jaw shading */}
+          <path d="M44 66 Q52 80 60 82 Q68 80 76 66 Q70 74 60 75 Q50 74 44 66 Z" fill={C.skinShade} opacity="0.35" />
           {/* Ears */}
-          <ellipse cx="37" cy="56" rx="4" ry="6" fill={C.skinShade} />
-          <ellipse cx="83" cy="56" rx="4" ry="6" fill={C.skinShade} />
+          <ellipse cx="38" cy="54" rx="3.6" ry="6" fill={C.skinShade} />
+          <ellipse cx="82" cy="54" rx="3.6" ry="6" fill={C.skinShade} />
 
-          {/* Hair */}
-          <path d="M36 52 Q37 26 60 25 Q83 26 84 52 Q76 38 60 37 Q44 38 36 52 Z" fill={C.hair} />
-          <path d="M36 52 Q35 42 41 34 L44 50 Z" fill={C.hairHi} opacity="0.5" />
-          {/* Beard hint */}
-          <path d="M40 60 Q40 76 60 82 Q80 76 80 60 Q72 70 60 71 Q48 70 40 60 Z" fill={C.hair} opacity="0.12" />
+          {/* Groomed beard along the jaw */}
+          <path d="M42 58 Q42 78 60 84 Q78 78 78 58 Q78 70 72 76 Q66 81 60 81 Q54 81 48 76 Q42 70 42 58 Z" fill={C.beard} />
+          {/* keep upper cheeks clear of beard */}
+          <path d="M46 56 Q52 66 60 67 Q68 66 74 56 Q68 61 60 61 Q52 61 46 56 Z" fill="url(#ra-skin)" />
 
-          {/* Eyebrows */}
-          <motion.g
-            animate={reduced ? undefined : { y: thinking ? -2 : 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <path d="M46 47 Q52 44 57 47" stroke={C.brow} strokeWidth="2.2" fill="none" strokeLinecap="round" />
-            <path d="M63 47 Q68 44 74 47" stroke={C.brow} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          {/* Hair — modern short crop with a defined hairline */}
+          <path d="M37 50 Q36 27 60 25 Q84 27 83 50 Q83 44 78 40 Q74 33 60 32 Q46 33 42 40 Q37 44 37 50 Z" fill={C.hair} />
+          <path d="M40 42 Q48 34 60 34 Q56 37 50 39 Q44 41 40 46 Z" fill={C.hairHi} opacity="0.6" />
+
+          {/* Eyebrows — defined, slight arch */}
+          <motion.g animate={reduced ? undefined : { y: thinking ? -2.5 : 0 }} transition={{ duration: 0.4 }}>
+            <path d="M45 47 Q51 43.5 57 46" stroke={C.brow} strokeWidth="2.6" fill="none" strokeLinecap="round" />
+            <path d="M63 46 Q69 43.5 75 47" stroke={C.brow} strokeWidth="2.6" fill="none" strokeLinecap="round" />
           </motion.g>
 
-          {/* Eyes */}
+          {/* Eyes — almond shaped with upper lid, not round cartoon dots */}
           <motion.g
-            style={{ transformOrigin: "60px 54px" }}
-            animate={reduced ? undefined : { scaleY: [1, 1, 0.1, 1, 1] }}
-            transition={{ duration: 5, repeat: Infinity, times: [0, 0.62, 0.66, 0.7, 1] }}
+            style={{ transformOrigin: "60px 55px" }}
+            animate={reduced ? undefined : { scaleY: [1, 1, 0.08, 1, 1] }}
+            transition={{ duration: 5.5, repeat: Infinity, times: [0, 0.63, 0.665, 0.7, 1] }}
           >
-            <g transform={thinking ? "translate(2,-1.5)" : "translate(0,0)"}>
-              <ellipse cx="51" cy="54" rx="4.6" ry="4" fill={C.eyeWhite} />
-              <ellipse cx="69" cy="54" rx="4.6" ry="4" fill={C.eyeWhite} />
-              <circle cx="52" cy="54" r="2.3" fill={C.iris} />
-              <circle cx="70" cy="54" r="2.3" fill={C.iris} />
-              <circle cx="52.9" cy="53.1" r="0.8" fill="#fff" />
-              <circle cx="70.9" cy="53.1" r="0.8" fill="#fff" />
+            <g transform={thinking ? "translate(1.5,-1.5)" : "translate(0,0)"}>
+              {/* left */}
+              <path d="M46 55 Q51 51 57 55 Q51 58.5 46 55 Z" fill={C.eyeWhite} />
+              <circle cx="52" cy="55" r="2.5" fill={C.iris} />
+              <circle cx="52.9" cy="54" r="0.9" fill="#fff" />
+              <path d="M46 55 Q51 51 57 55" stroke={C.lid} strokeWidth="1" fill="none" opacity="0.7" />
+              {/* right */}
+              <path d="M63 55 Q69 51 74 55 Q69 58.5 63 55 Z" fill={C.eyeWhite} />
+              <circle cx="68" cy="55" r="2.5" fill={C.iris} />
+              <circle cx="68.9" cy="54" r="0.9" fill="#fff" />
+              <path d="M63 55 Q69 51 74 55" stroke={C.lid} strokeWidth="1" fill="none" opacity="0.7" />
             </g>
           </motion.g>
 
-          {/* Nose */}
-          <path d="M60 56 Q61 62 56 64" stroke={C.skinShade} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+          {/* Nose — subtle bridge + tip */}
+          <path d="M60 57 L59 64 Q60 66 62 65" stroke={C.skinShade} strokeWidth="1.5" fill="none" strokeLinecap="round" />
 
-          {/* Mouth */}
+          {/* Mouth (in the beard area) */}
           {talking && !reduced ? (
             <motion.ellipse
-              cx="60" cy="70" rx="6" fill={C.mouth}
-              animate={{ ry: [1.5, 4, 2, 3.5, 1.5] }}
+              cx="60" cy="71" rx="5.5" fill={C.mouth}
+              animate={{ ry: [1.3, 3.6, 1.8, 3, 1.3] }}
               transition={{ duration: 0.7, repeat: Infinity }}
             />
           ) : greeting ? (
             <>
-              <path d="M50 68 Q60 78 70 68 Q60 73 50 68 Z" fill={C.mouth} />
-              <path d="M52 69 Q60 72 68 69" fill={C.teeth} opacity="0.9" />
+              <path d="M51 69 Q60 77 69 69 Q60 73 51 69 Z" fill={C.mouth} />
+              <path d="M53 70 Q60 72.5 67 70" fill={C.teeth} opacity="0.95" />
             </>
           ) : (
-            <path d="M52 69 Q60 75 68 69" stroke={C.mouth} strokeWidth="2.2" fill="none" strokeLinecap="round" />
+            <path d="M53 70 Q60 74.5 67 70" stroke={C.mouth} strokeWidth="2.2" fill="none" strokeLinecap="round" />
           )}
         </g>
 
-        {/* Inner rim */}
-        <circle cx="60" cy="60" r="59" fill="none" stroke="#000" strokeOpacity="0.08" strokeWidth="2" />
+        {/* Inner rim for depth */}
+        <circle cx="60" cy="60" r="59" fill="none" stroke="#000" strokeOpacity="0.1" strokeWidth="2" />
       </motion.svg>
 
-      {/* Thinking dots */}
       {thinking && !reduced && (
         <span className="absolute -top-1 -end-1 flex gap-0.5 rounded-full bg-card px-1.5 py-1 shadow-md">
           {[0, 1, 2].map((i) => (

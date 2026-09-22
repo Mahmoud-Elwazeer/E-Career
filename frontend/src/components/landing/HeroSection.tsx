@@ -30,17 +30,35 @@ interface HeroSectionProps {
   industryCount: number;
 }
 
+/**
+ * Honest scale formatter. Never fabricates: shows the real number, but rounds
+ * DOWN to a credible threshold once it's large enough (250→"250+", 1,240→"1K+",
+ * 12,400→"10K+"), so scale reads clearly without misleading. Small real counts
+ * are shown as-is (no inflation).
+ */
+function formatCount(n: number): { value: string; suffix: string } {
+  if (n >= 1000) {
+    const k = Math.floor(n / 1000);
+    const rounded = k >= 10 ? Math.floor(k / 10) * 10 : k;
+    return { value: `${rounded}K`, suffix: "+" };
+  }
+  if (n >= 100) return { value: `${Math.floor(n / 50) * 50}`, suffix: "+" };
+  if (n >= 10) return { value: `${n}`, suffix: "+" };
+  return { value: `${n}`, suffix: "" };
+}
+
 export function HeroSection({ query, setQuery, onSubmit, landing, industryCount }: HeroSectionProps) {
   const reduced = useReducedMotion();
   const { lang, dir } = useTheme();
   const isAr = lang === "ar";
   const Arrow = dir === "rtl" ? ArrowLeft : ArrowRight;
 
+  const jobsFmt = formatCount(landing?.totalJobs ?? 0);
   const metrics = [
-    { v: landing?.totalJobs ?? 0, s: "+", l: isAr ? "وظيفة" : "jobs" },
-    { v: landing?.sourcesCount ?? 0, s: "", l: isAr ? "مصادر" : "sources" },
-    { v: industryCount, s: "", l: isAr ? "قطاعات" : "industries" },
-    { v: 10, s: "+", l: isAr ? "دول" : "countries" },
+    { v: jobsFmt.value, s: jobsFmt.suffix, l: isAr ? "فرصة" : "opportunities" },
+    { v: `${landing?.sourcesCount ?? 0}`, s: "", l: isAr ? "مصادر موثقة" : "verified sources" },
+    { v: `${industryCount}`, s: "", l: isAr ? "قطاعات" : "industries" },
+    { v: "10", s: "+", l: isAr ? "دول" : "countries" },
   ];
 
   const trust = [

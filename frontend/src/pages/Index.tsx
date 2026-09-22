@@ -205,8 +205,8 @@ export default function Index() {
       {/* ═══ STATS ═══ */}
       <StatsStrip
         stats={[
-          { n: landing?.totalJobs ?? 0, suffix: "+", label: isAr ? "وظيفة نشطة" : "Active Jobs" },
-          { n: landing?.sourcesCount ?? 0, suffix: "", label: isAr ? "مصادر" : "Sources" },
+          { n: landing?.totalJobs ?? 0, suffix: "+", label: isAr ? "فرصة متاحة" : "Opportunities" },
+          { n: landing?.sourcesCount ?? 0, suffix: "", label: isAr ? "مصادر موثقة" : "Verified Sources" },
           { n: Object.keys(industryCounts).length || 0, suffix: "", label: isAr ? "قطاعات" : "Industries" },
           { n: 10, suffix: "+", label: isAr ? "دول" : "Countries" },
         ]}
