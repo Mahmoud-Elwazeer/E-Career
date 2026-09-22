@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Target, TrendingUp, Lightbulb, AlertCircle, ChevronRight } from "lucide-react";
-import { Layout } from "@/components/Layout";
+import { AppShell } from "@/components/shells/AppShell";
+import { PageHeader } from "@/components/PageHeader";
+import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/hooks/use-theme";
 import { getRecommendations, RecommendedJob } from "@/services/recommendations";
@@ -193,96 +194,40 @@ export default function Recommendations() {
     : 0;
   
   return (
-    <Layout>
-      <div className="min-h-screen bg-background py-8">
-        <div className="container max-w-4xl">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-              <Target className="h-8 w-8 text-primary" />
-              {isAr ? "وظائف موصى بها لك" : "Recommended For You"}
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              {isAr 
-                ? "وظائف تتناسب مع مهاراتك وتفضيلاتك"
-                : "Jobs that match your skills and preferences"}
+    <AppShell>
+      <div className="page-shell max-w-4xl">
+        <PageHeader
+          title={isAr ? "وظائف موصى بها لك" : "Recommended for you"}
+          subtitle={isAr ? "وظائف تتناسب مع مهاراتك وتفضيلاتك" : "Jobs matched to your skills and preferences"}
+        />
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <StatCard icon={TrendingUp} value={data?.count || 0} label={isAr ? "وظيفة مطابقة" : "Matches found"} />
+          <StatCard icon={Target} value={strongMatches} label={isAr ? "مطابقة قوية" : "Strong matches"} accent="text-success" />
+          <StatCard icon={Lightbulb} value={`${avgScore}%`} label={isAr ? "متوسط المطابقة" : "Avg match score"} accent="text-signal" />
+        </div>
+
+        {/* Content */}
+        {isLoading ? (
+          <LoadingSkeleton />
+        ) : error ? (
+          <div className="surface-card p-6 text-center">
+            <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-2" />
+            <p className="text-body text-muted-foreground">
+              {isAr ? "حدث خطأ في تحميل التوصيات" : "Error loading recommendations"}
             </p>
           </div>
-          
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-card border rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary-muted rounded-lg">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">
-                    {data?.count || 0}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {isAr ? "وظيفة مطابقة" : "Matches Found"}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-card border rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-success/15 rounded-lg">
-                  <Target className="h-5 w-5 text-success" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">
-                    {strongMatches}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {isAr ? "مطابقة قوية" : "Strong Matches"}
-                  </p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-card border rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Lightbulb className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-foreground">
-                    {avgScore}%
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {isAr ? "متوسط المطابقة" : "Avg Match Score"}
-                  </p>
-                </div>
-              </div>
-            </div>
+        ) : data?.count === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="space-y-4">
+            {data?.recommendations?.map((rec) => (
+              <RecommendationCard key={rec.job_id} recommendation={rec} />
+            ))}
           </div>
-          
-          {/* Content */}
-          {isLoading ? (
-            <LoadingSkeleton />
-          ) : error ? (
-            <div className="bg-destructive/10 border border-destructive rounded-lg p-4 text-center">
-              <p className="text-destructive">
-                {isAr ? "حدث خطأ في تحميل التوصيات" : "Error loading recommendations"}
-              </p>
-            </div>
-          ) : data?.count === 0 ? (
-            <EmptyState />
-          ) : (
-            <div className="space-y-4">
-              {data?.recommendations?.map((rec) => (
-                <RecommendationCard 
-                  key={rec.job_id} 
-                  recommendation={rec}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
-    </Layout>
+    </AppShell>
   );
 }

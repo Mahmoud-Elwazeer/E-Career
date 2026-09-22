@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { AppShell } from '@/components/shells/AppShell';
+import { PageHeader } from '@/components/PageHeader';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -30,30 +31,31 @@ import {
   type JobPosting,
 } from '@/services/employer';
 
-// Score dimension configuration for the ranking display
+// Score dimension configuration. Bar color uses semantic-token CLASSES (not raw
+// hex) so it themes across light/dark/night. "Overall" gets the brand color;
+// the rest use the same primary tint to keep the card calm and on-system.
 const RANKING_DIMENSIONS = [
-  { key: 'overall_score', label: 'Overall', color: '#3b82f6' },
-  { key: 'skill_match_score', label: 'Skill Match', color: '#8b5cf6' },
-  { key: 'experience_score', label: 'Experience', color: '#10b981' },
-  { key: 'education_score', label: 'Education', color: '#f59e0b' },
-  { key: 'salary_expectation_score', label: 'Salary Fit', color: '#ec4899' },
+  { key: 'overall_score', label: 'Overall', bar: 'bg-primary' },
+  { key: 'skill_match_score', label: 'Skill Match', bar: 'bg-primary/70' },
+  { key: 'experience_score', label: 'Experience', bar: 'bg-success' },
+  { key: 'education_score', label: 'Education', bar: 'bg-info' },
+  { key: 'salary_expectation_score', label: 'Salary Fit', bar: 'bg-signal' },
 ] as const;
 
-function ScoreBar({ label, value, color }: { label: string; value: number; color: string }) {
+function ScoreBar({ label, value, bar }: { label: string; value: number; bar: string }) {
   const percent = Math.round(value * 100);
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium text-foreground">{label}</span>
-        <span className="text-muted-foreground">{percent}%</span>
+        <span className="font-mono-data text-muted-foreground">{percent}%</span>
       </div>
       <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${percent}%` }}
           transition={{ duration: 0.5 }}
-          className="h-full rounded-full"
-          style={{ backgroundColor: color }}
+          className={`h-full rounded-full ${bar}`}
         />
       </div>
     </div>
@@ -91,7 +93,7 @@ function RankingCard({ ranking }: { ranking: CandidateRanking }) {
                 key={dim.key}
                 label={dim.label}
                 value={ranking[dim.key]}
-                color={dim.color}
+                bar={dim.bar}
               />
             ))}
           </div>
@@ -187,22 +189,18 @@ const TalentSearch: React.FC = () => {
 
   return (
     <AppShell>
-      <div className="container py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Link
-              to="/app/employer/dashboard"
-              className="p-2 hover:bg-accent rounded-lg transition"
-            >
-              <ArrowLeft className="w-5 h-5 text-muted-foreground" />
-            </Link>
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Talent Pool</h1>
-              <p className="text-muted-foreground mt-1">Manage candidate pools and rank talent</p>
-            </div>
-          </div>
-        </div>
+      <div className="page-shell">
+        <PageHeader
+          title="Talent Pool"
+          subtitle="Manage candidate pools and rank talent against your jobs"
+          actions={
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link to="/app/employer/dashboard">
+                <ArrowLeft className="w-4 h-4" /> Dashboard
+              </Link>
+            </Button>
+          }
+        />
 
         {/* Talent Pools Section */}
         <motion.div

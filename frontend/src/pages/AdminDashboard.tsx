@@ -17,6 +17,7 @@ import { ScrollReveal, StaggerContainer, StaggerItem } from "@/components/motion
 import { AdminJobsTable } from "@/components/admin/AdminJobsTable";
 import { AdminSourcesManager } from "@/components/admin/AdminSourcesManager";
 import { AdminMediaManager } from "@/components/admin/AdminMediaManager";
+import { AdminAlertsBanner } from "@/components/admin/AdminAlertsBanner";
 import { useAdminStats, fetchActivityLogs } from "@/hooks/use-admin-stats";
 import { useFeatureFlags } from "@/hooks/use-feature-flags";
 import { useTheme } from "@/hooks/use-theme";
@@ -1704,6 +1705,9 @@ export default function AdminDashboard() {
         </header>
 
         <div className="p-6">
+          {/* Live ops alerts (decision-support) — shown on every tab */}
+          <AdminAlertsBanner />
+
           {/* OVERVIEW */}
           {activeTab === "overview" && (
             <div className="space-y-6">

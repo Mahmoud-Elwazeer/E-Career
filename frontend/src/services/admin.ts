@@ -185,3 +185,36 @@ export async function adminCsvImport(file: File) {
     { method: "POST", formData },
   );
 }
+
+// ── Decision-support alerts (backend-ready, was unused) ───────────────────────
+// GET /admin-api/alerts/ — DecisionSupportAlertsView aggregates live ops alerts:
+// AI cost spikes, stale scraper sources, cache failure, missing Celery workers,
+// overdue GDPR deletions.
+export interface AdminAlert {
+  id?: string;
+  severity: "critical" | "warning" | "info" | string;
+  category?: string;
+  title?: string;
+  message: string;
+  detail?: string;
+  created_at?: string;
+}
+
+export async function fetchAdminAlerts(): Promise<AdminAlert[]> {
+  const data = await apiRequest<any>("/admin-api/alerts/");
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.alerts)) return data.alerts;
+  if (Array.isArray(data?.results)) return data.results;
+  return [];
+}
+
+// ── Scraper source control (backend-ready, was unused) ────────────────────────
+// POST /admin-api/sources/{source_uuid}/control/ — start | stop | pause | run_now
+export type SourceControlAction = "start" | "stop" | "pause" | "run_now";
+
+export async function controlSource(sourceUuid: string, action: SourceControlAction) {
+  return apiRequest<{ success?: boolean; message?: string }>(
+    `/admin-api/sources/${sourceUuid}/control/`,
+    { method: "POST", body: { action } },
+  );
+}

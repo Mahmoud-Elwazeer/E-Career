@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, RefreshCw, Trash2, Pencil, Loader2 } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Pencil, Loader2, Play, Pause } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { sourceFormSchema, type SourceFormValues } from "@/data/schemas";
 import {
   adminFetchAllSources, adminCreateSource, adminUpdateSource, adminDeleteSource,
+  controlSource, type SourceControlAction,
 } from "@/services/admin";
 import type { Source } from "@/services/jobs";
 
@@ -76,6 +77,29 @@ export function AdminSourcesManager() {
       load();
     } catch {
       toast({ title: "Failed", variant: "destructive" });
+    }
+  };
+
+  // Scraper run control (start/stop/pause/run_now) — wires the backend
+  // SourceControlView that previously had no UI.
+  const [controlBusy, setControlBusy] = useState<string | null>(null);
+  const handleControl = async (source: Source, action: SourceControlAction) => {
+    setControlBusy(`${source.uuid}:${action}`);
+    try {
+      const res = await controlSource(source.uuid, action);
+      toast({
+        title:
+          action === "run_now" ? (isAr ? "بدأ التشغيل" : "Scrape started")
+          : action === "pause" ? (isAr ? "تم الإيقاف المؤقت" : "Source paused")
+          : action === "start" ? (isAr ? "تم التفعيل" : "Source resumed")
+          : (isAr ? "تم الإيقاف" : "Source stopped"),
+        description: res?.message,
+      });
+      load();
+    } catch (e: any) {
+      toast({ title: "Failed", description: e?.message, variant: "destructive" });
+    } finally {
+      setControlBusy(null);
     }
   };
 
@@ -147,6 +171,25 @@ export function AdminSourcesManager() {
                   <Badge variant={source.is_active ? "default" : "secondary"}>
                     {source.is_active ? (isAr ? "نشط" : "Active") : (isAr ? "متوقف" : "Paused")}
                   </Badge>
+                  <Button
+                    variant="outline" size="sm" className="h-7 gap-1 px-2"
+                    onClick={() => handleControl(source, "run_now")}
+                    disabled={controlBusy === `${source.uuid}:run_now`}
+                    title={isAr ? "تشغيل الآن" : "Run scrape now"}
+                  >
+                    {controlBusy === `${source.uuid}:run_now`
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Play className="h-3.5 w-3.5" />}
+                    <span className="text-caption">{isAr ? "تشغيل" : "Run"}</span>
+                  </Button>
+                  <Button
+                    variant="ghost" size="icon" className="h-7 w-7"
+                    onClick={() => handleControl(source, source.is_active ? "pause" : "start")}
+                    disabled={!!controlBusy && controlBusy.startsWith(source.uuid)}
+                    title={source.is_active ? (isAr ? "إيقاف مؤقت" : "Pause") : (isAr ? "استئناف" : "Resume")}
+                  >
+                    {source.is_active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(source)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>

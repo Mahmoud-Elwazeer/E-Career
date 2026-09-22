@@ -184,4 +184,31 @@ export const getTrendColor = (trend: string): string => {
   return colors[trend] || '#6b7280';
 };
 
+// ── Token-based variants (theme-aware; prefer these in UI) ──────────────────
+// Return Tailwind semantic-token classes instead of raw hex so grades/trends
+// adapt across light/dark/night.
+export const gradeToken = (grade: string): { text: string; bg: string; border: string } => {
+  switch (grade) {
+    case 'A': return { text: 'text-success', bg: 'bg-success/10', border: 'border-success/30' };
+    case 'B': return { text: 'text-info', bg: 'bg-info/10', border: 'border-info/30' };
+    case 'C': return { text: 'text-warning-foreground', bg: 'bg-warning/10', border: 'border-warning/30' };
+    case 'D': return { text: 'text-signal', bg: 'bg-signal/10', border: 'border-signal/30' };
+    default: return { text: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30' };
+  }
+};
+
+export const trendTokenText = (trend: string): string => {
+  if (trend === 'improving') return 'text-success';
+  if (trend === 'declining') return 'text-destructive';
+  return 'text-muted-foreground';
+};
+
+export const priorityToken = (priority: string): { text: string; bg: string } => {
+  switch (priority) {
+    case 'high': return { text: 'text-destructive', bg: 'bg-destructive/10' };
+    case 'medium': return { text: 'text-warning-foreground', bg: 'bg-warning/10' };
+    default: return { text: 'text-info', bg: 'bg-info/10' };
+  }
+};
+
 export default scoresApi;

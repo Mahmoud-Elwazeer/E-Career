@@ -286,8 +286,8 @@ export default function SalaryInsightsPage() {
     <AppShell>
       <main className="container py-8 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">
-            <DollarSign className="inline h-8 w-8 text-primary me-2" />
+          <h1 className="text-heading-1 flex items-center gap-2">
+            <DollarSign className="h-7 w-7 text-primary" />
             {isAr ? 'رؤى الرواتب' : 'Salary Insights'}
           </h1>
           <p className="text-muted-foreground mt-1">

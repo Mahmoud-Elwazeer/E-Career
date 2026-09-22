@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTheme } from "@/hooks/use-theme";
 import { useToast } from "@/hooks/use-toast";
@@ -393,6 +394,7 @@ function PreferencesTab({ profile, isAr }: { profile: UserProfile; isAr: boolean
     desired_locations: profile.desired_locations || [],
     open_to_remote: profile.open_to_remote ?? true,
     min_salary: profile.min_salary ?? null,
+    salary_currency: profile.salary_currency || "USD",
   });
   const [newRole, setNewRole] = useState("");
   const [newLocation, setNewLocation] = useState("");
@@ -403,6 +405,7 @@ function PreferencesTab({ profile, isAr }: { profile: UserProfile; isAr: boolean
       desired_locations: profile.desired_locations || [],
       open_to_remote: profile.open_to_remote ?? true,
       min_salary: profile.min_salary ?? null,
+      salary_currency: profile.salary_currency || "USD",
     });
   }, [profile]);
 
@@ -439,15 +442,45 @@ function PreferencesTab({ profile, isAr }: { profile: UserProfile; isAr: boolean
         addLabel={isAr ? "إضافة" : "Add"}
       />
 
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={prefs.open_to_remote}
-          onChange={(e) => setPrefs({ ...prefs, open_to_remote: e.target.checked })}
-          className="w-5 h-5 rounded border-input text-primary focus:ring-ring"
-        />
+      {/* Minimum salary — was a silent dead field (held in state, no input). */}
+      <div className="space-y-2">
+        <Label>{isAr ? "الحد الأدنى للراتب المتوقع" : "Minimum expected salary"}</Label>
+        <div className="flex gap-2 max-w-sm">
+          <Input
+            type="number"
+            min={0}
+            inputMode="numeric"
+            value={prefs.min_salary ?? ""}
+            onChange={(e) =>
+              setPrefs({ ...prefs, min_salary: e.target.value === "" ? null : Number(e.target.value) })
+            }
+            placeholder={isAr ? "مثال: 5000" : "e.g., 5000"}
+            className="flex-1"
+          />
+          <select
+            value={prefs.salary_currency}
+            onChange={(e) => setPrefs({ ...prefs, salary_currency: e.target.value })}
+            className="rounded-md border border-input bg-background px-3 text-body focus:outline-none focus:ring-2 focus:ring-ring"
+            aria-label={isAr ? "العملة" : "Currency"}
+          >
+            {["USD", "EUR", "GBP", "EGP", "SAR", "AED"].map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <p className="text-caption text-muted-foreground">
+          {isAr ? "يُستخدم لتصفية التوصيات ومطابقة الوظائف." : "Used to filter recommendations and match jobs."}
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between max-w-sm rounded-lg border border-border p-3">
         <span className="text-body text-foreground">{isAr ? "منفتح على العمل عن بعد" : "Open to remote work"}</span>
-      </label>
+        <Switch
+          checked={prefs.open_to_remote}
+          onCheckedChange={(v) => setPrefs({ ...prefs, open_to_remote: v })}
+          aria-label={isAr ? "منفتح على العمل عن بعد" : "Open to remote work"}
+        />
+      </div>
 
       <Button onClick={() => mutation.mutate()} disabled={mutation.isPending}>
         {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

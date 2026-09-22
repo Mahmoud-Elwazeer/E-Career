@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/resizable";
 import {
   Loader2, Save, Download, Plus, Trash2, FileUp, GripVertical,
-  User, Briefcase, GraduationCap, Wrench, FolderOpen, Award, Globe, Eye
+  User, Briefcase, GraduationCap, Wrench, FolderOpen, Award, Globe, Eye, FileText
 } from 'lucide-react';
 import ResumePreview from '@/components/resume/ResumePreview';
 
@@ -776,12 +776,27 @@ export default function ResumeBuilder() {
                   </div>
                 </ScrollArea>
               ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <div className="text-center">
-                    <p>Select a resume or create a new one</p>
-                    <Button className="mt-4" onClick={handleCreate}>
-                      <Plus className="w-4 h-4 mr-2" /> Create Resume
-                    </Button>
+                <div className="flex items-center justify-center h-full p-8">
+                  <div className="text-center max-w-md">
+                    <div className="icon-tile mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl">
+                      <FileText className="h-8 w-8 text-primary" />
+                    </div>
+                    <h3 className="text-heading-3 mb-1.5">
+                      {resumes.length === 0 ? 'Build your first resume' : 'Select a resume'}
+                    </h3>
+                    <p className="text-body text-muted-foreground mb-5">
+                      {resumes.length === 0
+                        ? 'Create a polished, ATS-friendly resume in minutes — or import your parsed CV to get a head start.'
+                        : 'Pick one from the list, or create a new resume to get started.'}
+                    </p>
+                    <div className="flex items-center justify-center gap-2">
+                      <Button onClick={handleCreate} disabled={createMutation.isPending} className="gap-1.5">
+                        <Plus className="w-4 h-4" /> Create resume
+                      </Button>
+                      <Button variant="outline" onClick={handleImportFromCV} className="gap-1.5">
+                        <FileUp className="w-4 h-4" /> Import from CV
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -798,8 +813,14 @@ export default function ResumeBuilder() {
               {localData ? (
                 <ResumePreview ref={previewRef} data={localData} template={selectedTemplate} />
               ) : (
-                <div className="flex items-center justify-center h-96 text-muted-foreground">
-                  Preview will appear here
+                <div className="flex flex-col items-center justify-center h-96 text-center px-8">
+                  <div className="w-24 h-32 rounded-lg border-2 border-dashed border-border mb-4 flex items-center justify-center">
+                    <FileText className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-body font-medium text-foreground">Live preview</p>
+                  <p className="text-caption text-muted-foreground mt-1">
+                    Your resume updates here as you type.
+                  </p>
                 </div>
               )}
             </div>
