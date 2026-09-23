@@ -55,6 +55,7 @@ const CareerGraph = lazy(() => import("./pages/CareerGraph"));
 const SkillsExplorer = lazy(() => import("./pages/SkillsExplorer"));
 const ForIndividuals = lazy(() => import("./pages/AudiencePage"));
 const ForBusinesses = lazy(() => import("./pages/AudiencePage").then((m) => ({ default: m.ForBusinessesPage })));
+const Contact = lazy(() => import("./pages/Contact"));
 // Dev/QA-only: Rasheed 3D asset validation overlay (?rasheedCheck=1).
 const RasheedGlbCheck = lazy(() =>
   import("@/components/rashid/RasheedGlbCheck").then((m) => ({ default: m.RasheedGlbCheck })),
@@ -95,6 +96,7 @@ function AnimatedRoutes() {
         <Route path="/for-individuals" element={<ForIndividuals />} />
         <Route path="/for-businesses" element={<ForBusinesses />} />
         <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />

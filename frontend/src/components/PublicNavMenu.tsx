@@ -205,6 +205,16 @@ export function PublicNavMenu() {
             </Link>
           </NavigationMenuLink>
         </NavigationMenuItem>
+        <NavigationMenuItem>
+          <NavigationMenuLink asChild>
+            <Link
+              to="/contact"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
+            >
+              {isAr ? "تواصل معنا" : "Contact"}
+            </Link>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
       </NavigationMenuList>
     </NavigationMenu>
   );

@@ -143,66 +143,70 @@
     --signal: 38 90% 60%;
     --signal-foreground: 0 0% 7%;
 
-    --background: 220 15% 8%;
-    --foreground: 0 0% 93%;
-    --card: 220 13% 12%;
-    --card-foreground: 0 0% 93%;
-    --popover: 220 13% 12%;
-    --popover-foreground: 0 0% 93%;
+    /* Dark, but GREEN — the brand teal hue (≈183) carried into deep, low-
+       lightness surfaces instead of cold blue-gray. Reads premium and
+       clearly on-brand, not a generic black dashboard. */
+    --background: 183 32% 6%;        /* deep teal-black canvas */
+    --foreground: 165 20% 92%;       /* soft warm-white with a green cast */
+    --card: 183 26% 9%;
+    --card-foreground: 165 20% 92%;
+    --popover: 183 26% 10%;
+    --popover-foreground: 165 20% 92%;
 
-    --surface-1: 220 13% 12%;
-    --surface-2: 220 12% 15%;
-    --surface-3: 220 10% 18%;
-    --surface-elevated: 220 13% 14%;
+    --surface-1: 183 26% 9%;
+    --surface-2: 183 24% 12%;
+    --surface-3: 183 22% 15%;
+    --surface-elevated: 183 26% 11%;
 
-    --secondary: 178 25% 18%;
-    --secondary-foreground: 180 24% 87%;
-    --accent: 178 20% 16%;
-    --accent-foreground: 180 24% 87%;
+    --secondary: 178 30% 20%;
+    --secondary-foreground: 175 30% 88%;
+    --accent: 178 28% 17%;
+    --accent-foreground: 175 30% 88%;
 
-    --muted: 220 10% 18%;
-    --muted-foreground: 0 0% 55%;
+    --muted: 183 18% 16%;
+    --muted-foreground: 175 12% 62%;
 
-    --destructive: 0 70% 45%;
+    --destructive: 0 65% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 55% 42%;
+    --success: 152 55% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 85% 55%;
     --warning-foreground: 0 0% 7%;
-    --info: 210 75% 58%;
+    --info: 190 70% 55%;
     --info-foreground: 0 0% 100%;
 
-    --border: 220 10% 20%;
-    --border-subtle: 220 10% 16%;
-    --input: 220 10% 20%;
-    --ring: 178 50% 55%;
+    --border: 180 18% 20%;           /* green-tinted hairlines */
+    --border-subtle: 183 20% 15%;
+    --input: 180 18% 20%;
+    --ring: 178 55% 55%;
 
-    --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
-    --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.15);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.25), 0 2px 4px -2px hsl(0 0% 0% / 0.15);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -4px hsl(0 0% 0% / 0.15);
-    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.35), 0 8px 10px -6px hsl(0 0% 0% / 0.15);
-    --shadow-glow: 0 0 25px hsl(178 50% 55% / 0.15);
+    /* Shadows carry a subtle green emission so elevation reads on-brand. */
+    --shadow-xs: 0 1px 2px 0 hsl(183 40% 2% / 0.4);
+    --shadow-sm: 0 1px 3px 0 hsl(183 40% 2% / 0.45), 0 1px 2px -1px hsl(183 40% 2% / 0.4);
+    --shadow-md: 0 4px 6px -1px hsl(183 40% 2% / 0.5), 0 2px 4px -2px hsl(183 40% 2% / 0.4);
+    --shadow-lg: 0 10px 15px -3px hsl(183 45% 2% / 0.55), 0 4px 6px -4px hsl(178 50% 30% / 0.12);
+    --shadow-xl: 0 20px 25px -5px hsl(183 45% 2% / 0.6), 0 8px 10px -6px hsl(178 50% 30% / 0.15);
+    --shadow-glow: 0 0 28px hsl(178 60% 50% / 0.22);
 
-    --sidebar-background: 220 15% 6%;
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 178 50% 55%;
+    --sidebar-background: 183 34% 5%;
+    --sidebar-foreground: 165 18% 86%;
+    --sidebar-primary: 178 55% 55%;
     --sidebar-primary-foreground: 0 0% 7%;
-    --sidebar-accent: 220 10% 14%;
-    --sidebar-accent-foreground: 0 0% 85%;
-    --sidebar-border: 220 10% 16%;
-    --sidebar-ring: 178 50% 55%;
+    --sidebar-accent: 183 24% 12%;
+    --sidebar-accent-foreground: 165 18% 86%;
+    --sidebar-border: 183 20% 15%;
+    --sidebar-ring: 178 55% 55%;
 
-    --location-remote-bg: 152 30% 16%;
-    --location-remote-text: 152 50% 65%;
-    --location-remote-border: 152 25% 25%;
-    --location-hybrid-bg: 210 30% 16%;
-    --location-hybrid-text: 210 50% 65%;
-    --location-hybrid-border: 210 25% 25%;
-    --location-onsite-bg: 38 30% 16%;
-    --location-onsite-text: 38 60% 65%;
-    --location-onsite-border: 38 25% 25%;
+    --location-remote-bg: 152 35% 15%;
+    --location-remote-text: 152 55% 68%;
+    --location-remote-border: 152 30% 26%;
+    --location-hybrid-bg: 190 35% 15%;
+    --location-hybrid-text: 190 55% 68%;
+    --location-hybrid-border: 190 30% 26%;
+    --location-onsite-bg: 38 32% 15%;
+    --location-onsite-text: 38 62% 68%;
+    --location-onsite-border: 38 28% 26%;
   }
 
   /* ─── NIGHT THEME (deep immersive) ─── */
@@ -215,66 +219,68 @@
     --signal: 38 88% 58%;
     --signal-foreground: 0 0% 2%;
 
-    --background: 230 20% 4%;
-    --foreground: 220 10% 88%;
-    --card: 230 18% 7%;
-    --card-foreground: 220 10% 88%;
-    --popover: 230 18% 7%;
-    --popover-foreground: 220 10% 88%;
+    /* Night = the deepest immersive brand-green environment. Same teal hue
+       family as dark, pushed darker with a touch more saturation glow. */
+    --background: 184 40% 4%;        /* near-black teal */
+    --foreground: 165 18% 90%;
+    --card: 184 32% 6%;
+    --card-foreground: 165 18% 90%;
+    --popover: 184 32% 7%;
+    --popover-foreground: 165 18% 90%;
 
-    --surface-1: 230 18% 7%;
-    --surface-2: 230 16% 10%;
-    --surface-3: 230 14% 13%;
-    --surface-elevated: 230 18% 9%;
+    --surface-1: 184 32% 6%;
+    --surface-2: 184 28% 9%;
+    --surface-3: 184 24% 12%;
+    --surface-elevated: 184 30% 8%;
 
-    --secondary: 178 20% 12%;
-    --secondary-foreground: 178 40% 75%;
-    --accent: 178 18% 10%;
-    --accent-foreground: 178 40% 75%;
+    --secondary: 178 32% 15%;
+    --secondary-foreground: 175 42% 78%;
+    --accent: 178 30% 12%;
+    --accent-foreground: 175 42% 78%;
 
-    --muted: 230 14% 13%;
-    --muted-foreground: 220 8% 48%;
+    --muted: 184 20% 13%;
+    --muted-foreground: 175 12% 55%;
 
-    --destructive: 0 65% 40%;
+    --destructive: 0 65% 44%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 50% 38%;
+    --success: 152 52% 42%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 80% 48%;
+    --warning: 38 82% 52%;
     --warning-foreground: 0 0% 7%;
-    --info: 210 70% 52%;
+    --info: 190 68% 52%;
     --info-foreground: 0 0% 100%;
 
-    --border: 230 12% 14%;
-    --border-subtle: 230 12% 10%;
-    --input: 230 12% 14%;
-    --ring: 178 60% 48%;
+    --border: 180 20% 16%;
+    --border-subtle: 184 22% 12%;
+    --input: 180 20% 16%;
+    --ring: 178 62% 50%;
 
-    --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.3);
-    --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.4), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.45), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -4px hsl(0 0% 0% / 0.3);
-    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.55), 0 8px 10px -6px hsl(0 0% 0% / 0.3);
-    --shadow-glow: 0 0 30px hsl(178 60% 48% / 0.12);
+    --shadow-xs: 0 1px 2px 0 hsl(184 50% 1% / 0.5);
+    --shadow-sm: 0 1px 3px 0 hsl(184 50% 1% / 0.55), 0 1px 2px -1px hsl(184 50% 1% / 0.5);
+    --shadow-md: 0 4px 6px -1px hsl(184 50% 1% / 0.6), 0 2px 4px -2px hsl(184 50% 1% / 0.5);
+    --shadow-lg: 0 10px 15px -3px hsl(184 50% 1% / 0.65), 0 4px 6px -4px hsl(178 55% 30% / 0.14);
+    --shadow-xl: 0 20px 25px -5px hsl(184 50% 1% / 0.7), 0 8px 10px -6px hsl(178 55% 30% / 0.18);
+    --shadow-glow: 0 0 32px hsl(178 65% 50% / 0.2);
 
-    --sidebar-background: 230 20% 3%;
-    --sidebar-foreground: 220 10% 80%;
-    --sidebar-primary: 178 60% 48%;
+    --sidebar-background: 184 42% 3%;
+    --sidebar-foreground: 165 16% 84%;
+    --sidebar-primary: 178 62% 50%;
     --sidebar-primary-foreground: 0 0% 2%;
-    --sidebar-accent: 230 14% 10%;
-    --sidebar-accent-foreground: 220 10% 80%;
-    --sidebar-border: 230 12% 10%;
-    --sidebar-ring: 178 60% 48%;
+    --sidebar-accent: 184 28% 9%;
+    --sidebar-accent-foreground: 165 16% 84%;
+    --sidebar-border: 184 22% 12%;
+    --sidebar-ring: 178 62% 50%;
 
-    --location-remote-bg: 152 25% 10%;
-    --location-remote-text: 152 45% 58%;
-    --location-remote-border: 152 20% 18%;
-    --location-hybrid-bg: 210 25% 10%;
-    --location-hybrid-text: 210 45% 58%;
-    --location-hybrid-border: 210 20% 18%;
-    --location-onsite-bg: 38 25% 10%;
-    --location-onsite-text: 38 55% 58%;
-    --location-onsite-border: 38 20% 18%;
+    --location-remote-bg: 152 32% 11%;
+    --location-remote-text: 152 50% 62%;
+    --location-remote-border: 152 26% 20%;
+    --location-hybrid-bg: 190 32% 11%;
+    --location-hybrid-text: 190 50% 62%;
+    --location-hybrid-border: 190 26% 20%;
+    --location-onsite-bg: 38 28% 11%;
+    --location-onsite-text: 38 58% 62%;
+    --location-onsite-border: 38 24% 20%;
   }
 }
 

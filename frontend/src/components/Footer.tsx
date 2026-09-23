@@ -34,6 +34,7 @@ export function Footer() {
   const company = [
     { to: "/pricing", en: "Pricing", ar: "الأسعار", gated: false },
     { to: "/about", en: "About USAM", ar: "عن USAM", gated: false },
+    { to: "/contact", en: "Contact", ar: "تواصل معنا", gated: false },
     { to: "/api-docs", en: "API Docs", ar: "وثائق الواجهة", gated: false },
   ];
 
