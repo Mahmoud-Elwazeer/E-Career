@@ -392,8 +392,15 @@ class JobListView(generics.ListCreateAPIView):
     ordering = ["-posted_at"]
 
     def get_queryset(self):
+        # Public listing must respect the Job Quality Engine, not just status.
+        # Previously this filtered on status="active" alone, which exposed
+        # rejected/duplicate/broken jobs and bypassed the direct-apply moat.
+        # Now we require a visible quality_state and exclude expired jobs, so
+        # aggregator/unverified-rejected postings never surface publicly.
         qs = (
             Job.objects.filter(status="active")
+            .filter(quality_state__in=Job.QUALITY_VISIBLE_STATES)
+            .exclude(is_expired=True)
             .select_related("company", "source")
             .prefetch_related("tags", "saves")
         )

@@ -1,85 +1,123 @@
 """
-Setup scraping sources for the E-Career platform.
-Adds job boards and career pages to scrape from.
+Setup REAL, scrapable, moat-compliant job sources for USAM Career.
+
+The previous version seeded aggregator/careers-landing URLs (LinkedIn, Bayt,
+Indeed, Glassdoor, McKinsey…) with NO `ats_platform`. That was doubly broken:
+  1. The orchestrator dispatches by `source.ats_platform`; with it blank every
+     source hit the "Unknown platform -> return []" branch, so NOTHING scraped.
+  2. Those aggregator domains are on the BlockedDomain list and violate the
+     platform's direct-apply moat — they can never be a valid Apply source.
+
+This version seeds employer-owned ATS boards (Greenhouse / Lever / Ashby) whose
+PUBLIC JSON APIs the connectors already know how to read, with the correct
+`ats_platform` and `type='scraper'`. The orchestrator derives the connector
+`company_slug` from `source.slug` by stripping the trailing `-{platform}`.
+
+Add/adjust the list as coverage grows. This is a seed of well-known public
+boards to prove the pipeline end-to-end and give real, verifiable jobs; the
+long-term source registry is admin-managed.
 """
 from django.core.management.base import BaseCommand
 from apps.jobs.models import Source
 
 
+# (company_slug, display name, ats_platform)
+# slug MUST end with -{ats_platform} so the orchestrator can derive the board id.
 SOURCES = [
-    # Egyptian Job Boards
-    {'name': 'Wuzzuf', 'url': 'https://wuzzuf.net', 'source_type': 'job_board', 'slug': 'wuzzuf'},
-    {'name': 'LinkedIn Egypt', 'url': 'https://linkedin.com/jobs', 'source_type': 'job_board', 'slug': 'linkedin-egypt'},
-    {'name': 'Bayt', 'url': 'https://bayt.com', 'source_type': 'job_board', 'slug': 'bayt'},
-    {'name': 'Glassdoor', 'url': 'https://glassdoor.com', 'source_type': 'job_board', 'slug': 'glassdoor'},
-    {'name': 'Indeed Egypt', 'url': 'https://eg.indeed.com', 'source_type': 'job_board', 'slug': 'indeed-eg'},
-    {'name': 'Jobzella', 'url': 'https://jobzella.com', 'source_type': 'job_board', 'slug': 'jobzella'},
-    {'name': 'Masrawy Jobs', 'url': 'https://jobs.masrawy.com', 'source_type': 'job_board', 'slug': 'masrawy-jobs'},
-    {'name': 'Ahly Jobs', 'url': 'https://ahlyjobs.com', 'source_type': 'job_board', 'slug': 'ahly-jobs'},
-    
-    # MENA Job Boards
-    {'name': 'Gulf Jobs', 'url': 'https://gulfjobs.com', 'source_type': 'job_board', 'slug': 'gulf-jobs'},
-    {'name': 'Naukrigulf', 'url': 'https://naukrigulf.com', 'source_type': 'job_board', 'slug': 'naukrigulf'},
-    {'name': 'Emirates Jobs', 'url': 'https://emiratesjobs.com', 'source_type': 'job_board', 'slug': 'emirates-jobs'},
-    {'name': 'Saudi Jobs', 'url': 'https://saudijobs.com', 'source_type': 'job_board', 'slug': 'saudi-jobs'},
-    
-    # International Job Boards
-    {'name': 'Indeed', 'url': 'https://indeed.com', 'source_type': 'job_board', 'slug': 'indeed'},
-    {'name': 'Glassdoor', 'url': 'https://glassdoor.com', 'source_type': 'job_board', 'slug': 'glassdoor-intl'},
-    {'name': 'LinkedIn', 'url': 'https://linkedin.com/jobs', 'source_type': 'job_board', 'slug': 'linkedin'},
-    {'name': 'Indeed Global', 'url': 'https://indeed.com', 'source_type': 'job_board', 'slug': 'indeed-global'},
-    
-    # Tech-Specific
-    {'name': 'AngelList', 'url': 'https://angellist.com', 'source_type': 'job_board', 'slug': 'angellist'},
-    {'name': 'HackerRank Jobs', 'url': 'https://hackerrank.com/jobs', 'source_type': 'job_board', 'slug': 'hackerrank-jobs'},
-    {'name': 'Stack Overflow Jobs', 'url': 'https://stackoverflow.com/jobs', 'source_type': 'job_board', 'slug': 'stackoverflow-jobs'},
-    {'name': 'GitHub Jobs', 'url': 'https://github.com/jobs', 'source_type': 'job_board', 'slug': 'github-jobs'},
-    
-    # Consulting & Professional Services
-    {'name': 'McKinsey Careers', 'url': 'https://mckinsey.com/careers', 'source_type': 'company_careers', 'slug': 'mckinsey'},
-    {'name': 'Boston Consulting Group', 'url': 'https://bcg.com/careers', 'source_type': 'company_careers', 'slug': 'bcg'},
-    {'name': 'Accenture', 'url': 'https://accenture.com/careers', 'source_type': 'company_careers', 'slug': 'accenture'},
-    {'name': 'Deloitte', 'url': 'https://deloitte.com/careers', 'source_type': 'company_careers', 'slug': 'deloitte'},
-    {'name': 'EY', 'url': 'https://ey.com/careers', 'source_type': 'company_careers', 'slug': 'ey'},
-    {'name': 'KPMG', 'url': 'https://kpmg.com/careers', 'source_type': 'company_careers', 'slug': 'kpmg'},
-    {'name': 'PwC', 'url': 'https://pwc.com/careers', 'source_type': 'company_careers', 'slug': 'pwc'},
+    # ── Greenhouse public boards (api.greenhouse.io/v1/boards/{slug}/jobs) ──
+    ("stripe-greenhouse", "Stripe", "greenhouse"),
+    ("airbnb-greenhouse", "Airbnb", "greenhouse"),
+    ("gitlab-greenhouse", "GitLab", "greenhouse"),
+    ("robinhood-greenhouse", "Robinhood", "greenhouse"),
+    ("databricks-greenhouse", "Databricks", "greenhouse"),
+    ("figma-greenhouse", "Figma", "greenhouse"),
+    ("discord-greenhouse", "Discord", "greenhouse"),
+    ("brex-greenhouse", "Brex", "greenhouse"),
+
+    # ── Lever public boards (api.lever.co/v0/postings/{slug}) ──
+    ("netflix-lever", "Netflix", "lever"),
+    ("plaid-lever", "Plaid", "lever"),
+    ("ramp-lever", "Ramp", "lever"),
+    ("notion-lever", "Notion", "lever"),
+
+    # ── Ashby public boards (api.ashbyhq.com/posting-api/job-board/{slug}) ──
+    ("openai-ashby", "OpenAI", "ashby"),
+    ("linear-ashby", "Linear", "ashby"),
+    ("ramp-ashby", "Ramp (Ashby)", "ashby"),
 ]
 
 
 class Command(BaseCommand):
-    help = 'Setup scraping sources for the E-Career platform'
-    
+    help = "Setup real, moat-compliant ATS scraping sources (Greenhouse/Lever/Ashby)."
+
     def add_arguments(self, parser):
-        parser.add_argument('--clear', action='store_true', help='Clear existing sources first')
-        parser.add_argument('--dry-run', action='store_true', help='Show what would be created')
-    
+        parser.add_argument("--clear", action="store_true", help="Clear existing sources first")
+        parser.add_argument(
+            "--purge-aggregators",
+            action="store_true",
+            help="Deactivate legacy aggregator sources (no ats_platform) instead of scraping them",
+        )
+        parser.add_argument("--dry-run", action="store_true", help="Show what would be created")
+
     def handle(self, *args, **options):
-        if options['clear']:
+        if options["clear"]:
             Source.objects.all().delete()
-            self.stdout.write('Cleared existing sources')
-        
-        if options['dry_run']:
-            self.stdout.write("=== DRY RUN MODE ===")
-            self.stdout.write(f"Would create {len(SOURCES)} sources:")
-            for s in SOURCES:
-                self.stdout.write(f"  - {s['name']} ({s['source_type']})")
+            self.stdout.write("Cleared existing sources")
+
+        if options["purge_aggregators"]:
+            # Anything without an ats_platform can't be scraped and is likely a
+            # blocklisted aggregator — deactivate so it never runs or misleads.
+            n = Source.objects.filter(ats_platform="").update(is_active=False)
+            self.stdout.write(self.style.WARNING(f"Deactivated {n} legacy source(s) without an ATS platform"))
+
+        if options["dry_run"]:
+            self.stdout.write("=== DRY RUN ===")
+            for slug, name, platform in SOURCES:
+                self.stdout.write(f"  - {name}: {slug} [{platform}]")
+            self.stdout.write(f"Would ensure {len(SOURCES)} scraper sources.")
             return
-        
+
         created = 0
-        for source_data in SOURCES:
+        for slug, name, platform in SOURCES:
             source, is_new = Source.objects.get_or_create(
-                slug=source_data['slug'],
+                slug=slug,
                 defaults={
-                    'name': source_data['name'],
-                    'url': source_data['url'],
-                    'type': source_data['source_type'],
-                    'is_active': True,
-                }
+                    "name": name,
+                    "url": _board_url(slug, platform),
+                    "type": "scraper",
+                    "ats_platform": platform,
+                    "is_active": True,
+                    "schedule_cron": "0 */6 * * *",
+                },
             )
             if is_new:
                 created += 1
-                self.stdout.write(f"Created: {source.name}")
+                self.stdout.write(f"Created: {name} [{platform}]")
             else:
-                self.stdout.write(f"Exists: {source.name}")
-        
-        self.stdout.write(self.style.SUCCESS(f"\nSetup complete! Created {created} new sources"))
+                # Backfill platform/type on pre-existing rows so they actually scrape.
+                changed = False
+                if not source.ats_platform:
+                    source.ats_platform = platform
+                    changed = True
+                if source.type != "scraper":
+                    source.type = "scraper"
+                    changed = True
+                if changed:
+                    source.save(update_fields=["ats_platform", "type"])
+                    self.stdout.write(f"Updated: {name} [{platform}]")
+                else:
+                    self.stdout.write(f"Exists:  {name} [{platform}]")
+
+        self.stdout.write(self.style.SUCCESS(f"\nSetup complete! {created} new scraper source(s)."))
+        self.stdout.write("Next: run `python manage.py run_scrapers` to ingest + verify jobs.")
+
+
+def _board_url(slug: str, platform: str) -> str:
+    company = slug.rsplit(f"-{platform}", 1)[0]
+    if platform == "greenhouse":
+        return f"https://boards.greenhouse.io/{company}"
+    if platform == "lever":
+        return f"https://jobs.lever.co/{company}"
+    if platform == "ashby":
+        return f"https://jobs.ashbyhq.com/{company}"
+    return f"https://{company}.com/careers"
