@@ -92,12 +92,37 @@ export default function RashidChat() {
    useEffect(() => {
      if (!isAuthenticated) return;
 
-     // Try WebSocket first
+     // Derive the WS base safely. On production (HTTPS) a hardcoded
+     // ws://localhost:8000 is a mixed-content SecurityError that used to crash
+     // this whole page. Prefer an explicit VITE_WS_URL, else derive wss://<host>
+     // from the current origin, else fall back to localhost in dev only.
+     const deriveWsBase = () => {
+       const explicit = import.meta.env.VITE_WS_URL as string | undefined;
+       if (explicit) return explicit.replace(/\/$/, "");
+       if (typeof window !== "undefined" && window.location.protocol === "https:") {
+         return `wss://${window.location.host}`;
+       }
+       if (typeof window !== "undefined" && window.location.hostname !== "localhost") {
+         return `ws://${window.location.host}`;
+       }
+       return "ws://localhost:8000";
+     };
+     const wsBase = deriveWsBase();
      const wsUrl = conversationId
-       ? `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/rashid/${conversationId}/`
-       : `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/rashid/`;
+       ? `${wsBase}/ws/rashid/${conversationId}/`
+       : `${wsBase}/ws/rashid/`;
 
-     const ws = new WebSocket(wsUrl);
+     // Creating the socket can throw synchronously (mixed content, bad URL).
+     // Guard it so the page degrades to REST instead of hitting the error boundary.
+     let ws: WebSocket;
+     try {
+       ws = new WebSocket(wsUrl);
+     } catch (err) {
+       console.warn("WebSocket unavailable, using REST fallback:", err);
+       setConnectionStatus("rest");
+       setUseWebSocket(false);
+       return;
+     }
      wsRef.current = ws;
 
      let wsConnected = false;
@@ -119,7 +144,12 @@ export default function RashidChat() {
      };
 
      ws.onmessage = (event) => {
-       const data = JSON.parse(event.data);
+       let data: any;
+       try {
+         data = JSON.parse(event.data);
+       } catch {
+         return; // ignore malformed frames instead of crashing
+       }
 
        if (data.type === 'message') {
          setMessages((prev) => [
@@ -229,7 +259,16 @@ export default function RashidChat() {
        );
        if (response.ok) {
          const data = await response.json();
-         setConversations(data.results || data);
+         // Tolerate paginated ({results}), enveloped ({data}), or bare-array shapes;
+         // never let a non-array reach the render (conversations.map would throw).
+         const list = Array.isArray(data)
+           ? data
+           : Array.isArray(data?.results)
+           ? data.results
+           : Array.isArray(data?.data)
+           ? data.data
+           : [];
+         setConversations(list);
        }
      } catch (error) {
        console.error('Error fetching conversations:', error);
