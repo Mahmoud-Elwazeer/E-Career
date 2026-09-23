@@ -70,7 +70,7 @@ def generate_cover_letter(request, job_id):
     )
 
     return Response({
-        'id': str(cover_letter.id),
+        'id': str(cover_letter.uuid),
         'content': cover_letter.content,
         'tone': cover_letter.tone,
         'confidence': cover_letter.confidence,
@@ -91,15 +91,17 @@ def cover_letter_detail(request, cover_letter_id):
     PATCH /api/v1/career/cover-letter/<id>/  (update content, mark as edited)
     DELETE /api/v1/career/cover-letter/<id>/
     """
+    # Routes use `<uuid:cover_letter_id>`, so look up by the public uuid — not
+    # the integer PK (which the uuid pattern can never match → 404).
     cover_letter = get_object_or_404(
         CoverLetter,
-        id=cover_letter_id,
+        uuid=cover_letter_id,
         user=request.user
     )
 
     if request.method == 'GET':
         return Response({
-            'id': str(cover_letter.id),
+            'id': str(cover_letter.uuid),
             'job_id': str(cover_letter.job.uuid),
             'job_title': cover_letter.job.title,
             'company': cover_letter.job.company.name,
@@ -122,7 +124,7 @@ def cover_letter_detail(request, cover_letter_id):
             cover_letter.save()
 
         return Response({
-            'id': str(cover_letter.id),
+            'id': str(cover_letter.uuid),
             'content': cover_letter.content,
             'word_count': cover_letter.word_count,
             'is_edited': cover_letter.is_edited,
@@ -148,8 +150,8 @@ def list_cover_letters(request):
 
     data = [
         {
-            'id': str(cl.id),
-            'job_id': str(cl.job.id),
+            'id': str(cl.uuid),
+            'job_id': str(cl.job.uuid),
             'job_title': cl.job.title,
             'company': cl.job.company.name,
             'tone': cl.tone,

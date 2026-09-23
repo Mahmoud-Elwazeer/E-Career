@@ -43,6 +43,12 @@ class ResumeSerializer(serializers.ModelSerializer):
     
     template = ResumeTemplateSerializer(read_only=True)
     template_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
+    # The public-facing identifier is the UUID: the update/delete/export/detail
+    # routes are all `<uuid:resume_id>` and look up `Resume.objects.get(uuid=…)`.
+    # Exposing the integer PK as `id` made the frontend call those routes with an
+    # integer, which never matched the uuid pattern → 404 on every Save/Delete/
+    # Export. Return the uuid as `id` so the client's identifier matches routing.
+    id = serializers.UUIDField(source='uuid', read_only=True)
     
     class Meta:
         model = Resume

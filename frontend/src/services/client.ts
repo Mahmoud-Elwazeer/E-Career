@@ -134,10 +134,24 @@ export async function apiRequest<T = unknown>(
 ): Promise<T> {
   const res = await fetchWithAuth(path, options);
 
+  // No-content responses (e.g. 204 from DELETE) have no body to parse. Some
+  // endpoints send 204 with a JSON Content-Type but an empty body, which makes
+  // res.json() throw — guard for that so deletes don't spuriously "fail".
+  if (res.status === 204 || res.headers.get("Content-Length") === "0") {
+    return undefined as T;
+  }
+
   // Parse response
   const contentType = res.headers.get("Content-Type") ?? "";
   const isJson = contentType.includes("application/json");
-  const data = isJson ? await res.json() : await res.text();
+  let data: unknown;
+  if (isJson) {
+    // Body may still be empty on some 200/201 responses; tolerate that.
+    const raw = await res.text();
+    data = raw ? JSON.parse(raw) : null;
+  } else {
+    data = await res.text();
+  }
 
   if (!res.ok) {
     const message =
