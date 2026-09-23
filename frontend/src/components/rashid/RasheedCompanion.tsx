@@ -64,7 +64,7 @@ function toolPrompt(tool: RashidTool, context: Record<string, unknown>, isAr: bo
 }
 
 /* Proactive nudges shown periodically, keyed by route intent. */
-function useProactiveMessages(pathname: string, isAr: boolean, isAuthed: boolean) {
+function useProactiveMessages(pathname: string, isAr: boolean, _isAuthed: boolean) {
   return useCallback((): string[] => {
     if (pathname === "/" || pathname === "") {
       return isAr
@@ -80,8 +80,24 @@ function useProactiveMessages(pathname: string, isAr: boolean, isAuthed: boolean
     if (pathname.startsWith("/app/resume")) {
       return isAr ? ["تريد مراجعة سيرتك الذاتية؟"] : ["Want me to review your CV?"];
     }
+    if (pathname.startsWith("/for-individuals")) {
+      return isAr ? ["أخبرني عن مجالك وسأقترح لك الخطوة التالية."] : ["Tell me your field and I'll suggest your next step."];
+    }
+    if (pathname.startsWith("/for-businesses")) {
+      return isAr ? ["توظّف؟ أقدر أشرح كيف نرتّب المرشحين لك."] : ["Hiring? I can explain how we rank candidates for you."];
+    }
+    if (pathname.startsWith("/app/employer")) {
+      return isAr ? ["أقدر أساعدك تكتب وصف وظيفة أو تفرز المتقدمين."] : ["I can help you write a job post or screen applicants."];
+    }
+    if (pathname.startsWith("/app/dashboard")) {
+      return isAr ? ["أهلاً بعودتك 👋 تريد أن نكمل من حيث توقفت؟"] : ["Welcome back 👋 Want to pick up where you left off?"];
+    }
+    if (pathname.startsWith("/contact") || pathname.startsWith("/about")) {
+      return isAr ? ["عندك سؤال عن المنصة؟ اسألني هنا مباشرة."] : ["Question about the platform? Ask me right here."];
+    }
     return isAr ? ["أنا هنا إذا احتجت مساعدة 🙂"] : ["I'm here if you need a hand 🙂"];
-  }, [pathname, isAr, isAuthed]);
+    // isAuthed intentionally omitted: messages are keyed by route + language.
+  }, [pathname, isAr]);
 }
 
 /* Curated public answers for anonymous visitors (no auth-gated LLM). */
