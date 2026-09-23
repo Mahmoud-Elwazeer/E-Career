@@ -133,9 +133,16 @@ export function PublicNavMenu() {
               </div>
               {/* Feature grid */}
               <div className="p-1">
-                <p className="px-3 pt-2 pb-1 eyebrow-mono">
-                  {isAr ? "أدوات مهنية بالذكاء الاصطناعي" : "AI-POWERED CAREER TOOLS"}
-                </p>
+                <div className="flex items-center justify-between px-3 pt-2 pb-1">
+                  <p className="eyebrow-mono">
+                    {isAr ? "أدوات مهنية بالذكاء الاصطناعي" : "AI-POWERED CAREER TOOLS"}
+                  </p>
+                  <NavigationMenuLink asChild>
+                    <Link to="/for-individuals" className="text-caption font-medium text-primary link-underline">
+                      {isAr ? "استكشف الكل" : "Explore all"}
+                    </Link>
+                  </NavigationMenuLink>
+                </div>
                 <FeatureGrid items={individualFeatures} cols={2} />
               </div>
             </div>
@@ -149,9 +156,16 @@ export function PublicNavMenu() {
           </NavigationMenuTrigger>
           <NavigationMenuContent>
             <div className="p-2">
-              <p className="px-3 pt-2 pb-1 text-overline tracking-widest text-muted-foreground">
-                {isAr ? "وظّف أسرع وأذكى" : "Hire faster and smarter"}
-              </p>
+              <div className="flex items-center justify-between px-3 pt-2 pb-1">
+                <p className="text-overline tracking-widest text-muted-foreground">
+                  {isAr ? "وظّف أسرع وأذكى" : "Hire faster and smarter"}
+                </p>
+                <NavigationMenuLink asChild>
+                  <Link to="/for-businesses" className="text-caption font-medium text-primary link-underline">
+                    {isAr ? "استكشف الكل" : "Explore all"}
+                  </Link>
+                </NavigationMenuLink>
+              </div>
               <FeatureGrid items={employerFeatures} cols={1} />
               <div className="mx-3 my-2 rounded-xl bg-primary/5 border border-primary/10 p-3">
                 <div className="flex items-center gap-2 text-body font-medium text-primary">

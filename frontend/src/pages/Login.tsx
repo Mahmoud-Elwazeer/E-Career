@@ -1,6 +1,6 @@
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { Bookmark, Bell, FileText, ExternalLink, Shield, Lock, DollarSign, Eye, EyeOff } from "lucide-react";
+import { Bookmark, Bell, FileText, ExternalLink, Shield, Lock, DollarSign, Eye, EyeOff, User, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { useEffect, useState } from "react";
 import { MOTION } from "@/lib/motion-tokens";
 import { useToast } from "@/hooks/use-toast";
+import { postAuthDestination } from "@/lib/role-routing";
 
 const BENEFITS = [
   { icon: FileText, en: "Full job details & salary ranges", ar: "تفاصيل الوظائف الكاملة ونطاق الراتب" },
@@ -21,18 +22,23 @@ const BENEFITS = [
 ];
 
 type AuthMode = "login" | "register";
+/** What kind of account the visitor intends to create. Individuals become
+ *  role "user"; companies create a user account then continue into employer
+ *  onboarding (which elevates the role server-side). */
+type AccountType = "individual" | "company";
 
 export default function Login() {
-  const { signIn, signUp, signInWithGoogle, isAuthenticated } = useAuth();
+  const { signIn, signUp, signInWithGoogle, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { lang } = useTheme();
   const isAr = lang === "ar";
   const reduced = useReducedMotion();
   const { toast } = useToast();
-  const from = (location.state as any)?.from || "/app/dashboard";
+  const from = (location.state as any)?.from as string | undefined;
 
   const [mode, setMode] = useState<AuthMode>("login");
+  const [accountType, setAccountType] = useState<AccountType>("individual");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -40,20 +46,29 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Already-authenticated visitors (e.g. hitting /login directly) go to the
+  // destination that matches their role, not a one-size-fits-all dashboard.
   useEffect(() => {
-    if (isAuthenticated) navigate(from, { replace: true });
-  }, [isAuthenticated, navigate, from]);
+    if (isAuthenticated) navigate(postAuthDestination(user?.role, from), { replace: true });
+  }, [isAuthenticated, navigate, from, user?.role]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      if (mode === "login") {
-        await signIn(email, password);
-      } else {
-        await signUp(email, password, firstName, lastName);
+      const authedUser =
+        mode === "login"
+          ? await signIn(email, password)
+          : await signUp(email, password, firstName, lastName);
+      // A brand-new COMPANY signup continues into employer onboarding, which
+      // attaches the company profile and elevates the role server-side.
+      if (mode === "register" && accountType === "company" && authedUser?.role !== "employer") {
+        navigate("/app/employer/register", { replace: true });
+        return;
       }
-      navigate(from, { replace: true });
+      // Otherwise route by the freshly-returned role so employers/admins land
+      // on their own home instead of the individual dashboard.
+      navigate(postAuthDestination(authedUser?.role, from), { replace: true });
     } catch (err: any) {
       toast({
         title: mode === "login" ? "Login failed" : "Registration failed",
@@ -149,6 +164,42 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "register" && (
+              <div>
+                <Label className="mb-1.5 block">{isAr ? "نوع الحساب" : "Account type"}</Label>
+                <div role="radiogroup" className="grid grid-cols-2 gap-3">
+                  {([
+                    { key: "individual" as const, icon: User, en: "Individual", ar: "فرد", subEn: "Find jobs & grow", subAr: "ابحث وطوّر مسارك" },
+                    { key: "company" as const, icon: Building2, en: "Company", ar: "شركة", subEn: "Hire & source talent", subAr: "وظّف واكتشف المواهب" },
+                  ]).map((opt) => {
+                    const active = accountType === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        role="radio"
+                        aria-checked={active}
+                        onClick={() => setAccountType(opt.key)}
+                        className={`flex items-start gap-2 rounded-xl border p-3 text-start transition-colors ${
+                          active
+                            ? "border-primary bg-primary/5 ring-1 ring-primary"
+                            : "border-border hover:border-primary/40 hover:bg-muted/40"
+                        }`}
+                      >
+                        <span className={`rounded-lg p-1.5 shrink-0 ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                          <opt.icon className="h-4 w-4" />
+                        </span>
+                        <span className="leading-tight">
+                          <span className="block text-sm font-semibold text-foreground">{isAr ? opt.ar : opt.en}</span>
+                          <span className="block text-[11px] text-muted-foreground">{isAr ? opt.subAr : opt.subEn}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {mode === "register" && (
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="firstName">{isAr ? "الاسم الأول" : "First name"}</Label>
@@ -198,6 +249,8 @@ export default function Login() {
             <Button type="submit" size="xl" className="w-full rounded-xl" loading={loading}>
               {mode === "login"
                 ? (isAr ? "تسجيل الدخول" : "Sign in")
+                : accountType === "company"
+                ? (isAr ? "متابعة كشركة" : "Continue as company")
                 : (isAr ? "إنشاء الحساب" : "Create account")}
             </Button>
           </form>

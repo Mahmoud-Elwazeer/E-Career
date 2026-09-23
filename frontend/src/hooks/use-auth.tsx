@@ -16,8 +16,8 @@ interface AuthContextValue {
   user: AppUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<AppUser>;
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<AppUser>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
@@ -70,12 +70,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const data = await apiLogin(email, password);
-    setUser(normalizeUser(data.user)); // ✅ FIX
+    const u = normalizeUser(data.user);
+    setUser(u);
+    return u; // return so callers can route by role immediately
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, firstName: string, lastName: string) => {
     const data = await apiRegister(email, password, password, firstName, lastName);
-    setUser(normalizeUser(data.user)); // ✅ FIX
+    const u = normalizeUser(data.user);
+    setUser(u);
+    return u;
   }, []);
 
   const signInWithGoogle = useCallback(async () => {

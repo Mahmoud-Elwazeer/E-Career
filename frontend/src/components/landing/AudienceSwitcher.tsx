@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { UserRound, Building2, Landmark } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/hooks/use-theme";
 import { cn } from "@/lib/utils";
 
@@ -38,16 +39,40 @@ const SEGMENTS: {
   ar: string;
   icon: typeof UserRound;
   available: boolean;
+  /** dedicated forward page for this audience, if any */
+  to?: string;
 }[] = [
-  { key: "individuals", en: "For Individuals", ar: "للأفراد", icon: UserRound, available: true },
-  { key: "businesses", en: "For Businesses", ar: "للشركات", icon: Building2, available: true },
+  { key: "individuals", en: "For Individuals", ar: "للأفراد", icon: UserRound, available: true, to: "/for-individuals" },
+  { key: "businesses", en: "For Businesses", ar: "للشركات", icon: Building2, available: true, to: "/for-businesses" },
   { key: "governments", en: "For Governments", ar: "للحكومات", icon: Landmark, available: false },
 ];
 
-export function AudienceSwitcher({ className = "" }: { className?: string }) {
+/**
+ * AudienceSwitcher
+ * - default (tab mode): flips the landing page's audience framing in place.
+ * - `linkMode`: clicking a segment navigates to that audience's dedicated
+ *   page (used in the navbar / anywhere we want forward navigation).
+ */
+export function AudienceSwitcher({
+  className = "",
+  linkMode = false,
+}: {
+  className?: string;
+  linkMode?: boolean;
+}) {
   const { lang } = useTheme();
   const isAr = lang === "ar";
   const { audience, setAudience } = useAudience();
+  const navigate = useNavigate();
+
+  const handleSelect = (s: (typeof SEGMENTS)[number]) => {
+    if (!s.available) return;
+    if (linkMode && s.to) {
+      navigate(s.to);
+      return;
+    }
+    setAudience(s.key);
+  };
 
   return (
     <div className={cn("flex justify-center", className)}>
@@ -57,7 +82,7 @@ export function AudienceSwitcher({ className = "" }: { className?: string }) {
         className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-2/60 p-1 backdrop-blur-sm"
       >
         {SEGMENTS.map((s) => {
-          const active = audience === s.key;
+          const active = !linkMode && audience === s.key;
           const Icon = s.icon;
           return (
             <button
@@ -65,7 +90,7 @@ export function AudienceSwitcher({ className = "" }: { className?: string }) {
               role="tab"
               aria-selected={active}
               disabled={!s.available}
-              onClick={() => s.available && setAudience(s.key)}
+              onClick={() => handleSelect(s)}
               className={cn(
                 "relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-caption font-medium transition-colors",
                 active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",

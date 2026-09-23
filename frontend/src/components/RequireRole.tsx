@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import type { AppUser } from "@/services/auth";
+import { roleHome } from "@/lib/role-routing";
 
 type Role = AppUser["role"];
 
@@ -20,7 +21,8 @@ export function RequireRole({ children, allowed }: RequireRoleProps) {
   }
 
   if (!user || !allowed.includes(user.role)) {
-    return <Navigate to="/app/jobs" replace />;
+    // Send a wrong-role user to their OWN home rather than a generic list.
+    return <Navigate to={roleHome(user?.role)} replace />;
   }
 
   return <>{children}</>;
