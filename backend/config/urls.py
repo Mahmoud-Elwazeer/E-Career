@@ -54,6 +54,8 @@ urlpatterns = [
          path("core/", include("apps.core.urls")),
          # Intelligence Layer (Phase 6 - Unified AI)
          path("intelligence/", include("apps.intelligence.urls")),
+         # Financial core — payments, checkout, webhooks
+         path("payments/", include("apps.payments.urls")),
      ])),
 
     # Email tracking (Phase 2D)
