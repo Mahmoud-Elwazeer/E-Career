@@ -81,6 +81,8 @@ INSTALLED_APPS = [
     "apps.notifications",
     # Phase 4 - Resume Builder
     "apps.resume",
+    # Financial core — payments, ledger, billing
+    "apps.payments",
     # Celery Beat
     "django_celery_beat",
     # WebSocket support (Phase 2B)
