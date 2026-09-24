@@ -58,6 +58,7 @@ const appSecondaryNav: NavItem[] = [
   { to: "/app/salary", label: "Salary Insights", labelAr: "رؤى الرواتب", icon: DollarSign },
   { to: "/app/assessments", label: "Assessments", labelAr: "التقييمات", icon: Award },
   { to: "/app/notifications", label: "Notifications", labelAr: "الإشعارات", icon: Bell },
+  { to: "/app/billing", label: "Billing", labelAr: "الفوترة", icon: DollarSign },
   { to: "/app/settings", label: "Settings", labelAr: "الإعدادات", icon: SettingsIcon },
 ];
 
@@ -69,6 +70,7 @@ const employerPrimaryNav: NavItem[] = [
 
 const employerSecondaryNav: NavItem[] = [
   { to: "/app/jobs", label: "Browse Jobs", labelAr: "تصفح الوظائف", icon: Briefcase },
+  { to: "/app/billing", label: "Billing & Plans", labelAr: "الفوترة والباقات", icon: DollarSign },
   { to: "/app/settings", label: "Settings", labelAr: "الإعدادات", icon: SettingsIcon },
 ];
 

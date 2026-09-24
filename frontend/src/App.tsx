@@ -56,6 +56,8 @@ const SkillsExplorer = lazy(() => import("./pages/SkillsExplorer"));
 const ForIndividuals = lazy(() => import("./pages/AudiencePage"));
 const ForBusinesses = lazy(() => import("./pages/AudiencePage").then((m) => ({ default: m.ForBusinessesPage })));
 const Contact = lazy(() => import("./pages/Contact"));
+const Billing = lazy(() => import("./pages/Billing"));
+const AdminFinance = lazy(() => import("./pages/AdminFinance"));
 // Dev/QA-only: Rasheed 3D asset validation overlay (?rasheedCheck=1).
 const RasheedGlbCheck = lazy(() =>
   import("@/components/rashid/RasheedGlbCheck").then((m) => ({ default: m.RasheedGlbCheck })),
@@ -122,9 +124,11 @@ function AnimatedRoutes() {
         <Route path="/app/notification-preferences" element={<RequireAuth><NotificationPreferences /></RequireAuth>} />
         <Route path="/app/notifications" element={<RequireAuth><Notifications /></RequireAuth>} />
         <Route path="/app/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+        <Route path="/app/billing" element={<RequireAuth><Billing /></RequireAuth>} />
         <Route path="/app/applications" element={<RequireAuth><Applications /></RequireAuth>} />
         <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="/admin/intelligence" element={<RequireAdmin><IntelligenceDashboard /></RequireAdmin>} />
+        <Route path="/admin/finance" element={<RequireAdmin><AdminFinance /></RequireAdmin>} />
         <Route path="/api-docs" element={<ApiDocs />} />
         
         {/* Employer routes */}
