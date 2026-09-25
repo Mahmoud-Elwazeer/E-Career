@@ -210,9 +210,12 @@ function AppContent() {
           <Sonner />
           <BrowserRouter>
             <AnimatedRoutes />
-            <RasheedCompanion />
-            <OnboardingWrapper />
-            <OnboardingTour />
+            {/* Global widgets are isolated so a failure in any one of them can
+                never take down the whole app / every route. Each degrades to
+                nothing instead of bubbling to the top-level error screen. */}
+            <ErrorBoundary fallback={null}><RasheedCompanion /></ErrorBoundary>
+            <ErrorBoundary fallback={null}><OnboardingWrapper /></ErrorBoundary>
+            <ErrorBoundary fallback={null}><OnboardingTour /></ErrorBoundary>
           </BrowserRouter>
           {showRasheedCheck && (
             <Suspense fallback={null}>
