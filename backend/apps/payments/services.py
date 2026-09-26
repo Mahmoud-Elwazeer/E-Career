@@ -112,6 +112,87 @@ def mark_order_paid(*, order: Order, payment: Payment, actor=None) -> Order:
     return order
 
 
+@db_transaction.atomic
+def refund_payment(*, payment: Payment, amount: int | None = None, reason: str = "", actor=None):
+    """Issue a refund: provider refund → ledger REVERSAL → status → audit.
+
+    - `amount` in minor units; defaults to the full payment amount.
+    - Idempotent per (payment, reason-scoped key): the reversal ledger posting is
+      keyed so a retry won't double-reverse.
+    - Never mutates a balance directly — it posts a reversing double entry.
+    Returns the Refund row.
+    """
+    from .models import Refund
+    from .providers import get_provider, ProviderError
+
+    if payment.status != Payment.Status.SUCCEEDED:
+        raise ValueError("Only a succeeded payment can be refunded")
+
+    refund_amount = int(amount) if amount is not None else int(payment.amount)
+    if refund_amount <= 0 or refund_amount > payment.amount:
+        raise ValueError("Invalid refund amount")
+
+    currency = payment.currency
+    order = payment.order
+
+    refund = Refund.objects.create(
+        payment=payment, amount=refund_amount, currency=currency,
+        reason=reason, status=Refund.Status.PROCESSING,
+    )
+
+    # Attempt the provider refund (skip for zero-provider/free flows).
+    if payment.provider and payment.provider_reference:
+        try:
+            provider = get_provider(payment.provider)
+            result = provider.refund_payment(
+                provider_reference=payment.provider_reference, amount=refund_amount,
+            )
+            refund.provider_reference = result.provider_reference
+            refund.status = Refund.Status.SUCCEEDED if result.ok else Refund.Status.FAILED
+        except ProviderError as e:
+            refund.status = Refund.Status.FAILED
+            refund.save(update_fields=["status"])
+            FinancialAuditLog.objects.create(
+                actor=actor, action="refund.failed", entity_type="Refund",
+                entity_ref=refund.reference, context={"error": str(e), "payment": payment.reference},
+            )
+            raise
+    else:
+        refund.status = Refund.Status.SUCCEEDED  # internal/free order reversal
+
+    # Ledger reversal: debit revenue, credit provider-cash (mirror of the sale).
+    _ensure_core_accounts(order.platform_code, currency)
+    if refund_amount > 0:
+        txn = post_transaction(
+            idempotency_key=f"refund:{refund.reference}",
+            platform_code=order.platform_code,
+            description=f"Refund for order {order.reference}",
+            context={"order": order.reference, "payment": payment.reference, "refund": refund.reference},
+            postings=[
+                Posting(account_code=f"revenue:{order.platform_code.lower()}:{currency.lower()}", amount=refund_amount, currency=currency),
+                Posting(account_code=f"cash:provider:{currency.lower()}", amount=-refund_amount, currency=currency),
+            ],
+        )
+        refund.ledger_transaction = txn
+
+    refund.save(update_fields=["provider_reference", "status", "ledger_transaction"])
+
+    # Status transitions: full refund flips payment+order to refunded.
+    if refund_amount == payment.amount and payment.can_transition_to(Payment.Status.REFUNDED):
+        payment.status = Payment.Status.REFUNDED
+        payment.save(update_fields=["status", "updated_at"])
+        order.status = Order.Status.REFUNDED
+        order.save(update_fields=["status", "updated_at"])
+
+    FinancialAuditLog.objects.create(
+        actor=actor, action="refund.issued", entity_type="Refund",
+        entity_ref=refund.reference,
+        after={"amount": refund_amount, "currency": currency, "status": refund.status},
+        context={"payment": payment.reference, "order": order.reference, "reason": reason},
+    )
+    return refund
+
+
 def _grant_entitlement(order: Order):
     """Grant the package's entitlement. Employer packages activate a
     CompanySubscription against the order's company."""

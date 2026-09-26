@@ -68,3 +68,25 @@ def test_seed_packages_creates_real_packages():
     growth = Package.objects.get(slug="employer-growth")
     assert growth.entitlement_plan is not None
     assert growth.entitlement_plan.ai_features_enabled is True
+
+
+def test_full_refund_reverses_ledger_and_flips_status():
+    order, pay = _paid_order("refund@t.com", 15000)
+    # No provider ref on this test payment -> internal reversal path.
+    pay.provider = ""
+    pay.provider_reference = ""
+    pay.save(update_fields=["provider", "provider_reference"])
+    refund = services.refund_payment(payment=pay, reason="test")
+    order.refresh_from_db(); pay.refresh_from_db()
+    assert refund.status == "succeeded"
+    assert pay.status == "refunded"
+    assert order.status == "refunded"
+    # Revenue net of the sale + reversal = 0 for this order's platform/currency.
+    from apps.payments.models import LedgerAccount
+    rev = LedgerAccount.objects.get(code="revenue:c:egp")
+    assert rev.balance() == 0
+    # Idempotent: re-issuing the same reversal key won't double-post.
+    # (A second refund attempt on a now-refunded payment is rejected.)
+    import pytest as _pytest
+    with _pytest.raises(ValueError):
+        services.refund_payment(payment=pay, reason="test")

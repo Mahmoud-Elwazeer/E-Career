@@ -17,5 +17,6 @@ urlpatterns = [
     path("admin/reconciliation/", admin_views.reconciliation, name="admin-reconciliation"),
     path("admin/transactions/", admin_views.transactions, name="admin-transactions"),
     path("admin/transactions/export/", admin_views.export_transactions_csv, name="admin-transactions-export"),
+    path("admin/refund/", admin_views.issue_refund, name="admin-refund"),
     path("admin/audit/", admin_views.audit_log, name="admin-audit"),
 ]

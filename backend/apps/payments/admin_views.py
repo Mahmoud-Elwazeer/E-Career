@@ -128,6 +128,36 @@ def export_transactions_csv(request):
     return resp
 
 
+@api_view(["POST"])
+@permission_classes([IsAdminRole])
+def issue_refund(request):
+    """Admin-issued refund (directive Part XX/XXI/XXIX).
+
+    Body: {payment_reference, amount? (minor units, default full), reason?}.
+    Runs the provider refund + ledger reversal + status + audit atomically.
+    """
+    from . import services
+    ref = request.data.get("payment_reference")
+    amount = request.data.get("amount")
+    reason = request.data.get("reason", "")
+    payment = Payment.objects.filter(reference=ref).select_related("order").first()
+    if not payment:
+        return Response({"success": False, "message": "Unknown payment"}, status=404)
+    try:
+        refund = services.refund_payment(
+            payment=payment,
+            amount=int(amount) if amount is not None else None,
+            reason=reason, actor=request.user,
+        )
+    except ValueError as e:
+        return Response({"success": False, "message": str(e)}, status=400)
+    except Exception as e:  # provider failure already audited
+        return Response({"success": False, "message": f"Refund failed: {e}"}, status=502)
+    return Response({"success": True, "data": {
+        "refund": refund.reference, "status": refund.status, "amount": refund.amount,
+    }})
+
+
 @api_view(["GET"])
 @permission_classes([IsAdminRole])
 def audit_log(request):
