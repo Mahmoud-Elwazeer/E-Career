@@ -9,8 +9,10 @@ import { Input } from "@/components/ui/input";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
 import { updateMe, changePassword, deleteAccount } from "@/services/auth";
+import { apiRequest } from "@/services/client";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Bell, User, Shield, Loader2, ChevronRight } from "lucide-react";
+import { Bell, User, Shield, Loader2, ChevronRight, Eye } from "lucide-react";
 
 export default function Settings() {
   const { lang } = useTheme();
@@ -31,6 +33,35 @@ export default function Settings() {
 
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Talent-pool discoverability (individual consent)
+  const [discoverable, setDiscoverable] = useState<boolean | null>(null);
+  const [savingDiscover, setSavingDiscover] = useState(false);
+  const isEmployer = user?.role === "employer";
+
+  useEffect(() => {
+    if (isEmployer) return;
+    apiRequest<{ is_discoverable: boolean }>("/career/discoverability/")
+      .then((d) => setDiscoverable(!!d?.is_discoverable))
+      .catch(() => setDiscoverable(false));
+  }, [isEmployer]);
+
+  const toggleDiscoverable = async (next: boolean) => {
+    setSavingDiscover(true);
+    const prev = discoverable;
+    setDiscoverable(next); // optimistic
+    try {
+      await apiRequest("/career/discoverability/", { method: "PATCH", body: { is_discoverable: next } });
+      toast({ title: isAr ? "تم التحديث" : "Updated", description: next
+        ? (isAr ? "أصبح ملفك مرئياً لأصحاب العمل." : "You're now discoverable by employers.")
+        : (isAr ? "لم يعد ملفك مرئياً لأصحاب العمل." : "You're no longer discoverable.") });
+    } catch {
+      setDiscoverable(prev); // revert
+      toast({ title: isAr ? "خطأ" : "Error", description: isAr ? "فشل التحديث" : "Failed to update.", variant: "destructive" });
+    } finally {
+      setSavingDiscover(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -160,6 +191,48 @@ export default function Settings() {
               </Link>
             </CardContent>
           </Card>
+
+          {/* Talent Pool visibility — individual consent to be discovered by
+              employers. Job-seeker only. */}
+          {!isEmployer && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Eye className="h-5 w-5" />
+                  <CardTitle>{isAr ? "الظهور في قاعدة المواهب" : "Talent Pool Visibility"}</CardTitle>
+                </div>
+                <CardDescription>
+                  {isAr
+                    ? "اسمح لأصحاب العمل الموثقين باكتشاف ملفك وإضافتك إلى قوائم المواهب."
+                    : "Let verified employers discover your profile and add you to talent pools."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between rounded-xl border border-border p-4">
+                  <div className="pe-4">
+                    <p className="text-body font-medium">
+                      {isAr ? "مرئي لأصحاب العمل" : "Discoverable by employers"}
+                    </p>
+                    <p className="text-caption text-muted-foreground">
+                      {isAr
+                        ? "عند التفعيل، يمكن لأصحاب العمل العثور عليك في البحث عن المواهب."
+                        : "When on, employers can find you in talent search. You can turn this off anytime."}
+                    </p>
+                  </div>
+                  {discoverable === null ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  ) : (
+                    <Switch
+                      checked={discoverable}
+                      disabled={savingDiscover}
+                      onCheckedChange={toggleDiscoverable}
+                      aria-label={isAr ? "الظهور في قاعدة المواهب" : "Talent pool visibility"}
+                    />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Privacy & Security */}
           <Card>
