@@ -35,6 +35,14 @@
     --signal: 38 92% 55%;            /* warm amber signal */
     --signal-foreground: 178 78% 9%;
 
+    /* Brand green — energetic action/accent (Section 26). The deep-teal
+       --primary stays the anchor; this is the lively green for CTAs, hovers and
+       icon accents so green reads as ACTION, not just a dark background. */
+    --brand-green: 158 64% 40%;       /* vivid emerald */
+    --brand-green-hover: 158 66% 34%;
+    --brand-green-soft: 158 55% 92%;  /* tint for chips/backgrounds */
+    --brand-green-foreground: 0 0% 100%;
+
     /* Surfaces — WARM PAPER canvas (replaces flat cold gray) */
     --background: 40 30% 97%;        /* #F8F6F1 warm paper */
     --foreground: 200 12% 10%;       /* warm near-black ink */
@@ -455,6 +463,21 @@
   .press-feedback:active {
     transform: scale(0.97);
     opacity: 0.9;
+  }
+
+  /* Green-forward action button (Section 26): energetic emerald CTA. */
+  .btn-green {
+    background: hsl(var(--brand-green));
+    color: hsl(var(--brand-green-foreground));
+    transition: background-color var(--duration-fast), transform var(--duration-fast);
+  }
+  .btn-green:hover { background: hsl(var(--brand-green-hover)); }
+  .btn-green:active { transform: scale(0.97); }
+
+  /* Soft green chip / accent surface. */
+  .accent-green {
+    background: hsl(var(--brand-green-soft));
+    color: hsl(var(--brand-green-hover));
   }
 
   /* Underline link animation */

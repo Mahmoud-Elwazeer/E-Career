@@ -135,6 +135,24 @@ export const searchCompanies = async (query: string): Promise<{ companies: Compa
   return apiRequest('/employer/companies/search/', { params: { q: query } });
 };
 
+// Create a brand-new company (caller becomes owner)
+export interface CreateCompanyData {
+  name: string;
+  industry?: string;
+  size?: string;
+  website?: string;
+  headquarters?: string;
+  description?: string;
+  job_title?: string;
+  phone?: string;
+}
+export const createCompany = async (data: CreateCompanyData): Promise<{
+  company: { id: string; name: string; slug: string };
+  employer: EmployerProfile;
+}> => {
+  return apiRequest('/employer/companies/create/', { method: 'POST', body: data });
+};
+
 // Job Posting APIs
 export const getJobPostings = async (): Promise<JobPosting[]> => {
   const data = await apiRequest<any>('/employer/jobs/');

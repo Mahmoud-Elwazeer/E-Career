@@ -6,6 +6,7 @@ import { StatsStrip, WhyUsamSection } from "@/components/landing/ScrollSections"
 import { HeroSection } from "@/components/landing/HeroSection";
 import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
 import { AudienceProvider, AudienceSwitcher } from "@/components/landing/AudienceSwitcher";
+import { AudiencePathways } from "@/components/landing/AudiencePathways";
 import { ProductStory } from "@/components/landing/ProductStory";
 import { RasheedAvatar } from "@/components/rashid/RasheedAvatar";
 import { Button } from "@/components/ui/button";
@@ -121,13 +122,17 @@ export default function Index() {
         industryCount={Object.keys(industryCounts).length || 0}
       />
 
-      {/* ═══ AUDIENCE SWITCHER — reframes features + story per audience ═══ */}
-      <div className="container -mt-6 md:-mt-8 relative z-10">
-        <AudienceSwitcher />
-      </div>
+      {/* ═══ AUDIENCE PATHWAYS — the Master Landing's routing purpose:
+          two clear forward paths to the Individual / Business experiences ═══ */}
+      <AudiencePathways />
 
       {/* ═══ QUICK FILTERS ═══ */}
       <QuickFilters />
+
+      {/* ═══ AUDIENCE SWITCHER — reframes the feature/story sections below ═══ */}
+      <div className="container relative z-10">
+        <AudienceSwitcher />
+      </div>
 
       {/* ═══ FEATURED JOBS CAROUSEL ═══ */}
       <section className="featured-jobs">

@@ -957,6 +957,72 @@ class EmployerTeamViewSet(viewsets.ViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def create_company(request):
+    """Create a NEW company and make the caller its owner (Sections 15-16).
+
+    Atomic: Company + owner EmployerProfile + owner EmployerTeamMember + role
+    elevation. Rejects if the user already has an employer profile.
+    POST /api/v1/employer/companies/create/
+    """
+    from django.db import transaction as db_txn
+    from django.utils import timezone
+    from django.utils.text import slugify
+    from apps.jobs.models import Company
+    import uuid as _uuid
+
+    if hasattr(request.user, 'employer_profile'):
+        return Response({'success': False, 'error': 'You already have an employer profile.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    name = (request.data.get('name') or '').strip()
+    if not name:
+        return Response({'success': False, 'error': 'Company name is required.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    # Unique slug.
+    base = slugify(name) or f"company-{_uuid.uuid4().hex[:8]}"
+    slug = base
+    i = 1
+    while Company.objects.filter(slug=slug).exists():
+        i += 1
+        slug = f"{base}-{i}"
+
+    with db_txn.atomic():
+        company = Company.objects.create(
+            name=name,
+            slug=slug,
+            industry=request.data.get('industry', '') or 'technology',
+            website=request.data.get('website', '') or '',
+            description=request.data.get('description', '') or '',
+            size=request.data.get('size', '') or '',
+            headquarters=request.data.get('headquarters', '') or '',
+            is_active=True,
+            is_verified=False,
+        )
+        employer = EmployerProfile.objects.create(
+            user=request.user, company=company,
+            job_title=request.data.get('job_title', '') or 'Owner',
+            phone=request.data.get('phone', '') or '',
+        )
+        EmployerTeamMember.objects.create(
+            user=request.user, company=company, role='owner',
+            is_active=True, accepted_at=timezone.now(), invited_by=request.user,
+        )
+        request.user.role = 'employer'
+        request.user.save(update_fields=['role'])
+
+    return Response({
+        'success': True,
+        'data': {
+            'company': {'id': str(company.id), 'name': company.name, 'slug': company.slug},
+            'employer': EmployerProfileSerializer(employer).data,
+        },
+        'message': 'Company created. Awaiting verification.',
+    }, status=status.HTTP_201_CREATED)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsEmployer])
 def insider_connections(request, company_id):

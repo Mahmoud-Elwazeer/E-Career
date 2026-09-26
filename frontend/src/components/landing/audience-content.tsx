@@ -67,7 +67,7 @@ export const BUSINESSES: AudienceContent = {
   titleEn: "Hire faster with intelligence", titleAr: "وظّف أسرع بذكاء",
   leadEn: "Post domain-verified roles, let the platform rank applicants by real fit, and build reusable talent pools — every candidate arrives with evidence.",
   leadAr: "انشر وظائف موثقة بالنطاق، ودع المنصة ترتّب المتقدمين حسب الملاءمة الحقيقية، وابنِ قوائم مواهب قابلة لإعادة الاستخدام.",
-  primaryCta: { en: "Start hiring", ar: "ابدأ التوظيف", to: "/app/employer/register" },
+  primaryCta: { en: "Create Employer Account", ar: "أنشئ حساب شركة", to: "/app/employer/register" },
   features: [
     { icon: Briefcase, en: "Post verified roles", ar: "انشر وظائف موثقة", descEn: "Publish jobs linked to your own domain — candidates apply directly, no middlemen.", descAr: "انشر وظائف مرتبطة بنطاقك الرسمي — تقديم مباشر بدون وسطاء.", to: "/app/employer/post-job" },
     { icon: ListChecks, en: "Auto candidate ranking", ar: "ترتيب تلقائي للمرشحين", descEn: "Rank applicants by skill, experience and fit — with knockout rules and evidence.", descAr: "رتّب المتقدمين بالمهارة والخبرة والملاءمة مع قواعد استبعاد وأدلة.", to: "/app/employer/talent-search" },

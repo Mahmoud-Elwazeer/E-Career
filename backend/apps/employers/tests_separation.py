@@ -83,3 +83,23 @@ def test_discoverability_default_false_then_toggle(seeker):
 def test_discoverability_requires_auth():
     resp = APIClient().get("/api/v1/career/discoverability/")
     assert resp.status_code in (401, 403)
+
+
+# ── Create company (Sections 15-16) ──────────────────────────────────────────
+def test_create_company_makes_caller_owner(seeker):
+    from apps.employers.models import EmployerProfile, EmployerTeamMember
+    resp = _client(seeker).post("/api/v1/employer/companies/create/", {
+        "name": "Newco Ltd", "industry": "technology", "size": "11-50", "website": "https://newco.example",
+    }, format="json")
+    assert resp.status_code == 201
+    seeker.refresh_from_db()
+    assert seeker.role == "employer"
+    prof = EmployerProfile.objects.get(user=seeker)
+    assert prof.company.name == "Newco Ltd"
+    tm = EmployerTeamMember.objects.get(user=seeker, company=prof.company)
+    assert tm.role == "owner"
+
+
+def test_create_company_rejected_if_already_employer(owner):
+    resp = _client(owner).post("/api/v1/employer/companies/create/", {"name": "Another"}, format="json")
+    assert resp.status_code == 400

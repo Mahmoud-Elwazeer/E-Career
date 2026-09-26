@@ -16,6 +16,7 @@ from .views import (
     ats_gap_analysis,
     EmployerTeamViewSet,
     insider_connections,
+    create_company,
     quick_apply_prepare,
     quick_apply_record,
 )
@@ -37,6 +38,8 @@ urlpatterns = [
     
     # Company search (for registration)
     path('companies/search/', company_search, name='company-search'),
+    # Create a brand-new company (caller becomes owner)
+    path('companies/create/', create_company, name='company-create'),
     
     # ATS gap analysis
     path('postings/<uuid:posting_id>/ats-analysis/', ats_gap_analysis, name='ats-gap-analysis'),

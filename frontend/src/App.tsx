@@ -57,6 +57,7 @@ const ForIndividuals = lazy(() => import("./pages/AudiencePage"));
 const ForBusinesses = lazy(() => import("./pages/AudiencePage").then((m) => ({ default: m.ForBusinessesPage })));
 const Contact = lazy(() => import("./pages/Contact"));
 const Billing = lazy(() => import("./pages/Billing"));
+const ForYou = lazy(() => import("./pages/ForYou"));
 const AdminFinance = lazy(() => import("./pages/AdminFinance"));
 // Dev/QA-only: Rasheed 3D asset validation overlay (?rasheedCheck=1).
 const RasheedGlbCheck = lazy(() =>
@@ -105,6 +106,7 @@ function AnimatedRoutes() {
 
         {/* Auth-protected app routes */}
         <Route path="/app/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+        <Route path="/app/for-you" element={<RequireAuth><ForYou /></RequireAuth>} />
         <Route path="/app/cover-letters" element={<RequireAuth><CoverLetters /></RequireAuth>} />
         <Route path="/app/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />
         <Route path="/app/jobs/:id" element={<RequireAuth><JobDetail /></RequireAuth>} />

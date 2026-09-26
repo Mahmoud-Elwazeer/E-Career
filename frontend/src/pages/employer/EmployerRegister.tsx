@@ -6,8 +6,9 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Building2, Search, ArrowRight, CheckCircle } from 'lucide-react';
-import { createEmployerProfile, searchCompanies, Company } from '../../services/employer';
+import { createEmployerProfile, searchCompanies, createCompany, Company } from '../../services/employer';
 import { AppShell } from '@/components/shells/AppShell';
+import { PlusCircle } from 'lucide-react';
 
 const EmployerRegister: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +21,15 @@ const EmployerRegister: React.FC = () => {
   });
   const [searchResults, setSearchResults] = useState<Company[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [creatingCompany, setCreatingCompany] = useState(false);
+  const [companyForm, setCompanyForm] = useState({
+    name: '', industry: '', size: '', website: '', headquarters: '', description: '',
+  });
+
+  const createCompanyMutation = useMutation({
+    mutationFn: createCompany,
+    onSuccess: () => navigate('/app/employer/dashboard'),
+  });
 
   // Search companies mutation
   const searchMutation = useMutation({
@@ -152,13 +162,79 @@ const EmployerRegister: React.FC = () => {
               {searchQuery.length >= 2 && !isSearching && searchResults.length === 0 && (
                 <div className="text-center py-8 bg-background rounded-lg">
                   <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground mb-2">Company not found?</p>
-                  <p className="text-sm text-muted-foreground">
-                    Contact support to add your company to our database.
-                  </p>
+                  <p className="text-muted-foreground mb-4">Company not found?</p>
+                  <button
+                    onClick={() => { setCompanyForm((f) => ({ ...f, name: searchQuery })); setCreatingCompany(true); }}
+                    className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 h-11 text-body font-medium text-primary-foreground shadow-sm press-feedback"
+                  >
+                    <PlusCircle className="h-4 w-4" /> Create a new company
+                  </button>
                 </div>
               )}
+
+              {/* Always-available create option */}
+              <div className="mt-4 text-center">
+                <button
+                  onClick={() => setCreatingCompany(true)}
+                  className="inline-flex items-center gap-1.5 text-caption font-medium text-primary link-underline"
+                >
+                  <PlusCircle className="h-3.5 w-3.5" /> Or create a new company
+                </button>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Create Company form (opens over step 1) */}
+        {step === 1 && creatingCompany && (
+          <div className="paper-card p-6 mt-6">
+            <h2 className="text-xl font-semibold text-foreground mb-1">Create your company</h2>
+            <p className="text-muted-foreground mb-6">You'll become the owner. You can complete more details later.</p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!companyForm.name.trim()) return;
+                createCompanyMutation.mutate({
+                  name: companyForm.name.trim(),
+                  industry: companyForm.industry || undefined,
+                  size: companyForm.size || undefined,
+                  website: companyForm.website || undefined,
+                  headquarters: companyForm.headquarters || undefined,
+                  description: companyForm.description || undefined,
+                  job_title: formData.job_title || 'Owner',
+                  phone: formData.phone || undefined,
+                });
+              }}
+              className="space-y-4"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <input required value={companyForm.name} onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
+                  placeholder="Company name *" className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring" />
+                <input value={companyForm.industry} onChange={(e) => setCompanyForm({ ...companyForm, industry: e.target.value })}
+                  placeholder="Industry (e.g. technology)" className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring" />
+                <input value={companyForm.size} onChange={(e) => setCompanyForm({ ...companyForm, size: e.target.value })}
+                  placeholder="Company size (e.g. 11-50)" className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring" />
+                <input value={companyForm.website} onChange={(e) => setCompanyForm({ ...companyForm, website: e.target.value })}
+                  placeholder="Website" className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring" />
+                <input value={companyForm.headquarters} onChange={(e) => setCompanyForm({ ...companyForm, headquarters: e.target.value })}
+                  placeholder="Headquarters / location" className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring sm:col-span-2" />
+                <textarea value={companyForm.description} onChange={(e) => setCompanyForm({ ...companyForm, description: e.target.value })}
+                  placeholder="Company description" rows={3} className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring sm:col-span-2" />
+              </div>
+              {createCompanyMutation.isError && (
+                <p className="text-sm text-destructive">{(createCompanyMutation.error as any)?.message ?? 'Failed to create company.'}</p>
+              )}
+              <div className="flex gap-3">
+                <button type="submit" disabled={createCompanyMutation.isPending}
+                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 h-11 text-body font-medium text-primary-foreground shadow-sm press-feedback disabled:opacity-50">
+                  {createCompanyMutation.isPending ? 'Creating…' : 'Create company'}
+                </button>
+                <button type="button" onClick={() => setCreatingCompany(false)}
+                  className="inline-flex items-center rounded-xl border border-border px-6 h-11 text-body font-medium">
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
