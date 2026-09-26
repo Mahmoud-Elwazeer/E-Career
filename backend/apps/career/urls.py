@@ -41,6 +41,7 @@ from .cv_parser_views import cv_status, cv_delete
 from .views_onboarding import onboarding_progress
 from .views_cover_letter import generate_cover_letter, cover_letter_detail, list_cover_letters
 from .views_cv_tailor import cv_tailor_suggestions
+from .views_discoverability import discoverability
 from .views_recommendations import get_recommendations
 from .goal_api import (
     CareerGoalListCreateView,
@@ -89,6 +90,9 @@ urlpatterns = [
     # CV Parser endpoints
     path('cv/status/', cv_status, name='cv-status'),
     path('cv/delete/', cv_delete, name='cv-delete'),
+
+    # Talent-pool discoverability (individual consent toggle)
+    path('discoverability/', discoverability, name='discoverability'),
 
     # Onboarding endpoints
     path('onboarding/', onboarding_progress, name='onboarding-progress'),

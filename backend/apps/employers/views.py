@@ -856,6 +856,28 @@ class EmployerTeamViewSet(viewsets.ViewSet):
         ).first()
         return membership.company if membership else None
 
+    def _can_manage_team(self, user, company):
+        """Only a company owner/admin may invite/change/remove team members.
+
+        Rule (closes the gap where any active member could manage the team):
+          - platform admin: allowed.
+          - if the user has a restricting team membership (viewer/recruiter/
+            hiring_manager) on this company: DENIED, even if they also hold an
+            EmployerProfile — team role is the authority.
+          - owner/admin team membership: allowed.
+          - otherwise the EmployerProfile holder for this company (the creator)
+            is treated as owner: allowed.
+        """
+        if getattr(user, 'role', None) == 'admin':
+            return True
+        membership = EmployerTeamMember.objects.filter(
+            user=user, company=company, is_active=True, accepted_at__isnull=False
+        ).first()
+        if membership:
+            return membership.role in ('owner', 'admin')
+        prof = getattr(user, 'employer_profile', None)
+        return bool(prof and prof.company_id == getattr(company, 'id', None))
+
     def list(self, request):
         company = self._get_company(request.user)
         if not company:
@@ -873,6 +895,8 @@ class EmployerTeamViewSet(viewsets.ViewSet):
         company = self._get_company(request.user)
         if not company:
             return Response({'success': False, 'error': 'No company found.'}, status=status.HTTP_404_NOT_FOUND)
+        if not self._can_manage_team(request.user, company):
+            return Response({'success': False, 'error': 'Only a company owner or admin can manage the team.'}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = EmployerTeamInviteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -914,6 +938,8 @@ class EmployerTeamViewSet(viewsets.ViewSet):
 
     def partial_update(self, request, pk=None):
         company = self._get_company(request.user)
+        if not self._can_manage_team(request.user, company):
+            return Response({'success': False, 'error': 'Only a company owner or admin can manage the team.'}, status=status.HTTP_403_FORBIDDEN)
         member = get_object_or_404(EmployerTeamMember, pk=pk, company=company)
         new_role = request.data.get('role')
         if new_role and new_role in dict(EmployerTeamMember.ROLE_CHOICES):
@@ -923,6 +949,8 @@ class EmployerTeamViewSet(viewsets.ViewSet):
 
     def destroy(self, request, pk=None):
         company = self._get_company(request.user)
+        if not self._can_manage_team(request.user, company):
+            return Response({'success': False, 'error': 'Only a company owner or admin can manage the team.'}, status=status.HTTP_403_FORBIDDEN)
         member = get_object_or_404(EmployerTeamMember, pk=pk, company=company)
         member.is_active = False
         member.save(update_fields=['is_active'])
@@ -930,9 +958,10 @@ class EmployerTeamViewSet(viewsets.ViewSet):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, IsEmployer])
 def insider_connections(request, company_id):
-    """GET /api/v1/employer/connections/{company_id}/ — find people at a company."""
+    """GET /api/v1/employer/connections/{company_id}/ — find people at a company.
+    Employer-gated: this is a hiring/sourcing capability, not a job-seeker one."""
     from apps.employers.connections_service import connections_service
     from apps.jobs.models import Company
     try:
