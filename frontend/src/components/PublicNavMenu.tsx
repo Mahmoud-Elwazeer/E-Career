@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import {
   Search, MessageCircle, FileText, Mic, Sparkles, Target, DollarSign,
-  Award, Building2, PlusCircle, Users, BadgeCheck, Info, Bell, Network,
+  Award, Building2, PlusCircle, Users, BadgeCheck, Info, Bell, Network, Mail,
 } from "lucide-react";
 import {
   NavigationMenu,
@@ -186,13 +186,26 @@ export function PublicNavMenu() {
           </NavigationMenuContent>
         </NavigationMenuItem>
 
-        {/* Direct links */}
+        {/* Direct links — Rasheed is a first-class nav item (not hidden in Sign in) */}
+        <NavigationMenuItem>
+          <NavigationMenuLink asChild>
+            <Link
+              to="/login"
+              state={{ from: "/app/rashid" }}
+              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-primary hover:bg-primary/10 transition-colors"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              {isAr ? "رشيد" : "Rasheed"}
+            </Link>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
         <NavigationMenuItem>
           <NavigationMenuLink asChild>
             <Link
               to="/pricing"
-              className="inline-flex h-9 items-center rounded-full px-3 text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
+              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
             >
+              <DollarSign className="h-3.5 w-3.5" />
               {isAr ? "الأسعار" : "Pricing"}
             </Link>
           </NavigationMenuLink>
@@ -203,6 +216,7 @@ export function PublicNavMenu() {
               to="/about"
               className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
             >
+              <Info className="h-3.5 w-3.5" />
               {isAr ? "عن USAM" : "About"}
             </Link>
           </NavigationMenuLink>
@@ -213,6 +227,7 @@ export function PublicNavMenu() {
               to="/contact"
               className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
             >
+              <Mail className="h-3.5 w-3.5" />
               {isAr ? "تواصل معنا" : "Contact"}
             </Link>
           </NavigationMenuLink>

@@ -1,6 +1,6 @@
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { Bookmark, Bell, FileText, ExternalLink, Shield, Lock, DollarSign, Eye, EyeOff, User, Building2 } from "lucide-react";
+import { Bookmark, Bell, FileText, ExternalLink, Shield, Lock, DollarSign, Eye, EyeOff, User, Building2, ArrowLeft as ArrowIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -101,7 +101,9 @@ export default function Login() {
         <div className="hidden lg:flex flex-col justify-between chamber chamber-grid relative overflow-hidden p-10 text-primary-foreground">
           <div className="glow-blob" style={{ width: 300, height: 300, top: -100, insetInlineEnd: -60, background: "hsl(var(--secondary) / 0.3)" }} />
           <div className="relative z-10">
-            <Logo variant="onDark" className="h-8 mb-10" />
+            <Link to="/" aria-label={isAr ? "العودة للرئيسية" : "Back to home"} className="inline-block mb-10 press-feedback">
+              <Logo variant="onDark" className="h-8" />
+            </Link>
             <span className="eyebrow-mono text-primary-foreground/70 mb-4">
               <span className="signal-dot" /> {isAr ? "منصة المسار المهني" : "CAREER OPERATING SYSTEM"}
             </span>
@@ -126,6 +128,13 @@ export default function Login() {
 
         {/* Right: Auth form */}
         <div className="bg-card p-8 md:p-10 flex flex-col justify-center">
+          {/* Back to home — always available so auth is never a dead end (esp. mobile). */}
+          <Link
+            to="/"
+            className="mb-4 inline-flex items-center gap-1.5 text-caption font-medium text-muted-foreground hover:text-foreground w-fit"
+          >
+            <ArrowIcon className="h-3.5 w-3.5 rtl:rotate-180" /> {isAr ? "العودة للرئيسية" : "Back to home"}
+          </Link>
           <div className="mb-6">
             <h1 className="font-display text-3xl font-semibold text-foreground">
               {mode === "login"
