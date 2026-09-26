@@ -24,5 +24,6 @@ urlpatterns = [
     path("admin/subscriptions/", admin_views.subscriptions, name="admin-subscriptions"),
     path("admin/transactions/export.xlsx", admin_views.export_transactions_xlsx, name="admin-transactions-xlsx"),
     path("admin/transactions/export.pdf", admin_views.export_transactions_pdf, name="admin-transactions-pdf"),
+    path("admin/ai/", admin_views.ai_query, name="admin-ai"),
     path("admin/audit/", admin_views.audit_log, name="admin-audit"),
 ]

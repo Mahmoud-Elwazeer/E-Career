@@ -331,6 +331,21 @@ def export_transactions_pdf(request):
     return resp
 
 
+@api_view(["POST"])
+@permission_classes([IsAdminRole])
+def ai_query(request):
+    """AI financial workspace (Part XXXII): NL question -> real analytics answer.
+
+    Read-only. Never invents numbers; returns the figures + their source data so
+    every answer is traceable.
+    """
+    from . import ai_workspace
+    question = request.data.get("question", "")
+    if not question.strip():
+        return Response({"success": False, "message": "Ask a question."}, status=400)
+    return Response({"success": True, "data": ai_workspace.answer(question)})
+
+
 @api_view(["GET"])
 @permission_classes([IsAdminRole])
 def audit_log(request):

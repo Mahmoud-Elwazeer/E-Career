@@ -51,3 +51,20 @@ export async function getAdminTransactions(params: { platform?: string; currency
   const res = await apiRequest<AdminTxn[]>(`/payments/admin/transactions/?${q.toString()}`);
   return Array.isArray(res) ? res : [];
 }
+
+export async function issueRefund(paymentReference: string, reason: string, amount?: number) {
+  return apiRequest(`/payments/admin/refund/`, {
+    method: "POST",
+    body: { payment_reference: paymentReference, reason, ...(amount ? { amount } : {}) },
+  });
+}
+
+export interface AiAnswer {
+  answer: string;
+  metrics: Record<string, unknown>;
+  source: { query: string; platform: string; period: string };
+}
+
+export async function askFinanceAi(question: string): Promise<AiAnswer> {
+  return apiRequest<AiAnswer>(`/payments/admin/ai/`, { method: "POST", body: { question } });
+}

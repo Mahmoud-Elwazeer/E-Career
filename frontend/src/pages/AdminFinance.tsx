@@ -11,8 +11,11 @@ import { AppShell } from "@/components/shells/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/services/billing";
-import { getOverview, getReconciliation, getAdminTransactions } from "@/services/adminFinance";
+import { getOverview, getReconciliation, getAdminTransactions, issueRefund, askFinanceAi, type AiAnswer } from "@/services/adminFinance";
+import { Sparkles, RotateCcw } from "lucide-react";
 
 const PLATFORMS = [
   { code: "", label: "All" },
@@ -33,6 +36,37 @@ function Kpi({ label, value }: { label: string; value: string }) {
 
 export default function AdminFinance() {
   const [platform, setPlatform] = useState("");
+  const { toast } = useToast();
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiAnswer, setAiAnswer] = useState<AiAnswer | null>(null);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [refunding, setRefunding] = useState<string | null>(null);
+
+  const askAi = async () => {
+    if (!aiQuestion.trim()) return;
+    setAiBusy(true);
+    try {
+      setAiAnswer(await askFinanceAi(aiQuestion));
+    } catch (e: any) {
+      toast({ title: "AI query failed", description: e?.message ?? "", variant: "destructive" });
+    } finally {
+      setAiBusy(false);
+    }
+  };
+
+  const refund = async (reference: string) => {
+    const reason = window.prompt("Refund reason?") ?? "";
+    if (reason === null) return;
+    setRefunding(reference);
+    try {
+      await issueRefund(reference, reason);
+      toast({ title: "Refund issued", description: reference });
+    } catch (e: any) {
+      toast({ title: "Refund failed", description: e?.message ?? "", variant: "destructive" });
+    } finally {
+      setRefunding(null);
+    }
+  };
 
   const overview = useQuery({
     queryKey: ["admin-fin-overview", platform],
@@ -74,6 +108,36 @@ export default function AdminFinance() {
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </Button>
       </div>
+
+      {/* AI financial workspace — read-only, answers from real analytics */}
+      <Card className="mb-6">
+        <CardContent className="p-5">
+          <div className="mb-3 flex items-center gap-2 text-body font-medium">
+            <Sparkles className="h-4 w-4 text-primary" /> Ask the financial AI
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Input
+              value={aiQuestion}
+              onChange={(e) => setAiQuestion(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") askAi(); }}
+              placeholder="e.g. Why did Career payments fail this month? / revenue this month"
+              className="flex-1 min-w-[240px]"
+            />
+            <Button onClick={askAi} loading={aiBusy} className="gap-1.5">
+              <Sparkles className="h-4 w-4" /> Ask
+            </Button>
+          </div>
+          {aiAnswer && (
+            <div className="mt-3 rounded-xl border border-border bg-muted/30 p-4">
+              <p className="text-body">{aiAnswer.answer}</p>
+              <p className="mt-2 text-caption text-muted-foreground">
+                Source: {aiAnswer.source.query} · {aiAnswer.source.platform} · {aiAnswer.source.period}
+                <span className="ms-1">(figures from real data — not generated)</span>
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {overview.isLoading || !o ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
@@ -159,6 +223,7 @@ export default function AdminFinance() {
                       <th className="p-3 text-start">Amount</th>
                       <th className="p-3 text-start">Status</th>
                       <th className="p-3 text-start">Provider</th>
+                      <th className="p-3 text-end">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -170,10 +235,19 @@ export default function AdminFinance() {
                         <td className="p-3 font-mono-data">{formatMoney(t.amount, t.currency)}</td>
                         <td className="p-3">{t.status}</td>
                         <td className="p-3 text-caption text-muted-foreground">{t.provider || "—"}</td>
+                        <td className="p-3 text-end">
+                          {t.status === "succeeded" && (
+                            <Button variant="outline" size="sm" className="gap-1"
+                              loading={refunding === t.reference}
+                              onClick={() => refund(t.reference)}>
+                              <RotateCcw className="h-3 w-3" /> Refund
+                            </Button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                     {(txns.data ?? []).length === 0 && (
-                      <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">No transactions yet.</td></tr>
+                      <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">No transactions yet.</td></tr>
                     )}
                   </tbody>
                 </table>
