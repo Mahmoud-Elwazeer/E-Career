@@ -2,9 +2,17 @@ from django.contrib import admin
 
 from .models import (
     Package, Coupon, Order, Payment, PaymentAttempt, Invoice, InvoiceItem,
-    Refund, WebhookEvent, FinancialAuditLog,
+    Refund, WebhookEvent, FinancialAuditLog, AdjustmentRequest,
     LedgerAccount, LedgerTransaction, LedgerEntry, IdempotencyKey,
 )
+
+
+@admin.register(AdjustmentRequest)
+class AdjustmentRequestAdmin(admin.ModelAdmin):
+    list_display = ("reference", "status", "amount", "currency", "account_code", "requested_by", "approved_by", "created_at")
+    list_filter = ("status", "currency", "platform_code")
+    search_fields = ("reference", "reason")
+    readonly_fields = ("reference", "ledger_transaction", "resolved_at")
 
 
 @admin.register(Package)

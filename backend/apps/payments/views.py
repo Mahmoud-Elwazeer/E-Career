@@ -99,6 +99,19 @@ class OrderStatusView(generics.RetrieveAPIView):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+def wallet_view(request):
+    """The signed-in user's platform-credit wallet: derived balance + history."""
+    from . import wallet
+    currency = request.query_params.get("currency", "EGP")
+    return Response({"success": True, "data": {
+        "currency": currency,
+        "balance": wallet.balance(request.user, currency),
+        "history": wallet.history(request.user, currency),
+    }})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
 def transaction_history(request):
     """The signed-in user's financial history (their orders + payments)."""
     orders = (Order.objects.filter(user=request.user)

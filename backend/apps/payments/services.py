@@ -193,6 +193,80 @@ def refund_payment(*, payment: Payment, amount: int | None = None, reason: str =
     return refund
 
 
+def request_adjustment(*, requester, account_code, counter_account_code, amount,
+                       currency="EGP", reason="", platform_code=Platform.CAREER):
+    """Create a PENDING manual adjustment (no ledger movement yet)."""
+    from .models import AdjustmentRequest
+    if not reason:
+        raise ValueError("A reason is required for a manual adjustment")
+    if int(amount) == 0:
+        raise ValueError("Adjustment amount cannot be zero")
+    adj = AdjustmentRequest.objects.create(
+        platform_code=platform_code,
+        account_code=account_code,
+        counter_account_code=counter_account_code,
+        amount=int(amount), currency=currency, reason=reason,
+        requested_by=requester,
+    )
+    FinancialAuditLog.objects.create(
+        actor=requester, action="adjustment.requested", entity_type="AdjustmentRequest",
+        entity_ref=adj.reference,
+        after={"amount": int(amount), "currency": currency, "account": account_code},
+        context={"reason": reason},
+    )
+    return adj
+
+
+@db_transaction.atomic
+def approve_adjustment(*, adjustment, approver):
+    """Approve + POST a pending adjustment. Requester != approver (dual control)."""
+    from django.utils import timezone
+    from .models import AdjustmentRequest
+    if adjustment.status != AdjustmentRequest.Status.PENDING:
+        raise ValueError("Adjustment is not pending")
+    if adjustment.requested_by_id == getattr(approver, "id", None):
+        raise ValueError("Approver must be different from the requester (dual control)")
+
+    txn = post_transaction(
+        idempotency_key=f"adjustment:{adjustment.reference}",
+        platform_code=adjustment.platform_code,
+        description=f"Manual adjustment {adjustment.reference}: {adjustment.reason}"[:255],
+        context={"adjustment": adjustment.reference, "reason": adjustment.reason},
+        postings=[
+            Posting(account_code=adjustment.account_code, amount=adjustment.amount, currency=adjustment.currency),
+            Posting(account_code=adjustment.counter_account_code, amount=-adjustment.amount, currency=adjustment.currency),
+        ],
+    )
+    adjustment.status = AdjustmentRequest.Status.APPROVED
+    adjustment.approved_by = approver
+    adjustment.ledger_transaction = txn
+    adjustment.resolved_at = timezone.now()
+    adjustment.save(update_fields=["status", "approved_by", "ledger_transaction", "resolved_at"])
+
+    FinancialAuditLog.objects.create(
+        actor=approver, action="adjustment.approved", entity_type="AdjustmentRequest",
+        entity_ref=adjustment.reference,
+        before={"status": "pending"}, after={"status": "approved", "ledger": txn.reference},
+    )
+    return adjustment
+
+
+def reject_adjustment(*, adjustment, approver, note=""):
+    from django.utils import timezone
+    from .models import AdjustmentRequest
+    if adjustment.status != AdjustmentRequest.Status.PENDING:
+        raise ValueError("Adjustment is not pending")
+    adjustment.status = AdjustmentRequest.Status.REJECTED
+    adjustment.approved_by = approver
+    adjustment.resolved_at = timezone.now()
+    adjustment.save(update_fields=["status", "approved_by", "resolved_at"])
+    FinancialAuditLog.objects.create(
+        actor=approver, action="adjustment.rejected", entity_type="AdjustmentRequest",
+        entity_ref=adjustment.reference, context={"note": note},
+    )
+    return adjustment
+
+
 def _grant_entitlement(order: Order):
     """Grant the package's entitlement. Employer packages activate a
     CompanySubscription against the order's company."""

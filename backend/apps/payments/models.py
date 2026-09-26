@@ -316,6 +316,55 @@ class WebhookEvent(UUIDModel):
         return f"{self.provider}:{self.provider_event_id}"
 
 
+class AdjustmentRequest(UUIDModel):
+    """A controlled manual financial adjustment (directive Part XXX).
+
+    Admins NEVER edit a balance directly. They REQUEST an adjustment (amount +
+    currency + reason + target ledger account); a DIFFERENT admin APPROVES it;
+    only then is a balanced ledger correction posted. Requester != approver.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending approval"
+        APPROVED = "approved", "Approved (posted)"
+        REJECTED = "rejected", "Rejected"
+
+    reference = models.CharField(max_length=40, unique=True, db_index=True)
+    platform_code = models.CharField(max_length=1, choices=Platform.CHOICES,
+                                     default=Platform.CAREER, db_index=True)
+    # The ledger account to adjust and its counter-account (both required so the
+    # posting stays balanced double-entry).
+    account_code = models.CharField(max_length=100)
+    counter_account_code = models.CharField(max_length=100)
+    amount = models.BigIntegerField(help_text="Signed minor units applied to account_code")
+    currency = models.CharField(max_length=3, choices=Currency.choices, default=Currency.EGP)
+    reason = models.TextField()
+    status = models.CharField(max_length=12, choices=Status.choices,
+                              default=Status.PENDING, db_index=True)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+                                     related_name="adjustment_requests")
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name="adjustment_approvals")
+    ledger_transaction = models.ForeignKey(
+        LedgerTransaction, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="adjustments",
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "payments_adjustment_request"
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            self.reference = generate_reference(self.platform_code)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.reference} — {self.get_status_display()}"
+
+
 class FinancialAuditLog(UUIDModel):
     """Immutable audit trail for sensitive financial actions (Part XXIX)."""
 
