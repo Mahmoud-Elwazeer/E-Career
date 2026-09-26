@@ -83,6 +83,53 @@ def transactions(request):
 
 @api_view(["GET"])
 @permission_classes([IsAdminRole])
+def export_transactions_csv(request):
+    """Stream a CSV of payments for finance/reporting (directive Part XXXIII).
+
+    Admin-gated; respects the same platform/currency/days filters. No card data.
+    """
+    import csv
+    from django.http import StreamingHttpResponse
+
+    platform, currency, since = _parse_common(request)
+    qs = Payment.objects.select_related("order", "order__package").order_by("-created_at")
+    if platform:
+        qs = qs.filter(platform_code=platform)
+    if currency:
+        qs = qs.filter(currency=currency)
+    if since:
+        qs = qs.filter(created_at__gte=since)
+
+    class Echo:
+        def write(self, value):
+            return value
+
+    def rows():
+        writer = csv.writer(Echo())
+        yield writer.writerow([
+            "reference", "platform", "order", "package", "amount_minor",
+            "currency", "status", "provider", "provider_reference", "created_at",
+        ])
+        for p in qs.iterator(chunk_size=500):
+            yield writer.writerow([
+                p.reference, p.platform_code, p.order.reference, p.order.package.name,
+                p.amount, p.currency, p.status, p.provider, p.provider_reference,
+                p.created_at.isoformat(),
+            ])
+
+    resp = StreamingHttpResponse(rows(), content_type="text/csv")
+    resp["Content-Disposition"] = 'attachment; filename="usam-transactions.csv"'
+    # Audit the export (directive Part XXIX).
+    FinancialAuditLog.objects.create(
+        actor=request.user, action="finance.export.transactions",
+        entity_type="Payment", entity_ref="csv",
+        context={"platform": platform or "all", "currency": currency or "all"},
+    )
+    return resp
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminRole])
 def audit_log(request):
     rows = [{
         "action": a.action, "entity_type": a.entity_type, "entity_ref": a.entity_ref,
