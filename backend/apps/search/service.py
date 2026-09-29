@@ -73,7 +73,24 @@ class SearchService:
     def search_jobs(self, query: SearchQuery) -> SearchResponse:
         self._enforce_trust_score_filter(query)
         plugin = self._get_plugin()
-        return plugin.search(JOBS_COLLECTION, query)
+        try:
+            return plugin.search(JOBS_COLLECTION, query)
+        except Exception as e:
+            # Resilience: health_check may pass while the actual query fails
+            # (e.g. Typesense 401 on a misconfigured API key). Never hard-crash
+            # search — fall back to Postgres so results keep flowing. The
+            # mandatory trust filter is already applied above.
+            if plugin is not self.fallback:
+                logger.warning(
+                    "search_primary_failed_falling_back",
+                    error=str(e), backend=type(plugin).__name__,
+                )
+                try:
+                    return self.fallback.search(JOBS_COLLECTION, query)
+                except Exception as fe:
+                    logger.error("search_fallback_also_failed", error=str(fe))
+                    raise
+            raise
 
     def index_job(self, document: dict) -> None:
         try:
