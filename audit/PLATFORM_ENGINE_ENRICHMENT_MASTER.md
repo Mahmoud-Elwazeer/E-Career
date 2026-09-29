@@ -278,7 +278,7 @@ AI runtime stays BLOCKED until AWS creds valid.
 | Recommendation feedback | none | capture behavioral signals for ranking | jobs/users | LightFM/Gorse(ref) | RecommendationFeedback model + service | (CI) | signals recorded + signed weight | P1 | **DONE (f480b47)** — migration 0005; feedback_service record/weight/suppress |
 | Recommendation ranking use of feedback | FUNCTIONAL | consume feedback weight + suppress dismissed | above | — | wire into fallback ranker | — | dismissed jobs suppressed | P1 | TODO (next) |
 | Cover Letter | WEAK | grounded pipeline + versions | CV/job (AI) | — | planner+draft+export | — | generate→edit→export live | P1 | TODO (AI parts BLOCKED) |
-| Observability/Admin | WEAK | per-engine health surfaced | — | — | health endpoints/panel | (bedrock done) | admin sees engine health | P1 | PARTIAL (AI health DONE) |
+| Observability/Admin | WEAK | per-engine health surfaced | — | — | engine_health_view.py | (check) | admin sees engine health | P1 | **DONE (2446a39)** — /admin-api/engine-health/ reports scraping/moat/provenance/matching/feedback/bedrock |
 
 ## 8c. LIVE runtime verification of new engines (2026-09-29, server ff0520d)
 
