@@ -34,7 +34,7 @@ except ImportError:
     Event = None
 
 try:
-    from apps.jobs.models import JobApplication
+    from apps.employers.models import JobApplication
 except ImportError:
     JobApplication = None
 

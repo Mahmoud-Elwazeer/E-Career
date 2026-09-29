@@ -76,6 +76,17 @@ def chat_with_rashid(request):
         })
 
     except Exception as e:
+        # Log the real agent failure so the fallback path is not a silent black
+        # box. The fallback below still gives the user a useful reply.
+        import structlog
+        structlog.get_logger().error(
+            "rashid_agent_failed",
+            error=str(e),
+            error_type=type(e).__name__,
+            user_id=getattr(request.user, "id", None),
+            exc_info=True,
+        )
+
         from .service import get_ai_service
         from .llm_plugin import LLMRequest
 

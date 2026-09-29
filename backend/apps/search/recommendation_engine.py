@@ -241,7 +241,7 @@ class RecommendationEngine:
         interactions = sparse.lil_matrix((n_users, n_jobs), dtype=np.float32)
         
         # Get user's job applications
-        from apps.jobs.models import JobApplication
+        from apps.employers.models import JobApplication
         applications = JobApplication.objects.filter(user=self.user)
         
         # Positive interactions (applied jobs)
@@ -372,7 +372,7 @@ class RecommendationEngine:
         
         # Exclude already applied jobs if requested
         if exclude_seen:
-            from apps.jobs.models import JobApplication
+            from apps.employers.models import JobApplication
             applied_jobs = set(
                 str(app.job.uuid) for app in JobApplication.objects.filter(user=self.user)
             )
@@ -490,7 +490,7 @@ class RecommendationEngine:
         """
         # Import models at function level to avoid circular imports
         from apps.users.models import SavedJob
-        from apps.jobs.models import JobApplication
+        from apps.employers.models import JobApplication
 
         # Get user profile
         user_profile = getattr(self.user, 'career_profile', None)
@@ -630,7 +630,7 @@ class RecommendationEngine:
             Dictionary mapping job_id to signal strength
         """
         from apps.users.models import SavedJob
-        from apps.jobs.models import JobApplication
+        from apps.employers.models import JobApplication
 
         signals = {}
 

@@ -624,7 +624,7 @@ class CandidateRankingViewSet(viewsets.ModelViewSet):
         # Get candidates to rank
         if rank_all:
             # Rank all applicants for this job (applicants have implicitly consented)
-            from apps.jobs.models import JobApplication
+            from apps.employers.models import JobApplication
             candidates = JobApplication.objects.filter(
                 job=job
             ).select_related('user').values_list('user_id', flat=True)
