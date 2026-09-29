@@ -252,6 +252,31 @@ interface — documented, deferred (needs migration-safe refactor + broad tests)
 
 ---
 
+## 8b. Implementation backlog (dependency-aware) + progress
+
+Living backlog per the implementation directive. Status updated after each
+increment. `DONE` = code + tests + pushed; runtime PASS requires server evidence;
+AI runtime stays BLOCKED until AWS creds valid.
+
+| Engine | Current | Required change | Deps | OSS | Scope | Tests | Runtime acceptance | Priority | Final status |
+|--------|---------|-----------------|------|-----|-------|-------|--------------------|----------|-------------|
+| Scraping Strategy Router | none (implicit) | explicit Tier 0-5 router over existing dispatch | orchestrator | Scrapling/Crawl4AI optional/out-of-proc | additive module + injected runners | 8 | route selected + delegates correctly in a real run | P0 | **DONE (f055bda)** |
+| SmartRecruiters connector | PARTIAL (wrong id assumption) | use public Posting API (slug=identifier) + pagination | requests | — | rewrite fetch_jobs | (live) | real postings fetched for a live SR company | P0 | **DONE (f055bda)** — needs live source check |
+| Job Normalization | WEAK | add seniority + country/city + confidence | — | — | additive helpers | 7 | normalized fields on new scrapes | P1 | **DONE (fbedbd9)** |
+| Deduplication | WEAK | layered L1/L2/L3 verdict | — | (pgvector for L4 later) | additive `dedup_verdict` | 4 | dup collapse on ingestion | P1 | **DONE (fbedbd9)** — wire into ingestion next |
+| iCIMS connector | BROKEN (points at Jobvite) | correct endpoint OR mark unsupported | — | — | investigate tenant API | — | real postings or honest unsupported | P2 | TODO |
+| Workday connector | STUB (Playwright) | out-of-process browser tier | Playwright | — | Tier-2 runner | — | jobs from a live Workday tenant | P2 | TODO (browser tier) |
+| Oracle/SAP connectors | best-effort | per-tenant endpoints or mark unsupported | — | — | investigate | — | real or honest unsupported | P2 | TODO |
+| Source Discovery | PARTIAL | company→careers→ATS detect unify | — | — | consolidate existing discovery | — | discover+register a source | P1 | TODO |
+| CV end-to-end | FUNCTIONAL (AI parse blocked) | verify upload→parse→edit→export chain | docling | Reactive Resume (ref) | audit + fix gaps | — | full chain live | P1 | TODO |
+| Career Identity sync | FUNCTIONAL | CV→identity merge w/ conflict flags | CV | — | sync service | — | no silent overwrite | P1 | TODO |
+| Talent Qualification | WEAK | evidence-based contract | skills/assessment | — | consolidate | — | qualification w/ evidence | P1 | TODO |
+| Talent Pool | FUNCTIONAL | evidence-based profile + consent/visibility | qualification | — | enrich model/API | — | employer search w/ consent | P1 | TODO |
+| Matching | FRAGMENTED | converge Eligibility/Ranking/Explanation | profiles+search | — | one interface, migration-safe | — | single consistent score | P1 | TODO |
+| Recommendation | FUNCTIONAL | hybrid + feedback signals | matching | LightFM/Gorse(ref) | enrich + instrument | — | explained recs + feedback capture | P1 | TODO |
+| Cover Letter | WEAK | grounded pipeline + versions | CV/job (AI) | — | planner+draft+export | — | generate→edit→export live | P1 | TODO (AI parts BLOCKED) |
+| Observability/Admin | WEAK | per-engine health surfaced | — | — | health endpoints/panel | (bedrock done) | admin sees engine health | P1 | PARTIAL (AI health DONE) |
+
 ## 9. Production-readiness conclusion
 
 - **Non-AI platform:** healthy and verified live — auth, services, workers,
