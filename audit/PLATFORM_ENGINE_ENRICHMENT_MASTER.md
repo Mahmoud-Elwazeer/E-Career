@@ -369,3 +369,51 @@ clamp), Observability (run metrics + zero-yield alert).
 
 **No feature is claimed working without runtime evidence.** Items that cannot be
 verified until AWS credentials are valid are explicitly marked BLOCKED, not PASS.
+
+
+---
+
+## Connector Matrix — Live Fetch-Only Probe (2026-09-21, code @ 2ee5637)
+
+Ran `python manage.py connector_matrix --fetch-only` on prod (non-writing probe of every seeded source). `created=0` everywhere is expected in fetch-only mode; the signal is the **fetched** column.
+
+| Source | Platform | Fetched | Verdict |
+|---|---|---:|---|
+| airbnb-greenhouse | greenhouse | 156 | OK |
+| brex-greenhouse | greenhouse | 258 | OK |
+| databricks-greenhouse | greenhouse | 877 | OK |
+| discord-greenhouse | greenhouse | 48 | OK |
+| figma-greenhouse | greenhouse | 163 | OK |
+| gitlab-greenhouse | greenhouse | 198 | OK |
+| robinhood-greenhouse | greenhouse | 162 | OK |
+| stripe-greenhouse | greenhouse | 711 | OK |
+| linear-ashby | ashby | 30 | OK |
+| openai-ashby | ashby | 833 | OK |
+| ramp-ashby | ashby | 155 | OK |
+| netflix-lever | lever | 0 | **DEAD (404)** |
+| notion-lever | lever | 0 | **DEAD (404)** |
+| plaid-lever | lever | 0 | **DEAD (404)** |
+| ramp-lever | lever | 0 | **DEAD (404)** |
+| **TOTAL** | | **3591** | |
+
+### Root cause
+Greenhouse (8/8) and Ashby (3/3) connectors are healthy. All 4 Lever sources returned HTTP 404 from `api.lever.co/v0/postings/{slug}`. The connector code is correct — the **company slugs were stale** because those companies migrated ATS.
+
+### Verified current ATS (probed 2026-09-21)
+- **Notion** → Ashby (200, 128 jobs) — migrated off Lever
+- **Plaid** → Ashby (200, 121 jobs) — migrated off Lever
+- **Ramp** → Ashby (already seeded as `ramp-ashby`, 155 jobs); `ramp-lever` was a dead duplicate
+- **Netflix** → no public ATS JSON API (own Eightfold-based board) — cannot ingest moat-compliant
+
+### Fix (commit e9e0dd4)
+- Removed the 4 dead Lever slugs.
+- Added verified-live Lever boards to keep the connector exercised: `spotify-lever` (80), `gopuff-lever` (788), `ro-lever` (54).
+- Added `notion-ashby` (128) and `plaid-ashby` (121).
+- Added `setup_sources --deactivate-stale` to retire DB sources no longer in the seed list, so migrated/dead boards stop running every 6h and firing the zero-yield alert.
+
+### Server action required
+Deploy e9e0dd4, then:
+```
+python manage.py setup_sources --deactivate-stale
+python manage.py connector_matrix --fetch-only   # re-probe; expect Lever spotify/gopuff/ro > 0, no 404 rows
+```
