@@ -62,6 +62,12 @@ SOURCES = [
     # 2000, direct apply URLs on the employer's own Workday host. Tenant/site/
     # server resolved from WORKDAY_TENANTS in the connector.
     ("nvidia-workday", "NVIDIA", "workday"),
+
+    # ── SmartRecruiters public Posting API (§11) ──
+    # Verified live 2026-09-29: api.smartrecruiters.com/v1/companies/BoschGroup
+    # /postings -> totalFound 4820. Apply URL is the jobs.smartrecruiters.com
+    # careers page (NOT the API ref — that bug is fixed in the connector).
+    ("boschgroup-smartrecruiters", "Bosch", "smartrecruiters"),
 ]
 
 

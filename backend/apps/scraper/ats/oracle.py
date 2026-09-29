@@ -1,95 +1,54 @@
-"""Oracle Cloud HCM API scraper."""
-import requests
+"""Oracle Cloud HCM / Recruiting connector — DISCOVERY_UNSUPPORTED (§11/§13/§14).
+
+STATUS: not enabled. Marked unsupported WITH EVIDENCE rather than shipping a
+connector that guesses, because doing it wrong would either yield nothing or
+(worse) surface non-direct-apply URLs and weaken the moat.
+
+Why it is hard to do reliably right now:
+- Oracle Recruiting Cloud (ORC) job feeds are per-tenant and site-specific. The
+  public REST surface is typically:
+    https://{host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions
+    ?onlyData=true&expand=requisitionList.secondaryLocations&finder=findReqs;...
+  where {host} and the site code differ per employer and are NOT derivable from
+  a bare company slug.
+- Many tenants gate the feed behind a site token / require the exact
+  `siteNumber` finder param; without per-tenant config we cannot construct a
+  correct, candidate-facing apply URL.
+
+Path to enable (future): add a per-tenant registry
+  {slug: (host, site_number)}  # verified live
+mirroring WORKDAY_TENANTS / EIGHTFOLD_TENANTS, populated via Source Discovery
+against a real employer's ORC careers page, then map
+  requisition -> https://{host}/.../job/{reqId}  (the employer's own ORC page).
+
+The previous implementation posted to a generic jobs.oracle.com endpoint that
+is not tenant-scoped and guessed response keys; it is intentionally disabled.
+"""
 from typing import List, Dict, Optional
 from .base import BaseATSScraper
 
+# Flip to True only once a verified per-tenant registry + real parse exist.
+SUPPORTED = False
+
+# slug -> (host, site_number). Populate with VERIFIED-LIVE entries only.
+ORACLE_TENANTS: Dict[str, tuple] = {}
+
 
 class OracleScraper(BaseATSScraper):
-    """
-    Scrapes jobs from Oracle Cloud HCM.
-    
-    Oracle Cloud HCM uses REST API endpoints.
-    Common endpoints:
-    - /hcmRestApi/resources/11.13.18.05/jobs
-    - /hcmRestApi/resources/11.13.18.05/jobs?q=organizationId={org_id}
-    
-    Some instances may require authentication via OAuth2 or API keys.
-    """
-    
-    def __init__(self, company_slug: str, api_key: Optional[str] = None):
-        super().__init__(company_slug)
-        self.api_key = api_key
-        # Oracle endpoints can vary by instance
-        self.base_url = f"https://jobs.oracle.com/jobs"
-    
+    """Oracle Cloud HCM connector (currently unsupported — see module docstring)."""
+
     def get_platform_name(self) -> str:
         return 'oracle'
-    
+
     def fetch_jobs(self) -> List[Dict]:
-        """Fetch all jobs from Oracle Cloud HCM."""
-        try:
-            jobs = []
-            
-            # Try to fetch jobs from Oracle jobs site
-            # Oracle typically uses jobs.oracle.com for public listings
-            url = f"{self.base_url}?query=1&count=true"
-            
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json, text/plain, */*',
-            }
-            
-            if self.api_key:
-                headers['Authorization'] = f'Bearer {self.api_key}'
-            
-            response = requests.get(url, headers=headers, timeout=15)
-            
-            if response.status_code == 200:
-                data = response.json()
-                job_list = data.get('results', data.get('jobs', []))
-                
-                for job in job_list:
-                    apply_url = job.get('apply_url', job.get('url', job.get('link', '')))
-                    
-                    if not apply_url:
-                        # Try to construct apply URL from job ID
-                        job_id = job.get('id', job.get('jobId', ''))
-                        if job_id:
-                            apply_url = f"{self.base_url}/{job_id}"
-                    
-                    if not apply_url:
-                        continue
-                    
-                    normalized = {
-                        'title': job.get('title', ''),
-                        'apply_url': apply_url,
-                        'direct_apply_url': apply_url,
-                        'description': job.get('description', ''),
-                        'location': job.get('location', {}).get('name', job.get('location', '')),
-                        'id': job.get('id', job.get('jobId', '')),
-                        'posted_at': job.get('postedDate', job.get('createdDate', '')),
-                        'employment_type': job.get('employmentType', job.get('type')),
-                        'experience_level': job.get('experienceLevel'),
-                        'remote_type': job.get('remoteType'),
-                        'salary_min': job.get('salaryMin'),
-                        'salary_max': job.get('salaryMax'),
-                        'salary_currency': job.get('salaryCurrency', 'USD'),
-                        'departments': [job.get('category', '')] if job.get('category') else [],
-                    }
-                    
-                    jobs.append(self.normalize_job(normalized))
-            
-            return jobs
-            
-        except requests.RequestException as e:
-            print(f"Oracle scrape failed for {self.company_slug}: {e}")
+        if not SUPPORTED or self.company_slug.lower() not in ORACLE_TENANTS:
+            print(f"Oracle: DISCOVERY_UNSUPPORTED for '{self.company_slug}' — "
+                  f"per-tenant ORC host/site required (see oracle.py docstring)")
             return []
-        except Exception as e:
-            print(f"Unexpected error scraping Oracle for {self.company_slug}: {e}")
-            return []
+        # Reserved for the real per-tenant implementation once registry exists.
+        return []
 
 
 def fetch_oracle_jobs(company_slug: str, api_key: Optional[str] = None) -> List[Dict]:
-    """Convenience function to fetch Oracle jobs."""
-    scraper = OracleScraper(company_slug, api_key)
-    return scraper.fetch_jobs()
+    """Convenience function (returns [] while Oracle is unsupported)."""
+    return OracleScraper(company_slug).fetch_jobs()

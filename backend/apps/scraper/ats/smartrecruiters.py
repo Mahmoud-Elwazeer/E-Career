@@ -74,12 +74,15 @@ class SmartRecruitersScraper(BaseATSScraper):
         if not job_id:
             return None
 
-        # Real direct-apply destination on the company's SmartRecruiters site.
-        apply_url = (
-            job.get('applyUrl')
-            or job.get('ref')
-            or f"https://jobs.smartrecruiters.com/{self.company_slug}/{job_id}"
-        )
+        # Real direct-apply destination on the company's SmartRecruiters
+        # careers site. NOTE: the list endpoint's `ref` is an API URL
+        # (api.smartrecruiters.com/.../postings/{id}) — NOT a candidate-facing
+        # page — so we must NOT use it as the apply URL. `applyUrl` is usually
+        # absent on the list endpoint too. The stable human apply page is
+        # jobs.smartrecruiters.com/{companyIdentifier}/{postingId}.
+        apply_url = job.get('applyUrl')
+        if not apply_url or 'api.smartrecruiters.com' in apply_url:
+            apply_url = f"https://jobs.smartrecruiters.com/{self.company_slug}/{job_id}"
 
         loc = job.get('location', {}) or {}
         location = ", ".join(

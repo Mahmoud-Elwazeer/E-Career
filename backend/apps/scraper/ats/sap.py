@@ -1,101 +1,52 @@
-"""SAP SuccessFactors API scraper."""
-import requests
+"""SAP SuccessFactors connector — DISCOVERY_UNSUPPORTED (§11/§13/§14).
+
+STATUS: not enabled. Marked unsupported WITH EVIDENCE rather than shipping a
+guessing connector that could surface non-direct-apply URLs and weaken the moat.
+
+Why it is hard to do reliably right now:
+- SuccessFactors Recruiting exposes jobs via the OData API, e.g.
+    https://{host}/odata/v2/JobRequisitionPosting?$format=json&...
+  or the Career Site Builder (CSB) search endpoints. Both are per-tenant: the
+  {host} (e.g. career{N}.successfactors.{eu|com}), the company career-site id,
+  and often an API key / OAuth are required. None are derivable from a bare
+  company slug.
+- The candidate-facing apply page is
+    https://{careersite-host}/careers/job/{postingId}
+  which again depends on the tenant's Career Site Builder host.
+
+Path to enable (future): add a per-tenant registry
+  {slug: (odata_host, careersite_host, company_id)}  # verified live
+mirroring WORKDAY_TENANTS, populated via Source Discovery against a real
+employer's SuccessFactors career site, mapping each posting to the employer's
+own CSB apply page.
+
+The previous implementation hit a generic jobs.sap.com/search endpoint that is
+not tenant-scoped and guessed response keys; it is intentionally disabled.
+"""
 from typing import List, Dict, Optional
 from .base import BaseATSScraper
 
+# Flip to True only once a verified per-tenant registry + real parse exist.
+SUPPORTED = False
+
+# slug -> (odata_host, careersite_host, company_id). VERIFIED-LIVE entries only.
+SAP_TENANTS: Dict[str, tuple] = {}
+
 
 class SAPScraper(BaseATSScraper):
-    """
-    Scrapes jobs from SAP SuccessFactors.
-    
-    SAP SuccessFactors uses REST API endpoints.
-    Common endpoints:
-    - /odata/v2/Job
-    - /odata/v2/JobPosting
-    
-    Authentication typically requires OAuth2 or API keys.
-    """
-    
-    def __init__(self, company_slug: str, api_key: Optional[str] = None):
-        super().__init__(company_slug)
-        self.api_key = api_key
-        # SAP endpoints can vary by instance
-        self.base_url = f"https://jobs.sap.com"
-    
+    """SAP SuccessFactors connector (currently unsupported — see module docstring)."""
+
     def get_platform_name(self) -> str:
         return 'sap'
-    
+
     def fetch_jobs(self) -> List[Dict]:
-        """Fetch all jobs from SAP SuccessFactors."""
-        try:
-            jobs = []
-            
-            # Try to fetch jobs from SAP jobs site
-            # SAP typically uses jobs.sap.com for public listings
-            url = f"{self.base_url}/search"
-            
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'application/json, text/plain, */*',
-            }
-            
-            if self.api_key:
-                headers['Authorization'] = f'Bearer {self.api_key}'
-            
-            # SAP jobs site may require JavaScript rendering
-            # For now, try direct API access
-            response = requests.get(url, headers=headers, timeout=15)
-            
-            if response.status_code == 200:
-                try:
-                    data = response.json()
-                    job_list = data.get('results', data.get('jobs', data.get('content', [])))
-                    
-                    for job in job_list:
-                        apply_url = job.get('apply_url', job.get('url', job.get('link', '')))
-                        
-                        if not apply_url:
-                            # Try to construct apply URL from job ID
-                            job_id = job.get('id', job.get('jobId', ''))
-                            if job_id:
-                                apply_url = f"{self.base_url}/job/{job_id}"
-                        
-                        if not apply_url:
-                            continue
-                        
-                        normalized = {
-                            'title': job.get('title', ''),
-                            'apply_url': apply_url,
-                            'direct_apply_url': apply_url,
-                            'description': job.get('description', ''),
-                            'location': job.get('location', {}).get('name', job.get('location', '')),
-                            'id': job.get('id', job.get('jobId', '')),
-                            'posted_at': job.get('postedDate', job.get('createdDate', '')),
-                            'employment_type': job.get('employmentType', job.get('type')),
-                            'experience_level': job.get('experienceLevel'),
-                            'remote_type': job.get('remoteType'),
-                            'salary_min': job.get('salaryMin'),
-                            'salary_max': job.get('salaryMax'),
-                            'salary_currency': job.get('salaryCurrency', 'USD'),
-                            'departments': [job.get('category', '')] if job.get('category') else [],
-                        }
-                        
-                        jobs.append(self.normalize_job(normalized))
-                except Exception:
-                    # If JSON parsing fails, try HTML parsing or return empty
-                    print(f"SAP response not in expected format for {self.company_slug}")
-            
-            return jobs
-            
-        except requests.RequestException as e:
-            print(f"SAP scrape failed for {self.company_slug}: {e}")
+        if not SUPPORTED or self.company_slug.lower() not in SAP_TENANTS:
+            print(f"SAP: DISCOVERY_UNSUPPORTED for '{self.company_slug}' — "
+                  f"per-tenant OData/CSB host required (see sap.py docstring)")
             return []
-        except Exception as e:
-            print(f"Unexpected error scraping SAP for {self.company_slug}: {e}")
-            return []
+        return []
 
 
 def fetch_sap_jobs(company_slug: str, api_key: Optional[str] = None) -> List[Dict]:
-    """Convenience function to fetch SAP jobs."""
-    scraper = SAPScraper(company_slug, api_key)
-    return scraper.fetch_jobs()
+    """Convenience function (returns [] while SAP is unsupported)."""
+    return SAPScraper(company_slug).fetch_jobs()
