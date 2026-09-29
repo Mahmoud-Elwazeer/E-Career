@@ -268,8 +268,8 @@ AI runtime stays BLOCKED until AWS creds valid.
 | Workday connector | STUB (Playwright) | out-of-process browser tier | Playwright | — | Tier-2 runner | — | jobs from a live Workday tenant | P2 | TODO (browser tier) |
 | Oracle/SAP connectors | best-effort | per-tenant endpoints or mark unsupported | — | — | investigate | — | real or honest unsupported | P2 | TODO |
 | Source Discovery | PARTIAL | company→careers→ATS detect unify | — | — | consolidate existing discovery | — | discover+register a source | P1 | TODO |
-| CV end-to-end | FUNCTIONAL (AI parse blocked) | verify upload→parse→edit→export chain | docling | Reactive Resume (ref) | audit + fix gaps | — | full chain live | P1 | TODO |
-| Career Identity sync | FUNCTIONAL | CV→identity merge w/ conflict flags | CV | — | sync service | — | no silent overwrite | P1 | TODO |
+| CV end-to-end | FUNCTIONAL (AI parse blocked) | verify upload→parse→edit→export chain | docling | Reactive Resume (ref) | audit + fix gaps | — | full chain live | P1 | PARTIAL — sync done; AI parse BLOCKED on AWS |
+| Career Identity sync | FUNCTIONAL (silent overwrite) | CV→profile merge w/ conflict flags (no silent overwrite) | CV | — | cv_sync.py | 5 | conflicts flagged, user data preserved | P1 | **DONE (3cb4bab)** — apps/profiles/cv_sync.py; wired into upload serializer |
 | Talent Qualification | WEAK | evidence-based contract | skills/assessment | — | consolidate | — | qualification w/ evidence | P1 | TODO |
 | Talent Pool | FUNCTIONAL | evidence-based profile + consent/visibility | qualification | — | enrich model/API | — | employer search w/ consent | P1 | TODO |
 | Matching | FRAGMENTED | converge Eligibility/Ranking/Explanation | profiles+search | — | one interface, migration-safe | 7 | single consistent score | P1 | **DONE (c1e4fc1)** — apps/matching/engine.py; MatchingService delegates; deterministic |
