@@ -1,108 +1,136 @@
-"""SmartRecruiters API scraper."""
+"""SmartRecruiters Posting API scraper.
+
+Uses the PUBLIC Posting API which requires no auth for published postings:
+  GET https://api.smartrecruiters.com/v1/companies/{companyIdentifier}/postings
+The {companyIdentifier} is the slug that appears after the "/" in
+https://careers.smartrecruiters.com/{slug} — i.e. exactly the company_slug we
+already have (per official docs developers.smartrecruiters.com/docs/endpoints).
+The response is paginated ({limit,offset} → {totalFound, content[]}); the apply
+destination is the posting's own careers URL (a real direct-apply page).
+Content was rephrased for compliance with licensing restrictions.
+"""
 import requests
+import structlog
 from typing import List, Dict
 from .base import BaseATSScraper
 
+logger = structlog.get_logger()
+
 
 class SmartRecruitersScraper(BaseATSScraper):
-    """
-    Scrapes jobs from SmartRecruiters ATS API.
-    
-    Base URL pattern: https://careers.smartrecruiters.com/{company_name}
-    API endpoint: https://api.smartrecruiters.com/v1/companies/{id}/postings
-    
-    SmartRecruiters uses company IDs (not slugs) for API access.
-    """
-    
-    API_URL = "https://api.smartrecruiters.com/v1/companies/{company_id}/postings"
+    """Scrapes published jobs from the SmartRecruiters public Posting API."""
+
+    LIST_URL = "https://api.smartrecruiters.com/v1/companies/{company}/postings"
+    PAGE_LIMIT = 100  # API max per page
+    MAX_PAGES = 20    # safety cap (≤2000 postings/company)
     HEADERS = {
         'Accept': 'application/json',
         'User-Agent': 'USAM-Career-Compass/1.0',
     }
-    
+
     def get_platform_name(self) -> str:
         return 'smartrecruiters'
-    
+
     def fetch_jobs(self) -> List[Dict]:
-        """Fetch all jobs from SmartRecruiters API."""
+        """Fetch all published postings, following pagination."""
+        url = self.LIST_URL.format(company=self.company_slug)
+        jobs: List[Dict] = []
+        offset = 0
         try:
-            # SmartRecruiters uses company_id (not company_slug)
-            # Try to use company_slug as company_id first
-            url = self.API_URL.format(company_id=self.company_slug)
-            
-            response = requests.get(url, headers=self.HEADERS, timeout=15)
-            response.raise_for_status()
-            
-            data = response.json()
-            jobs = []
-            
-            for job in data.get('content', []):
-                # Extract job details
-                job_id = job.get('id', '')
-                if not job_id:
-                    continue
-                
-                # Build direct apply URL
-                # SmartRecruiters uses: https://careers.smartrecruiters.com/{company_name}/{job_id}
-                apply_url = f"https://careers.smartrecruiters.com/{self.company_slug}/{job_id}"
-                
-                # Extract location
-                location_data = job.get('location', {})
-                location = location_data.get('city', '') + ', ' + location_data.get('country', '')
-                location = location.strip(', ')
-                
-                # Extract department
-                department = ''
-                if job.get('category'):
-                    department = job.get('category', {}).get('name', '')
-                
-                # Extract experience level
-                experience_level = ''
-                if job.get('jobType'):
-                    experience_level = job.get('jobType', {}).get('name', '').lower()
-                
-                normalized = {
-                    'title': job.get('name', ''),
-                    'apply_url': apply_url,
-                    'description': job.get('descriptionText', ''),
-                    'location': location,
-                    'id': job_id,
-                    'posted_at': job.get('creationDate', ''),
-                    'departments': [department] if department else [],
-                    'employment_type': job.get('jobType', {}).get('name', ''),
-                    'experience_level': experience_level,
-                    'remote_type': self._get_remote_type(job),
-                    'salary_min': None,
-                    'salary_max': None,
-                    'salary_currency': 'USD',
-                }
-                
-                jobs.append(self.normalize_job(normalized))
-            
+            for _ in range(self.MAX_PAGES):
+                response = requests.get(
+                    url,
+                    params={'limit': self.PAGE_LIMIT, 'offset': offset},
+                    headers=self.HEADERS,
+                    timeout=15,
+                )
+                response.raise_for_status()
+                data = response.json()
+                content = data.get('content', []) or []
+                if not content:
+                    break
+
+                for job in content:
+                    normalized = self._normalize_posting(job)
+                    if normalized:
+                        jobs.append(self.normalize_job(normalized))
+
+                offset += self.PAGE_LIMIT
+                total = data.get('totalFound', 0)
+                if offset >= total or len(content) < self.PAGE_LIMIT:
+                    break
+
             return jobs
-            
         except requests.RequestException as e:
-            print(f"SmartRecruiters scrape failed for {self.company_slug}: {e}")
-            return []
+            logger.warning(
+                "smartrecruiters_scrape_failed",
+                company=self.company_slug,
+                error=str(e),
+            )
+            return jobs  # return whatever we collected before failure
+
+    def _normalize_posting(self, job: Dict) -> Dict | None:
+        job_id = job.get('id', '')
+        if not job_id:
+            return None
+
+        # Real direct-apply destination on the company's SmartRecruiters site.
+        apply_url = (
+            job.get('applyUrl')
+            or job.get('ref')
+            or f"https://jobs.smartrecruiters.com/{self.company_slug}/{job_id}"
+        )
+
+        loc = job.get('location', {}) or {}
+        location = ", ".join(
+            p for p in (loc.get('city', ''), loc.get('region', ''), loc.get('country', '')) if p
+        )
+
+        department = (job.get('department') or {}).get('label', '') if job.get('department') else ''
+        if not department and job.get('function'):
+            department = (job.get('function') or {}).get('label', '')
+
+        emp = (job.get('typeOfEmployment') or {}).get('label', '') if job.get('typeOfEmployment') else ''
+
+        return {
+            'title': job.get('name', ''),
+            'apply_url': apply_url,
+            'direct_apply_url': apply_url,
+            # List endpoint carries no full description; the detail endpoint
+            # (/postings/{id}) has jobAd.sections. Left blank here so the
+            # normalizer/verifier can enrich later without fabricating text.
+            'description': job.get('summary', '') or '',
+            'location': location,
+            'id': job_id,
+            'posted_at': job.get('releasedDate', job.get('createdOn', '')),
+            'departments': [department] if department else [],
+            'employment_type': emp,
+            'experience_level': (job.get('experienceLevel') or {}).get('label', '') if job.get('experienceLevel') else '',
+            'remote_type': self._get_remote_type(job),
+            'salary_min': None,
+            'salary_max': None,
+            'salary_currency': 'USD',
+        }
     
     def _get_remote_type(self, job: Dict) -> str:
-        """Determine remote type from job data."""
-        job_type = job.get('jobType', {}).get('name', '').lower()
-        location = job.get('location', {})
-        
-        # Check for remote keywords in job type
-        if 'remote' in job_type or 'virtual' in job_type:
+        """Determine remote type from SmartRecruiters Posting API fields."""
+        location = job.get('location', {}) or {}
+        # The Posting API exposes a boolean 'remote' flag on location.
+        if location.get('remote') is True:
             return 'remote'
-        
-        # Check for hybrid keywords
-        if 'hybrid' in job_type or 'flexible' in job_type:
+
+        blob = " ".join(
+            str(v).lower()
+            for v in (
+                location.get('city', ''),
+                location.get('region', ''),
+                (job.get('typeOfEmployment') or {}).get('label', ''),
+            )
+        )
+        if 'remote' in blob or 'virtual' in blob:
+            return 'remote'
+        if 'hybrid' in blob or 'flexible' in blob:
             return 'hybrid'
-        
-        # Check location for remote indicators
-        city = location.get('city', '').lower()
-        if 'remote' in city or 'virtual' in city:
-            return 'remote'
-        
         return 'onsite'
 
 
