@@ -156,14 +156,58 @@ class Source(UUIDModel):
 
     # ============ END NEW FIELDS ============
 
+    # ── §9/§10 Source lifecycle state + migration tracking ──
+    # ACTIVE     : healthy, ingesting normally
+    # DEGRADED   : fetching but not persisting (zero-yield / all-rejected)
+    # MIGRATED   : the employer moved ATS; superseded by another Source
+    # DISABLED   : intentionally turned off (kept for history)
+    # INVALID    : endpoint permanently gone / not a supported provider
+    LIFECYCLE_STATE_CHOICES = [
+        ("active", "Active"),
+        ("degraded", "Degraded"),
+        ("migrated", "Migrated"),
+        ("disabled", "Disabled"),
+        ("invalid", "Invalid"),
+    ]
+    lifecycle_state = models.CharField(
+        max_length=20, choices=LIFECYCLE_STATE_CHOICES, default="active",
+        db_index=True,
+        help_text="Source health lifecycle (distinct from is_active on/off flag)",
+    )
+    consecutive_zero_yield_runs = models.IntegerField(
+        default=0,
+        help_text="Runs in a row that fetched volume but persisted nothing new; "
+                  "drives auto-DEGRADED and rediscovery triggers",
+    )
+    # When this source migrated to another ATS, point at the successor + keep
+    # the evidence (old provider/tenant -> new provider/tenant, detected when).
+    migrated_to = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="migrated_from", help_text="Successor source after ATS migration",
+    )
+    migration_history = models.JSONField(
+        default=list, blank=True,
+        help_text="Append-only list of migration/rediscovery events with evidence",
+    )
+    last_discovery_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         db_table = "jobs_source"
         ordering = ["name"]
         verbose_name = "Source"
         verbose_name_plural = "Sources"
+        indexes = [
+            models.Index(fields=["lifecycle_state"], name="jobs_source_lifecycle_idx"),
+        ]
 
     def __str__(self):
         return self.name
+
+    def record_migration_event(self, event: dict) -> None:
+        """Append a migration/rediscovery event (evidence) without overwriting."""
+        history = list(self.migration_history or [])
+        history.append(event)
+        self.migration_history = history
 
 
 class Tag(UUIDModel):

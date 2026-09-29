@@ -647,6 +647,22 @@ def scrape_all_sources_orchestrated(self):
                 source.last_run_status = 'success'
                 source.error_count = 0
                 source.last_error = ''
+
+                # §9: fold this run's health into the source lifecycle so a
+                # rotting source (fetching but never persisting) auto-flags as
+                # DEGRADED and accrues zero-yield runs that trigger rediscovery.
+                run = getattr(orchestrator, '_last_run_metrics', None) or {}
+                if run.get('degraded'):
+                    source.consecutive_zero_yield_runs = (
+                        (source.consecutive_zero_yield_runs or 0) + 1
+                    )
+                    # Don't clobber a terminal state (migrated/invalid/disabled).
+                    if source.lifecycle_state in ('active', 'degraded'):
+                        source.lifecycle_state = 'degraded'
+                else:
+                    source.consecutive_zero_yield_runs = 0
+                    if source.lifecycle_state == 'degraded':
+                        source.lifecycle_state = 'active'
                 source.save()
                 
                 total_found += len(jobs)
