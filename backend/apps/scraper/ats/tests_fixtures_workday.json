@@ -1,0 +1,32 @@
+{
+ "total": 2000,
+ "jobPostings": [
+  {
+   "title": "Senior Software Architect - Data Center Systems",
+   "externalPath": "/job/US-CA-Santa-Clara/Senior-Software-Architect---Data-Center-Systems_JR1973150",
+   "locationsText": "6 Locations",
+   "postedOn": "Posted Today",
+   "bulletFields": [
+    "JR1973150"
+   ]
+  },
+  {
+   "title": "Senior DGX Cloud AI Infrastructure Software Engineer",
+   "externalPath": "/job/US-CA-Santa-Clara/Senior-DGX-Cloud-AI-Infrastructure-Software-Engineer_JR2012361",
+   "locationsText": "5 Locations",
+   "postedOn": "Posted Today",
+   "bulletFields": [
+    "JR2012361"
+   ]
+  },
+  {
+   "title": "Senior Software Engineer, System Validation - EDA Infrastructure",
+   "externalPath": "/job/US-CA-Santa-Clara/Senior-Software-Engineer--Next-Generation-Architecture---EDA-Infrastructure_JR2014880",
+   "locationsText": "5 Locations",
+   "postedOn": "Posted Today",
+   "bulletFields": [
+    "JR2014880"
+   ]
+  }
+ ]
+}

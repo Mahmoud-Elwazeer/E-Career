@@ -56,6 +56,12 @@ SOURCES = [
     # explore.jobs.netflix.net/api/apply/v2/jobs?domain=netflix.com -> 474
     # positions, each with a direct canonicalPositionUrl (moat-compliant).
     ("netflix-eightfold", "Netflix", "eightfold"),
+
+    # ── Workday CXS public API (§11) — browser-free ──
+    # Verified live 2026-09-29: nvidia.wd5.myworkdayjobs.com CXS API -> total
+    # 2000, direct apply URLs on the employer's own Workday host. Tenant/site/
+    # server resolved from WORKDAY_TENANTS in the connector.
+    ("nvidia-workday", "NVIDIA", "workday"),
 ]
 
 
@@ -155,4 +161,8 @@ def _board_url(slug: str, platform: str) -> str:
         # Eightfold careers hubs are per-tenant; the connector resolves the
         # exact host/domain from its registry. Use a stable landing URL.
         return f"https://explore.jobs.{company}.net/careers"
+    if platform == "workday":
+        # Workday host (tenant.wdN.myworkdayjobs.com) + site are resolved from
+        # WORKDAY_TENANTS in the connector; use a generic landing URL here.
+        return f"https://{company}.myworkdayjobs.com/"
     return f"https://{company}.com/careers"
