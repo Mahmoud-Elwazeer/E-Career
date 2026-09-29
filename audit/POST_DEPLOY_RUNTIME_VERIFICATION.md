@@ -261,6 +261,46 @@ cat /var/run/reboot-required 2>/dev/null; cat /var/run/reboot-required.pkgs 2>/d
 
 ---
 
+## §D. Live runtime results (2026-09-29, commits b4c8415 → 0d43d24)
+
+Real authenticated production testing (user ran commands; no SSH from verifier).
+
+| Item | Status | Evidence |
+|------|--------|----------|
+| Deploy b4c8415 then 93f970a then 0d43d24 | PASS | `git rev-parse HEAD` matched each; `manage.py check` = no issues |
+| Service health | PASS | `usam.service active`; gunicorn 3 workers; no import/startup errors |
+| Workers | PASS | `celery-usam.service` + `celery-beat-usam.service` both `active running` |
+| Migrations | PASS | `0008` applied; `migrate` = no new migrations |
+| Blocked-domain moat | PASS | Live shell: linkedin/indeed + subdomains `True`; notlinkedin.com/myindeedexample.org/greenhouse/lever `False`; 25 active blocked |
+| Auth/login | PASS | Returns JWT at `data.access` (token len 228) |
+| RecommendationEngine | **FAIL → FIXED (93f970a)** | Live: `ImportError: cannot import name 'JobApplication' from 'apps.jobs.models'` (it lives in apps.employers.models). Fixed 6 sites. Re-run: `recs: 3` with correct keys |
+| analyze_skill_gap data path | PASS | Live shell keys = overall_gap_score/gap_severity/gaps_by_role/missing_skills/recommendations (matches fixed tool) |
+| get_salary_insights data path | PASS (code) / N/A (data) | Query `job__title__icontains='engineer'` executed cleanly; 0 records in this DB (data gap, not code) |
+| **Rashid AI (all intents)** | **FAIL — server AWS credentials invalid** | Live logs: agent → `UserError: must provide region_name` (FIXED in 0d43d24); fallback haiku → `UnrecognizedClientException: The security token included in the request is invalid` → **AWS creds on server are invalid/expired** |
+| Rashid agent error visibility | FIXED (93f970a) | Added structured `rashid_agent_failed` logging (was silently swallowed) |
+| Server pytest | NOT TESTED | pytest not installed in prod venv; verified locally instead |
+
+### Root cause of the Rashid fallback
+Two layered issues, now separated:
+1. **Agent path** built a Bedrock client with no region → `UserError`. **Fixed** in
+   `0d43d24` (explicit `BedrockProvider(bedrock_client=...)` with app region+creds).
+2. **Both paths** ultimately fail because the **server's AWS credentials are
+   invalid/expired** (`UnrecognizedClientException`). This is a **server-side
+   config fix**, not application code. Until the AWS keys are rotated/valid, all
+   Rashid AI (and any Bedrock feature: CV parse, matching AI, salary AI) returns
+   the deterministic fallback. Note AGENTS.md records a prior leaked key in
+   `backend/.env` — credentials may have been revoked.
+
+### Server credential fix (required, user action)
+```bash
+# Confirm which creds the process actually sees and whether they work:
+aws sts get-caller-identity   # if this fails, the keys are invalid/expired
+grep -E 'AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_DEFAULT_REGION' /var/www/usam/backend/.env
+# After installing VALID keys (rotate in IAM if revoked), restart:
+sudo systemctl restart usam.service celery-usam.service celery-beat-usam.service
+```
+Then re-run the Rashid loop (§A.3). PASS = real answers, `"model"` != `"fallback"`.
+
 ## Production-readiness conclusion (this deployment)
 
 **Code correctness:** After `c02458b`, all 9 Rashid tools call real, verified
