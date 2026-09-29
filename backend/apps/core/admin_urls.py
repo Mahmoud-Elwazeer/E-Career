@@ -7,6 +7,7 @@ from apps.core.admin_views import (
     MediaDetailView,
     PlatformConfigView,
 )
+from apps.core.engine_health_view import EngineHealthView
 from apps.core.admin_api_views import (
     SystemHealthView,
     ScraperDashboardView,
@@ -53,6 +54,8 @@ urlpatterns = [
 
     # Phase 7a: New admin API endpoints
     path("system-health/", SystemHealthView.as_view(), name="system-health"),
+    # Phase I: per-engine health/observability for enriched engines
+    path("engine-health/", EngineHealthView.as_view(), name="engine-health"),
     path("scraper-dashboard/", ScraperDashboardView.as_view(), name="scraper-dashboard-api"),
     path("ai-costs/", AICostDashboardView.as_view(), name="ai-costs-api"),
     path("verification/<uuid:job_uuid>/", VerificationResultView.as_view(), name="verification-result"),
