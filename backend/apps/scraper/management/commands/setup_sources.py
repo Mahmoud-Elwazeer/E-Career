@@ -35,15 +35,21 @@ SOURCES = [
     ("brex-greenhouse", "Brex", "greenhouse"),
 
     # ── Lever public boards (api.lever.co/v0/postings/{slug}) ──
-    ("netflix-lever", "Netflix", "lever"),
-    ("plaid-lever", "Plaid", "lever"),
-    ("ramp-lever", "Ramp", "lever"),
-    ("notion-lever", "Notion", "lever"),
+    # Verified live 2026-09-21: the prior seed (netflix/plaid/ramp/notion) all
+    # 404'd because those companies migrated OFF Lever (Notion+Plaid→Ashby,
+    # Ramp→Ashby, Netflix→own Eightfold board with no public JSON API). The
+    # connector code was fine; only the slugs were stale. Replaced with boards
+    # confirmed to return real postings via api.lever.co.
+    ("spotify-lever", "Spotify", "lever"),      # verified 80 jobs
+    ("gopuff-lever", "Gopuff", "lever"),        # verified 788 jobs
+    ("ro-lever", "Ro", "lever"),                # verified 54 jobs
 
     # ── Ashby public boards (api.ashbyhq.com/posting-api/job-board/{slug}) ──
     ("openai-ashby", "OpenAI", "ashby"),
     ("linear-ashby", "Linear", "ashby"),
     ("ramp-ashby", "Ramp (Ashby)", "ashby"),
+    ("notion-ashby", "Notion", "ashby"),        # migrated off Lever; verified 128 jobs
+    ("plaid-ashby", "Plaid", "ashby"),          # migrated off Lever; verified 121 jobs
 ]
 
 
@@ -58,6 +64,15 @@ class Command(BaseCommand):
             help="Deactivate legacy aggregator sources (no ats_platform) instead of scraping them",
         )
         parser.add_argument("--dry-run", action="store_true", help="Show what would be created")
+        parser.add_argument(
+            "--deactivate-stale",
+            action="store_true",
+            help=(
+                "Deactivate scraper sources whose slug is no longer in the seed "
+                "list (e.g. boards that migrated ATS and now 404). Keeps the DB "
+                "aligned with verified-live boards instead of running dead slugs."
+            ),
+        )
 
     def handle(self, *args, **options):
         if options["clear"]:
@@ -107,6 +122,16 @@ class Command(BaseCommand):
                     self.stdout.write(f"Updated: {name} [{platform}]")
                 else:
                     self.stdout.write(f"Exists:  {name} [{platform}]")
+
+        if options["deactivate_stale"]:
+            seed_slugs = {slug for slug, _, _ in SOURCES}
+            stale = Source.objects.filter(type="scraper", is_active=True).exclude(slug__in=seed_slugs)
+            stale_list = list(stale.values_list("slug", flat=True))
+            n = stale.update(is_active=False)
+            if n:
+                self.stdout.write(self.style.WARNING(f"Deactivated {n} stale scraper source(s): {', '.join(stale_list)}"))
+            else:
+                self.stdout.write("No stale scraper sources to deactivate.")
 
         self.stdout.write(self.style.SUCCESS(f"\nSetup complete! {created} new scraper source(s)."))
         self.stdout.write("Next: run `python manage.py run_scrapers` to ingest + verify jobs.")
