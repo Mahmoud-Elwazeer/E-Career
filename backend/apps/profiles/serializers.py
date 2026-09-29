@@ -206,8 +206,14 @@ class CVUploadSerializer(serializers.Serializer):
         profile.cv_parse_status = 'completed' if parsed_data else 'pending'
 
         if parsed_data:
-            self._update_from_parsed_data(profile, parsed_data)
+            # §20: enrich empty fields, never silently overwrite; flag conflicts.
+            from apps.profiles.cv_sync import sync_cv_to_profile
+            report = sync_cv_to_profile(profile, parsed_data, apply=True)
             profile.cv_parsed_data = parsed_data
+            # Persist the conflict report inside parsed data so the UI can prompt
+            # the user to resolve contradictions instead of losing their data.
+            if isinstance(profile.cv_parsed_data, dict):
+                profile.cv_parsed_data["_sync_report"] = report.to_dict()
 
         profile.save()
         return profile
