@@ -456,3 +456,35 @@ Executed the "connector health ≠ source config health ≠ end-to-end ingestion
 - `python manage.py connector_matrix` (WRITE mode) to get the true funnel per source — paste output to confirm persistence + publishable + indexed counts.
 - `python manage.py rediscover_sources --degraded-only --apply` once sources have accrued run history.
 - Still blocked server-side (not code): Typesense 401 (fast search degraded to Postgres fallback), AWS Bedrock AUTH_FAILED (all AI). Rotate the AWS key exposed in git history commit fa11a2f.
+
+
+---
+
+## Weak ATS Connectors Hardened (2026-09-29, commits d315875, ccbe5b1)
+
+### Workday — rewritten browser-free (d315875)
+Old connector needed Playwright + brittle CSS selectors and returned no ats_job_id/description/dates. Replaced with the public CXS JSON API:
+`POST https://{tenant}.{wd_server}.myworkdayjobs.com/wday/cxs/{tenant}/{site}/jobs` body `{"appliedFacets":{},"limit":20,"offset":0,"searchText":""}`.
+Verified live vs NVIDIA: total 2000, paginated (limit hard-capped at 20 server-side, ~2000 ceiling), direct apply on `nvidia.wd5.myworkdayjobs.com`, req id `JR1973150` from bulletFields/externalPath. Tenant/site/server from `WORKDAY_TENANTS` registry (unknown tenant → [] with log). Seeded `nvidia-workday`. 5 fixture tests. Playwright removed as default (can return as out-of-proc fallback §16).
+
+### SmartRecruiters — apply-url bug fixed (ccbe5b1)
+The list endpoint returns `applyUrl=null` and `ref` = an **API URL** (`api.smartrecruiters.com/.../postings/{id}`), NOT a candidate apply page. Connector wrongly used `ref`. Now always builds `jobs.smartrecruiters.com/{companyIdentifier}/{id}`. Verified live vs BoschGroup (totalFound 4820; identifier case-insensitive). Seeded `boschgroup-smartrecruiters`. 2 fixture tests incl. apply-url-is-careers-page-not-api-ref.
+
+### iCIMS — already correct
+Tenant-scoped BeautifulSoup parse of `careers-{tenant}.icims.com` with same-domain (moat-compliant) apply links. HTML-scraping so more fragile than JSON, but honest. NOTE: not yet in orchestrator dispatch (lower priority than JSON connectors).
+
+### Oracle + SAP SuccessFactors — DISCOVERY_UNSUPPORTED with evidence
+Both prior implementations hit generic non-tenant endpoints (`jobs.oracle.com`, `jobs.sap.com/search`) and guessed response keys — risking non-direct-apply URLs. Replaced with explicit `SUPPORTED=False` + empty tenant registry + docstring stating exactly why (Oracle ORC and SAP CSB/OData feeds are per-tenant host/site/auth, not derivable from a slug) and the path to enable (verified per-tenant registry mirroring WORKDAY_TENANTS). Honest and moat-safe rather than shipping guesswork.
+
+### Connector status summary (2026-09-29)
+| Connector | Status | Evidence |
+|---|---|---|
+| Greenhouse | OK (JSON) | 8 boards fetch live |
+| Ashby | OK (JSON) | 3 boards fetch live |
+| Lever | OK (JSON) | spotify/gopuff/ro verified |
+| Eightfold | OK (JSON) | Netflix 474 live |
+| Workday | OK (JSON, browser-free) | NVIDIA 2000 live |
+| SmartRecruiters | OK (JSON, apply-url fixed) | Bosch 4820 live |
+| iCIMS | OK (HTML) | tenant-scoped; not in dispatch |
+| Bamboohr/Workable/Teamtailor | present in dispatch | not re-verified this pass |
+| Oracle / SAP | UNSUPPORTED (documented) | per-tenant config required |
