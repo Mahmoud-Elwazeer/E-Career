@@ -450,13 +450,16 @@ class ScraperOrchestrator:
                 continue
 
         # Emit aggregated run metrics + zero-yield anomaly alert (§21).
+        # NOTE: this module uses stdlib logging, which does NOT accept arbitrary
+        # kwargs — pass the summary as a single formatted arg. Set the attribute
+        # FIRST so metrics are always retrievable even if logging misbehaves.
+        summary = metrics.to_dict()
+        self._last_run_metrics = summary
         try:
-            summary = metrics.to_dict()
             if metrics.is_zero_yield_anomaly:
-                logger.warning("scrape_zero_yield_anomaly", **summary)
+                logger.warning("scrape_zero_yield_anomaly: %s", summary)
             else:
-                logger.info("scrape_run_metrics", **summary)
-            self._last_run_metrics = summary
+                logger.info("scrape_run_metrics: %s", summary)
         except Exception:
             pass
         
