@@ -340,8 +340,17 @@ on healthy run.
 `'SearchService' object has no attribute 'sync_job'` on every job — post_save
 signal called a non-existent method, so all 149 jobs were saved+verified but
 NOT indexed (not searchable). Added `SearchService.sync_job(job)` (serializes via
-job_to_search_document, sets trust_score). 2 tests. Search indexing now reaches
-Typesense (needs live Typesense reachable to confirm end-to-end).
+job_to_search_document, sets trust_score). 2 tests.
+
+**SEARCH CHAIN VERIFIED LIVE (§16):** `visible jobs in DB: 3609`; a live query
+for "engineer" returned `search hits: 92` with real titles. Also fixed a search
+resilience bug (0279aef): `search_jobs` hard-crashed on a Typesense 401 because
+it only fell back on health_check failure, not on a query exception. Now catches
+primary-plugin failures and falls back to Postgres (verified live: 401 → warning
+→ 92 Postgres hits). Two SERVER-SIDE credential issues remain (surfaced, not
+hidden): AWS Bedrock AUTH_FAILED (AI blocked) and TYPESENSE_API_KEY 401 (fast
+search degraded to Postgres fallback until the key is set + `sync_typesense`
+backfills). Both are graceful now.
 
 Engine statuses updated: Scraping FUNCTIONAL (ingestion persistence fixed),
 Connector (Greenhouse verified fetch+persist path), Normalization (seniority

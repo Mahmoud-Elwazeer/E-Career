@@ -175,6 +175,36 @@ class ScraperOrchestrator:
         """
         return self._failure_tracker.get(source.id, 0) >= self.MAX_FAILURES
     
+    def scrape_source_fetch_only(self, source: Source) -> List[Dict]:
+        """Fetch jobs for a source WITHOUT persisting (connector-matrix dry-run).
+
+        Dispatches to the same connector set as scrape_source but skips the
+        _process_jobs funnel, so we can probe a connector's raw fetch output
+        without writing to the DB.
+        """
+        platform = source.ats_platform.lower() if source.ats_platform else ''
+        company_slug = source.slug
+        if company_slug.endswith(f"-{platform}"):
+            company_slug = company_slug[: -len(f"-{platform}")]
+        dispatch = {
+            'greenhouse': greenhouse.fetch_greenhouse_jobs,
+            'lever': lever.fetch_lever_jobs,
+            'ashby': ashby.fetch_ashby_jobs,
+            'bamboohr': bamboohr.fetch_bamboohr_jobs,
+            'workday': workday.fetch_workday_jobs,
+            'smartrecruiters': smartrecruiters.fetch_smartrecruiters_jobs,
+            'workable': workable.fetch_workable_jobs,
+            'teamtailor': teamtailor.fetch_teamtailor_jobs,
+        }
+        fn = dispatch.get(platform)
+        if not fn:
+            return []
+        try:
+            return fn(company_slug) or []
+        except Exception as e:
+            logger.warning("fetch_only_failed platform=%s error=%s", platform, str(e))
+            return []
+
     def scrape_source(self, source: Source) -> Tuple[List[Dict], int]:
         """
         Scrape jobs from a single source.
