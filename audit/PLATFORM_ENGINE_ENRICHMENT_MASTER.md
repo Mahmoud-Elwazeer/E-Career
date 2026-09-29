@@ -325,7 +325,23 @@ director/executive/student which aren't in `Job.EXPERIENCE_LEVEL_CHOICES`.
 
 **Verified standalone:** greenhouse-shaped job legitimacy 1.0 PASS; scam 0.0
 rejected; non-ATS short desc still penalized. 6 regression tests.
-**Pending server rerun** to show final funnel counts (fetched/created/rejected).
+
+**RESOLVED — LIVE FUNNEL (server rerun, a8d6648):**
+`{fetched:154, created:149, updated:5, verified:149, rejected:{DUPLICATE:5}}`
+Real cause was NOT the required-field/company-key bugs (those were also real and
+fixed) — it was legitimacy FALSE POSITIVES: greedy `pay.*fee` + bare `send money`
++ >10k length penalty rejected legit Airbnb descriptions. Sample created job:
+`quality_state=direct_verified`, apply=`careers.airbnb.com/positions/...`
+(real employer ATS, redirect-inspected), provenance populated, industry/loc_type/
+exp set. Direct-apply moat intact. Zero-yield alert fired on broken runs, silent
+on healthy run.
+
+**FOLLOW-ON BUG (also fixed, bdfc3d3):** the rerun logs exposed
+`'SearchService' object has no attribute 'sync_job'` on every job — post_save
+signal called a non-existent method, so all 149 jobs were saved+verified but
+NOT indexed (not searchable). Added `SearchService.sync_job(job)` (serializes via
+job_to_search_document, sets trust_score). 2 tests. Search indexing now reaches
+Typesense (needs live Typesense reachable to confirm end-to-end).
 
 Engine statuses updated: Scraping FUNCTIONAL (ingestion persistence fixed),
 Connector (Greenhouse verified fetch+persist path), Normalization (seniority
