@@ -216,3 +216,69 @@ class JobMatchScore(models.Model):
     
     def __str__(self):
         return f"{self.user.email} → {self.job.title} ({self.score}%)"
+
+
+class RecommendationFeedback(models.Model):
+    """Behavioral feedback signal on a recommended/surfaced job (§17).
+
+    Captures the interaction funnel so recommendation ranking can learn from
+    real behavior instead of guessing. One row per (user, job, signal); repeat
+    signals update the timestamp/count rather than duplicating.
+    """
+
+    SIGNAL_CHOICES = [
+        ("impression", "Impression"),   # shown in a rec list
+        ("view", "View"),               # opened detail
+        ("save", "Save"),               # bookmarked
+        ("apply", "Apply"),             # clicked apply
+        ("dismiss", "Dismiss"),         # explicitly hid
+        ("not_interested", "Not Interested"),
+        ("interview", "Interview"),     # progressed to interview
+    ]
+
+    # Weights used as ranking signals (positive = stronger interest).
+    SIGNAL_WEIGHTS = {
+        "impression": 0.0,
+        "view": 0.3,
+        "save": 0.7,
+        "apply": 1.0,
+        "interview": 1.2,
+        "dismiss": -0.6,
+        "not_interested": -1.0,
+    }
+
+    user = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.CASCADE,
+        related_name="recommendation_feedback",
+        db_index=True,
+    )
+    job = models.ForeignKey(
+        "jobs.Job",
+        on_delete=models.CASCADE,
+        related_name="recommendation_feedback",
+        db_index=True,
+    )
+    signal = models.CharField(max_length=20, choices=SIGNAL_CHOICES, db_index=True)
+    reason = models.CharField(max_length=200, blank=True)
+    count = models.PositiveIntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "users_recommendation_feedback"
+        ordering = ["-updated_at"]
+        unique_together = [("user", "job", "signal")]
+        indexes = [
+            models.Index(fields=["user", "signal"]),
+            models.Index(fields=["job", "signal"]),
+        ]
+        verbose_name = "Recommendation Feedback"
+        verbose_name_plural = "Recommendation Feedback"
+
+    def __str__(self):
+        return f"{self.user_id}:{self.job_id}:{self.signal}"
+
+    @property
+    def weight(self) -> float:
+        return self.SIGNAL_WEIGHTS.get(self.signal, 0.0)
