@@ -1,73 +1,102 @@
-"""iCIMS API scraper."""
+"""iCIMS career-portal scraper.
+
+iCIMS employers publish jobs on tenant portals at:
+  https://careers-{tenant}.icims.com/jobs/search?ss=1&searchScreenTitle=...
+The search page lists jobs whose detail/apply links live on the SAME tenant
+domain (careers-{tenant}.icims.com) — i.e. genuine employer ATS destinations
+(moat-compliant, never an aggregator). There is no simple unauthenticated JSON
+list endpoint that works across all tenants, so we parse the public search page
+with BeautifulSoup (already a project dependency).
+
+Previous implementation pointed at a Jobvite URL (jobs.jobvite.com) which is a
+different ATS entirely — that was a bug and never returned iCIMS jobs.
+Content was rephrased for compliance with licensing restrictions.
+"""
+import re
 import requests
+import structlog
 from typing import List, Dict
+from urllib.parse import urljoin
+
 from .base import BaseATSScraper
+
+logger = structlog.get_logger()
 
 
 class IcimsScraper(BaseATSScraper):
-    """
-    Scrapes jobs from iCIMS API.
-    
-    iCIMS uses a REST API at:
-    https://jobs.jobvite.com/{company}/api/jobs
-    
-    Some iCIMS instances may require authentication or have different endpoints.
-    """
-    
-    API_URL = "https://jobs.jobvite.com/{company}/api/jobs"
-    
+    """Scrapes published jobs from a company's public iCIMS career portal."""
+
+    PORTAL = "https://careers-{tenant}.icims.com"
+    SEARCH_PATH = "/jobs/search?ss=1&hashed=-435695674&mobile=false&width=1200"
+    HEADERS = {
+        "Accept": "text/html,application/xhtml+xml,application/json",
+        "User-Agent": "Mozilla/5.0 (compatible; USAM-Career-Compass/1.0)",
+    }
+    MAX_PAGES = 20
+
     def get_platform_name(self) -> str:
-        return 'icims'
-    
+        return "icims"
+
+    def _tenant(self) -> str:
+        # Slug may be given as bare tenant ("rambus") or full host.
+        s = self.company_slug.strip().lower()
+        s = s.replace("careers-", "").replace(".icims.com", "")
+        return s
+
     def fetch_jobs(self) -> List[Dict]:
-        """Fetch all jobs from iCIMS API."""
+        tenant = self._tenant()
+        base = self.PORTAL.format(tenant=tenant)
+        jobs: List[Dict] = []
         try:
-            url = self.API_URL.format(company=self.company_slug)
-            response = requests.get(url, timeout=15)
-            response.raise_for_status()
-            
-            data = response.json()
-            jobs = []
-            
-            # iCIMS typically returns jobs in an 'items' array
-            job_list = data.get('items', data.get('jobs', []))
-            
-            for job in job_list:
-                # Get apply URL - iCIMS usually provides a direct link
-                apply_url = job.get('url', '')
-                
-                if not apply_url:
-                    # Try alternative field names
-                    apply_url = job.get('apply_url', job.get('link', ''))
-                
-                if not apply_url:
-                    continue
-                
-                normalized = {
-                    'title': job.get('title', ''),
-                    'apply_url': apply_url,
-                    'direct_apply_url': apply_url,
-                    'description': job.get('description', ''),
-                    'location': job.get('location', {}).get('name', job.get('location', '')),
-                    'id': job.get('id', job.get('jobId', '')),
-                    'posted_at': job.get('postedDate', job.get('createdDate', '')),
-                    'employment_type': job.get('employmentType', job.get('type')),
-                    'departments': [job.get('category', '')] if job.get('category') else [],
-                }
-                
-                jobs.append(self.normalize_job(normalized))
-            
+            from bs4 import BeautifulSoup
+        except Exception:
+            logger.warning("icims_no_bs4", tenant=tenant)
+            return []
+
+        try:
+            for page in range(1, self.MAX_PAGES + 1):
+                url = urljoin(base, self.SEARCH_PATH) + f"&pr={page}"
+                resp = requests.get(url, headers=self.HEADERS, timeout=15)
+                resp.raise_for_status()
+                soup = BeautifulSoup(resp.text, "html.parser")
+
+                # iCIMS job rows link to /jobs/{id}/{slug}/job on the tenant host.
+                anchors = soup.select('a[href*="/jobs/"]')
+                page_jobs = 0
+                seen = set()
+                for a in anchors:
+                    href = a.get("href", "")
+                    m = re.search(r"/jobs/(\d+)/", href)
+                    if not m:
+                        continue
+                    job_id = m.group(1)
+                    if job_id in seen:
+                        continue
+                    seen.add(job_id)
+                    apply_url = urljoin(base, href)
+                    title = a.get_text(strip=True) or ""
+                    if not title:
+                        continue
+                    jobs.append(self.normalize_job({
+                        "title": title,
+                        "apply_url": apply_url,
+                        "direct_apply_url": apply_url,
+                        "description": "",
+                        "location": "",
+                        "id": job_id,
+                        "posted_at": "",
+                    }))
+                    page_jobs += 1
+
+                if page_jobs == 0:
+                    break
+
             return jobs
-            
         except requests.RequestException as e:
-            print(f"iCIMS scrape failed for {self.company_slug}: {e}")
-            return []
-        except Exception as e:
-            print(f"Unexpected error scraping iCIMS for {self.company_slug}: {e}")
-            return []
+            logger.warning("icims_scrape_failed", tenant=tenant, error=str(e))
+            return jobs
 
 
 def fetch_icims_jobs(company_slug: str) -> List[Dict]:
     """Convenience function to fetch iCIMS jobs."""
-    scraper = IcimsScraper(company_slug)
-    return scraper.fetch_jobs()
+    return IcimsScraper(company_slug).fetch_jobs()
