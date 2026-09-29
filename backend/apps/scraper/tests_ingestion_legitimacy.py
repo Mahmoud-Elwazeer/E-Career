@@ -48,6 +48,36 @@ def test_non_ats_short_description_still_penalized():
     assert "Description too short" in flags  # source trust != content quality
 
 
+def test_benign_pay_and_fee_words_do_not_false_positive():
+    # THE 154/0 ROOT CAUSE: greedy pay.*fee + bare 'send money' + long-desc
+    # penalty rejected real Greenhouse jobs. These must now pass.
+    desc = ("About the company. " * 900 +
+            "We offer competitive pay and benefits. No application fee is required. "
+            "We will send you an offer letter. You process invoices and pay vendors. ")
+    job = {"title": "Accountant", "company_slug": "airbnb", "description": desc,
+           "ats_platform": "greenhouse", "ats_job_id": "999"}
+    score, flags = calculate_legitimacy_score(job)
+    assert score >= 0.4, (score, flags)
+    assert not any("pay" in f.lower() and "fee" in f.lower() for f in flags)
+    assert "Description suspiciously long" not in flags  # structured ATS exempt
+
+
+def test_real_fee_scam_still_rejected():
+    scam = {"title": "Data Entry", "company_slug": "",
+            "description": "To start you must pay a $200 training fee to us. "
+                           "Send money via western union."}
+    score, _ = calculate_legitimacy_score(scam)
+    assert score < 0.4
+
+
+def test_upfront_fee_scam_still_rejected():
+    scam = {"title": "Agent", "company_slug": "y",
+            "description": "Please send money to the hiring manager and pay an "
+                           "upfront fee required of $50."}
+    score, _ = calculate_legitimacy_score(scam)
+    assert score < 0.4
+
+
 def test_run_metrics_zero_yield_anomaly():
     m = RunMetrics(source="airbnb-greenhouse", fetched=154)
     for _ in range(154):

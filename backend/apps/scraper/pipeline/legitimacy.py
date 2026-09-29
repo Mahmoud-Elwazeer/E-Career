@@ -22,11 +22,14 @@ SCAM_PATTERNS = {
         r'wire transfer',
         r'western union',
         r'moneygram',
-        r'pay.*fee',
-        r'processing fee',
-        r'training fee',
+        # Tightened: require the APPLICANT-pays-a-fee scam context within a short
+        # window, not a greedy 'pay.*fee' that matched benign long descriptions
+        # (e.g. "we pay ... fee-free"). Real scams say "pay a/an ... fee".
+        r'pay\s+(?:a|an|the)?\s*\$?\d*\s*\w{0,20}?\s*fee\s+(?:to|for|before)\b',
+        r'(?:upfront|registration|onboarding|application|training|processing)\s+fee\s+(?:required|of\s+\$)',
         r'background check fee',
-        r'send money',
+        # Tightened: 'send money to us/the employer/via', not any 'send money'.
+        r'send money (?:to|via|through)\b',
         r'cash advance',
         r'nigerian prince',  # Classic scam
     ],
@@ -104,8 +107,12 @@ def calculate_legitimacy_score(job: Dict) -> Tuple[float, List[str]]:
         score -= 0.15
         flags.append("Description too short")
     
-    # Check if description is too long (> 10000 chars = spam)
-    if len(description) > 10000:
+    # Check if description is too long (spam). Structured-ATS descriptions are
+    # full HTML job posts that legitimately exceed 10k chars, so raise the cap
+    # and exempt structured ATS from this penalty (§5/§6). Only flag truly
+    # extreme lengths for non-ATS scraped content.
+    length_cap = 50000 if is_structured_ats else 10000
+    if len(description) > length_cap:
         score -= 0.1
         flags.append("Description suspiciously long")
     
