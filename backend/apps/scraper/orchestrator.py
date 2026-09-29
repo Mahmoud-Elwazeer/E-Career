@@ -25,12 +25,16 @@ from .ats import (
 )
 from .pipeline.url_resolver import is_direct_company_url, verify_url_live
 from .pipeline.legitimacy import calculate_legitimacy_score
-from .pipeline.deduplicator import generate_job_hash, generate_job_slug
+from .pipeline.deduplicator import (
+    generate_job_hash, generate_job_slug, dedup_verdict, normalize_title_for_dedup,
+)
 from .pipeline.normalizer import (
     normalize_employment_type,
     normalize_experience_level,
     normalize_remote_type,
     normalize_location,
+    normalize_seniority,
+    build_provenance,
 )
 
 # Import verification engine
@@ -291,12 +295,40 @@ class ScraperOrchestrator:
                     'location': job_data.get('location', ''),
                 })
                 
-                # 6. Check if job already exists
-                existing = Job.objects.filter(
-                    ats_job_id=job_data.get('ats_job_id', ''),
-                    ats_platform=job_data.get('ats_platform', ''),
-                ).first()
-                
+                # 6. Layered deduplication (Section 9).
+                #    L1: exact (ats_platform, ats_job_id) — strongest identity.
+                #    L2: cross-source normalized (company + normalized title + location)
+                #        catches the same role posted via a different source/id.
+                verdict = dedup_verdict({
+                    'ats_platform': job_data.get('ats_platform', ''),
+                    'ats_job_id': job_data.get('ats_job_id', ''),
+                    'direct_apply_url': apply_url,
+                    'company': company.name,
+                    'title': job_data.get('title', ''),
+                    'location': job_data.get('location', ''),
+                })
+
+                existing = None
+                if job_data.get('ats_job_id') and job_data.get('ats_platform'):
+                    existing = Job.objects.filter(
+                        ats_job_id=job_data.get('ats_job_id', ''),
+                        ats_platform=job_data.get('ats_platform', ''),
+                    ).first()
+
+                if existing is None:
+                    # L2 cross-source check against active jobs at this company.
+                    norm_title = normalize_title_for_dedup(job_data.get('title', ''))
+                    loc = (job_data.get('location', '') or '').lower().strip()
+                    for cand in Job.objects.filter(company=company).only(
+                        'id', 'title', 'location', 'is_expired', 'quality_state'
+                    )[:200]:
+                        if (
+                            normalize_title_for_dedup(cand.title) == norm_title
+                            and (cand.location or '').lower().strip() == loc
+                        ):
+                            existing = cand
+                            break
+
                 if existing:
                     existing.is_expired = False
                     existing.quality_state = 'probably_active'
@@ -309,18 +341,36 @@ class ScraperOrchestrator:
                     job_data.get('title', ''),
                     job_data.get('ats_job_id', '')
                 )
-                
+
+                seniority, seniority_conf = normalize_seniority(
+                    job_data.get('title', ''), job_data.get('experience_level', '')
+                )
+                normalized_loc = normalize_location(job_data.get('location', ''))
+                provenance = build_provenance(
+                    {**job_data, 'direct_apply_url': apply_url,
+                     'location': normalized_loc,
+                     'experience_level': seniority or job_data.get('experience_level')},
+                    source=job_data.get('ats_platform') or source.slug,
+                    method='ats_api',
+                    confidence=1.0,
+                )
+                if seniority:
+                    provenance['experience_level'] = {
+                        'value': seniority, 'source': 'title_inference',
+                        'method': 'heuristic', 'confidence': round(seniority_conf, 3),
+                    }
+
                 job = Job.objects.create(
                     company=company,
                     source=source,
                     title=job_data.get('title', ''),
                     slug=slug,
                     description=job_data.get('description', ''),
-                    location=normalize_location(job_data.get('location', '')),
+                    location=normalized_loc,
                     direct_apply_url=apply_url,
                     source_type='scraped',
                     employment_type=normalize_employment_type(job_data.get('employment_type')) or 'full_time',
-                    experience_level=normalize_experience_level(job_data.get('experience_level')) or 'mid',
+                    experience_level=seniority or normalize_experience_level(job_data.get('experience_level')) or 'mid',
                     work_arrangement=normalize_remote_type(job_data.get('remote_type')),
                     salary_min=job_data.get('salary_min'),
                     salary_max=job_data.get('salary_max'),
@@ -333,6 +383,7 @@ class ScraperOrchestrator:
                     ats_platform=job_data.get('ats_platform', ''),
                     ats_job_id=job_data.get('ats_job_id', ''),
                     raw_data=job_data.get('raw_data', {}),
+                    field_provenance=provenance,
                 )
                 
                 # 8. Run verification
