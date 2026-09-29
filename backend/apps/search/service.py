@@ -88,6 +88,18 @@ class SearchService:
             logger.error("search_batch_index_failed", error=str(e), count=len(documents))
             return 0
 
+    def sync_job(self, job) -> None:
+        """Serialize a Job model to a search document and index it.
+
+        Convenience used by the post_save signal (apps.search.signals). Fixes the
+        'SearchService object has no attribute sync_job' error that left every
+        newly ingested job saved-but-not-searchable. Reuses the canonical
+        document builder so search fields stay consistent with the schema.
+        """
+        from apps.search.document import job_to_search_document
+        document = job_to_search_document(job)
+        self.index_job(document)
+
     def delete_job(self, job_id: str) -> None:
         try:
             self.primary.delete_document(JOBS_COLLECTION, job_id)
