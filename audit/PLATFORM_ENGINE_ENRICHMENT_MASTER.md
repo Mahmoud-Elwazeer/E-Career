@@ -373,7 +373,7 @@ verified until AWS credentials are valid are explicitly marked BLOCKED, not PASS
 
 ---
 
-## Connector Matrix — Live Fetch-Only Probe (2026-09-21, code @ 2ee5637)
+## Connector Matrix — Live Fetch-Only Probe (2026-09-29, code @ 2ee5637)
 
 Ran `python manage.py connector_matrix --fetch-only` on prod (non-writing probe of every seeded source). `created=0` everywhere is expected in fetch-only mode; the signal is the **fetched** column.
 
@@ -399,7 +399,7 @@ Ran `python manage.py connector_matrix --fetch-only` on prod (non-writing probe 
 ### Root cause
 Greenhouse (8/8) and Ashby (3/3) connectors are healthy. All 4 Lever sources returned HTTP 404 from `api.lever.co/v0/postings/{slug}`. The connector code is correct — the **company slugs were stale** because those companies migrated ATS.
 
-### Verified current ATS (probed 2026-09-21)
+### Verified current ATS (probed 2026-09-29)
 - **Notion** → Ashby (200, 128 jobs) — migrated off Lever
 - **Plaid** → Ashby (200, 121 jobs) — migrated off Lever
 - **Ramp** → Ashby (already seeded as `ramp-ashby`, 155 jobs); `ramp-lever` was a dead duplicate

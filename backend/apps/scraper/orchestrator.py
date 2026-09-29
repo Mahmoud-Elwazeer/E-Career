@@ -36,6 +36,7 @@ from .pipeline.normalizer import (
     normalize_seniority,
     build_provenance,
 )
+from .pipeline.contract import NormalizedJob
 
 # Import verification engine
 from apps.verification.engine import VerificationEngine
@@ -328,12 +329,36 @@ class ScraperOrchestrator:
                     })
                     continue
                 
-                # 4. Get or create company
-                company_name = job_data.get('company_slug', source.name)
-                company, _ = Company.objects.get_or_create(
-                    slug=company_name.lower().replace(' ', '-'),
-                    defaults={'name': company_name}
+                # 3b. Map the connector dict into the ONE authoritative
+                #     contract (§5) so downstream code never guesses connector
+                #     keys. This resolves the REAL employer name instead of the
+                #     lowercased board slug (the long-standing company-name bug).
+                njob = NormalizedJob.from_connector_dict(job_data, source=source)
+
+                # 4. Get or create company — keyed on a stable slug, but stored
+                #    with the resolved human employer name (njob.company_name).
+                company_slug_key = (
+                    (njob.company_slug or njob.company_name or source.name)
+                    .lower().replace(' ', '-')
                 )
+                # Strip a trailing ATS suffix from the KEY so airbnb-greenhouse
+                # and a future airbnb-lever collapse to one "airbnb" company.
+                for _sfx in ('-greenhouse', '-lever', '-ashby', '-workday',
+                             '-smartrecruiters', '-icims', '-workable',
+                             '-teamtailor', '-bamboohr', '-oracle', '-sap'):
+                    if company_slug_key.endswith(_sfx):
+                        company_slug_key = company_slug_key[: -len(_sfx)]
+                        break
+                company, _created_co = Company.objects.get_or_create(
+                    slug=company_slug_key,
+                    defaults={'name': njob.company_name or source.name},
+                )
+                # Backfill a real name if the company was previously created
+                # with a slug-like placeholder name.
+                if (not _created_co and njob.company_name
+                        and company.name.lower().replace(' ', '-') == company.slug):
+                    company.name = njob.company_name
+                    company.save(update_fields=['name'])
                 
                 # 5. Generate job hash
                 job_hash = generate_job_hash({
@@ -439,6 +464,10 @@ class ScraperOrchestrator:
                         location_type=loc_type,
                         industry=industry,
                         direct_apply_url=apply_url,
+                        # source_url is a REQUIRED URLField; it was previously
+                        # never set (stored empty). Use the contract's resolved
+                        # canonical/source url, falling back to the apply url.
+                        source_url=(njob.canonical_job_url or njob.source_url or apply_url),
                         source_type='scraped',
                         employment_type=normalize_employment_type(job_data.get('employment_type')) or 'full_time',
                         experience_level=exp_level,
