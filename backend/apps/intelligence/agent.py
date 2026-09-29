@@ -45,11 +45,41 @@ def get_bedrock_model(model_alias: str = "sonnet") -> str:
     return f"bedrock:{model_id}"
 
 
+def _build_rashid_model():
+    """Build the Bedrock model for Rashid.
+
+    Prefer an explicit BedrockProvider backed by the SAME boto3 client the app
+    configures (region + credentials from settings). Without this, pydantic-ai
+    builds its own client with no region and fails at construction with
+    'You must provide a region_name'. Falls back to the plain model string if
+    the explicit-provider API is unavailable in the installed pydantic-ai.
+    """
+    from apps.intelligence.bedrock_plugin import MODEL_ALIASES
+
+    alias = getattr(settings, "RASHID_MODEL", "sonnet")
+    model_id = MODEL_ALIASES.get(alias, MODEL_ALIASES.get("sonnet"))
+
+    try:
+        import boto3
+        from pydantic_ai.models.bedrock import BedrockConverseModel
+        from pydantic_ai.providers.bedrock import BedrockProvider
+
+        client = boto3.client(
+            "bedrock-runtime",
+            region_name=getattr(settings, "AWS_DEFAULT_REGION", "us-east-1"),
+            aws_access_key_id=getattr(settings, "AWS_ACCESS_KEY_ID", "") or None,
+            aws_secret_access_key=getattr(settings, "AWS_SECRET_ACCESS_KEY", "") or None,
+        )
+        provider = BedrockProvider(bedrock_client=client)
+        return BedrockConverseModel(model_id, provider=provider)
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        logger.warning("rashid_model_explicit_provider_failed", error=str(exc))
+        return get_bedrock_model(alias)
+
+
 def create_rashid_agent() -> Agent[PlatformDeps, str]:
     """Create the Rashid AI career advisor agent."""
-    model = get_bedrock_model(
-        getattr(settings, "RASHID_MODEL", "sonnet")
-    )
+    model = _build_rashid_model()
 
     rashid = Agent(
         model,
