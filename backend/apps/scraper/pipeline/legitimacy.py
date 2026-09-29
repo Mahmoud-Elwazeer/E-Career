@@ -61,7 +61,15 @@ def calculate_legitimacy_score(job: Dict) -> Tuple[float, List[str]]:
     
     title = job.get('title', '').lower()
     description = job.get('description', '').lower()
-    company = job.get('company', '').lower()
+    # Connectors normalize the employer into company_slug (base.py). Accept the
+    # authoritative company field OR the slug so ATS jobs are not wrongly
+    # penalized for a "missing company" they actually have (§4/§10).
+    company = (
+        job.get('company_name')
+        or job.get('company')
+        or job.get('company_slug')
+        or ''
+    ).lower()
     
     # Check title for scam patterns
     for pattern in SCAM_PATTERNS['title']:
@@ -86,8 +94,13 @@ def calculate_legitimacy_score(job: Dict) -> Tuple[float, List[str]]:
         score -= 0.2
         flags.append("Missing or invalid company name")
     
-    # Check if description is too short (< 100 chars = suspicious)
-    if len(description) < 100:
+    # Check if description is too short (< 100 chars = suspicious).
+    # Structured ATS listings (Greenhouse/Lever/etc.) legitimately expose a
+    # short/empty description on the LIST endpoint (full text is on the detail
+    # endpoint), so we do not penalize them for it — source trust ≠ content
+    # completeness (§5/§6). Enrichment can fill the description later.
+    is_structured_ats = bool(job.get('ats_platform') and job.get('ats_job_id'))
+    if len(description) < 100 and not is_structured_ats:
         score -= 0.15
         flags.append("Description too short")
     

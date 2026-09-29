@@ -260,25 +260,42 @@ class ScraperOrchestrator:
         # Initialize verification engine
         verification_engine = VerificationEngine()
         ats_stage = ATSFingerprintStage()
-        
+
+        # Structured run metrics so a "fetched N / created 0" run is observable
+        # instead of silently swallowed (§2/§9/§21).
+        from .pipeline.run_metrics import (
+            RunMetrics, MISSING_APPLY_URL, NOT_DIRECT_URL, BLOCKED_AGGREGATOR,
+            LOW_LEGITIMACY, DUPLICATE, PERSISTENCE_ERROR, VERIFICATION_ERROR,
+        )
+        metrics = RunMetrics(source=getattr(source, 'slug', ''), fetched=len(jobs))
+
         for job_data in jobs:
             try:
                 # 1. Validate apply URL
                 apply_url = job_data.get('direct_apply_url') or job_data.get('apply_url')
-                
-                if not apply_url or not is_direct_company_url(apply_url):
+
+                if not apply_url:
+                    metrics.reject(MISSING_APPLY_URL, job_data.get('title'))
                     continue
-                
+                if not is_direct_company_url(apply_url):
+                    metrics.reject(NOT_DIRECT_URL, apply_url)
+                    continue
+
                 # 2. Check ATS fingerprint
                 ats_result = ats_stage.run(apply_url)
                 if ats_result.platform == "BLOCKED_AGGREGATOR":
                     blocked_count += 1
+                    metrics.reject(BLOCKED_AGGREGATOR, apply_url)
                     continue
-                
+
                 # 3. Calculate legitimacy score
                 legitimacy_score, legitimacy_flags = calculate_legitimacy_score(job_data)
-                
+
                 if legitimacy_score < 0.4:
+                    metrics.reject(LOW_LEGITIMACY, {
+                        'title': job_data.get('title'), 'score': legitimacy_score,
+                        'flags': legitimacy_flags,
+                    })
                     continue
                 
                 # 4. Get or create company
@@ -333,6 +350,8 @@ class ScraperOrchestrator:
                     existing.is_expired = False
                     existing.quality_state = 'probably_active'
                     existing.save(update_fields=['is_expired', 'quality_state'])
+                    metrics.updated += 1
+                    metrics.reject(DUPLICATE, job_data.get('title'))
                     continue
                 
                 # 7. Create new job
@@ -360,44 +379,86 @@ class ScraperOrchestrator:
                         'method': 'heuristic', 'confidence': round(seniority_conf, 3),
                     }
 
-                job = Job.objects.create(
-                    company=company,
-                    source=source,
-                    title=job_data.get('title', ''),
-                    slug=slug,
-                    description=job_data.get('description', ''),
-                    location=normalized_loc,
-                    direct_apply_url=apply_url,
-                    source_type='scraped',
-                    employment_type=normalize_employment_type(job_data.get('employment_type')) or 'full_time',
-                    experience_level=seniority or normalize_experience_level(job_data.get('experience_level')) or 'mid',
-                    work_arrangement=normalize_remote_type(job_data.get('remote_type')),
-                    salary_min=job_data.get('salary_min'),
-                    salary_max=job_data.get('salary_max'),
-                    salary_currency=job_data.get('salary_currency', 'USD'),
-                    posted_at=timezone.now().date(),
-                    scraped_at=timezone.now(),
-                    expires_at=timezone.now() + timedelta(days=90),
-                    legitimacy_score=legitimacy_score,
-                    legitimacy_flags=legitimacy_flags,
-                    ats_platform=job_data.get('ats_platform', ''),
-                    ats_job_id=job_data.get('ats_job_id', ''),
-                    raw_data=job_data.get('raw_data', {}),
-                    field_provenance=provenance,
-                )
-                
+                # experience_level must be one of Job.EXPERIENCE_LEVEL_CHOICES
+                # (entry/mid/senior/lead). normalize_seniority may return
+                # director/executive/student — clamp those to the nearest valid.
+                _EXP_CLAMP = {
+                    'director': 'lead', 'executive': 'lead', 'c_level': 'lead',
+                    'student': 'entry', 'junior': 'entry',
+                }
+                exp_level = seniority or normalize_experience_level(job_data.get('experience_level')) or 'mid'
+                exp_level = _EXP_CLAMP.get(exp_level, exp_level)
+                if exp_level not in {'entry', 'mid', 'senior', 'lead'}:
+                    exp_level = 'mid'
+
+                # location_type + industry are REQUIRED on Job. The orchestrator
+                # previously omitted them (causing create to fail). Derive sane,
+                # valid defaults from available signals.
+                work_arr = normalize_remote_type(job_data.get('remote_type')) or 'onsite'
+                loc_type = work_arr if work_arr in {'remote', 'hybrid', 'onsite'} else 'onsite'
+                industry = (getattr(company, 'industry', '') or 'technology')
+
+                try:
+                    job = Job.objects.create(
+                        company=company,
+                        source=source,
+                        title=job_data.get('title', ''),
+                        slug=slug,
+                        description=job_data.get('description', ''),
+                        location=normalized_loc or 'Not specified',
+                        location_type=loc_type,
+                        industry=industry,
+                        direct_apply_url=apply_url,
+                        source_type='scraped',
+                        employment_type=normalize_employment_type(job_data.get('employment_type')) or 'full_time',
+                        experience_level=exp_level,
+                        work_arrangement=work_arr,
+                        salary_min=job_data.get('salary_min'),
+                        salary_max=job_data.get('salary_max'),
+                        salary_currency=job_data.get('salary_currency', 'USD'),
+                        posted_at=timezone.now().date(),
+                        scraped_at=timezone.now(),
+                        expires_at=timezone.now() + timedelta(days=90),
+                        legitimacy_score=legitimacy_score,
+                        legitimacy_flags=legitimacy_flags,
+                        ats_platform=job_data.get('ats_platform', ''),
+                        ats_job_id=job_data.get('ats_job_id', ''),
+                        raw_data=job_data.get('raw_data', {}),
+                        field_provenance=provenance,
+                    )
+                except Exception as ce:
+                    # Capture the REAL persistence error instead of hiding it.
+                    metrics.reject(PERSISTENCE_ERROR, f"{type(ce).__name__}: {ce}")
+                    logger.error("job_persistence_failed", error=str(ce),
+                                 error_type=type(ce).__name__, title=job_data.get('title'))
+                    continue
+
                 # 8. Run verification
                 try:
                     verification_engine.verify_job(job)
                     verified_count += 1
+                    metrics.verified += 1
                 except Exception as ve:
+                    metrics.reject(VERIFICATION_ERROR, str(ve))
                     logger.error(f"Verification failed for job {job.id}: {ve}")
-                
+
                 added_count += 1
-                
+                metrics.created += 1
+
             except Exception as e:
                 logger.error(f"Failed to process job: {e}")
                 continue
+
+        # Emit aggregated run metrics + zero-yield anomaly alert (§21).
+        try:
+            summary = metrics.to_dict()
+            if metrics.is_zero_yield_anomaly:
+                logger.warning("scrape_zero_yield_anomaly", **summary)
+            else:
+                logger.info("scrape_run_metrics", **summary)
+            self._last_run_metrics = summary
+        except Exception:
+            pass
         
         return added_count
 
