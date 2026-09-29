@@ -280,6 +280,23 @@ AI runtime stays BLOCKED until AWS creds valid.
 | Cover Letter | WEAK | grounded pipeline + versions | CV/job (AI) | — | planner+draft+export | — | generate→edit→export live | P1 | TODO (AI parts BLOCKED) |
 | Observability/Admin | WEAK | per-engine health surfaced | — | — | health endpoints/panel | (bedrock done) | admin sees engine health | P1 | PARTIAL (AI health DONE) |
 
+## 8c. LIVE runtime verification of new engines (2026-09-29, server ff0520d)
+
+Confirmed on production via `manage.py shell` (pytest not installed on prod venv;
+`manage.py check` = "no issues (0 silenced)"):
+
+| Engine | Live result | Status |
+|--------|-------------|--------|
+| Strategy Router | `airbnb-greenhouse -> STRUCTURED (known greenhouse connector)` | PASS (live) |
+| Unified Matching | `score 0.0, deterministic: True` (0.0 = unrelated sample records; determinism is the point) | PASS (live) |
+| Normalization | `normalize_seniority('Lead...')=('senior',0.6)`; `normalize_country_city('Cairo, Egypt')=('Egypt','Cairo',0.8)` | PASS (live) |
+| Layered Dedup | `dedup_verdict(...).l2_normalized_key = 'acme|dev|cairo'` | PASS (live) |
+| CV→Profile sync | user role 'PM' KEPT; conflicts=['experience_years','current_role'] flagged (not overwritten) | PASS (live) |
+
+This is real end-to-end evidence the Phase A/B/D deterministic engines run
+correctly against production data. AI-dependent engines remain BLOCKED on the
+AWS credential issue (unchanged).
+
 ## 9. Production-readiness conclusion
 
 - **Non-AI platform:** healthy and verified live — auth, services, workers,

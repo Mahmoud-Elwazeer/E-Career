@@ -501,6 +501,18 @@ class RecommendationEngine:
         # Get collaborative signals
         collab_signals = self._get_collaborative_signals()
 
+        # Behavioral feedback signals (§17): suppress explicitly-dismissed jobs
+        # and fetch signed per-job weights to nudge ranking with real behavior.
+        try:
+            from apps.users.feedback_service import suppressed_job_ids
+            from apps.users.models import RecommendationFeedback
+            suppressed = suppressed_job_ids(self.user.id)
+            fb_weights = {}
+            for fb in RecommendationFeedback.objects.filter(user=self.user):
+                fb_weights[fb.job_id] = fb_weights.get(fb.job_id, 0.0) + fb.weight * min(fb.count, 3)
+        except Exception:
+            suppressed, fb_weights = set(), {}
+
         # Get active jobs with related data
         jobs = Job.objects.filter(status='active').select_related('company').prefetch_related('skills')[:500]
 
@@ -509,8 +521,17 @@ class RecommendationEngine:
         company_counts = {}
 
         for job in jobs:
+            # Skip jobs the user explicitly dismissed / marked not interested.
+            if job.id in suppressed:
+                continue
+
             # Calculate comprehensive score
             score = self._calculate_fallback_score(job, user_data, collab_signals, user_profile)
+
+            # Nudge by behavioral feedback weight (bounded so it re-ranks, not dominates).
+            fb = fb_weights.get(job.id, 0.0)
+            if fb:
+                score = max(0.0, score + max(-0.2, min(0.2, fb * 0.1)))
 
             if score > 0:
                 company_name = job.company.name if job.company else 'Unknown'
