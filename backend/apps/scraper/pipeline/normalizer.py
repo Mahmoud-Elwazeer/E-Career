@@ -168,3 +168,79 @@ def build_provenance(
                 "confidence": round(float(confidence), 3),
             }
     return provenance
+
+
+# ── Phase A normalization upgrades (Section 8) ────────────────────────────────
+
+_SENIORITY_RULES = (
+    # (keywords, canonical)  — order matters: most senior first
+    (("chief", "cto", "ceo", "cfo", "coo", "vp ", "vice president", "c-level"), "executive"),
+    (("head of", "director", "principal"), "director"),
+    (("staff", "lead", "manager", "sr.", "senior", "sr "), "senior"),
+    (("mid", "intermediate", "ii", "level 2"), "mid"),
+    (("junior", "jr.", "jr ", "entry", "associate", "graduate", "trainee", "intern"), "entry"),
+)
+
+
+def normalize_seniority(title: str, raw_level: str = "") -> tuple[Optional[str], float]:
+    """Infer a canonical seniority from title + any raw level.
+
+    Returns (seniority, confidence). Deterministic keyword rules; confidence
+    reflects how the value was obtained (explicit raw level > title inference).
+    """
+    if raw_level:
+        mapped = normalize_experience_level(raw_level)
+        if mapped:
+            return mapped, 0.9
+    text = (title or "").lower()
+    for keywords, canonical in _SENIORITY_RULES:
+        if any(k in text for k in keywords):
+            return canonical, 0.6
+    return None, 0.0
+
+
+# Minimal country synonyms relevant to the platform's core markets. Extend as
+# needed; unknown countries pass through unchanged rather than being dropped.
+_COUNTRY_SYNONYMS = {
+    "egypt": "Egypt", "eg": "Egypt", "cairo": "Egypt",
+    "uae": "United Arab Emirates", "united arab emirates": "United Arab Emirates",
+    "dubai": "United Arab Emirates", "abu dhabi": "United Arab Emirates",
+    "ksa": "Saudi Arabia", "saudi arabia": "Saudi Arabia", "riyadh": "Saudi Arabia",
+    "usa": "United States", "us": "United States", "united states": "United States",
+    "uk": "United Kingdom", "united kingdom": "United Kingdom", "london": "United Kingdom",
+    "remote": "",  # remote is a work arrangement, not a country
+}
+
+
+def normalize_country_city(location: str) -> tuple[str, str, float]:
+    """Split a free-form location into (country, city, confidence).
+
+    Best-effort deterministic parse of "City, Region, Country" style strings.
+    Confidence is lower when the country can't be recognized.
+    """
+    if not location:
+        return "", "", 0.0
+    parts = [p.strip() for p in location.split(",") if p.strip()]
+    if not parts:
+        return "", "", 0.0
+
+    city = parts[0]
+    country = ""
+    confidence = 0.4
+
+    # Try to resolve any part to a known country.
+    for p in reversed(parts):
+        key = p.lower()
+        if key in _COUNTRY_SYNONYMS:
+            resolved = _COUNTRY_SYNONYMS[key]
+            if resolved:
+                country = resolved
+                confidence = 0.8
+            break
+    else:
+        # No known country token; if there are >=2 parts, assume last is country.
+        if len(parts) >= 2:
+            country = parts[-1]
+            confidence = 0.5
+
+    return country, city, confidence
