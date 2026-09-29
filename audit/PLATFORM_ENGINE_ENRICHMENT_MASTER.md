@@ -417,3 +417,42 @@ Deploy e9e0dd4, then:
 python manage.py setup_sources --deactivate-stale
 python manage.py connector_matrix --fetch-only   # re-probe; expect Lever spotify/gopuff/ro > 0, no 404 rows
 ```
+
+
+---
+
+## Ingestion Pipeline Hardening (2026-09-29, commits d65d8b0..e6977df)
+
+Executed the "connector health ≠ source config health ≠ end-to-end ingestion health" directive. All increments are code + standalone tests + verified, pushed to origin/development.
+
+### §5 Authoritative NormalizedJob contract (d65d8b0)
+- New `apps/scraper/pipeline/contract.py`: one typed `NormalizedJob` every connector maps into via `from_connector_dict()`, which tolerates every company-key variant (company / company_name / company_slug / company_id) and both apply-url keys — so downstream code never guesses connector keys.
+- Fixes the long-standing **company-name bug**: connectors only ever emit `company_slug` (= board slug), and the orchestrator stored that lowercased slug as the employer name ("airbnb" not "Airbnb"). Now resolves the real name via `source.name` / a humanized slug.
+- Sets the previously-unset REQUIRED `Job.source_url`.
+- `IngestionState` (§7): DISCOVERED..PUBLISHED + failure states, mapped onto the existing persisted `Job.quality_state`. 7 tests.
+
+### §5/§19/§24 Full-funnel connector matrix + observability (d3cfd62)
+- `RunMetrics` extended: normalized / duplicates / errors / direct_apply_candidate / direct_apply_verified / publishable / indexed / provider, plus `is_degraded`.
+- Orchestrator populates every stage incl. an explicit `SearchService.sync_job` so `indexed` is measured (a Typesense outage shows as indexed<created, not silent loss).
+- `connector_matrix` rewritten to print the full funnel (fetch|norm|da_ok|creat|updt|dupe|verif|pub|index|err|rej) + `--source` + `[DEGRADED]` marker. `--fetch-only` now clearly labelled as fetch-capability only. 7 tests.
+
+### §6 Source-aware assessment — SOURCE TRUST vs CONTENT QUALITY (35d882d)
+- `calculate_source_trust()` (evidence-based: known ATS provider, ats job id, structured payload, job-specific url) and `assess_job()` returning BOTH dimensions + `block_reasons`, never one opaque number.
+- Moat preserved: publication still gates on content quality ≥ 0.4; **trust never buys publication** (explicit test: a trusted-provider wrapper around scam content stays blocked). Source-trust evidence recorded in `field_provenance._source_trust`. 6 tests.
+
+### §8/§9/§10 Source discovery + migration model (9a5bba9)
+- `Source` gains `lifecycle_state` (active/degraded/migrated/disabled/invalid), `consecutive_zero_yield_runs`, `migrated_to` self-FK, append-only `migration_history`, `last_discovery_at` (migration 0009).
+- `source_discovery.py` fingerprints a company across known ATS endpoints (greenhouse/lever/ashby/smartrecruiters/workable/recruitee/personio) with per-probe evidence + a MIGRATED/ACTIVE/INVALID verdict; network fetcher injected so 6 tests run offline (replays the real Notion Lever→Ashby migration + Netflix INVALID case).
+- `rediscover_sources` command applies verdicts (create successor, retire old, record evidence; dry-run by default).
+- Orchestrator folds run health into lifecycle: degraded runs bump the zero-yield counter and flag DEGRADED; healthy runs clear it.
+
+### §10 Netflix — integrated compliantly (was prematurely "unsupported") (e6977df)
+- Researched properly: Netflix runs on **Eightfold AI** (`explore.jobs.netflix.net`). Verified live 2026-09-29: `/api/apply/v2/jobs?domain=netflix.com` → **474 structured positions**, each with a `canonicalPositionUrl` on Netflix's own host (direct-apply, moat-compliant).
+- New `EightfoldScraper` (paginated, tenant registry), wired into orchestrator dispatch/rate-limits/fetch-only, seeded `netflix-eightfold`, added to trusted providers. 3 tests parse a REAL captured Netflix payload offline (incl. all-apply-urls-are-direct assertion).
+
+### Server actions still required
+- Deploy e6977df; run `python manage.py migrate` (applies jobs 0009).
+- `python manage.py setup_sources --deactivate-stale` (retires dead Lever rows, seeds netflix-eightfold + notion/plaid-ashby).
+- `python manage.py connector_matrix` (WRITE mode) to get the true funnel per source — paste output to confirm persistence + publishable + indexed counts.
+- `python manage.py rediscover_sources --degraded-only --apply` once sources have accrued run history.
+- Still blocked server-side (not code): Typesense 401 (fast search degraded to Postgres fallback), AWS Bedrock AUTH_FAILED (all AI). Rotate the AWS key exposed in git history commit fa11a2f.
