@@ -275,7 +275,8 @@ AI runtime stays BLOCKED until AWS creds valid.
 | Matching | FRAGMENTED | converge Eligibility/Ranking/Explanation | profiles+search | — | one interface, migration-safe | 7 | single consistent score | P1 | **DONE (c1e4fc1)** — apps/matching/engine.py; MatchingService delegates; deterministic |
 | iCIMS connector | BROKEN | real careers-{tenant}.icims.com portal | bs4 | — | rewrite | (CI) | real postings from a tenant | P2 | **DONE (85ef7cc)** |
 | Ingestion dedup+provenance wiring | — | wire L1/L2 dedup + seniority + provenance | — | — | orchestrator._process_jobs | — | dup collapse + provenance on new jobs | P1 | **DONE (ca8f335)** |
-| Recommendation | FUNCTIONAL | hybrid + feedback signals | matching | LightFM/Gorse(ref) | enrich + instrument | — | explained recs + feedback capture | P1 | TODO |
+| Recommendation feedback | none | capture behavioral signals for ranking | jobs/users | LightFM/Gorse(ref) | RecommendationFeedback model + service | (CI) | signals recorded + signed weight | P1 | **DONE (f480b47)** — migration 0005; feedback_service record/weight/suppress |
+| Recommendation ranking use of feedback | FUNCTIONAL | consume feedback weight + suppress dismissed | above | — | wire into fallback ranker | — | dismissed jobs suppressed | P1 | TODO (next) |
 | Cover Letter | WEAK | grounded pipeline + versions | CV/job (AI) | — | planner+draft+export | — | generate→edit→export live | P1 | TODO (AI parts BLOCKED) |
 | Observability/Admin | WEAK | per-engine health surfaced | — | — | health endpoints/panel | (bedrock done) | admin sees engine health | P1 | PARTIAL (AI health DONE) |
 
