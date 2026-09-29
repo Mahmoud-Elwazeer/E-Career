@@ -301,6 +301,59 @@ sudo systemctl restart usam.service celery-usam.service celery-beat-usam.service
 ```
 Then re-run the Rashid loop (§A.3). PASS = real answers, `"model"` != `"fallback"`.
 
+## §E. AI/Bedrock foundation — live diagnosis + hardening (commit e7032f2)
+
+| Item | Status | Evidence |
+|------|--------|----------|
+| Bedrock health classifier (live) | PASS | `bedrock_health()` on server returned `{'status':'AUTH_FAILED','region':'us-east-1','credential_source':'static_settings_env'}` — classifier works, no secrets exposed |
+| Server AWS credentials | **FAIL (server-side)** | Static key in `backend/.env` rejected: `UnrecognizedClientException`. Key is invalid/revoked. |
+| Credential source | Identified | `EnvironmentFiles=/var/www/usam/backend/.env`; 1 `AWS_ACCESS_KEY_ID`, 0 `AWS_SESSION_TOKEN` → static long-lived key |
+| EC2 instance role | Absent | `curl .../iam/security-credentials/` returned empty → no role attached |
+| aws CLI | N/A | Not installed on server; diagnosed via boto3 instead (app doesn't use CLI) |
+| Region | PASS | `us-east-1` resolved correctly |
+| Centralized Bedrock client | PASS (code) | `bedrock_client.py` factory shared by plugin + agent; deployed |
+| Fail-fast fallback | PASS (code) | Provider-level failures now return honest "AI unavailable" instead of silent fake |
+| Admin AI health visibility | PASS (code) | `GET /api/v1/intelligence/health/` returns classified `bedrock` block |
+| Rashid AI (all intents) | **BLOCKED** | Returns fallback; blocked solely by invalid AWS creds |
+| Classifier unit tests | PASS | 8/8 `tests_bedrock_client.py` |
+
+### Required server-side fix (only the account owner can do)
+The static key in `backend/.env` is dead and no instance role exists. Either:
+- **(A, recommended)** attach an EC2 IAM role with `bedrock:InvokeModel`,
+  `InvokeModelWithResponseStream`, `Converse`, `ConverseStream`,
+  `ListFoundationModels`, then comment out the static keys in `.env` (the client
+  factory auto-uses the role); OR
+- **(B)** rotate the key in IAM, update `.env`, deactivate the old key.
+Then confirm: `python manage.py shell -c "from apps.intelligence.bedrock_client import bedrock_health; print(bedrock_health())"` → `HEALTHY`.
+If `ACCESS_DENIED`/`MODEL_UNAVAILABLE` after that → enable Claude Sonnet 4.5
+model access in the Bedrock console for us-east-1, or repoint `RASHID_MODEL`.
+
+## §F. SECURITY — exposed AWS key in git history (ACTION REQUIRED)
+
+**Finding (real, not placeholder):** a real AWS Access Key ID was committed in
+history at commit **`fa11a2f`** ("Complete Phase 1A & 1B") in 5 files:
+`.env.example`, `IMPLEMENTATION_REQUIREMENTS.md`, `READY_FOR_PHASE_1A.md`,
+`SETUP_STATUS.md`, `START_HERE.md`. It has been **removed from current HEAD**
+but **remains permanently in git history**. This is consistent with the
+AGENTS.md leaked-key note and is very likely the same key now failing
+`AUTH_FAILED` (i.e. it was deactivated — which is correct).
+
+Placeholder-only matches (`AKIAXXXX…`) in `EXECUTE_PHASE3.sh` and
+`archive/FINAL_IMPLEMENTATION_PLAN.md` are NOT secrets.
+
+**Required actions:**
+1. **Deactivate/delete the exposed key in IAM** (treat as fully compromised).
+   Confirm no other principal/service still uses it before deletion.
+2. Decide on history rewrite: purging it from git history requires
+   `git filter-repo`/BFG + a **force-push** that rewrites shared history and
+   breaks every existing clone and the server's `/home/ubuntu/E-Career` and
+   `/var/www/usam` checkouts. Because the key is already deactivated, rotation
+   (step 1) neutralizes the risk; history rewrite is optional cleanup that
+   should be scheduled with all collaborators/deploys aware. **Not performed
+   unilaterally** (destructive, coordination-sensitive).
+3. Ensure current/future secrets live only in `.env` (gitignored) or a secret
+   manager — never in tracked `.md`/`.example` files.
+
 ## Production-readiness conclusion (this deployment)
 
 **Code correctness:** After `c02458b`, all 9 Rashid tools call real, verified
