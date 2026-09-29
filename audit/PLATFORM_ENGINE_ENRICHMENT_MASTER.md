@@ -297,6 +297,40 @@ This is real end-to-end evidence the Phase A/B/D deterministic engines run
 correctly against production data. AI-dependent engines remain BLOCKED on the
 AWS credential issue (unchanged).
 
+## 8d. INGESTION INCIDENT: "fetched 154 / added 0" — ROOT-CAUSED + FIXED (1cb8404)
+
+**Symptom:** Greenhouse connector fetched 154 real jobs, persisted 0, no existing
+jobs (not dedup), no visible error.
+
+**Root cause (read from real code):** both ingestion paths
+(`orchestrator._process_jobs` AND `tasks.process_and_store_jobs`) called
+`Job.objects.create()` WITHOUT the REQUIRED non-nullable fields `location_type`
+and `industry` (they passed only `work_arrangement`). Every create raised, and
+the outer `except Exception: continue` swallowed all 154 silently → added 0.
+
+Contributing bugs: (a) `calculate_legitimacy_score` read `job['company']` but
+connectors emit `company_slug`; (b) `normalize_seniority` could yield
+director/executive/student which aren't in `Job.EXPERIENCE_LEVEL_CHOICES`.
+
+**Fix (0a32da0 + 1cb8404):**
+- Set required `location_type` (from work arrangement) + `industry` (company or
+  'technology') + `location` fallback on create, in BOTH paths.
+- Clamp `experience_level` to entry/mid/senior/lead.
+- Capture the real persistence exception (PERSISTENCE_ERROR) instead of swallowing.
+- Legitimacy reads company_name/company/company_slug; structured-ATS jobs exempt
+  from short-description penalty (source trust ≠ content quality). Scam detection
+  unchanged.
+- New `run_metrics.py`: aggregated `{fetched,created,updated,rejected-by-reason}`
+  + `is_zero_yield_anomaly`; orchestrator warns on zero-yield runs.
+
+**Verified standalone:** greenhouse-shaped job legitimacy 1.0 PASS; scam 0.0
+rejected; non-ATS short desc still penalized. 6 regression tests.
+**Pending server rerun** to show final funnel counts (fetched/created/rejected).
+
+Engine statuses updated: Scraping FUNCTIONAL (ingestion persistence fixed),
+Connector (Greenhouse verified fetch+persist path), Normalization (seniority
+clamp), Observability (run metrics + zero-yield alert).
+
 ## 9. Production-readiness conclusion
 
 - **Non-AI platform:** healthy and verified live — auth, services, workers,
