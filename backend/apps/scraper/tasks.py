@@ -229,37 +229,60 @@ def process_and_store_jobs(jobs: List[Dict], source: Source) -> int:
             
             from datetime import date
 
-            job = Job.objects.create(
-                company=company,
-                source=source,
-                title=job_data.get('title', ''),
-                slug=slug,
-                description=job_data.get('description', ''),
-                location=normalize_location(job_data.get('location', '')),
-                direct_apply_url=apply_url,
-                source_type='scraped',
-                employment_type=normalize_employment_type(job_data.get('employment_type')) or 'full_time',
-                experience_level=normalize_experience_level(job_data.get('experience_level')) or 'mid',
-                work_arrangement=normalize_remote_type(job_data.get('remote_type')),
-                salary_min=job_data.get('salary_min'),
-                salary_max=job_data.get('salary_max'),
-                salary_currency=job_data.get('salary_currency', 'USD'),
-                posted_at=date.today(),
-                scraped_at=timezone.now(),
-                expires_at=timezone.now() + timedelta(days=90),
-                legitimacy_score=legitimacy_score,
-                legitimacy_flags=legitimacy_flags,
-                ats_platform=job_data.get('ats_platform', ''),
-                ats_job_id=job_data.get('ats_job_id', ''),
-                raw_data=job_data.get('raw_data', {}),
-                field_provenance=build_provenance(
-                    job_data,
-                    source=job_data.get('ats_platform') or source.slug,
-                    method='ats_api',
-                    confidence=1.0,
-                ),
-            )
-            
+            # location_type + industry are REQUIRED on Job; clamp experience_level
+            # to valid choices (entry/mid/senior/lead). Previously omitted →
+            # every create raised and was swallowed (fetched N / added 0).
+            _exp = normalize_experience_level(job_data.get('experience_level')) or 'mid'
+            _exp = {'director': 'lead', 'executive': 'lead', 'c_level': 'lead',
+                    'student': 'entry', 'junior': 'entry'}.get(_exp, _exp)
+            if _exp not in {'entry', 'mid', 'senior', 'lead'}:
+                _exp = 'mid'
+            _work_arr = normalize_remote_type(job_data.get('remote_type')) or 'onsite'
+            _loc_type = _work_arr if _work_arr in {'remote', 'hybrid', 'onsite'} else 'onsite'
+            _industry = getattr(company, 'industry', '') or 'technology'
+
+            try:
+                job = Job.objects.create(
+                    company=company,
+                    source=source,
+                    title=job_data.get('title', ''),
+                    slug=slug,
+                    description=job_data.get('description', ''),
+                    location=normalize_location(job_data.get('location', '')) or 'Not specified',
+                    location_type=_loc_type,
+                    industry=_industry,
+                    direct_apply_url=apply_url,
+                    source_type='scraped',
+                    employment_type=normalize_employment_type(job_data.get('employment_type')) or 'full_time',
+                    experience_level=_exp,
+                    work_arrangement=_work_arr,
+                    salary_min=job_data.get('salary_min'),
+                    salary_max=job_data.get('salary_max'),
+                    salary_currency=job_data.get('salary_currency', 'USD'),
+                    posted_at=date.today(),
+                    scraped_at=timezone.now(),
+                    expires_at=timezone.now() + timedelta(days=90),
+                    legitimacy_score=legitimacy_score,
+                    legitimacy_flags=legitimacy_flags,
+                    ats_platform=job_data.get('ats_platform', ''),
+                    ats_job_id=job_data.get('ats_job_id', ''),
+                    raw_data=job_data.get('raw_data', {}),
+                    field_provenance=build_provenance(
+                        job_data,
+                        source=job_data.get('ats_platform') or source.slug,
+                        method='ats_api',
+                        confidence=1.0,
+                    ),
+                )
+            except Exception as ce:
+                import structlog
+                structlog.get_logger().error(
+                    "job_persistence_failed", error=str(ce),
+                    error_type=type(ce).__name__, title=job_data.get('title'),
+                    source=source.slug,
+                )
+                continue
+
             # 8. Run full verification on new job
             try:
                 verification_result = verification_engine.verify_job(job)
