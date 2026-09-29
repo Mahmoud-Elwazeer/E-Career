@@ -104,15 +104,21 @@ def parse_salary(salary_str: str) -> tuple:
     elif '€' in salary_str or 'EUR' in salary_str:
         currency = 'EUR'
     
-    # Extract numbers
-    numbers = re.findall(r'\d{1,3}(?:,\d{3})*(?:\.\d+)?', salary_str)
-    numbers = [int(n.replace(',', '')) for n in numbers]
-    
-    if len(numbers) >= 2:
-        return min(numbers), max(numbers), currency
-    elif len(numbers) == 1:
-        return numbers[0], numbers[0], currency
-    
+    # Extract numbers. Handle BOTH comma-grouped ("120,000") and plain
+    # ("120000") amounts. The prior pattern (\d{1,3}(?:,\d{3})*) split a plain
+    # 6-digit number like 120000 into 120 + 000, badly corrupting salaries.
+    # Match a full comma-grouped number OR a run of >=2 bare digits.
+    tokens = re.findall(r'\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d{2,}(?:\.\d+)?', salary_str)
+    numbers = [int(float(n.replace(',', ''))) for n in tokens]
+    # Drop obviously-not-salary small values that slipped through (e.g. a stray
+    # "40" from "40 hours"); keep anything >= 1000 OR the only number present.
+    salaries = [n for n in numbers if n >= 1000] or numbers
+
+    if len(salaries) >= 2:
+        return min(salaries), max(salaries), currency
+    elif len(salaries) == 1:
+        return salaries[0], salaries[0], currency
+
     return None, None, currency
 
 
