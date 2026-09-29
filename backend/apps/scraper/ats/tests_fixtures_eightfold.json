@@ -1,0 +1,83 @@
+{
+ "positions": [
+  {
+   "id": 790298014263,
+   "name": "AI Engineer 6 - AI Foundation & Tooling, Ads Platform",
+   "posting_name": "AI Engineer 6 - AI Foundation & Tooling, Ads Platform",
+   "location": "Remote, United States",
+   "locations": [
+    "Remote, United States"
+   ],
+   "hot": 1,
+   "department": "Data & Insights",
+   "business_unit": "Streaming",
+   "t_update": 1779148800,
+   "t_create": 1721692800,
+   "ats_job_id": "AJRT30201",
+   "display_job_id": "AJRT30201",
+   "type": "ATS",
+   "id_locale": "AJRT30201-en-US",
+   "job_description": "",
+   "locale": "en-US",
+   "stars": 0,
+   "medallionProgram": null,
+   "location_flexibility": null,
+   "work_location_option": "onsite",
+   "canonicalPositionUrl": "https://explore.jobs.netflix.net/careers/job/790298014263",
+   "isPrivate": false
+  },
+  {
+   "id": 790318676145,
+   "name": "Account Manager (Spain) - Temporary Coverage",
+   "posting_name": "Account Manager (Spain) - Temporary Coverage",
+   "location": "Madrid,Spain",
+   "locations": [
+    "Madrid,Spain"
+   ],
+   "hot": 0,
+   "department": "Advertising",
+   "business_unit": "Streaming",
+   "t_update": 1790553600,
+   "t_create": 1790553600,
+   "ats_job_id": "JR42817",
+   "display_job_id": "JR42817",
+   "type": "ATS",
+   "id_locale": "JR42817-en-US",
+   "job_description": "",
+   "locale": "en-US",
+   "stars": 0,
+   "medallionProgram": null,
+   "location_flexibility": null,
+   "work_location_option": "onsite",
+   "canonicalPositionUrl": "https://explore.jobs.netflix.net/careers/job/790318676145",
+   "isPrivate": false
+  },
+  {
+   "id": 790318652466,
+   "name": "Photo Campaign Manager - Series",
+   "posting_name": "Photo Campaign Manager - Series",
+   "location": "Los Angeles,California,United States of America",
+   "locations": [
+    "Los Angeles,California,United States of America"
+   ],
+   "hot": 0,
+   "department": "Marketing",
+   "business_unit": "Streaming",
+   "t_update": 1790294400,
+   "t_create": 1790294400,
+   "ats_job_id": "JR42802",
+   "display_job_id": "JR42802",
+   "type": "ATS",
+   "id_locale": "JR42802-en-US",
+   "job_description": "",
+   "locale": "en-US",
+   "stars": 0,
+   "medallionProgram": null,
+   "location_flexibility": null,
+   "work_location_option": "onsite",
+   "canonicalPositionUrl": "https://explore.jobs.netflix.net/careers/job/790318652466",
+   "isPrivate": false
+  }
+ ],
+ "count": 3
+}

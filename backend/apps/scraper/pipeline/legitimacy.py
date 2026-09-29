@@ -145,6 +145,7 @@ def is_legitimate(job: Dict, threshold: float = 0.6) -> bool:
 TRUSTED_ATS_PROVIDERS = frozenset({
     "greenhouse", "lever", "ashby", "workday", "smartrecruiters",
     "workable", "teamtailor", "bamboohr", "icims", "oracle", "sap",
+    "eightfold",
 })
 
 

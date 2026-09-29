@@ -50,6 +50,12 @@ SOURCES = [
     ("ramp-ashby", "Ramp (Ashby)", "ashby"),
     ("notion-ashby", "Notion", "ashby"),        # migrated off Lever; verified 128 jobs
     ("plaid-ashby", "Plaid", "ashby"),          # migrated off Lever; verified 121 jobs
+
+    # ── Eightfold AI careers hubs (§10) ──
+    # Netflix runs on Eightfold, not a classic ATS. Verified live 2026-09-29:
+    # explore.jobs.netflix.net/api/apply/v2/jobs?domain=netflix.com -> 474
+    # positions, each with a direct canonicalPositionUrl (moat-compliant).
+    ("netflix-eightfold", "Netflix", "eightfold"),
 ]
 
 
@@ -145,4 +151,8 @@ def _board_url(slug: str, platform: str) -> str:
         return f"https://jobs.lever.co/{company}"
     if platform == "ashby":
         return f"https://jobs.ashbyhq.com/{company}"
+    if platform == "eightfold":
+        # Eightfold careers hubs are per-tenant; the connector resolves the
+        # exact host/domain from its registry. Use a stable landing URL.
+        return f"https://explore.jobs.{company}.net/careers"
     return f"https://{company}.com/careers"
