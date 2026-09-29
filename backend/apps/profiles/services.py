@@ -187,7 +187,16 @@ class MatchingService:
         }
     
     def _basic_match_score(self, profile: UserProfile, job: Job) -> float:
-        """Fallback basic matching algorithm"""
+        """Deterministic matching — delegates to the unified engine so the score
+        is identical everywhere it is computed (Phase D convergence)."""
+        try:
+            from apps.matching.engine import unified_matching_engine
+            return unified_matching_engine.score(profile, job)
+        except Exception:
+            return self._legacy_basic_match_score(profile, job)
+
+    def _legacy_basic_match_score(self, profile: UserProfile, job: Job) -> float:
+        """Legacy fallback basic matching algorithm (kept as a safety net)."""
         score = 0.0
         
         # Skills match (40%)
@@ -248,7 +257,29 @@ class MatchingService:
         return min(score, 100)  # Cap at 100
     
     def _basic_match_breakdown(self, profile: UserProfile, job: Job) -> Dict:
-        """Fallback basic breakdown with real per-factor scores"""
+        """Deterministic breakdown — delegates to the unified engine so every
+        page shows the same score/factors (Phase D convergence)."""
+        try:
+            from apps.matching.engine import unified_matching_engine
+            result = unified_matching_engine.match(profile, job)
+            d = result.to_dict()
+            # Keep the historical key shape the callers/serializers expect.
+            return {
+                "overall_score": d["overall_score"],
+                "breakdown": d["breakdown"],
+                "strengths": d["strengths"],
+                "gaps": d["gaps"],
+                "recommendation": d["recommendation"],
+                "improvement_tips": [],
+                "eligible": d["eligible"],
+                "matched_requirements": d["matched_requirements"],
+                "missing_requirements": d["missing_requirements"],
+            }
+        except Exception:
+            return self._legacy_basic_match_breakdown(profile, job)
+
+    def _legacy_basic_match_breakdown(self, profile: UserProfile, job: Job) -> Dict:
+        """Legacy fallback breakdown (kept as a safety net)."""
         skills_score = 0
         skills_reasoning = 'No skills data available'
         strengths = []
