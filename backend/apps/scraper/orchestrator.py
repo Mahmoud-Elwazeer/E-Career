@@ -296,9 +296,14 @@ class ScraperOrchestrator:
         # instead of silently swallowed (§2/§9/§21).
         from .pipeline.run_metrics import (
             RunMetrics, MISSING_APPLY_URL, NOT_DIRECT_URL, BLOCKED_AGGREGATOR,
-            LOW_LEGITIMACY, DUPLICATE, PERSISTENCE_ERROR, VERIFICATION_ERROR,
+            NORMALIZATION_ERROR, LOW_LEGITIMACY, DUPLICATE, PERSISTENCE_ERROR,
+            VERIFICATION_ERROR,
         )
-        metrics = RunMetrics(source=getattr(source, 'slug', ''), fetched=len(jobs))
+        metrics = RunMetrics(
+            source=getattr(source, 'slug', ''),
+            provider=(getattr(source, 'ats_platform', '') or ''),
+            fetched=len(jobs),
+        )
 
         for job_data in jobs:
             try:
@@ -308,9 +313,13 @@ class ScraperOrchestrator:
                 if not apply_url:
                     metrics.reject(MISSING_APPLY_URL, job_data.get('title'))
                     continue
+                # Had a candidate apply url to evaluate.
+                metrics.direct_apply_candidate += 1
                 if not is_direct_company_url(apply_url):
                     metrics.reject(NOT_DIRECT_URL, apply_url)
                     continue
+                # Passed the direct/moat gate.
+                metrics.direct_apply_verified += 1
 
                 # 2. Check ATS fingerprint
                 ats_result = ats_stage.run(apply_url)
@@ -334,6 +343,13 @@ class ScraperOrchestrator:
                 #     keys. This resolves the REAL employer name instead of the
                 #     lowercased board slug (the long-standing company-name bug).
                 njob = NormalizedJob.from_connector_dict(job_data, source=source)
+                contract_problems = njob.validate()
+                if contract_problems:
+                    metrics.reject(NORMALIZATION_ERROR, {
+                        'title': job_data.get('title'), 'problems': contract_problems,
+                    })
+                    continue
+                metrics.normalized += 1
 
                 # 4. Get or create company — keyed on a stable slug, but stored
                 #    with the resolved human employer name (njob.company_name).
@@ -406,6 +422,7 @@ class ScraperOrchestrator:
                     existing.quality_state = 'probably_active'
                     existing.save(update_fields=['is_expired', 'quality_state'])
                     metrics.updated += 1
+                    metrics.duplicates += 1
                     metrics.reject(DUPLICATE, job_data.get('title'))
                     continue
                 
@@ -492,19 +509,38 @@ class ScraperOrchestrator:
                                  error_type=type(ce).__name__, title=job_data.get('title'))
                     continue
 
-                # 8. Run verification
+                added_count += 1
+                metrics.created += 1
+
+                # 8. Run verification. A created+verified job is PUBLISHABLE
+                #    (visible to users); a created-but-unverified job still
+                #    persists but is not counted publishable.
+                job_verified = False
                 try:
                     verification_engine.verify_job(job)
                     verified_count += 1
                     metrics.verified += 1
+                    job_verified = True
                 except Exception as ve:
                     metrics.reject(VERIFICATION_ERROR, str(ve))
                     logger.error(f"Verification failed for job {job.id}: {ve}")
 
-                added_count += 1
-                metrics.created += 1
+                if job_verified:
+                    metrics.publishable += 1
+
+                # 9. Search index sync — measure that persisted jobs actually
+                #    reach the search backend (§20). Counted separately so a
+                #    Typesense outage shows as indexed<created, not silent loss.
+                try:
+                    from apps.search.service import SearchService
+                    SearchService().sync_job(job)
+                    metrics.indexed += 1
+                except Exception as se:
+                    logger.warning("search_sync_failed job=%s error=%s", job.id, se)
 
             except Exception as e:
+                metrics.errors += 1
+                metrics.reject('UNKNOWN', f"{type(e).__name__}: {e}")
                 logger.error(f"Failed to process job: {e}")
                 continue
 
@@ -513,15 +549,18 @@ class ScraperOrchestrator:
         # kwargs — pass the summary as a single formatted arg. Set the attribute
         # FIRST so metrics are always retrievable even if logging misbehaves.
         summary = metrics.to_dict()
+        summary['degraded'] = metrics.is_degraded
         self._last_run_metrics = summary
         try:
             if metrics.is_zero_yield_anomaly:
                 logger.warning("scrape_zero_yield_anomaly: %s", summary)
+            elif metrics.is_degraded:
+                logger.warning("scrape_run_degraded: %s", summary)
             else:
                 logger.info("scrape_run_metrics: %s", summary)
         except Exception:
             pass
-        
+
         return added_count
 
     def scrape_all_sources(self) -> Dict:
