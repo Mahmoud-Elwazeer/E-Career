@@ -371,6 +371,15 @@ class Job(UUIDModel):
         blank=True,
         help_text="Original scraped payload for debugging"
     )
+    field_provenance = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Per-field lineage for extracted data. Maps a field name to "
+            "{value, source, method, confidence}. Additive; the raw source "
+            "payload is preserved separately in raw_data."
+        ),
+    )
     ats_platform = models.CharField(
         max_length=30, 
         blank=True,

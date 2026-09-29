@@ -198,7 +198,47 @@ def get_blocked_domains():
     return _blocked_cache
 
 
+def _normalize_host(value: str) -> str:
+    """Reduce a URL or host string to a bare, lowercased hostname.
+
+    Accepts full URLs ("https://apply.indeed.com/x"), host:port, or bare
+    hosts, and strips scheme, path, port, and a leading "www.".
+    """
+    if not value:
+        return ""
+    value = value.strip().lower()
+    # Strip scheme if a full URL was passed.
+    if "://" in value:
+        value = value.split("://", 1)[1]
+    # Strip any path/query/fragment.
+    for sep in ("/", "?", "#"):
+        if sep in value:
+            value = value.split(sep, 1)[0]
+    # Strip credentials and port.
+    if "@" in value:
+        value = value.split("@", 1)[1]
+    if ":" in value:
+        value = value.split(":", 1)[0]
+    if value.startswith("www."):
+        value = value[4:]
+    return value.strip(".")
+
+
 def is_blocked_domain(domain: str) -> bool:
-    """Check if a domain (or any of its parents) is in the blocklist."""
-    blocked = get_blocked_domains()
-    return any(b in domain for b in blocked)
+    """Return True if the host is blocked by exact or parent-domain match.
+
+    Uses dot-boundary suffix matching rather than naive substring matching so
+    that a blocked entry like ``indeed.com`` matches ``apply.indeed.com`` but
+    NOT an unrelated host such as ``notindeed.com`` or ``goodindeed.com.ats``.
+    This enforces the platform's aggregator-rejection moat correctly.
+    """
+    host = _normalize_host(domain)
+    if not host:
+        return False
+    for raw in get_blocked_domains():
+        blocked = _normalize_host(raw)
+        if not blocked:
+            continue
+        if host == blocked or host.endswith("." + blocked):
+            return True
+    return False

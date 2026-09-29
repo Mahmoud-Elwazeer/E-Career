@@ -9,7 +9,10 @@ from typing import List, Dict
 from apps.jobs.models import Job, Source, Company
 from apps.core.models import PipelineHealth, PlatformConfig
 
-from .ats import greenhouse, lever, ashby, bamboohr, smartrecruiters, workable, teamtailor
+from .ats import (
+    greenhouse, lever, ashby, bamboohr, smartrecruiters, workable, teamtailor,
+    workday, icims, oracle, sap,
+)
 from .orchestrator import orchestrator, scrape_all_sources_orchestrated
 from .pipeline.url_resolver import is_direct_company_url, verify_url_live
 from .pipeline.legitimacy import calculate_legitimacy_score
@@ -19,6 +22,7 @@ from .pipeline.normalizer import (
     normalize_experience_level,
     normalize_remote_type,
     normalize_location,
+    build_provenance,
 )
 
 # Import verification engine
@@ -136,7 +140,22 @@ def scrape_source(source: Source) -> List[Dict]:
         return workable.fetch_workable_jobs(company_slug)
     elif platform == 'teamtailor':
         return teamtailor.fetch_teamtailor_jobs(company_slug)
+    elif platform == 'workday':
+        return workday.fetch_workday_jobs(company_slug)
+    elif platform == 'icims':
+        return icims.fetch_icims_jobs(company_slug)
+    elif platform == 'oracle':
+        return oracle.fetch_oracle_jobs(company_slug)
+    elif platform == 'sap':
+        return sap.fetch_sap_jobs(company_slug)
     else:
+        # Keep this dispatch in sync with ScraperOrchestrator.scrape_source in
+        # orchestrator.py. A configured Source whose platform is unknown here
+        # would silently yield zero jobs, so log it for visibility.
+        import structlog
+        structlog.get_logger().warning(
+            "scrape_source_unknown_platform", platform=platform, source=source.slug
+        )
         return []
 
 
@@ -233,6 +252,12 @@ def process_and_store_jobs(jobs: List[Dict], source: Source) -> int:
                 ats_platform=job_data.get('ats_platform', ''),
                 ats_job_id=job_data.get('ats_job_id', ''),
                 raw_data=job_data.get('raw_data', {}),
+                field_provenance=build_provenance(
+                    job_data,
+                    source=job_data.get('ats_platform') or source.slug,
+                    method='ats_api',
+                    confidence=1.0,
+                ),
             )
             
             # 8. Run full verification on new job

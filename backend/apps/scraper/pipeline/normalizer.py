@@ -124,3 +124,47 @@ def calculate_expiry_date(posted_date: Optional[datetime], default_days: int = 9
         base_date = datetime.now()
     
     return base_date + timedelta(days=default_days)
+
+
+def build_provenance(
+    job_data: Dict,
+    *,
+    source: str,
+    method: str = "ats_api",
+    confidence: float = 1.0,
+) -> Dict[str, Dict]:
+    """Build per-field provenance for extracted job data (Section 14).
+
+    Returns a mapping of field name -> {value, source, method, confidence}
+    for the fields we ingest. This records lineage WITHOUT destroying the raw
+    payload (which stays in Job.raw_data). Structured ATS-API fields get
+    confidence 1.0 by default; callers may override for AI/heuristic fields.
+
+    Args:
+        job_data: the raw/normalized job dict from a connector.
+        source: the origin, e.g. the source slug or ATS platform.
+        method: extraction method, e.g. "ats_api", "ai_extraction", "heuristic".
+        confidence: 0.0-1.0 confidence for these fields.
+    """
+    tracked_fields = (
+        "title",
+        "location",
+        "employment_type",
+        "experience_level",
+        "salary_min",
+        "salary_max",
+        "salary_currency",
+        "direct_apply_url",
+        "ats_platform",
+        "ats_job_id",
+    )
+    provenance: Dict[str, Dict] = {}
+    for field in tracked_fields:
+        if field in job_data and job_data[field] not in (None, ""):
+            provenance[field] = {
+                "value": job_data[field],
+                "source": source,
+                "method": method,
+                "confidence": round(float(confidence), 3),
+            }
+    return provenance

@@ -110,21 +110,34 @@ def _register_rashid_tools(agent: Agent[PlatformDeps, str]) -> None:
     ) -> str:
         """Search for jobs matching the query. Returns job titles, companies, and links."""
         from apps.search.service import SearchService
+        from apps.search.plugins.base import SearchQuery
+
+        filters: dict[str, Any] = {}
+        if location:
+            filters["location"] = location
+        if remote:
+            filters["work_arrangement"] = "remote"
 
         service = SearchService()
-        results = service.search_jobs(
-            query=query,
-            filters={"location": location, "remote": remote} if location or remote else {},
-            limit=limit,
-        )
-        if not results:
+        try:
+            response = service.search_jobs(
+                SearchQuery(q=query, filters=filters, page=1, per_page=limit)
+            )
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("rashid_search_jobs_failed", error=str(exc))
+            return "Job search is temporarily unavailable. Please try again shortly."
+
+        hits = getattr(response, "hits", []) or []
+        if not hits:
             return "No jobs found matching your criteria."
 
         lines = []
-        for job in results[:limit]:
+        for hit in hits[:limit]:
+            data = getattr(hit, "data", {}) or {}
             lines.append(
-                f"- **{job.get('title', 'Untitled')}** at {job.get('company_name', 'Unknown')} "
-                f"({job.get('location', 'N/A')}) - ID: {job.get('id')}"
+                f"- **{data.get('title', 'Untitled')}** at "
+                f"{data.get('company_name', 'Unknown')} "
+                f"({data.get('location', 'N/A')}) - ID: {data.get('id') or hit.id}"
             )
         return "\n".join(lines)
 
@@ -198,10 +211,24 @@ def _register_rashid_tools(agent: Agent[PlatformDeps, str]) -> None:
         if not ctx.deps.user_id:
             return "User not authenticated."
 
+        if not ctx.deps.user_id:
+            return "User not authenticated."
+
+        from django.contrib.auth import get_user_model
         from apps.search.recommendation_engine import RecommendationEngine
 
-        engine = RecommendationEngine()
-        jobs = engine.get_recommendations(user_id=ctx.deps.user_id, limit=limit)
+        User = get_user_model()
+        try:
+            user = User.objects.get(id=ctx.deps.user_id)
+        except User.DoesNotExist:
+            return "User not found."
+
+        try:
+            engine = RecommendationEngine(user)
+            jobs = engine.get_recommendations(n_recommendations=limit)
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("rashid_recommendations_failed", error=str(exc))
+            return "Recommendations are temporarily unavailable. Please try again shortly."
 
         if not jobs:
             return "No recommendations available yet. Complete your profile and add skills to get personalized recommendations."
@@ -209,7 +236,7 @@ def _register_rashid_tools(agent: Agent[PlatformDeps, str]) -> None:
         lines = ["**Recommended Jobs:**"]
         for job in jobs[:limit]:
             lines.append(
-                f"- **{job.get('title')}** at {job.get('company_name')} "
+                f"- **{job.get('job_title')}** at {job.get('company_name')} "
                 f"(match: {job.get('score', 0):.0%})"
             )
         return "\n".join(lines)
