@@ -5,6 +5,7 @@ Exposes AI services, research, trends, and tools via REST API.
 """
 from __future__ import annotations
 
+from django.conf import settings
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser

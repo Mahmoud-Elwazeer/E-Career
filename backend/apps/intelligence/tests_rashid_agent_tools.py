@@ -62,3 +62,47 @@ def test_agent_module_imports_and_builds():
     assert hasattr(agent_module, "get_rashid_agent")
     # SearchQuery is imported lazily inside the tool; ensure the symbol is valid.
     assert SearchQuery is not None
+
+
+def test_skill_gap_analyzer_contract():
+    """analyze_skill_gap tool relies on SkillGapAnalyzer(user).analyze()."""
+    import inspect
+    from apps.career.skill_gap_analysis import SkillGapAnalyzer
+
+    init_params = [
+        p for p in inspect.signature(SkillGapAnalyzer.__init__).parameters.values()
+        if p.name != "self"
+    ]
+    assert init_params and init_params[0].name == "user"
+    assert hasattr(SkillGapAnalyzer, "analyze")
+
+
+def test_talent_score_field_name():
+    """get_career_profile tool orders TalentScore by last_calculated_at."""
+    from apps.career.models import TalentScore
+
+    field_names = {f.name for f in TalentScore._meta.get_fields()}
+    assert "last_calculated_at" in field_names
+    assert "overall_score" in field_names
+    # The old (wrong) field name must not silently exist.
+    assert "calculated_at" not in field_names
+
+
+def test_salary_data_field_names():
+    """get_salary_insights tool queries job__title and salary_min/max, not salary_amount."""
+    from apps.salary.models import SalaryData
+
+    field_names = {f.name for f in SalaryData._meta.get_fields()}
+    assert "salary_min" in field_names
+    assert "salary_max" in field_names
+    assert "job" in field_names
+    # The old (wrong) field the tool used must not exist.
+    assert "salary_amount" not in field_names
+    assert "job_title" not in field_names
+
+
+def test_intelligence_views_imports_settings():
+    """chat_with_rashid references settings.RASHID_MODEL; settings must be imported."""
+    from apps.intelligence import views
+
+    assert hasattr(views, "settings"), "settings must be importable at module level"

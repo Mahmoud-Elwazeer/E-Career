@@ -147,30 +147,49 @@ def _register_rashid_tools(agent: Agent[PlatformDeps, str]) -> None:
         job_id: str = "",
         target_role: str = "",
     ) -> str:
-        """Analyze the user's skill gap for a specific job or target role."""
+        """Analyze the user's skill gap against their target roles."""
         if not ctx.deps.user_id:
             return "User not authenticated. Cannot analyze skills."
 
-        from apps.career.skill_gap_analysis import SkillGapService
+        from django.contrib.auth import get_user_model
+        from apps.career.skill_gap_analysis import SkillGapAnalyzer
 
-        service = SkillGapService()
-        if job_id:
-            result = service.analyze_for_job(ctx.deps.user_id, job_id)
-        elif target_role:
-            result = service.analyze_for_role(ctx.deps.user_id, target_role)
-        else:
-            return "Please specify a job ID or target role for skill gap analysis."
+        User = get_user_model()
+        try:
+            user = User.objects.get(id=ctx.deps.user_id)
+        except User.DoesNotExist:
+            return "User not found."
 
-        if not result:
-            return "Could not perform skill gap analysis. Please update your profile with your skills."
+        try:
+            result = SkillGapAnalyzer(user).analyze()
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning("rashid_skill_gap_failed", error=str(exc))
+            return (
+                "Could not perform skill gap analysis. Please add target roles "
+                "and skills to your career profile first."
+            )
 
-        lines = ["**Skill Gap Analysis:**"]
-        for skill in result.get("missing_skills", []):
-            lines.append(f"- Missing: {skill['name']} (importance: {skill.get('importance', 'medium')})")
-        for skill in result.get("matching_skills", []):
-            lines.append(f"- Match: {skill['name']} ✓")
-        if result.get("score"):
-            lines.append(f"\n**Match Score:** {result['score']}%")
+        missing = result.get("missing_skills", []) or []
+        if not missing and not result.get("gaps_by_role"):
+            return (
+                "No skill gaps found, or your profile has no target roles yet. "
+                "Add target roles to your career profile for a detailed analysis."
+            )
+
+        lines = [
+            f"**Skill Gap Analysis** (severity: {result.get('gap_severity', 'unknown')}, "
+            f"overall gap score: {result.get('overall_gap_score', 0)}):",
+        ]
+        for skill in missing[:15]:
+            lines.append(f"- Missing: {skill}")
+        recs = result.get("recommendations", []) or []
+        if recs:
+            lines.append("\n**Recommendations:**")
+            for rec in recs[:5]:
+                if isinstance(rec, dict):
+                    lines.append(f"- {rec.get('skill', rec.get('title', ''))}: {rec.get('reason', rec.get('resource', ''))}".rstrip(": "))
+                else:
+                    lines.append(f"- {rec}")
         return "\n".join(lines)
 
     @agent.tool
@@ -198,8 +217,9 @@ def _register_rashid_tools(agent: Agent[PlatformDeps, str]) -> None:
                 lines.append(f"- Education entries: {len(data['education'])}")
 
         try:
-            score = TalentScore.objects.filter(user_id=ctx.deps.user_id).latest("calculated_at")
-            lines.append(f"- Talent Score: {score.overall_score}/100")
+            score = TalentScore.objects.filter(user_id=ctx.deps.user_id).latest("last_calculated_at")
+            # overall_score is stored 0-1; present as a percentage.
+            lines.append(f"- Talent Score: {round(score.overall_score * 100)}/100")
         except TalentScore.DoesNotExist:
             lines.append("- Talent Score: Not yet calculated")
 
@@ -281,26 +301,40 @@ Format as a clear numbered list."""
         """Get salary insights for a specific role and location."""
         from apps.salary.models import SalaryData
 
-        filters = {"job_title__icontains": job_title}
+        # SalaryData links to Job (title lives on Job); it has no job_title of
+        # its own. Filter through the job relation.
+        qs = SalaryData.objects.filter(job__title__icontains=job_title)
         if location:
-            filters["location__icontains"] = location
-
-        data = SalaryData.objects.filter(**filters)[:10]
+            qs = qs.filter(job__location__icontains=location)
+        data = list(qs.select_related("job")[:50])
         if not data:
             return f"No salary data available for {job_title}{f' in {location}' if location else ''}."
 
-        salaries = [d.salary_amount for d in data if d.salary_amount]
-        if not salaries:
+        # Prefer explicit min/max; fall back to annualized fields when present.
+        lows, highs = [], []
+        currency = "USD"
+        for d in data:
+            lo = d.salary_min if d.salary_min is not None else d.annualized_salary_min
+            hi = d.salary_max if d.salary_max is not None else getattr(d, "annualized_salary_max", None)
+            if lo is not None:
+                lows.append(float(lo))
+            if hi is not None:
+                highs.append(float(hi))
+            if getattr(d, "salary_currency", None):
+                currency = d.salary_currency
+
+        if not lows and not highs:
             return "Salary data exists but amounts are not available."
 
-        avg = sum(salaries) / len(salaries)
-        min_sal = min(salaries)
-        max_sal = max(salaries)
+        all_vals = lows + highs
+        avg = sum(all_vals) / len(all_vals)
+        min_sal = min(lows) if lows else min(all_vals)
+        max_sal = max(highs) if highs else max(all_vals)
         return (
             f"**Salary Insights for {job_title}:**\n"
-            f"- Average: ${avg:,.0f}\n"
-            f"- Range: ${min_sal:,.0f} - ${max_sal:,.0f}\n"
-            f"- Based on {len(salaries)} data points"
+            f"- Average: {currency} {avg:,.0f}\n"
+            f"- Range: {currency} {min_sal:,.0f} - {currency} {max_sal:,.0f}\n"
+            f"- Based on {len(data)} data points"
         )
 
     @agent.tool
