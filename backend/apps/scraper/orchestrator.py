@@ -24,7 +24,7 @@ from .ats import (
     smartrecruiters, workable, teamtailor
 )
 from .pipeline.url_resolver import is_direct_company_url, verify_url_live
-from .pipeline.legitimacy import calculate_legitimacy_score
+from .pipeline.legitimacy import calculate_legitimacy_score, assess_job
 from .pipeline.deduplicator import (
     generate_job_hash, generate_job_slug, dedup_verdict, normalize_title_for_dedup,
 )
@@ -328,12 +328,19 @@ class ScraperOrchestrator:
                     metrics.reject(BLOCKED_AGGREGATOR, apply_url)
                     continue
 
-                # 3. Calculate legitimacy score
-                legitimacy_score, legitimacy_flags = calculate_legitimacy_score(job_data)
+                # 3. Assess legitimacy — SOURCE TRUST and CONTENT QUALITY are
+                #    reported separately (§6). The moat still gates on content
+                #    quality (0.4); source trust never buys publication.
+                assessment = assess_job(job_data, content_threshold=0.4)
+                legitimacy_score = assessment['content_quality']
+                legitimacy_flags = assessment['content_flags']
 
-                if legitimacy_score < 0.4:
+                if not assessment['publishable']:
                     metrics.reject(LOW_LEGITIMACY, {
-                        'title': job_data.get('title'), 'score': legitimacy_score,
+                        'title': job_data.get('title'),
+                        'content_quality': legitimacy_score,
+                        'source_trust': assessment['source_trust'],
+                        'block_reasons': assessment['block_reasons'],
                         'flags': legitimacy_flags,
                     })
                     continue
@@ -450,6 +457,13 @@ class ScraperOrchestrator:
                         'value': seniority, 'source': 'title_inference',
                         'method': 'heuristic', 'confidence': round(seniority_conf, 3),
                     }
+                # Record the source-trust dimension separately from content
+                # quality so the split is auditable on the persisted job (§6).
+                provenance['_source_trust'] = {
+                    'value': assessment['source_trust'],
+                    'evidence': assessment['source_evidence'],
+                    'is_structured_ats': assessment['is_structured_ats'],
+                }
 
                 # experience_level must be one of Job.EXPERIENCE_LEVEL_CHOICES
                 # (entry/mid/senior/lead). normalize_seniority may return

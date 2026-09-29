@@ -128,3 +128,93 @@ def is_legitimate(job: Dict, threshold: float = 0.6) -> bool:
     """
     score, _ = calculate_legitimacy_score(job)
     return score >= threshold
+
+
+# ---------------------------------------------------------------------------
+# §6 Source-aware assessment: SOURCE TRUST is separate from CONTENT QUALITY.
+# ---------------------------------------------------------------------------
+# The two must not be collapsed into one opaque number. A structured ATS feed
+# is HIGH TRUST (we know the provider, tenant, job id, canonical url), which
+# lets us stop penalizing it for a short list-endpoint description. But trust
+# does NOT buy publication: the moat gates (direct-apply, not-expired, real
+# company, not-duplicate, not-aggregator) are evaluated independently and any
+# failure blocks publication regardless of how trusted the source is.
+
+# Known structured ATS providers whose public APIs return machine-structured,
+# employer-owned postings. Membership here is EVIDENCE of trust, not a bypass.
+TRUSTED_ATS_PROVIDERS = frozenset({
+    "greenhouse", "lever", "ashby", "workday", "smartrecruiters",
+    "workable", "teamtailor", "bamboohr", "icims", "oracle", "sap",
+})
+
+
+def calculate_source_trust(job: Dict) -> Tuple[float, List[str]]:
+    """Score how much we trust the SOURCE of this posting (0.0-1.0).
+
+    Evidence-based and explainable — returns the list of evidence strings that
+    moved the score, never an opaque number. This is about provenance, NOT
+    content: a trusted source can still carry a bad/expired job.
+    """
+    evidence: List[str] = []
+    score = 0.0
+
+    provider = (job.get("ats_platform") or job.get("ats_provider") or "").lower()
+    ats_job_id = str(job.get("ats_job_id") or "").strip()
+    apply_url = (job.get("direct_apply_url") or job.get("apply_url") or "").strip()
+    canonical = (job.get("canonical_job_url") or "").strip()
+
+    if provider in TRUSTED_ATS_PROVIDERS:
+        score += 0.5
+        evidence.append(f"known_ats_provider:{provider}")
+    if ats_job_id:
+        score += 0.2
+        evidence.append("has_ats_job_id")
+    if provider and ats_job_id:
+        # structured payload from a provider we recognize
+        score += 0.1
+        evidence.append("structured_payload")
+    if apply_url:
+        score += 0.1
+        evidence.append("has_apply_url")
+    if canonical or apply_url:
+        score += 0.1
+        evidence.append("job_specific_url")
+
+    score = max(0.0, min(1.0, score))
+    return score, evidence
+
+
+def assess_job(job: Dict, *, content_threshold: float = 0.4) -> Dict:
+    """Combined, explainable publish decision (§6).
+
+    Keeps SOURCE TRUST and CONTENT QUALITY as separate reported dimensions and
+    exposes the exact reasons, instead of one black-box score. Returns:
+      {
+        source_trust: float, source_evidence: [...],
+        content_quality: float, content_flags: [...],
+        is_structured_ats: bool,
+        publishable: bool, block_reasons: [...],
+      }
+
+    Moat rule: `publishable` is True only if content quality clears the
+    threshold. Direct-apply / expiry / company / duplicate / aggregator gates
+    are enforced by the orchestrator BEFORE this call; this function reports
+    the content+trust view and never overrides those hard gates.
+    """
+    content_quality, content_flags = calculate_legitimacy_score(job)
+    source_trust, source_evidence = calculate_source_trust(job)
+    is_structured_ats = bool(job.get("ats_platform") and job.get("ats_job_id"))
+
+    block_reasons: List[str] = []
+    if content_quality < content_threshold:
+        block_reasons.append(f"content_quality_below_threshold:{content_quality:.2f}")
+
+    return {
+        "source_trust": round(source_trust, 3),
+        "source_evidence": source_evidence,
+        "content_quality": round(content_quality, 3),
+        "content_flags": content_flags,
+        "is_structured_ats": is_structured_ats,
+        "publishable": not block_reasons,
+        "block_reasons": block_reasons,
+    }
