@@ -13,7 +13,6 @@ import time
 import structlog
 from typing import Any
 
-import boto3
 from django.conf import settings
 
 from .llm_plugin import LLMPlugin, LLMRequest, LLMResponse
@@ -48,12 +47,10 @@ class BedrockLLMPlugin(LLMPlugin):
     @property
     def client(self):
         if self._client is None:
-            self._client = boto3.client(
-                "bedrock-runtime",
-                region_name=getattr(settings, "AWS_DEFAULT_REGION", "us-east-1"),
-                aws_access_key_id=getattr(settings, "AWS_ACCESS_KEY_ID", ""),
-                aws_secret_access_key=getattr(settings, "AWS_SECRET_ACCESS_KEY", ""),
-            )
+            # Use the centralized factory so this path shares one region +
+            # credential strategy with the pydantic-ai agent path.
+            from .bedrock_client import get_runtime_client
+            self._client = get_runtime_client()
         return self._client
 
     def generate(self, request: LLMRequest) -> LLMResponse:
@@ -107,11 +104,11 @@ class BedrockLLMPlugin(LLMPlugin):
         return list(MODEL_COSTS.keys())
 
     def health_check(self) -> bool:
-        try:
-            self.client.list_foundation_models(byOutputModality="TEXT")
-            return True
-        except Exception:
-            return False
+        # NOTE: list_foundation_models is a CONTROL-PLANE API and must not be
+        # called on the bedrock-runtime client. Delegate to the centralized,
+        # classified health probe which uses the correct control client.
+        from .bedrock_client import bedrock_health, BedrockStatus
+        return bedrock_health().get("status") == BedrockStatus.HEALTHY.value
 
     def _resolve_model(self, model: str) -> str:
         if not model:

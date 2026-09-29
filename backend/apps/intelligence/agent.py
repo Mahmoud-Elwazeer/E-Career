@@ -60,17 +60,12 @@ def _build_rashid_model():
     model_id = MODEL_ALIASES.get(alias, MODEL_ALIASES.get("sonnet"))
 
     try:
-        import boto3
         from pydantic_ai.models.bedrock import BedrockConverseModel
         from pydantic_ai.providers.bedrock import BedrockProvider
+        from apps.intelligence.bedrock_client import get_runtime_client
 
-        client = boto3.client(
-            "bedrock-runtime",
-            region_name=getattr(settings, "AWS_DEFAULT_REGION", "us-east-1"),
-            aws_access_key_id=getattr(settings, "AWS_ACCESS_KEY_ID", "") or None,
-            aws_secret_access_key=getattr(settings, "AWS_SECRET_ACCESS_KEY", "") or None,
-        )
-        provider = BedrockProvider(bedrock_client=client)
+        # Shared factory → same region + credential chain as BedrockLLMPlugin.
+        provider = BedrockProvider(bedrock_client=get_runtime_client())
         return BedrockConverseModel(model_id, provider=provider)
     except Exception as exc:  # pragma: no cover - defensive fallback
         logger.warning("rashid_model_explicit_provider_failed", error=str(exc))

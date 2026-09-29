@@ -77,28 +77,50 @@ def chat_with_rashid(request):
 
     except Exception as e:
         # Log the real agent failure so the fallback path is not a silent black
-        # box. The fallback below still gives the user a useful reply.
+        # box.
         import structlog
+        from .bedrock_client import classify_exception, BedrockStatus, PROVIDER_LEVEL_FAILURES
+
+        status = classify_exception(e)
         structlog.get_logger().error(
             "rashid_agent_failed",
             error=str(e),
             error_type=type(e).__name__,
+            bedrock_status=status.value,
             user_id=getattr(request.user, "id", None),
             exc_info=True,
         )
 
+        # If the failure is provider-level (e.g. invalid AWS credentials / bad
+        # region), the haiku fallback uses the SAME provider and will also fail.
+        # Skip the wasted call and surface a clear, honest message instead.
+        if status in PROVIDER_LEVEL_FAILURES:
+            return Response({
+                "response": "Rashid's AI is temporarily unavailable due to a provider configuration issue. Our team has been notified.",
+                "model": "unavailable",
+                "fallback": True,
+                "ai_status": status.value,
+            })
+
         from .service import get_ai_service
         from .llm_plugin import LLMRequest
 
-        service = get_ai_service()
-        response = service.generate(LLMRequest(
-            prompt=message,
-            system_prompt="You are Rashid, a friendly career advisor.",
-            model="haiku",
-            user_id=request.user.id,
-            operation="chat",
-        ))
-        return Response({"response": response.content, "model": response.model, "fallback": True})
+        try:
+            service = get_ai_service()
+            response = service.generate(LLMRequest(
+                prompt=message,
+                system_prompt="You are Rashid, a friendly career advisor.",
+                model="haiku",
+                user_id=request.user.id,
+                operation="chat",
+            ))
+            return Response({"response": response.content, "model": response.model, "fallback": True})
+        except Exception:
+            return Response({
+                "response": "Rashid's AI is temporarily unavailable. Please try again shortly.",
+                "model": "unavailable",
+                "fallback": True,
+            })
 
 
 @api_view(["GET"])
@@ -174,8 +196,11 @@ def intelligence_health(request):
     from .service import get_ai_service
     from .circuit_breaker import ai_circuit_breaker
 
+    from .bedrock_client import bedrock_health
+
     health = {
         "ai_service": get_ai_service().health_check(),
+        "bedrock": bedrock_health(),
         "circuit_breaker": {
             "state": ai_circuit_breaker.state.value,
             "available": ai_circuit_breaker.is_available(),
