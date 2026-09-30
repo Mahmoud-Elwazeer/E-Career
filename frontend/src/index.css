@@ -143,152 +143,154 @@
 
   /* ─── DARK THEME ─── */
   .dark {
-    --primary: 178 50% 55%;
-    --primary-foreground: 0 0% 7%;
-    --primary-hover: 178 50% 62%;
-    --primary-muted: 178 30% 18%;
-    --primary-deep: 178 40% 22%;
-    --signal: 38 90% 60%;
+    /* ── USAM GREEN HIERARCHY (dark) ──
+       Brand Deep 170 / Base 162 / Bright 160 emerald-teal. One controlled
+       family: emerald-leaning green that is unmistakably USAM, never cyan. */
+    --primary: 162 62% 46%;          /* Brand Base — emerald-teal */
+    --primary-foreground: 165 45% 6%;
+    --primary-hover: 160 66% 54%;    /* Brand Bright — hover/lift */
+    --primary-muted: 168 34% 16%;    /* Brand Surface — tinted fill */
+    --primary-deep: 170 50% 12%;     /* Brand Deep — chamber floors */
+    --signal: 38 90% 60%;            /* warm amber, unchanged (distinct accent) */
     --signal-foreground: 0 0% 7%;
 
-    /* Dark, but GREEN — the brand teal hue (≈183) carried into deep, low-
-       lightness surfaces instead of cold blue-gray. Reads premium and
-       clearly on-brand, not a generic black dashboard. */
-    --background: 183 32% 6%;        /* deep teal-black canvas */
-    --foreground: 165 20% 92%;       /* soft warm-white with a green cast */
-    --card: 183 26% 9%;
-    --card-foreground: 165 20% 92%;
-    --popover: 183 26% 10%;
-    --popover-foreground: 165 20% 92%;
+    /* Layered deep-green surfaces (not one flat black). Hue drifts 174→168 and
+       lightness steps 6→16 so panels read with real depth. */
+    --background: 174 38% 6%;        /* deep green-black canvas */
+    --foreground: 158 18% 93%;       /* soft warm-white, faint green cast */
+    --card: 172 30% 9%;
+    --card-foreground: 158 18% 93%;
+    --popover: 172 30% 10%;
+    --popover-foreground: 158 18% 93%;
 
-    --surface-1: 183 26% 9%;
-    --surface-2: 183 24% 12%;
-    --surface-3: 183 22% 15%;
-    --surface-elevated: 183 26% 11%;
+    --surface-1: 172 30% 9%;
+    --surface-2: 170 27% 12%;
+    --surface-3: 168 24% 16%;
+    --surface-elevated: 170 30% 11%;
 
-    --secondary: 178 30% 20%;
-    --secondary-foreground: 175 30% 88%;
-    --accent: 178 28% 17%;
-    --accent-foreground: 175 30% 88%;
+    --secondary: 168 30% 18%;
+    --secondary-foreground: 160 34% 88%;
+    --accent: 168 30% 16%;
+    --accent-foreground: 160 34% 88%;
 
-    --muted: 183 18% 16%;
-    --muted-foreground: 175 12% 62%;
+    --muted: 172 18% 16%;
+    --muted-foreground: 158 14% 66%;  /* lifted for readability (was 62%) */
 
-    --destructive: 0 65% 48%;
+    --destructive: 0 66% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 55% 45%;
+    --success: 145 58% 46%;           /* leaf green — distinct from brand emerald */
     --success-foreground: 0 0% 100%;
-    --warning: 38 85% 55%;
+    --warning: 38 88% 56%;
     --warning-foreground: 0 0% 7%;
-    --info: 190 70% 55%;
-    --info-foreground: 0 0% 100%;
+    --info: 168 45% 52%;              /* was cyan 190 — now on-brand green-teal */
+    --info-foreground: 165 45% 6%;
 
-    --border: 180 18% 20%;           /* green-tinted hairlines */
-    --border-subtle: 183 20% 15%;
-    --input: 180 18% 20%;
-    --ring: 178 55% 55%;
+    --border: 168 20% 22%;            /* green-tinted hairlines */
+    --border-subtle: 172 22% 15%;
+    --input: 168 20% 22%;
+    --ring: 160 66% 52%;              /* Brand Bright focus ring */
 
-    /* Shadows carry a subtle green emission so elevation reads on-brand. */
-    --shadow-xs: 0 1px 2px 0 hsl(183 40% 2% / 0.4);
-    --shadow-sm: 0 1px 3px 0 hsl(183 40% 2% / 0.45), 0 1px 2px -1px hsl(183 40% 2% / 0.4);
-    --shadow-md: 0 4px 6px -1px hsl(183 40% 2% / 0.5), 0 2px 4px -2px hsl(183 40% 2% / 0.4);
-    --shadow-lg: 0 10px 15px -3px hsl(183 45% 2% / 0.55), 0 4px 6px -4px hsl(178 50% 30% / 0.12);
-    --shadow-xl: 0 20px 25px -5px hsl(183 45% 2% / 0.6), 0 8px 10px -6px hsl(178 50% 30% / 0.15);
-    --shadow-glow: 0 0 28px hsl(178 60% 50% / 0.22);
+    /* Shadows carry a soft brand-green emission so elevation reads on-brand. */
+    --shadow-xs: 0 1px 2px 0 hsl(174 45% 2% / 0.45);
+    --shadow-sm: 0 1px 3px 0 hsl(174 45% 2% / 0.5), 0 1px 2px -1px hsl(174 45% 2% / 0.45);
+    --shadow-md: 0 4px 8px -1px hsl(174 45% 2% / 0.55), 0 2px 4px -2px hsl(174 45% 2% / 0.45);
+    --shadow-lg: 0 12px 20px -4px hsl(174 50% 2% / 0.6), 0 4px 8px -4px hsl(162 55% 30% / 0.14);
+    --shadow-xl: 0 24px 30px -6px hsl(174 50% 1% / 0.66), 0 10px 12px -6px hsl(162 55% 32% / 0.16);
+    --shadow-glow: 0 0 30px hsl(160 66% 50% / 0.22);   /* Brand Glow — soft, sparing */
 
-    --sidebar-background: 183 34% 5%;
-    --sidebar-foreground: 165 18% 86%;
-    --sidebar-primary: 178 55% 55%;
-    --sidebar-primary-foreground: 0 0% 7%;
-    --sidebar-accent: 183 24% 12%;
-    --sidebar-accent-foreground: 165 18% 86%;
-    --sidebar-border: 183 20% 15%;
-    --sidebar-ring: 178 55% 55%;
+    --sidebar-background: 176 40% 5%;
+    --sidebar-foreground: 158 16% 88%;
+    --sidebar-primary: 162 62% 48%;
+    --sidebar-primary-foreground: 165 45% 6%;
+    --sidebar-accent: 170 27% 12%;
+    --sidebar-accent-foreground: 160 30% 90%;
+    --sidebar-border: 172 22% 14%;
+    --sidebar-ring: 160 66% 52%;
 
-    --location-remote-bg: 152 35% 15%;
-    --location-remote-text: 152 55% 68%;
-    --location-remote-border: 152 30% 26%;
-    --location-hybrid-bg: 190 35% 15%;
-    --location-hybrid-text: 190 55% 68%;
-    --location-hybrid-border: 190 30% 26%;
-    --location-onsite-bg: 38 32% 15%;
-    --location-onsite-text: 38 62% 68%;
-    --location-onsite-border: 38 28% 26%;
+    --location-remote-bg: 152 38% 14%;
+    --location-remote-text: 145 58% 70%;
+    --location-remote-border: 150 32% 26%;
+    --location-hybrid-bg: 168 34% 14%;   /* was cyan 190 — now brand green-teal */
+    --location-hybrid-text: 162 56% 70%;
+    --location-hybrid-border: 166 30% 26%;
+    --location-onsite-bg: 38 34% 15%;
+    --location-onsite-text: 38 64% 70%;
+    --location-onsite-border: 38 30% 26%;
   }
 
   /* ─── NIGHT THEME (deep immersive) ─── */
   .night {
-    --primary: 178 60% 48%;
-    --primary-foreground: 0 0% 2%;
-    --primary-hover: 178 60% 55%;
-    --primary-muted: 178 35% 12%;
-    --primary-deep: 178 45% 16%;
+    /* ── USAM GREEN HIERARCHY (night) — deepest immersive brand-green. ── */
+    --primary: 160 64% 50%;          /* Brand Bright base for the darkest env */
+    --primary-foreground: 168 50% 4%;
+    --primary-hover: 158 68% 58%;
+    --primary-muted: 168 38% 12%;
+    --primary-deep: 170 52% 10%;
     --signal: 38 88% 58%;
     --signal-foreground: 0 0% 2%;
 
-    /* Night = the deepest immersive brand-green environment. Same teal hue
-       family as dark, pushed darker with a touch more saturation glow. */
-    --background: 184 40% 4%;        /* near-black teal */
-    --foreground: 165 18% 90%;
-    --card: 184 32% 6%;
-    --card-foreground: 165 18% 90%;
-    --popover: 184 32% 7%;
-    --popover-foreground: 165 18% 90%;
+    /* Deepest layered green-black. */
+    --background: 176 44% 4%;        /* near-black green */
+    --foreground: 158 16% 91%;
+    --card: 174 34% 6%;
+    --card-foreground: 158 16% 91%;
+    --popover: 174 34% 7%;
+    --popover-foreground: 158 16% 91%;
 
-    --surface-1: 184 32% 6%;
-    --surface-2: 184 28% 9%;
-    --surface-3: 184 24% 12%;
-    --surface-elevated: 184 30% 8%;
+    --surface-1: 174 34% 6%;
+    --surface-2: 172 30% 9%;
+    --surface-3: 170 26% 12%;
+    --surface-elevated: 172 32% 8%;
 
-    --secondary: 178 32% 15%;
-    --secondary-foreground: 175 42% 78%;
-    --accent: 178 30% 12%;
-    --accent-foreground: 175 42% 78%;
+    --secondary: 168 32% 15%;
+    --secondary-foreground: 160 42% 80%;
+    --accent: 168 32% 13%;
+    --accent-foreground: 160 42% 80%;
 
-    --muted: 184 20% 13%;
-    --muted-foreground: 175 12% 55%;
+    --muted: 174 20% 13%;
+    --muted-foreground: 158 14% 60%;   /* lifted for readability (was 55%) */
 
-    --destructive: 0 65% 44%;
+    --destructive: 0 66% 46%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 152 52% 42%;
+    --success: 145 56% 44%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 82% 52%;
+    --warning: 38 84% 54%;
     --warning-foreground: 0 0% 7%;
-    --info: 190 68% 52%;
-    --info-foreground: 0 0% 100%;
+    --info: 166 46% 50%;               /* was cyan 190 — now on-brand green-teal */
+    --info-foreground: 168 50% 4%;
 
-    --border: 180 20% 16%;
-    --border-subtle: 184 22% 12%;
-    --input: 180 20% 16%;
-    --ring: 178 62% 50%;
+    --border: 168 22% 17%;
+    --border-subtle: 174 22% 12%;
+    --input: 168 22% 17%;
+    --ring: 158 68% 52%;
 
-    --shadow-xs: 0 1px 2px 0 hsl(184 50% 1% / 0.5);
-    --shadow-sm: 0 1px 3px 0 hsl(184 50% 1% / 0.55), 0 1px 2px -1px hsl(184 50% 1% / 0.5);
-    --shadow-md: 0 4px 6px -1px hsl(184 50% 1% / 0.6), 0 2px 4px -2px hsl(184 50% 1% / 0.5);
-    --shadow-lg: 0 10px 15px -3px hsl(184 50% 1% / 0.65), 0 4px 6px -4px hsl(178 55% 30% / 0.14);
-    --shadow-xl: 0 20px 25px -5px hsl(184 50% 1% / 0.7), 0 8px 10px -6px hsl(178 55% 30% / 0.18);
-    --shadow-glow: 0 0 32px hsl(178 65% 50% / 0.2);
+    --shadow-xs: 0 1px 2px 0 hsl(176 52% 1% / 0.55);
+    --shadow-sm: 0 1px 3px 0 hsl(176 52% 1% / 0.6), 0 1px 2px -1px hsl(176 52% 1% / 0.55);
+    --shadow-md: 0 4px 8px -1px hsl(176 52% 1% / 0.64), 0 2px 4px -2px hsl(176 52% 1% / 0.55);
+    --shadow-lg: 0 12px 20px -4px hsl(176 52% 1% / 0.7), 0 4px 8px -4px hsl(160 58% 30% / 0.16);
+    --shadow-xl: 0 24px 30px -6px hsl(176 52% 1% / 0.74), 0 10px 12px -6px hsl(160 58% 32% / 0.2);
+    --shadow-glow: 0 0 34px hsl(158 68% 50% / 0.22);
 
-    --sidebar-background: 184 42% 3%;
-    --sidebar-foreground: 165 16% 84%;
-    --sidebar-primary: 178 62% 50%;
-    --sidebar-primary-foreground: 0 0% 2%;
-    --sidebar-accent: 184 28% 9%;
-    --sidebar-accent-foreground: 165 16% 84%;
-    --sidebar-border: 184 22% 12%;
-    --sidebar-ring: 178 62% 50%;
+    --sidebar-background: 178 46% 3%;
+    --sidebar-foreground: 158 15% 86%;
+    --sidebar-primary: 160 64% 52%;
+    --sidebar-primary-foreground: 168 50% 4%;
+    --sidebar-accent: 172 30% 9%;
+    --sidebar-accent-foreground: 158 15% 88%;
+    --sidebar-border: 174 22% 12%;
+    --sidebar-ring: 158 68% 52%;
 
-    --location-remote-bg: 152 32% 11%;
-    --location-remote-text: 152 50% 62%;
-    --location-remote-border: 152 26% 20%;
-    --location-hybrid-bg: 190 32% 11%;
-    --location-hybrid-text: 190 50% 62%;
-    --location-hybrid-border: 190 26% 20%;
-    --location-onsite-bg: 38 28% 11%;
-    --location-onsite-text: 38 58% 62%;
-    --location-onsite-border: 38 24% 20%;
+    --location-remote-bg: 152 34% 11%;
+    --location-remote-text: 145 56% 64%;
+    --location-remote-border: 150 28% 20%;
+    --location-hybrid-bg: 168 34% 11%;   /* was cyan 190 — now brand green-teal */
+    --location-hybrid-text: 162 54% 64%;
+    --location-hybrid-border: 166 28% 20%;
+    --location-onsite-bg: 38 30% 11%;
+    --location-onsite-text: 38 60% 64%;
+    --location-onsite-border: 38 26% 20%;
   }
 }
 
@@ -370,6 +372,18 @@
     font-family: 'Poppins', sans-serif;
     font-weight: 400;               /* was 300 — 400 reads clearer on the warm canvas */
     font-feature-settings: "ss01";
+  }
+
+  /* Dark/Night ambient depth: two faint, fixed brand-green auras behind all
+     content so the canvas reads as layered depth, not one flat black. Very low
+     opacity — green appears as depth, never dominating the surface. */
+  .dark body,
+  .night body {
+    background-image:
+      radial-gradient(80% 60% at 12% -5%, hsl(162 60% 20% / 0.16) 0%, transparent 55%),
+      radial-gradient(70% 55% at 100% 0%, hsl(170 55% 16% / 0.14) 0%, transparent 55%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
 
   h1, h2, h3, h4, h5, h6 {
