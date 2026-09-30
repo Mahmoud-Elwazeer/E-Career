@@ -214,9 +214,9 @@ export default function EmployerDashboard() {
                 {isAr ? " بانتظار المراجعة." : " waiting for review."}
               </p>
               <Button asChild className="mt-4 gap-2">
-                <Link to="/app/employer/talent-search">
+                <Link to="/app/employer/applicants?status=applied">
                   <Users className="h-4 w-4" />
-                  {isAr ? "استعرض المرشحين" : "Review candidates"}
+                  {isAr ? "استعرض المتقدمين" : "Review applicants"}
                 </Link>
               </Button>
             </div>

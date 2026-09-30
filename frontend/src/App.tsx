@@ -46,6 +46,7 @@ const EmployerDashboard = lazy(() => import("./pages/employer/EmployerDashboard"
 const EmployerRegister = lazy(() => import("./pages/employer/EmployerRegister"));
 const JobPostingForm = lazy(() => import("./pages/employer/JobPostingForm"));
 const TalentSearch = lazy(() => import("./pages/employer/TalentSearch"));
+const Applicants = lazy(() => import("./pages/employer/Applicants"));
 const CodingPractice = lazy(() => import("./pages/CodingPractice"));
 const SalaryInsights = lazy(() => import("./pages/SalaryInsights"));
 const Assessments = lazy(() => import("./pages/Assessments"));
@@ -142,6 +143,7 @@ function AnimatedRoutes() {
         <Route path="/app/employer/post-job" element={<RequireEmployer><JobPostingForm /></RequireEmployer>} />
         <Route path="/app/employer/jobs/:id/edit" element={<RequireEmployer><EditJobPosting /></RequireEmployer>} />
         <Route path="/app/employer/talent-search" element={<RequireEmployer><TalentSearch /></RequireEmployer>} />
+        <Route path="/app/employer/applicants" element={<RequireEmployer><Applicants /></RequireEmployer>} />
 
         {/* Legacy redirects */}
         <Route path="/jobs" element={<RequireAuth><Jobs /></RequireAuth>} />

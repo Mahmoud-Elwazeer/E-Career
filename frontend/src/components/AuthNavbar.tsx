@@ -69,17 +69,25 @@ const appSecondaryNav: NavItem[] = [
 // have no frontend page yet, so they are intentionally NOT surfaced here to
 // avoid dead links. "Post Job" is promoted to a primary CTA button instead of
 // a tab. "Dashboard" IS the jobs/applications home.)
+// Employer PRIMARY nav — only destinations that resolve to a real, wired page,
+// ordered by the recruiting workflow: control center -> applicants -> sourcing.
+// (Applicants now has a real page on the /employer/applications API. "Browse
+// Jobs" moved OUT of primary — an employer's core workflow is recruiting, not
+// candidate job-browsing; it lives in the account menu instead. Post Job is a
+// CTA button. Pipeline/Interviews/Analytics/Team have no page yet -> not shown.)
 const employerPrimaryNav: NavItem[] = [
   { to: "/app/employer/dashboard", label: "Dashboard", labelAr: "لوحة التحكم", icon: LayoutDashboard },
+  { to: "/app/employer/applicants", label: "Applicants", labelAr: "المتقدمون", icon: ClipboardList },
   { to: "/app/employer/talent-search", label: "Talent", labelAr: "المواهب", icon: Users },
-  { to: "/app/jobs", label: "Browse Jobs", labelAr: "تصفح الوظائف", icon: Briefcase },
 ];
 
 // Employer account/company menu — company management + shared account areas.
 // All targets are real routes: employer onboarding/profile lives at
-// /app/employer/register; billing + settings are the shared account pages.
+// /app/employer/register; billing + settings are the shared account pages;
+// Browse Jobs (candidate board) is available here rather than in primary nav.
 const employerSecondaryNav: NavItem[] = [
   { to: "/app/employer/register", label: "Company & Profile", labelAr: "الشركة والملف", icon: Building2 },
+  { to: "/app/jobs", label: "Browse Jobs", labelAr: "تصفح الوظائف", icon: Briefcase },
   { to: "/app/billing", label: "Billing & Plans", labelAr: "الفوترة والباقات", icon: DollarSign },
   { to: "/app/settings", label: "Settings", labelAr: "الإعدادات", icon: SettingsIcon },
 ];
