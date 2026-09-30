@@ -37,15 +37,19 @@ interface LogoProps {
  * Each glyph is a stroked path so terminals are round and every letter is an
  * independent, animatable node. Heights/positions tuned to read as one word.
  */
-const STROKE = 13;
+const STROKE = 17;
 
-/** The animated USAM wordmark SVG (letters + teal arrow). */
+/** The animated USAM wordmark SVG (bold rounded letters + teal arrow).
+ *
+ * Letters are heavy, round-terminal strokes so the wordmark reads as a solid,
+ * modern mark (an original geometry — not a trace of any reference file). Each
+ * letter is its own path so it animates independently. */
 function UsamMark({ animated }: { animated: boolean }) {
   const letterCls = (i: number) =>
     cn("usam-letter", animated && `usam-anim usam-anim-${i}`);
   return (
     <svg
-      viewBox="0 0 232 64"
+      viewBox="0 0 236 68"
       className={cn("h-full w-auto overflow-visible", animated && "usam-svg")}
       fill="none"
       aria-hidden="true"
@@ -56,22 +60,21 @@ function UsamMark({ animated }: { animated: boolean }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {/* U — a wide rounded cup */}
-        <path className={letterCls(0)} d="M16 9 V34 a20 20 0 0 0 40 0 V9" />
-        {/* S — a clean double curve */}
+        {/* U — a wide, heavy rounded cup */}
+        <path className={letterCls(0)} d="M18 12 V34 a22 22 0 0 0 44 0 V12" />
+        {/* S — a bold clean double curve */}
         <path
           className={letterCls(1)}
-          d="M112 14 a16 13 0 0 0 -20 -2 a12.5 12.5 0 0 0 1 22 a12.5 12.5 0 0 1 1 22 a16 13 0 0 1 -20 -2"
+          d="M118 18 a17 14 0 0 0 -22 -3 a13.5 13.5 0 0 0 1 24 a13.5 13.5 0 0 1 1 24 a17 14 0 0 1 -22 -3"
         />
         {/* A — apex + crossbar */}
-        <path className={letterCls(2)} d="M126 57 L145 9 L164 57" />
-        <path className={letterCls(2)} d="M133.5 39 H156.5" />
+        <path className={letterCls(2)} d="M130 58 L150 12 L170 58" />
+        <path className={letterCls(2)} d="M138 40 H162" />
         {/* M — four strokes */}
-        <path className={letterCls(3)} d="M180 57 V11 L200 40 L220 11 V57" />
+        <path className={letterCls(3)} d="M186 58 V14 L207 42 L228 14 V58" />
       </g>
 
-      {/* Teal upward arrow rising through the U — the living accent, matching
-          the reference (thick shaft + broad head sitting in the U's left well). */}
+      {/* Teal upward arrow rising through the U — the living accent. */}
       <g
         className={cn("usam-arrow", animated && "usam-arrow-anim")}
         stroke="hsl(var(--secondary))"
@@ -80,8 +83,8 @@ function UsamMark({ animated }: { animated: boolean }) {
         strokeLinejoin="round"
         fill="none"
       >
-        <path d="M34 46 V7" />
-        <path d="M19 22 L34 5 L49 22" />
+        <path d="M40 48 V9" />
+        <path d="M22 26 L40 7 L58 26" />
       </g>
     </svg>
   );
@@ -141,23 +144,23 @@ export function LogoMark({
       aria-hidden
     >
       {/* Just the U + arrow, cropped from the same drawing. */}
-      <svg viewBox="0 0 64 64" className="h-[68%] w-[68%] overflow-visible text-primary-foreground" fill="none">
+      <svg viewBox="0 0 68 68" className="h-[70%] w-[70%] overflow-visible text-primary-foreground" fill="none">
         <path
-          d="M14 10 V36 a18 18 0 0 0 36 0 V10"
+          d="M16 12 V36 a18 18 0 0 0 36 0 V12"
           stroke="currentColor"
-          strokeWidth={STROKE}
+          strokeWidth={16}
           strokeLinecap="round"
           strokeLinejoin="round"
         />
         <g
           className={cn("usam-arrow", animated && "usam-arrow-anim")}
           stroke="hsl(var(--secondary))"
-          strokeWidth={STROKE}
+          strokeWidth={16}
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <path d="M32 44 V8" />
-          <path d="M18 22 L32 6 L46 22" />
+          <path d="M34 46 V10" />
+          <path d="M19 26 L34 9 L49 26" />
         </g>
       </svg>
       <span
