@@ -74,7 +74,7 @@ const PHASE_ORDER: IdlePhase[] = [
 /* ── Floating chip data ── */
 const CHIPS = [
   { label: "Remote",    x: -115, y: -85,  ampX: 3,  ampY: 5,  speed: 5.5, delay: 0,    dotColor: "#4ADE80" },
-  { label: "Junior",    x: 115,  y: -40,  ampX: 4,  ampY: 3,  speed: 6.5, delay: 0.6,  dotColor: "#60A5FA" },
+  { label: "Junior",    x: 115,  y: -40,  ampX: 4,  ampY: 3,  speed: 6.5, delay: 0.6,  dotColor: "#2DD4BF" },
   { label: "Full-time", x: -100, y: 50,   ampX: 2,  ampY: 4,  speed: 7.0, delay: 1.2,  dotColor: "#FBBF24" },
   { label: "MENA",      x: 110,  y: 90,   ampX: 5,  ampY: 3,  speed: 5.8, delay: 0.9,  dotColor: "#F87171" },
 ];

@@ -909,8 +909,8 @@ export default function InterviewPractice() {
                     <Radar
                       name="Score"
                       dataKey="A"
-                      stroke="#3b82f6"
-                      fill="#3b82f6"
+                      stroke="#2dd4bf"
+                      fill="#2dd4bf"
                       fillOpacity={0.6}
                     />
                     <Tooltip 

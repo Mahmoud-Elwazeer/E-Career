@@ -166,11 +166,11 @@ export const calculateGrade = (score: number): string => {
 
 export const getGradeColor = (grade: string): string => {
   const colors: { [key: string]: string } = {
-    A: '#10b981',
-    B: '#3b82f6',
-    C: '#f59e0b',
-    D: '#f97316',
-    F: '#ef4444',
+    A: '#10b981',   // emerald
+    B: '#2dd4bf',   // teal-green (was blue #3b82f6) — on-brand, distinct from A
+    C: '#f59e0b',   // amber
+    D: '#f97316',   // orange
+    F: '#ef4444',   // red
   };
   return colors[grade] || '#6b7280';
 };

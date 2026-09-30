@@ -20,7 +20,7 @@ function ScoreRing({ score, label, size = "lg" }: { score: number; label: string
   const offset = circumference - (score / 100) * circumference;
   const dim = (radius + stroke) * 2;
 
-  const color = score >= 80 ? "#10b981" : score >= 60 ? "#3b82f6" : score >= 40 ? "#f59e0b" : "#ef4444";
+  const color = score >= 80 ? "#10b981" : score >= 60 ? "#2dd4bf" : score >= 40 ? "#f59e0b" : "#ef4444";
 
   return (
     <div className="flex flex-col items-center gap-1">

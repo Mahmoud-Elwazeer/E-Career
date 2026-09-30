@@ -29,7 +29,7 @@ const P = {
 /* ── Chips ── */
 const CHIPS = [
   { label: "Remote", dotColor: "#4ADE80", x: -72, y: -28 },
-  { label: "Junior", dotColor: "#60A5FA", x: 72, y: -8 },
+  { label: "Junior", dotColor: "#2DD4BF", x: 72, y: -8 },
   { label: "Full-time", dotColor: "#FBBF24", x: -58, y: 32 },
 ];
 

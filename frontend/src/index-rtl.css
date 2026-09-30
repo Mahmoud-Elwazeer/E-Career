@@ -177,7 +177,7 @@ This file contains RTL-specific styles for the USAM Career Compass application.
 [dir="rtl"] .rashid-bubble::before {
   left: auto;
   right: -10px;
-  border-left-color: #3b82f6;
+  border-left-color: hsl(var(--primary));
   border-right-color: transparent;
 }
 
