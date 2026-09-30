@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import {
   Search, MessageCircle, FileText, Mic, Sparkles, Target, DollarSign,
   Award, Building2, PlusCircle, Users, BadgeCheck, Info, Bell, Network, Mail,
+  UserRound, Briefcase,
 } from "lucide-react";
 import {
   NavigationMenu,
@@ -107,7 +108,8 @@ export function PublicNavMenu() {
       <NavigationMenuList className="gap-0.5">
         {/* For Individuals */}
         <NavigationMenuItem>
-          <NavigationMenuTrigger className="h-9 rounded-full bg-transparent px-3 text-body font-medium text-foreground/70 hover:text-foreground data-[state=open]:text-foreground">
+          <NavigationMenuTrigger className="group h-9 gap-1.5 rounded-full bg-transparent px-3 text-body font-medium text-foreground/70 transition-colors hover:text-foreground hover:bg-accent/60 data-[state=open]:text-foreground data-[state=open]:bg-accent/60">
+            <UserRound className="h-3.5 w-3.5 shrink-0 text-primary/70 transition-all duration-200 group-hover:text-primary group-hover:scale-110 group-data-[state=open]:text-primary" />
             {isAr ? "للأفراد" : "For Individuals"}
           </NavigationMenuTrigger>
           <NavigationMenuContent>
@@ -153,7 +155,8 @@ export function PublicNavMenu() {
 
         {/* For Employers */}
         <NavigationMenuItem>
-          <NavigationMenuTrigger className="h-9 rounded-full bg-transparent px-3 text-body font-medium text-foreground/70 hover:text-foreground data-[state=open]:text-foreground">
+          <NavigationMenuTrigger className="group h-9 gap-1.5 rounded-full bg-transparent px-3 text-body font-medium text-foreground/70 transition-colors hover:text-foreground hover:bg-accent/60 data-[state=open]:text-foreground data-[state=open]:bg-accent/60">
+            <Briefcase className="h-3.5 w-3.5 shrink-0 text-primary/70 transition-all duration-200 group-hover:text-primary group-hover:scale-110 group-data-[state=open]:text-primary" />
             {isAr ? "لأصحاب العمل" : "For Employers"}
           </NavigationMenuTrigger>
           <NavigationMenuContent>
@@ -192,9 +195,9 @@ export function PublicNavMenu() {
             <Link
               to="/login"
               state={{ from: "/app/rashid" }}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-primary hover:bg-primary/10 transition-colors"
+              className="group inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-primary transition-colors hover:bg-primary/10"
             >
-              <MessageCircle className="h-3.5 w-3.5" />
+              <MessageCircle className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-0.5 motion-safe:group-hover:animate-[wiggle_0.5s_ease-in-out]" />
               {isAr ? "رشيد" : "Rasheed"}
             </Link>
           </NavigationMenuLink>
@@ -203,9 +206,9 @@ export function PublicNavMenu() {
           <NavigationMenuLink asChild>
             <Link
               to="/pricing"
-              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
+              className="group inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 transition-colors hover:text-foreground hover:bg-accent"
             >
-              <DollarSign className="h-3.5 w-3.5" />
+              <DollarSign className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-0.5" />
               {isAr ? "الأسعار" : "Pricing"}
             </Link>
           </NavigationMenuLink>
@@ -214,9 +217,9 @@ export function PublicNavMenu() {
           <NavigationMenuLink asChild>
             <Link
               to="/about"
-              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
+              className="group inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 transition-colors hover:text-foreground hover:bg-accent"
             >
-              <Info className="h-3.5 w-3.5" />
+              <Info className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-0.5" />
               {isAr ? "عن USAM" : "About"}
             </Link>
           </NavigationMenuLink>
@@ -225,9 +228,9 @@ export function PublicNavMenu() {
           <NavigationMenuLink asChild>
             <Link
               to="/contact"
-              className="inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-colors"
+              className="group inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 transition-colors hover:text-foreground hover:bg-accent"
             >
-              <Mail className="h-3.5 w-3.5" />
+              <Mail className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-0.5" />
               {isAr ? "تواصل معنا" : "Contact"}
             </Link>
           </NavigationMenuLink>

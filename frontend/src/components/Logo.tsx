@@ -28,38 +28,53 @@ interface LogoProps {
   variant?: "auto" | "onDark";
   /** Show only the ascent monogram (no wordmark). */
   markOnly?: boolean;
+  /** Enable the subtle "living" motion + hover interaction (default true). */
+  animated?: boolean;
   alt?: string;
 }
 
 /**
  * The ascent symbol: a rounded upward chevron lifting off a short baseline.
  * Drawn on a 24×24 grid, stroked, so it scales crisply and inherits color.
+ *
+ * "Living" behaviour: the chevron gently, continuously rises (a soft breathing
+ * lift) so the brand feels alive, and the baseline pulses subtly. On hover of
+ * the logo the mark springs up more and a shimmer sweeps across it. All motion
+ * is gated behind `motion-safe:` so reduced-motion users get a static mark.
  */
-function AscentMark({ className }: { className?: string }) {
+function AscentMark({ className, animated = false }: { className?: string; animated?: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" aria-hidden="true">
-      {/* baseline */}
+    <svg
+      viewBox="0 0 24 24"
+      className={cn(className, animated && "logo-ascent overflow-visible")}
+      fill="none"
+      aria-hidden="true"
+    >
+      {/* baseline — subtle pulse */}
       <path
+        className={animated ? "logo-baseline" : undefined}
         d="M4 19h16"
         stroke="currentColor"
         strokeWidth="2.4"
         strokeLinecap="round"
         opacity="0.45"
       />
-      {/* rising chevron / arrow — career ascent */}
-      <path
-        d="M5 15.5 L12 6 L19 15.5"
-        stroke="currentColor"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M12 6 V13"
-        stroke="currentColor"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-      />
+      {/* rising chevron / arrow — career ascent (the living element) */}
+      <g className={animated ? "logo-chevron" : undefined}>
+        <path
+          d="M5 15.5 L12 6 L19 15.5"
+          stroke="currentColor"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d="M12 6 V13"
+          stroke="currentColor"
+          strokeWidth="2.6"
+          strokeLinecap="round"
+        />
+      </g>
     </svg>
   );
 }
@@ -99,20 +114,26 @@ function Wordmark({ className }: { className?: string }) {
  * `h-full` so the whole lockup scales from that single height utility and never
  * stretches (each SVG keeps its own viewBox aspect ratio).
  */
-export function Logo({ className, variant = "auto", markOnly = false, alt = "USAM" }: LogoProps) {
+export function Logo({
+  className,
+  variant = "auto",
+  markOnly = false,
+  animated = true,
+  alt = "USAM",
+}: LogoProps) {
   return (
     <span
       role="img"
       aria-label={alt}
       title={alt}
       className={cn(
-        "inline-flex items-center gap-2 select-none leading-none",
+        "logo-lockup group inline-flex items-center gap-2 select-none leading-none",
         variant === "onDark" ? "text-primary-foreground" : "text-foreground",
         className,
       )}
     >
       {/* Mark sits slightly below full height for optical balance with the wordmark. */}
-      <AscentMark className="h-[92%] w-auto shrink-0" />
+      <AscentMark className="h-[92%] w-auto shrink-0" animated={animated} />
       {!markOnly && <Wordmark className="h-[76%] w-auto" />}
     </span>
   );

@@ -916,3 +916,60 @@
   transform: none;
   border-top: 1px solid hsl(var(--border) / 0.3);
 }
+
+
+/* ═══════════════════════════════════════════════
+   Animated "living" USAM logo + navbar icon motion
+   All motion is opt-in via motion-safe and disabled
+   for users who prefer reduced motion.
+   ═══════════════════════════════════════════════ */
+
+/* Continuous soft "breathing lift" on the ascent chevron. */
+@keyframes logo-rise {
+  0%, 100% { transform: translateY(0.6px) scale(0.985); }
+  50%      { transform: translateY(-0.9px) scale(1.015); }
+}
+
+/* Baseline gently pulses its opacity so the mark feels alive. */
+@keyframes logo-baseline-pulse {
+  0%, 100% { opacity: 0.30; }
+  50%      { opacity: 0.60; }
+}
+
+/* A quick friendly wiggle for the Rasheed nav icon on hover. */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(-9deg); }
+  60%      { transform: rotate(7deg); }
+  80%      { transform: rotate(-3deg); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .logo-chevron {
+    transform-box: fill-box;
+    transform-origin: 50% 70%;
+    animation: logo-rise 3.2s ease-in-out infinite;
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+  .logo-baseline {
+    animation: logo-baseline-pulse 3.2s ease-in-out infinite;
+  }
+  /* Hover on the whole lockup springs the chevron up a touch more. */
+  .logo-lockup:hover .logo-chevron {
+    animation-play-state: paused;
+    transform: translateY(-2.2px) scale(1.06);
+  }
+  .logo-lockup:hover .logo-baseline {
+    animation-play-state: paused;
+    opacity: 0.7;
+  }
+}
+
+/* Reduced-motion: hold a clean static mark. */
+@media (prefers-reduced-motion: reduce) {
+  .logo-chevron,
+  .logo-baseline {
+    animation: none;
+  }
+}
