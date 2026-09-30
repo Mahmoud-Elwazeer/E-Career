@@ -488,3 +488,44 @@ Both prior implementations hit generic non-tenant endpoints (`jobs.oracle.com`, 
 | iCIMS | OK (HTML) | tenant-scoped; not in dispatch |
 | Bamboohr/Workable/Teamtailor | present in dispatch | not re-verified this pass |
 | Oracle / SAP | UNSUPPORTED (documented) | per-tenant config required |
+
+
+---
+
+## Normalization / Dedup / Extraction / E2E tooling (2026-09-29, commits 74f27be..23a2d29)
+
+### §13 Cross-provider normalization equivalence (74f27be)
+`tests_normalization_crossprovider.py`: proves the same role from greenhouse/lever/workday/smartrecruiters/eightfold normalizes to equivalent company/title/seniority/location/employment_type while each keeps its provider identity + apply url. **Found+fixed a real bug**: `parse_salary` split plain 6-digit amounts (120000 → 120+000), corrupting un-commaed salaries; regex now handles comma-grouped OR ≥2-digit runs and filters sub-1000 noise.
+
+### §14 Cross-source deduplication coverage (51c4a60)
+`tests_dedup_crosssource.py`: same employer role via different sources collapses on L2 (company+normalized-title+location) / L3 (content fingerprint) even when L1 (ats-id) differs; distinct roles stay separate; seniority noise stripped; case-insensitive. Confirms the layered deduplicator is correct.
+
+### §16/§17 Extraction adapter contract (700b5da)
+`extraction_adapter.py`: ExtractionTier (structured API→http→browser→adaptive→AI→agentic), Router (ascending tiers, skips unavailable, explainable attempts), OutOfProcessBackend (Scrapling/Crawl4AI/ScrapeGraphAI run in a separate venv over stdin/stdout JSON — keeps lxml/litellm conflicts out of the Django venv). **AI is not the default**: tier ceiling is BROWSER unless explicitly raised. Inert until a runner is configured.
+
+### §15/§16/§25 E2E verification command (23a2d29)
+`verify_pipeline_e2e` (server-run): PERSISTED (quality_state breakdown + missing-apply/source_url counts) → INDEXED (--reindex + backend health) → SEARCHABLE (query hits + sample with real company_name) → MATCHABLE (per-job scores for --profile via UnifiedMatchingEngine). Read-only by default.
+
+### SERVER ACTIONS (consolidated — run in order)
+```
+# deploy
+cd /home/ubuntu/E-Career && git fetch origin && git merge --ff-only origin/development
+cd /var/www/usam && git fetch /home/ubuntu/E-Career development && git merge --ff-only FETCH_HEAD
+cd backend && source ../venv/bin/activate
+python manage.py migrate                      # applies jobs/0009 (Source lifecycle)
+python manage.py check
+
+# sources: retire stale, seed new (netflix-eightfold, nvidia-workday, boschgroup-smartrecruiters, notion/plaid-ashby, spotify/gopuff/ro-lever)
+python manage.py setup_sources --deactivate-stale
+
+# prove ingestion funnel (WRITE mode) — paste output
+python manage.py connector_matrix
+
+# prove downstream — paste output
+python manage.py verify_pipeline_e2e --reindex --query engineer
+python manage.py verify_pipeline_e2e --profile <a-real-user-id>
+
+# restart services
+sudo systemctl restart usam.service celery-usam.service celery-beat-usam.service
+```
+These two commands produce the §25 evidence (fetched/normalized/created/verified/publishable/indexed per connector, plus searchable+matchable). Still blocked server-side (not code): Typesense 401 (search degraded to Postgres fallback — fix TYPESENSE_API_KEY), AWS Bedrock AUTH_FAILED (all AI). Rotate the AWS key exposed in git history commit fa11a2f.
