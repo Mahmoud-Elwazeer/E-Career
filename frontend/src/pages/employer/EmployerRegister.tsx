@@ -9,9 +9,28 @@ import { Building2, Search, ArrowRight, CheckCircle } from 'lucide-react';
 import { createEmployerProfile, searchCompanies, createCompany, Company } from '../../services/employer';
 import { AppShell } from '@/components/shells/AppShell';
 import { PlusCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 
 const EmployerRegister: React.FC = () => {
   const navigate = useNavigate();
+  const { refreshUser } = useAuth();
+
+  /**
+   * After the backend elevates the account to role='employer' (via
+   * /employer/register/), the in-memory auth state still holds the stale
+   * signup role ("jobseeker"). We MUST re-read /users/me/ so user.role becomes
+   * "employer" BEFORE navigating — otherwise the RequireEmployer guard rejects
+   * the stale role and bounces the new company to the individual dashboard
+   * (the exact "company account lands on individual dashboard" bug).
+   */
+  const goToEmployerDashboard = async () => {
+    try {
+      await refreshUser();
+    } catch {
+      /* even if refresh fails, still navigate; the guard will re-fetch */
+    }
+    navigate('/app/employer/dashboard', { replace: true });
+  };
   const [step, setStep] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -28,7 +47,7 @@ const EmployerRegister: React.FC = () => {
 
   const createCompanyMutation = useMutation({
     mutationFn: createCompany,
-    onSuccess: () => navigate('/app/employer/dashboard'),
+    onSuccess: () => { void goToEmployerDashboard(); },
   });
 
   // Search companies mutation
@@ -43,9 +62,7 @@ const EmployerRegister: React.FC = () => {
   // Register mutation
   const registerMutation = useMutation({
     mutationFn: createEmployerProfile,
-    onSuccess: () => {
-      navigate('/app/employer/dashboard');
-    },
+    onSuccess: () => { void goToEmployerDashboard(); },
   });
 
   // Handle company search

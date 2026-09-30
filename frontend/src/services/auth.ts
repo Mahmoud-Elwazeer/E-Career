@@ -9,7 +9,9 @@ export interface AppUser {
   full_name: string;
   avatar: string | null;
   avatar_url: string | null;
-  role: "user" | "admin" | "employer";
+  // Backend Role choices: jobseeker (default) | employer | admin | user (legacy).
+  // "jobseeker"/"user" both mean the individual/candidate product.
+  role: "jobseeker" | "user" | "admin" | "employer";
   status: string;
   created_at: string;
 }
