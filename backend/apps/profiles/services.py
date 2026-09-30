@@ -17,52 +17,40 @@ class MatchingService:
     
     def calculate_match_score(self, profile: UserProfile, job: Job) -> float:
         """
-        Calculate comprehensive match score using AI
-        
-        Returns:
-            float: Match score 0-100
+        Calculate the match score (0-100).
+
+        CONVERGED (Phase D): the NUMBER is always the deterministic
+        UnifiedMatchingEngine, so the same (profile, job) yields the SAME score
+        on every surface (job list, job detail, match report, recommendations).
+        AI may enrich the *explanation* elsewhere but never overrides the score
+        — this kills the "different score on different pages" bug and also means
+        matching keeps working while Bedrock is unavailable.
         """
-        # Try AI-powered matching first
-        try:
-            from apps.intelligence.career_ai import career_ai_service as bedrock_service
-            
-            profile_data = self._serialize_profile(profile)
-            job_data = self._serialize_job(job)
-            
-            match_result = bedrock_service.calculate_match_score(profile_data, job_data)
-            return match_result.get('overall_score', 0)
-        
-        except Exception as e:
-            logger.warning(f"AI matching failed, falling back to basic algorithm: {e}")
-            return self._basic_match_score(profile, job)
-    
+        return self._basic_match_score(profile, job)
+
     def get_match_breakdown(self, profile: UserProfile, job: Job) -> Dict:
         """
-        Get detailed match breakdown with AI insights
-        
-        Returns:
-            dict: Detailed breakdown with scores and recommendations
+        Detailed match breakdown. The score + factor breakdown come from the
+        deterministic engine (single source of truth); AI is used ONLY to add
+        narrative improvement tips, and only when available — it never changes
+        the numbers.
         """
+        base = self._basic_match_breakdown(profile, job)
+
+        # Optional AI enrichment of the *narrative* (tips), never the score.
         try:
             from apps.intelligence.career_ai import career_ai_service as bedrock_service
-            
+
             profile_data = self._serialize_profile(profile)
             job_data = self._serialize_job(job)
-            
-            match_result = bedrock_service.calculate_match_score(profile_data, job_data)
-            
-            return {
-                'overall_score': match_result.get('overall_score', 0),
-                'breakdown': match_result.get('breakdown', {}),
-                'strengths': match_result.get('strengths', []),
-                'gaps': match_result.get('gaps', []),
-                'recommendation': match_result.get('recommendation', ''),
-                'improvement_tips': self._generate_improvement_tips(match_result)
-            }
-        
+            ai = bedrock_service.calculate_match_score(profile_data, job_data)
+            tips = self._generate_improvement_tips(ai)
+            if tips:
+                base['improvement_tips'] = tips
         except Exception as e:
-            logger.error(f"Error getting match breakdown: {e}")
-            return self._basic_match_breakdown(profile, job)
+            logger.debug(f"AI breakdown enrichment unavailable, using deterministic only: {e}")
+
+        return base
     
     def get_recommended_jobs(
         self,
