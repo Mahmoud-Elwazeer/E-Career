@@ -839,6 +839,14 @@
     font-weight: 500;
     letter-spacing: -0.025em;
     text-transform: none;
+    /* Keep every capital at a consistent size. Fraunces ships discretionary
+       ligatures / contextual alternates / swash capitals that can render an
+       oversized leading capital (the "O" in "One"). Disable those OpenType
+       features so the headline reads as one visually consistent line. */
+    font-variant: normal;
+    font-variant-ligatures: no-discretionary-ligatures no-contextual;
+    font-variant-caps: normal;
+    font-feature-settings: "dlig" 0, "swsh" 0, "salt" 0, "titl" 0, "calt" 0;
   }
   /* A single serif word/phrase used as editorial punctuation inside a sans line */
   .serif-accent {
@@ -846,6 +854,11 @@
     font-weight: 500;
     font-style: italic;
     letter-spacing: -0.02em;
+    /* Same normalization so the italic accent phrase matches the headline. */
+    font-variant: normal;
+    font-variant-ligatures: no-discretionary-ligatures no-contextual;
+    font-variant-caps: normal;
+    font-feature-settings: "dlig" 0, "swsh" 0, "salt" 0, "titl" 0, "calt" 0;
   }
   .text-caption {
     font-size: 0.75rem;

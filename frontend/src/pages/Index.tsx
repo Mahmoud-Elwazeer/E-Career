@@ -5,7 +5,7 @@ import { ArrowRight, ArrowLeft, Laptop, Stethoscope, PenTool, DollarSign, Gradua
 import { StatsStrip, WhyUsamSection } from "@/components/landing/ScrollSections";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
-import { AudienceProvider, AudienceSwitcher } from "@/components/landing/AudienceSwitcher";
+import { AudienceProvider } from "@/components/landing/AudienceSwitcher";
 import { AudiencePathways } from "@/components/landing/AudiencePathways";
 import { ProductStory } from "@/components/landing/ProductStory";
 import { RasheedAvatar } from "@/components/rashid/RasheedAvatar";
@@ -128,11 +128,6 @@ export default function Index() {
 
       {/* ═══ QUICK FILTERS ═══ */}
       <QuickFilters />
-
-      {/* ═══ AUDIENCE SWITCHER — reframes the feature/story sections below ═══ */}
-      <div className="container relative z-10">
-        <AudienceSwitcher />
-      </div>
 
       {/* ═══ FEATURED JOBS CAROUSEL ═══ */}
       <section className="featured-jobs">
