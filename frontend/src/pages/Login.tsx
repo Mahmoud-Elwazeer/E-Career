@@ -59,10 +59,12 @@ export default function Login() {
       const authedUser =
         mode === "login"
           ? await signIn(email, password)
-          : await signUp(email, password, firstName, lastName);
-      // A brand-new COMPANY signup continues into employer onboarding, which
-      // attaches the company profile and elevates the role server-side.
-      if (mode === "register" && accountType === "company" && authedUser?.role !== "employer") {
+          : await signUp(email, password, firstName, lastName, accountType);
+      // A brand-new COMPANY signup is already role=employer (set at creation),
+      // but has no company/org yet — send it into employer onboarding to attach
+      // the company. (Login of an existing employer skips this and goes to the
+      // employer dashboard via postAuthDestination below.)
+      if (mode === "register" && accountType === "company") {
         navigate("/app/employer/register", { replace: true });
         return;
       }

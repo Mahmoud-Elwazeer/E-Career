@@ -27,11 +27,12 @@ export async function register(
   password: string,
   password_confirm: string,
   first_name: string,
-  last_name: string
+  last_name: string,
+  account_type: "individual" | "company" = "individual"
 ): Promise<AuthResponse> {
   const data = await apiRequest<AuthResponse>("/auth/register/", {
     method: "POST",
-    body: { email, password, password_confirm, first_name, last_name },
+    body: { email, password, password_confirm, first_name, last_name, account_type },
     auth: false,
   });
   setTokens(data.access, data.refresh);

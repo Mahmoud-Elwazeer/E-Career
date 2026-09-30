@@ -8,10 +8,18 @@ from apps.accounts.models import User
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8, validators=[validate_password])
     password_confirm = serializers.CharField(write_only=True)
+    # Product/account type chosen at signup. Maps to User.role so a company
+    # account is an employer FROM CREATION — no fragile second step required
+    # for the account type to be authoritative. "individual"->jobseeker,
+    # "company"->employer. Company still completes org onboarding afterwards.
+    account_type = serializers.ChoiceField(
+        choices=["individual", "company"], required=False, default="individual",
+        write_only=True,
+    )
 
     class Meta:
         model = User
-        fields = ["email", "first_name", "last_name", "password", "password_confirm"]
+        fields = ["email", "first_name", "last_name", "password", "password_confirm", "account_type"]
 
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():
@@ -25,12 +33,19 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data.pop("password_confirm")
-        return User.objects.create_user(
+        account_type = validated_data.pop("account_type", "individual")
+        role = User.Role.EMPLOYER if account_type == "company" else User.Role.JOBSEEKER
+        user = User.objects.create_user(
             email=validated_data["email"],
             password=validated_data["password"],
             first_name=validated_data["first_name"],
             last_name=validated_data["last_name"],
         )
+        # Persist the authoritative account type at creation.
+        if user.role != role:
+            user.role = role
+            user.save(update_fields=["role"])
+        return user
 
 
 class LoginSerializer(serializers.Serializer):
