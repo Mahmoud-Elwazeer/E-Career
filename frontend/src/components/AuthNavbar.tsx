@@ -63,14 +63,23 @@ const appSecondaryNav: NavItem[] = [
   { to: "/app/settings", label: "Settings", labelAr: "الإعدادات", icon: SettingsIcon },
 ];
 
+// Employer PRIMARY nav — only destinations that resolve to a real, wired page.
+// (Audited: the only employer routes that exist are dashboard, post-job,
+// jobs/:id/edit, talent-search, register. Pipeline/Interviews/Analytics/Team
+// have no frontend page yet, so they are intentionally NOT surfaced here to
+// avoid dead links. "Post Job" is promoted to a primary CTA button instead of
+// a tab. "Dashboard" IS the jobs/applications home.)
 const employerPrimaryNav: NavItem[] = [
   { to: "/app/employer/dashboard", label: "Dashboard", labelAr: "لوحة التحكم", icon: LayoutDashboard },
-  { to: "/app/employer/post-job", label: "Post Job", labelAr: "نشر وظيفة", icon: PlusCircle },
-  { to: "/app/employer/talent-search", label: "Talent Search", labelAr: "بحث المواهب", icon: Search },
+  { to: "/app/employer/talent-search", label: "Talent", labelAr: "المواهب", icon: Users },
+  { to: "/app/jobs", label: "Browse Jobs", labelAr: "تصفح الوظائف", icon: Briefcase },
 ];
 
+// Employer account/company menu — company management + shared account areas.
+// All targets are real routes: employer onboarding/profile lives at
+// /app/employer/register; billing + settings are the shared account pages.
 const employerSecondaryNav: NavItem[] = [
-  { to: "/app/jobs", label: "Browse Jobs", labelAr: "تصفح الوظائف", icon: Briefcase },
+  { to: "/app/employer/register", label: "Company & Profile", labelAr: "الشركة والملف", icon: Building2 },
   { to: "/app/billing", label: "Billing & Plans", labelAr: "الفوترة والباقات", icon: DollarSign },
   { to: "/app/settings", label: "Settings", labelAr: "الإعدادات", icon: SettingsIcon },
 ];
@@ -171,6 +180,16 @@ export function AuthNavbar() {
         {/* Zone 3 — actions (end) */}
         <div className="hidden md:flex items-center gap-0.5 shrink-0">
           <div className="flex items-center gap-0.5">
+            {/* Employer primary CTA — posting a job is the key employer action,
+                surfaced as a button rather than consuming a nav tab. */}
+            {isEmployer && (
+              <Button asChild size="sm" className="me-1.5 rounded-full px-4 gap-1.5 shadow-sm press-feedback">
+                <Link to="/app/employer/post-job">
+                  <PlusCircle className="h-4 w-4" />
+                  {isAr ? "نشر وظيفة" : "Post Job"}
+                </Link>
+              </Button>
+            )}
             <LangToggle />
             <ThemeToggle />
             {isAuthenticated && <NotificationBell />}
@@ -201,13 +220,20 @@ export function AuthNavbar() {
                     <p className="text-caption text-muted-foreground truncate ps-5.5">{user.email}</p>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/app/profile" className="cursor-pointer">
-                      <User className="h-3.5 w-3.5 me-2" />
-                      {isAr ? "الملف الشخصي" : "Profile"}
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                  {/* Candidate personal profile — individual context only. An
+                      employer's profile/company management lives in the
+                      employer account menu items below (Company & Profile). */}
+                  {!isEmployer && (
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link to="/app/profile" className="cursor-pointer">
+                          <User className="h-3.5 w-3.5 me-2" />
+                          {isAr ? "الملف الشخصي" : "Profile"}
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   {secondaryNav.map((item) => (
                     <DropdownMenuItem key={item.to} asChild>
                       <Link to={item.to} className="cursor-pointer">
@@ -326,20 +352,34 @@ export function AuthNavbar() {
                   })
                 )}
 
+                {isAuthenticated && isEmployer && (
+                  <Link
+                    to="/app/employer/post-job"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2.5 px-4 py-3 mt-1 rounded-lg text-body font-medium bg-primary/10 text-primary hover:bg-primary/15 transition-all duration-fast"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    {isAr ? "نشر وظيفة" : "Post Job"}
+                  </Link>
+                )}
+
                 {isAuthenticated && (
                   <>
-                    <Link
-                      to="/app/profile"
-                      onClick={() => setOpen(false)}
-                      className={`flex items-center gap-2.5 px-4 py-3 rounded-lg text-body font-medium transition-all duration-fast ${
-                        location.pathname.startsWith("/app/profile")
-                          ? "bg-primary text-primary-foreground"
-                          : "text-foreground/60 hover:text-foreground hover:bg-accent"
-                      }`}
-                    >
-                      <User className="h-4 w-4" />
-                      {isAr ? "الملف الشخصي" : "Profile"}
-                    </Link>
+                    {/* Personal profile — individual context only. */}
+                    {!isEmployer && (
+                      <Link
+                        to="/app/profile"
+                        onClick={() => setOpen(false)}
+                        className={`flex items-center gap-2.5 px-4 py-3 rounded-lg text-body font-medium transition-all duration-fast ${
+                          location.pathname.startsWith("/app/profile")
+                            ? "bg-primary text-primary-foreground"
+                            : "text-foreground/60 hover:text-foreground hover:bg-accent"
+                        }`}
+                      >
+                        <User className="h-4 w-4" />
+                        {isAr ? "الملف الشخصي" : "Profile"}
+                      </Link>
+                    )}
                     <div className="my-2 border-t border-border" />
                     <button
                       onClick={() => { signOut(); setOpen(false); }}
