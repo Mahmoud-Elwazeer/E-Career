@@ -56,21 +56,22 @@ function UsamMark({ animated }: { animated: boolean }) {
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {/* U — a rounded cup */}
-        <path className={letterCls(0)} d="M14 10 V36 a18 18 0 0 0 36 0 V10" />
-        {/* S — two arcs */}
+        {/* U — a wide rounded cup */}
+        <path className={letterCls(0)} d="M16 9 V34 a20 20 0 0 0 40 0 V9" />
+        {/* S — a clean double curve */}
         <path
           className={letterCls(1)}
-          d="M108 15 a15 12 0 0 0 -18 -3 a13 13 0 0 0 0 22 a13 13 0 0 1 0 22 a15 12 0 0 1 -18 -3"
+          d="M112 14 a16 13 0 0 0 -20 -2 a12.5 12.5 0 0 0 1 22 a12.5 12.5 0 0 1 1 22 a16 13 0 0 1 -20 -2"
         />
         {/* A — apex + crossbar */}
-        <path className={letterCls(2)} d="M126 56 L144 10 L162 56" />
-        <path className={letterCls(2)} d="M133 40 H155" />
+        <path className={letterCls(2)} d="M126 57 L145 9 L164 57" />
+        <path className={letterCls(2)} d="M133.5 39 H156.5" />
         {/* M — four strokes */}
-        <path className={letterCls(3)} d="M178 56 V12 L198 40 L218 12 V56" />
+        <path className={letterCls(3)} d="M180 57 V11 L200 40 L220 11 V57" />
       </g>
 
-      {/* Teal upward arrow rising through the U — the living accent. */}
+      {/* Teal upward arrow rising through the U — the living accent, matching
+          the reference (thick shaft + broad head sitting in the U's left well). */}
       <g
         className={cn("usam-arrow", animated && "usam-arrow-anim")}
         stroke="hsl(var(--secondary))"
@@ -79,8 +80,8 @@ function UsamMark({ animated }: { animated: boolean }) {
         strokeLinejoin="round"
         fill="none"
       >
-        <path d="M32 44 V8" />
-        <path d="M18 22 L32 6 L46 22" />
+        <path d="M34 46 V7" />
+        <path d="M19 22 L34 5 L49 22" />
       </g>
     </svg>
   );
