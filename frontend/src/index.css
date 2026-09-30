@@ -832,21 +832,27 @@
   }
   .text-hero-serif {
     font-family: 'Fraunces', Georgia, serif;
-    font-optical-sizing: auto;
-    /* Refined: lighter, less screen-dominating than the old oversized hero. */
+    /* Pin optical sizing small so Fraunces does NOT switch to its ultra
+       high-contrast display cut (which renders an oversized leading capital).
+       This is the real fix for the giant "O". */
+    font-optical-sizing: none;
+    font-variation-settings: "opsz" 40;
     font-size: clamp(2.75rem, 6vw, 4.5rem);
-    line-height: 1.04;
+    line-height: 1.06;
     font-weight: 500;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.02em;
     text-transform: none;
-    /* Keep every capital at a consistent size. Fraunces ships discretionary
-       ligatures / contextual alternates / swash capitals that can render an
-       oversized leading capital (the "O" in "One"). Disable those OpenType
-       features so the headline reads as one visually consistent line. */
-    font-variant: normal;
-    font-variant-ligatures: no-discretionary-ligatures no-contextual;
-    font-variant-caps: normal;
-    font-feature-settings: "dlig" 0, "swsh" 0, "salt" 0, "titl" 0, "calt" 0;
+    /* Also disable swash / titling / discretionary alternates as a belt-and-
+       braces measure so no glyph is substituted for an oversized variant. */
+    font-variant-ligatures: no-discretionary-ligatures;
+    font-feature-settings: "dlig" 0, "swsh" 0, "salt" 0, "titl" 0;
+  }
+  /* Leading capital control: nudge the first "O" down to sit consistently with
+     the rest of the word (serif capitals are naturally tall; Fraunces' is very
+     tall). Scales with the headline via em units, so it holds on mobile too. */
+  .hero-cap {
+    font-size: 0.92em;
+    letter-spacing: -0.01em;
   }
   /* A single serif word/phrase used as editorial punctuation inside a sans line */
   .serif-accent {
@@ -854,11 +860,9 @@
     font-weight: 500;
     font-style: italic;
     letter-spacing: -0.02em;
-    /* Same normalization so the italic accent phrase matches the headline. */
-    font-variant: normal;
-    font-variant-ligatures: no-discretionary-ligatures no-contextual;
-    font-variant-caps: normal;
-    font-feature-settings: "dlig" 0, "swsh" 0, "salt" 0, "titl" 0, "calt" 0;
+    font-optical-sizing: none;
+    font-variation-settings: "opsz" 40;
+    font-feature-settings: "dlig" 0, "swsh" 0, "salt" 0, "titl" 0;
   }
   .text-caption {
     font-size: 0.75rem;

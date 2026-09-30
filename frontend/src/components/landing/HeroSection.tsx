@@ -99,7 +99,7 @@ export function HeroSection({ query, setQuery, onSubmit, landing, industryCount 
           </motion.span>
 
           <motion.h1
-            className="text-hero-serif text-foreground"
+            className="hero-headline text-hero-serif text-foreground"
             initial={reduced ? {} : { opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: "spring", stiffness: 82, damping: 18, mass: 1.05, delay: 0.12 }}
@@ -107,7 +107,13 @@ export function HeroSection({ query, setQuery, onSubmit, landing, industryCount 
             {isAr ? (
               <>بحث واحد، <span className="serif-accent text-primary">كل الفرص.</span></>
             ) : (
-              <>One search, <span className="serif-accent text-primary">every opportunity.</span></>
+              <>
+                {/* Leading cap "O" is scaled down so it matches the rest of the
+                   word — Fraunces renders an oversized display capital by
+                   default; this keeps "One" visually consistent. */}
+                <span className="hero-cap">O</span>ne search,{" "}
+                <span className="serif-accent text-primary">every opportunity.</span>
+              </>
             )}
           </motion.h1>
 
