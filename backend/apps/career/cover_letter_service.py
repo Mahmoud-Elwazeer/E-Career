@@ -67,9 +67,10 @@ class CoverLetterService:
         except Exception as e:
             logger.error(f"Cover letter generation failed: {e}")
             return {
-                "content": self._fallback_cover_letter(user, job),
-                "confidence": 0.4,
-                "error": str(e)
+                "content": self._grounded_fallback(user, job),
+                "confidence": 0.5,  # deterministic + grounded in real matched skills
+                "degraded": True,   # signals AI path unavailable (e.g. Bedrock blocked)
+                "error": str(e),
             }
 
     def _build_user_context(self, user, custom_text: Optional[str] = None) -> str:
@@ -140,11 +141,10 @@ Return ONLY the cover letter text, no preamble or explanation.
 """
 
     def _fallback_cover_letter(self, user, job) -> str:
-        """Fallback template if AI fails."""
+        """Minimal template (kept for compatibility)."""
         name = user.get_full_name()
         company = job.company.name
         position = job.title
-
         return f"""Dear Hiring Manager,
 
 I am writing to express my strong interest in the {position} position at {company}. With my background and skills, I believe I would be a valuable addition to your team.
@@ -155,6 +155,63 @@ I would welcome the opportunity to discuss how my qualifications match your need
 
 Sincerely,
 {name}"""
+
+    def _grounded_fallback(self, user, job) -> str:
+        """Deterministic, evidence-grounded draft used when the AI path is
+        unavailable (e.g. Bedrock blocked).
+
+        Unlike the bland generic template, this references the candidate's
+        ACTUAL skills that overlap the job — reusing the deterministic matching
+        engine so the letter is specific and honest even without AI. No
+        fabrication: only skills the candidate actually has AND the job asks for
+        are named.
+        """
+        name = user.get_full_name() if hasattr(user, "get_full_name") else getattr(user, "name", "")
+        company = getattr(getattr(job, "company", None), "name", "the company")
+        position = getattr(job, "title", "the role")
+
+        matched_skills: list[str] = []
+        try:
+            profile = getattr(user, "career_profile", None) or getattr(user, "profile", None)
+            if profile is not None:
+                from apps.matching.engine import unified_matching_engine
+                result = unified_matching_engine.match(profile, job)
+                matched_skills = result.matched_requirements[:6]
+        except Exception:  # matching is best-effort here
+            matched_skills = []
+
+        if matched_skills:
+            skills_sentence = (
+                "In particular, my experience with "
+                + self._join_human(matched_skills)
+                + f" maps directly to what the {position} role requires."
+            )
+        else:
+            skills_sentence = (
+                "My background aligns with the core requirements outlined in the job description."
+            )
+
+        return f"""Dear Hiring Manager,
+
+I am writing to express my strong interest in the {position} position at {company}. {skills_sentence}
+
+I am drawn to this opportunity because it lets me apply these strengths to meaningful work, and I am confident I can contribute quickly to your team.
+
+I would welcome the chance to discuss how my experience matches your needs. Thank you for considering my application.
+
+Sincerely,
+{name}"""
+
+    @staticmethod
+    def _join_human(items: list[str]) -> str:
+        items = [str(i) for i in items if i]
+        if not items:
+            return ""
+        if len(items) == 1:
+            return items[0]
+        if len(items) == 2:
+            return f"{items[0]} and {items[1]}"
+        return ", ".join(items[:-1]) + f", and {items[-1]}"
 
 
 # Global instance
