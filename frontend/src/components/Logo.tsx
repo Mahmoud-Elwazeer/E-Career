@@ -1,100 +1,177 @@
 import { cn } from "@/lib/utils";
 
 /**
- * USAM brand logo — the real brand artwork (public/usam-brand.jpg): the white
- * "USAM" wordmark with the teal upward arrow through the U.
+ * USAM Career — logo system (vector, single source of truth).
  *
- * The artwork has a dark background baked in, so we present it inside a dark
- * rounded "brand chip" — the image's background blends into the chip, giving a
- * clean, intentional lockup that works on light AND dark navbars.
+ * CONCEPT ("rising counter"): a clean geometric USAM wordmark where the career
+ * signal is BUILT INTO the letterform, not pasted on. The leading "U" is drawn
+ * as an open channel and a teal ascent bar rises inside its counter, tipped
+ * with a small upward notch — reading as "opportunity opening upward / career
+ * ascent" at the first letter. The rest (S A M) are matched single-weight
+ * rounded strokes so the mark stays one balanced word and shrinks to a crisp
+ * favicon (the U + ascent alone).
  *
- * "Living" motion: the chip gently floats/breathes continuously and lifts on
- * hover, with a soft shine sweep — so the brand feels alive. All motion is
- * gated behind prefers-reduced-motion (static fallback).
+ * Everything is currentColor for the letters (themes light/dark/night) with the
+ * ascent locked to the brand teal (--secondary/--primary in dark). One system
+ * powers: primary lockup, compact navbar, icon/monogram, favicon.
+ *
+ * Motion lives in index.css (.usam-*). It is per-letter + accent-driven, not a
+ * whole-logo move, and is fully disabled under prefers-reduced-motion.
  */
 
-const BRAND_SRC = "/usam-brand.jpg";
+/** Shared letter geometry on a 0..208 × 0..64 grid. Stroke-drawn, round caps. */
+const STROKE = 12;
 
 interface LogoProps {
   /** Height utility class, e.g. "h-7". Width auto-scales. */
   className?: string;
-  /** Kept for API compatibility (the artwork is the same on all surfaces). */
+  /** "auto" = ink on paper (themes); "onDark" = always the light mark. */
   variant?: "auto" | "onDark";
-  /** Show only the compact monogram chip (no effect here — same artwork). */
+  /** Render only the U + ascent monogram (compact / favicon contexts). */
   markOnly?: boolean;
-  /** Enable the subtle "living" motion + hover interaction (default true). */
+  /** Enable the load reveal + hover micro-motion (default true). */
   animated?: boolean;
   alt?: string;
 }
 
-/** The full USAM logo — real artwork in a living brand chip. */
+/** The U + ascent — the reusable core mark (used standalone for the icon). */
+function CoreU({ animated }: { animated: boolean }) {
+  return (
+    <g>
+      {/* U channel */}
+      <path
+        className={cn("usam-letter", animated && "usam-anim usam-anim-0")}
+        d="M12 8 V34 a20 20 0 0 0 40 0 V8"
+        stroke="currentColor"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+      {/* Teal ascent rising inside the U's counter (the career signal). */}
+      <g
+        className={cn("usam-ascent", animated && "usam-ascent-anim")}
+        stroke="hsl(var(--secondary))"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      >
+        <path d="M32 40 V12" />
+        <path d="M22 24 L32 12 L42 24" />
+      </g>
+    </g>
+  );
+}
+
+/** The full USAM wordmark SVG. */
+function UsamWordmark({ animated, markOnly }: { animated: boolean; markOnly?: boolean }) {
+  const letter = (i: number) => cn("usam-letter", animated && `usam-anim usam-anim-${i}`);
+  return (
+    <svg
+      viewBox={markOnly ? "0 0 64 64" : "0 0 212 64"}
+      className={cn("h-full w-auto overflow-visible", animated && "usam-svg")}
+      fill="none"
+      aria-hidden="true"
+    >
+      {markOnly ? (
+        <CoreU animated={animated} />
+      ) : (
+        <>
+          <CoreU animated={animated} />
+          <g
+            stroke="currentColor"
+            strokeWidth={STROKE}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {/* S */}
+            <path
+              className={letter(1)}
+              d="M104 14 a15 12 0 0 0 -19 -2 a12 12 0 0 0 1 22 a12 12 0 0 1 1 22 a15 12 0 0 1 -19 -2"
+            />
+            {/* A */}
+            <path className={letter(2)} d="M116 56 L134 10 L152 56" />
+            <path className={letter(2)} d="M123 40 H145" />
+            {/* M */}
+            <path className={letter(3)} d="M166 56 V12 L185 38 L204 12 V56" />
+          </g>
+        </>
+      )}
+    </svg>
+  );
+}
+
+/** Primary lockup / navbar logo. */
 export function Logo({
   className,
+  variant = "auto",
+  markOnly = false,
   animated = true,
   alt = "USAM",
 }: LogoProps) {
   return (
     <span
-      className={cn(
-        "usam-logo group inline-flex items-center overflow-hidden rounded-xl align-middle",
-        animated && "usam-logo-anim",
-        className,
-      )}
       role="img"
       aria-label={alt}
       title={alt}
+      className={cn(
+        "usam-logo group inline-flex items-center leading-none",
+        variant === "onDark" ? "text-primary-foreground" : "text-foreground",
+        className,
+      )}
     >
-      <img
-        src={BRAND_SRC}
-        alt={alt}
-        draggable={false}
-        className="usam-logo-img h-full w-auto select-none object-contain"
-      />
-      {/* shine sweep on hover */}
-      <span className="usam-logo-shine pointer-events-none absolute inset-0" aria-hidden />
+      <UsamWordmark animated={animated} markOnly={markOnly} />
     </span>
   );
 }
 
 /**
- * LogoMark — the compact square brand chip (same artwork, tight crop feel).
- * Used for the favicon area, collapsed sidebar, tight mobile headers.
+ * LogoMark — compact square chip carrying the U + ascent monogram. For the
+ * collapsed sidebar, tight mobile headers, and app-icon contexts.
  */
 export function LogoMark({
   className,
+  variant = "auto",
   animated = true,
 }: {
   className?: string;
   variant?: "auto" | "onDark";
   animated?: boolean;
 }) {
+  const onDark = variant === "onDark";
   return (
     <span
       className={cn(
-        "usam-logo group relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-xl shadow-sm",
-        animated && "usam-logo-anim",
+        "usam-logo group relative grid h-8 w-8 shrink-0 place-items-center rounded-xl overflow-hidden shadow-sm",
         className,
       )}
+      style={{
+        background: onDark
+          ? "linear-gradient(140deg, hsl(var(--primary-foreground) / 0.16), hsl(var(--primary-foreground) / 0.06))"
+          : "linear-gradient(140deg, hsl(var(--primary-hover)), hsl(var(--primary-deep)))",
+        boxShadow: onDark ? "inset 0 0 0 1px hsl(var(--primary-foreground) / 0.2)" : undefined,
+      }}
       aria-hidden
     >
-      <img
-        src={BRAND_SRC}
-        alt=""
-        draggable={false}
-        className="h-full w-full select-none object-cover"
+      <span className="grid h-[64%] w-[64%] place-items-center text-primary-foreground">
+        <UsamWordmark animated={animated} markOnly />
+      </span>
+      <span
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "radial-gradient(80% 60% at 30% 15%, hsl(0 0% 100% / 0.16), transparent 70%)" }}
       />
-      <span className="usam-logo-shine pointer-events-none absolute inset-0" aria-hidden />
     </span>
   );
 }
 
 /**
- * LogoLockup — the header brand anchor. Shows the real USAM artwork.
- * Pass `withMark` to prefix the compact chip where extra brand presence is
- * wanted (e.g. tight mobile headers).
+ * LogoLockup — header brand anchor. The wordmark alone by default; pass
+ * `withMark` to prefix the monogram chip in tight contexts.
  */
 export function LogoLockup({
   className,
+  variant = "auto",
   withMark = false,
 }: {
   className?: string;
@@ -103,8 +180,8 @@ export function LogoLockup({
 }) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      {withMark && <LogoMark />}
-      <Logo className="h-8" />
+      {withMark && <LogoMark variant={variant} />}
+      <Logo variant={variant} className="h-[24px]" />
     </span>
   );
 }

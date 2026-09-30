@@ -928,47 +928,31 @@
 
 
 /* ═══════════════════════════════════════════════
-   Animated "living" USAM logo (real brand artwork in a chip).
-   The chip breathes/floats, lifts on hover, and a soft shine
-   sweeps across on hover. Reduced-motion: fully static.
+   USAM Career logo — per-letter + accent motion.
+   Load: letters reveal in sequence (stroke draw) and the teal
+   ascent rises through the U. Hover: subtle per-letter shift +
+   the ascent re-rises. Idle: still. No whole-logo bounce/float.
+   Fully disabled under prefers-reduced-motion.
    ═══════════════════════════════════════════════ */
 
-.usam-logo {
-  position: relative;
-  /* Dark brand chip so the artwork's dark background blends in cleanly on any
-     navbar surface. */
-  background: #0e1f1c;
-  box-shadow: 0 1px 3px hsl(0 0% 0% / 0.18), inset 0 0 0 1px hsl(0 0% 100% / 0.06);
-  padding-inline: 0.4em;
-}
-.usam-logo-img { display: block; }
+.usam-letter { transform-box: fill-box; transform-origin: center bottom; }
+.usam-ascent { transform-box: fill-box; transform-origin: center bottom; }
 
-/* Soft diagonal shine that sweeps across on hover. */
-.usam-logo-shine {
-  background: linear-gradient(
-    115deg,
-    transparent 30%,
-    hsl(0 0% 100% / 0.16) 48%,
-    transparent 66%
-  );
-  transform: translateX(-120%);
-  opacity: 0;
+/* Stroke draw-in for each letter. */
+@keyframes usam-draw {
+  from { stroke-dashoffset: 240; opacity: 0; }
+  55%  { opacity: 1; }
+  to   { stroke-dashoffset: 0; opacity: 1; }
 }
 
-/* Gentle continuous float so the mark feels alive. */
-@keyframes usam-logo-float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50%      { transform: translateY(-1.5px) scale(1.012); }
+/* The teal ascent rises up through the U's counter on load. */
+@keyframes usam-rise {
+  0%   { transform: translateY(9px); opacity: 0; }
+  40%  { opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
 }
 
-/* Shine sweep keyframe (used on hover). */
-@keyframes usam-logo-sweep {
-  0%   { transform: translateX(-120%); opacity: 0; }
-  15%  { opacity: 1; }
-  100% { transform: translateX(120%); opacity: 0; }
-}
-
-/* A quick friendly wiggle for the Rasheed nav icon on hover. */
+/* A quick friendly wiggle for the Rasheed nav icon on hover (kept). */
 @keyframes wiggle {
   0%, 100% { transform: rotate(0deg); }
   25%      { transform: rotate(-9deg); }
@@ -977,24 +961,39 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .usam-logo-anim {
-    animation: usam-logo-float 3.6s ease-in-out infinite;
-    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
-                box-shadow 0.3s ease;
-    will-change: transform;
+  /* One-time staggered load reveal (~700ms total). */
+  .usam-anim {
+    stroke-dasharray: 240;
+    animation: usam-draw 0.55s ease-out both;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, stroke-dashoffset;
   }
-  .usam-logo-anim:hover {
-    animation-play-state: paused;
-    transform: translateY(-2px) scale(1.04);
-    box-shadow: 0 6px 18px hsl(178 60% 20% / 0.35), inset 0 0 0 1px hsl(0 0% 100% / 0.1);
+  .usam-anim-0 { animation-delay: 0.02s; }
+  .usam-anim-1 { animation-delay: 0.14s; }
+  .usam-anim-2 { animation-delay: 0.26s; }
+  .usam-anim-3 { animation-delay: 0.38s; }
+
+  .usam-ascent-anim {
+    animation: usam-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.28s both;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform, opacity;
   }
-  .usam-logo-anim:hover .usam-logo-shine {
-    animation: usam-logo-sweep 0.9s ease-out;
-  }
+
+  /* Hover: subtle sequential letter lift + the ascent nudges up. Idle stays
+     still (no infinite loop). */
+  .usam-logo:hover .usam-anim-0 { transform: translateY(-1.5px); transition-delay: 0s; }
+  .usam-logo:hover .usam-anim-1 { transform: translateY(-1.5px); transition-delay: 0.04s; }
+  .usam-logo:hover .usam-anim-2 { transform: translateY(-1.5px); transition-delay: 0.08s; }
+  .usam-logo:hover .usam-anim-3 { transform: translateY(-1.5px); transition-delay: 0.12s; }
+  .usam-logo:hover .usam-ascent-anim { transform: translateY(-2.5px); }
+
+  /* Keyboard focus gets the same accent response (accessibility-safe). */
+  a:focus-visible .usam-ascent-anim,
+  .usam-logo:focus-visible .usam-ascent-anim { transform: translateY(-2.5px); }
 }
 
-/* Reduced-motion: static chip. */
+/* Reduced-motion: fully drawn, static, legible. */
 @media (prefers-reduced-motion: reduce) {
-  .usam-logo-anim { animation: none; }
-  .usam-logo-shine { display: none; }
+  .usam-anim { stroke-dasharray: none; stroke-dashoffset: 0; opacity: 1; animation: none; }
+  .usam-ascent-anim { animation: none; opacity: 1; transform: none; }
 }
