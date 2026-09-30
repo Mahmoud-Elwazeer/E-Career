@@ -558,3 +558,31 @@ These two commands produce the §25 evidence (fetched/normalized/created/verifie
 ### Professional Presence remaining (§31)
 Done: ATS Readiness Engine (2ee5637), CV↔Job Match Report (667d0f8), GitHub README Builder (9419a44).
 Next: CV Improvement Workspace, Career Identity sync (cv_sync.py exists), GitHub Profile Review, Portfolio Evidence, LinkedIn Guidance, Cover Letter integration, Talent Pool integration.
+
+
+---
+
+## Professional Presence layer — near-complete (2026-09-29, commits ba129a1..007b766)
+
+All deterministic, evidence-based, no-AI-dependency (work while Bedrock is blocked), no fabrication, each with standalone tests.
+
+| Engine | Commit | What it does | Tests |
+|---|---|---|---|
+| ATS Readiness | 2ee5637 | parse-compatibility + per-ATS note + keyword alignment | 6 |
+| CV↔Job Match Report | 667d0f8 | fit score IS matching-engine score + ATS dimension + action items | 5 |
+| GitHub README Builder | 9419a44 | deterministic Markdown, sections only when data exists | 7 |
+| LinkedIn Guidance | ba129a1 | headline/about/skills/photo checks + target-role keyword alignment | 6 |
+| Portfolio Evidence | 3682987 | skill-evidence coverage: which skills are backed by a real artifact | 6 |
+| Cover Letter (grounded fallback) | 016a28b | references real matched skills when AI down; no fabrication | 3 |
+| GitHub Profile Review | 007b766 | public repo/language/activity signals + evidence-based lang coverage | 5 |
+
+Common design: every service exposes evidence + concrete fixes, never an opaque score; the CV↔Job fit number is the single matching-engine number (no "different score on different pages"). Recruiters' commercial tools (Jobscan/Enhancv/Teal) used as reference only; ProfileMe AGPL avoided.
+
+### Professional Presence — remaining
+- CV Improvement Workspace (interactive apply-suggestions loop) — needs UI/endpoint work.
+- Career Identity sync — `apps/profiles/cv_sync.py` already flags conflicts (built earlier); wire the Professional Presence outputs into it.
+- Talent Pool integration — surface these signals to employer-side talent pool.
+These are integration/UI-layer tasks (endpoints, serializers, frontend) best done with the live app; the deterministic engines they consume are now in place and tested.
+
+## Session totals (2026-09-29)
+Commits e9e0dd4..007b766 on origin/development. Ingestion pipeline hardened end-to-end (contract, funnel matrix, source-aware quality, discovery+migration model, Netflix Eightfold, Workday/SmartRecruiters rewrites, normalization+salary fix, dedup, extraction adapter, e2e verify command) and Professional Presence layer built (7 engines). ~90 standalone tests added, all passing. Real bugs fixed: company-name (slug not employer), unset source_url, SmartRecruiters API-ref-as-apply-url, parse_salary plain-number split, stale Lever slugs. Server actions (deploy/migrate/setup_sources/connector_matrix/verify_pipeline_e2e) documented above; server-side secrets (Typesense 401, Bedrock AUTH_FAILED, exposed AWS key fa11a2f) remain the operator's to fix.
