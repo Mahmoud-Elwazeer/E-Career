@@ -529,3 +529,32 @@ python manage.py verify_pipeline_e2e --profile <a-real-user-id>
 sudo systemctl restart usam.service celery-usam.service celery-beat-usam.service
 ```
 These two commands produce the §25 evidence (fetched/normalized/created/verified/publishable/indexed per connector, plus searchable+matchable). Still blocked server-side (not code): Typesense 401 (search degraded to Postgres fallback — fix TYPESENSE_API_KEY), AWS Bedrock AUTH_FAILED (all AI). Rotate the AWS key exposed in git history commit fa11a2f.
+
+
+---
+
+## Downstream verification + Professional Presence (2026-09-29, commits d816777..9419a44)
+
+### §15 Search index write-path — verified statically
+`SearchService.sync_job` → `job_to_search_document` → `index_job` (Typesense) confirmed; `post_save` signal on Job syncs visible-state jobs; orchestrator also calls sync_job and counts `indexed`. Live index round-trip requires the Typesense instance (currently 401 server-side → Postgres fallback active); `verify_pipeline_e2e --reindex` produces the live proof. Company name now correct in the index (contract fix).
+
+### §16 Matching flow — verified with tests (d816777)
+`tests_engine_ingested.py`: an orchestrator-shaped Job flows into UnifiedMatchingEngine deterministically — strong candidate scores high+eligible, same inputs→same score, salary floor gates eligibility, missing skills surface as gaps, empty-skills job doesn't crash. 6 tests. Live candidate run = `verify_pipeline_e2e --profile <id>`.
+
+### §31 B — CV↔Job Match Report (667d0f8)
+`cv_job_match_service.py`: fuses the ONE matching engine (fit score + breakdown + matched/missing/gaps) with ATSReadinessService (parse-ability + keyword alignment as a SEPARATE dimension). The report's fit number IS the engine's number — no second opaque score. Concrete action items from real gaps. Deterministic. 5 tests incl. fit-score-equals-engine.
+
+### §31 — GitHub Profile README Builder (9419a44)
+`github_readme_builder.py`: deterministic Markdown generator (header/about/skill-badges/learning/projects/github-stats/connect), each section rendered ONLY when data exists (no fabrication). Written from scratch — ProfileMe AGPL NOT used; readme.so (MIT) / rahuldkjain (Apache-2.0) reference only. 7 tests.
+
+### OSS adoption matrix (Professional Presence §28)
+| Project | License | Decision |
+|---|---|---|
+| readme.so | MIT | reference only (built our own) |
+| rahuldkjain/github-profile-readme-generator | Apache-2.0 | reference only |
+| ProfileMe | AGPLv3 | DO NOT embed/copy — avoided |
+| Jobscan / Enhancv / Teal | commercial | reference/benchmark only, never copied |
+
+### Professional Presence remaining (§31)
+Done: ATS Readiness Engine (2ee5637), CV↔Job Match Report (667d0f8), GitHub README Builder (9419a44).
+Next: CV Improvement Workspace, Career Identity sync (cv_sync.py exists), GitHub Profile Review, Portfolio Evidence, LinkedIn Guidance, Cover Letter integration, Talent Pool integration.
