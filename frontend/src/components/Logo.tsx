@@ -1,21 +1,20 @@
 import { cn } from "@/lib/utils";
 
 /**
- * USAM brand system — an ORIGINAL wordmark built from scratch.
+ * USAM brand system — an ORIGINAL animated wordmark.
  *
- * Design intent (inspired by, but NOT copied from, the reference artwork):
- *   - A clean, modern geometric "USAM" wordmark set as crisp vector paths so it
- *     stays sharp at any size and needs no font to load.
- *   - A single minimal "ascent" mark — an upward chevron rising out of a
- *     baseline — signalling career growth / talent moving up. It reads as a
- *     symbol, not a graduation cap, so the identity is a career-intelligence
- *     brand rather than a university.
- *   - Everything paints with `currentColor`, so it themes correctly across
- *     light / dark / night and on teal surfaces (via the `variant` prop).
+ * Design (inspired by the teal-arrow reference, redrawn from scratch):
+ *   - Bold, rounded, geometric "USAM" letters drawn as INDIVIDUAL stroked SVG
+ *     paths — so each character is its own element and can animate on its own.
+ *   - A teal upward arrow rising through the "U" (career ascent / growth).
+ *   - Letters inherit `currentColor` so the wordmark themes across
+ *     light / dark / night; the arrow keeps the brand teal on every surface.
  *
- * The wordmark letters are drawn as simple, high-legibility geometric glyphs
- * (rounded stroke terminals, even weight) rather than tracing any supplied
- * logo — this is a distinct, original mark.
+ * "Living" behaviour (the whole point of this version): the letters do NOT move
+ * as one block. Each letter draws in with a staggered stroke reveal, then holds
+ * a gentle, individually-phased float; the arrow shoots up on a loop. On hover
+ * the letters lift in sequence. All motion is gated behind
+ * prefers-reduced-motion (static, fully-legible fallback).
  */
 
 interface LogoProps {
@@ -26,94 +25,68 @@ interface LogoProps {
    * - "onDark": always render the light (paper) mark, for teal surfaces.
    */
   variant?: "auto" | "onDark";
-  /** Show only the ascent monogram (no wordmark). */
+  /** Show only the U + arrow monogram (no S A M). */
   markOnly?: boolean;
-  /** Enable the subtle "living" motion + hover interaction (default true). */
+  /** Enable the per-character "living" motion + hover interaction (default true). */
   animated?: boolean;
   alt?: string;
 }
 
 /**
- * The ascent symbol: a rounded upward chevron lifting off a short baseline.
- * Drawn on a 24×24 grid, stroked, so it scales crisply and inherits color.
- *
- * "Living" behaviour: the chevron gently, continuously rises (a soft breathing
- * lift) so the brand feels alive, and the baseline pulses subtly. On hover of
- * the logo the mark springs up more and a shimmer sweeps across it. All motion
- * is gated behind `motion-safe:` so reduced-motion users get a static mark.
+ * Single-weight rounded geometric letterforms on a 0..200 × 0..64 grid.
+ * Each glyph is a stroked path so terminals are round and every letter is an
+ * independent, animatable node. Heights/positions tuned to read as one word.
  */
-function AscentMark({ className, animated = false }: { className?: string; animated?: boolean }) {
+const STROKE = 13;
+
+/** The animated USAM wordmark SVG (letters + teal arrow). */
+function UsamMark({ animated }: { animated: boolean }) {
+  const letterCls = (i: number) =>
+    cn("usam-letter", animated && `usam-anim usam-anim-${i}`);
   return (
     <svg
-      viewBox="0 0 24 24"
-      className={cn(className, animated && "logo-ascent overflow-visible")}
+      viewBox="0 0 232 64"
+      className={cn("h-full w-auto overflow-visible", animated && "usam-svg")}
       fill="none"
       aria-hidden="true"
     >
-      {/* baseline — subtle pulse */}
-      <path
-        className={animated ? "logo-baseline" : undefined}
-        d="M4 19h16"
+      <g
         stroke="currentColor"
-        strokeWidth="2.4"
+        strokeWidth={STROKE}
         strokeLinecap="round"
-        opacity="0.45"
-      />
-      {/* rising chevron / arrow — career ascent (the living element) */}
-      <g className={animated ? "logo-chevron" : undefined}>
+        strokeLinejoin="round"
+      >
+        {/* U — a rounded cup */}
+        <path className={letterCls(0)} d="M14 10 V36 a18 18 0 0 0 36 0 V10" />
+        {/* S — two arcs */}
         <path
-          d="M5 15.5 L12 6 L19 15.5"
-          stroke="currentColor"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          className={letterCls(1)}
+          d="M108 15 a15 12 0 0 0 -18 -3 a13 13 0 0 0 0 22 a13 13 0 0 1 0 22 a15 12 0 0 1 -18 -3"
         />
-        <path
-          d="M12 6 V13"
-          stroke="currentColor"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-        />
+        {/* A — apex + crossbar */}
+        <path className={letterCls(2)} d="M126 56 L144 10 L162 56" />
+        <path className={letterCls(2)} d="M133 40 H155" />
+        {/* M — four strokes */}
+        <path className={letterCls(3)} d="M178 56 V12 L198 40 L218 12 V56" />
+      </g>
+
+      {/* Teal upward arrow rising through the U — the living accent. */}
+      <g
+        className={cn("usam-arrow", animated && "usam-arrow-anim")}
+        stroke="hsl(var(--secondary))"
+        strokeWidth={STROKE}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      >
+        <path d="M32 44 V8" />
+        <path d="M18 22 L32 6 L46 22" />
       </g>
     </svg>
   );
 }
 
-/**
- * The USAM wordmark, drawn as an original geometric SVG.
- * Uses a text element in the brand display face with vector fallback metrics so
- * it stays a clean, single-weight wordmark and inherits `currentColor`.
- */
-function Wordmark({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 132 28"
-      className={className}
-      role="img"
-      aria-hidden="true"
-      fill="currentColor"
-    >
-      <text
-        x="0"
-        y="21"
-        fontFamily="'Fraunces', Georgia, serif"
-        fontSize="24"
-        fontWeight={600}
-        letterSpacing="1.5"
-        style={{ fontOpticalSizing: "auto" }}
-      >
-        USAM
-      </text>
-    </svg>
-  );
-}
-
-/** The full USAM lockup — original ascent mark + wordmark.
- *
- * The `className` height (e.g. h-7) sets the box height; both inner SVGs are
- * `h-full` so the whole lockup scales from that single height utility and never
- * stretches (each SVG keeps its own viewBox aspect ratio).
- */
+/** The full USAM lockup — animated per-character wordmark. */
 export function Logo({
   className,
   variant = "auto",
@@ -127,35 +100,35 @@ export function Logo({
       aria-label={alt}
       title={alt}
       className={cn(
-        "logo-lockup group inline-flex items-center gap-2 select-none leading-none",
+        "logo-lockup group inline-flex items-center select-none leading-none",
         variant === "onDark" ? "text-primary-foreground" : "text-foreground",
         className,
       )}
     >
-      {/* Mark sits slightly below full height for optical balance with the wordmark. */}
-      <AscentMark className="h-[92%] w-auto shrink-0" animated={animated} />
-      {!markOnly && <Wordmark className="h-[76%] w-auto" />}
+      <UsamMark animated={animated} />
     </span>
   );
 }
 
 /**
- * LogoMark — the compact monogram tile (the ascent mark on a brand chip).
+ * LogoMark — the compact monogram tile (the U + teal arrow on a brand chip).
  * Used for the favicon, collapsed sidebar, and anywhere the full wordmark is
  * too wide.
  */
 export function LogoMark({
   className,
   variant = "auto",
+  animated = true,
 }: {
   className?: string;
   variant?: "auto" | "onDark";
+  animated?: boolean;
 }) {
   const onDark = variant === "onDark";
   return (
     <span
       className={cn(
-        "relative grid place-items-center rounded-xl h-8 w-8 shrink-0 overflow-hidden shadow-sm",
+        "logo-lockup group relative grid place-items-center rounded-xl h-8 w-8 shrink-0 overflow-hidden shadow-sm",
         className,
       )}
       style={{
@@ -166,8 +139,26 @@ export function LogoMark({
       }}
       aria-hidden
     >
-      <AscentMark className="h-4 w-4 text-primary-foreground" />
-      {/* inner sheen */}
+      {/* Just the U + arrow, cropped from the same drawing. */}
+      <svg viewBox="0 0 64 64" className="h-[68%] w-[68%] overflow-visible text-primary-foreground" fill="none">
+        <path
+          d="M14 10 V36 a18 18 0 0 0 36 0 V10"
+          stroke="currentColor"
+          strokeWidth={STROKE}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <g
+          className={cn("usam-arrow", animated && "usam-arrow-anim")}
+          stroke="hsl(var(--secondary))"
+          strokeWidth={STROKE}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M32 44 V8" />
+          <path d="M18 22 L32 6 L46 22" />
+        </g>
+      </svg>
       <span
         className="pointer-events-none absolute inset-0"
         style={{ background: "radial-gradient(80% 60% at 30% 15%, hsl(0 0% 100% / 0.16), transparent 70%)" }}
@@ -177,7 +168,7 @@ export function LogoMark({
 }
 
 /**
- * LogoLockup — the header brand anchor. Shows the ascent mark + wordmark.
+ * LogoLockup — the header brand anchor. Shows the animated wordmark.
  * Pass `withMark` to prefix the compact monogram tile where extra brand
  * presence is wanted (e.g. tight mobile headers).
  */
