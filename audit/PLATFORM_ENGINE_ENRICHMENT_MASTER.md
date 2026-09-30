@@ -586,3 +586,19 @@ These are integration/UI-layer tasks (endpoints, serializers, frontend) best don
 
 ## Session totals (2026-09-29)
 Commits e9e0dd4..007b766 on origin/development. Ingestion pipeline hardened end-to-end (contract, funnel matrix, source-aware quality, discovery+migration model, Netflix Eightfold, Workday/SmartRecruiters rewrites, normalization+salary fix, dedup, extraction adapter, e2e verify command) and Professional Presence layer built (7 engines). ~90 standalone tests added, all passing. Real bugs fixed: company-name (slug not employer), unset source_url, SmartRecruiters API-ref-as-apply-url, parse_salary plain-number split, stale Lever slugs. Server actions (deploy/migrate/setup_sources/connector_matrix/verify_pipeline_e2e) documented above; server-side secrets (Typesense 401, Bedrock AUTH_FAILED, exposed AWS key fa11a2f) remain the operator's to fix.
+
+
+---
+
+## Engine backlog — matching/recommendation convergence + iCIMS wiring (2026-09-30, commits 3e5486f..684a896)
+
+### iCIMS wired into orchestrator (3e5486f)
+iCIMS had a correct tenant-scoped connector but was never in the orchestrator dispatch (missing from both `scrape_source` and `scrape_source_fetch_only`) — any icims Source silently hit the Unknown-platform branch. Added to both dispatch paths + rate limit 3/min. Already in TRUSTED_ATS_PROVIDERS.
+
+### Matching score converged (06a4408)
+`MatchingService.calculate_match_score` returned the Bedrock AI number when AI was up and only fell back to the deterministic engine on error — so the same (profile, job) showed a different score on the job list/detail vs the deterministic CV↔Job Match Report. Now the NUMBER is always `UnifiedMatchingEngine` on every surface; `get_match_breakdown` builds the deterministic breakdown and uses AI ONLY to enrich narrative `improvement_tips`. Also makes matching correct while Bedrock is AUTH_FAILED.
+
+### Recommendation content-score converged (684a896)
+`RecommendationEngine._calculate_content_score` was a THIRD parallel skill/experience/location formula (Jaccard + own weights) diverging from the engine. Now delegates to `unified_matching_engine.score` normalized 0-1 (skill-Jaccard fallback only if the engine can't run for a profile), so a job's fit reads consistently in Recommendations, search, detail, and the match report.
+
+Net effect: the "different score on different pages" fragmentation is closed across candidate-side matching + recommendations. (Employer-side ranking_service keeps its own weights intentionally — it scores candidates-for-a-job with knockout/education factors, a legitimately different computation.)
