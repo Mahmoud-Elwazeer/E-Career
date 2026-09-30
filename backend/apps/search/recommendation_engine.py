@@ -384,49 +384,35 @@ class RecommendationEngine:
     
     def _calculate_content_score(self, job: Job) -> float:
         """
-        Calculate content-based score for a job.
-        
-        Args:
-            job: Job instance
-            
-        Returns:
-            Content-based score (0-1)
+        Content-based score for a job (0-1).
+
+        CONVERGED (Phase D): delegates to the deterministic UnifiedMatchingEngine
+        (normalized to 0-1) so the content signal driving recommendations is the
+        SAME fit computation shown on the job list / detail / match report — no
+        third parallel skill/experience/location formula. Falls back to a light
+        Jaccard skill overlap only if the engine can't run for this profile.
         """
-        score = 0.0
-        
-        # Skill match score
-        user_skills = set(
-            s.skill.id for s in CareerUserSkill.objects.filter(user=self.user)
-        )
-        job_skills = set(
-            s.id for s in job.skills.all() if hasattr(job, 'skills')
-        )
-        
-        if user_skills and job_skills:
-            overlap = len(user_skills & job_skills)
-            union = len(user_skills | job_skills)
-            skill_match = overlap / union if union > 0 else 0
-            score += skill_match * 0.4
-        
-        # Experience match
-        user_profile = getattr(self.user, 'career_profile', None)
-        if user_profile and user_profile.experience_years:
-            experience_diff = abs({'entry': 1, 'mid': 4, 'senior': 8, 'lead': 12}.get(job.experience_level, 4) - user_profile.experience_years)
-            experience_score = max(0, 1 - experience_diff / 10)
-            score += experience_score * 0.3
-        
-        # Location match
-        if user_profile and user_profile.open_to_remote:
-            if job.work_arrangement in ['remote', 'hybrid']:
-                score += 0.3
-            elif user_profile.target_locations:
-                for loc in user_profile.target_locations:
-                    loc_str = loc.get('city', '') if isinstance(loc, dict) else str(loc)
-                    if loc_str and loc_str in job.location:
-                        score += 0.3
-                        break
-        
-        return min(score, 1.0)
+        profile = getattr(self.user, 'career_profile', None) or getattr(self.user, 'profile', None)
+        if profile is not None:
+            try:
+                from apps.matching.engine import unified_matching_engine
+                return max(0.0, min(unified_matching_engine.score(profile, job) / 100.0, 1.0))
+            except Exception:
+                pass
+
+        # Fallback: skill Jaccard only (engine unavailable for this profile).
+        try:
+            user_skills = set(
+                s.skill.id for s in CareerUserSkill.objects.filter(user=self.user)
+            )
+            job_skills = set(s.id for s in job.skills.all()) if hasattr(job, 'skills') else set()
+            if user_skills and job_skills:
+                inter = len(user_skills & job_skills)
+                union = len(user_skills | job_skills)
+                return inter / union if union else 0.0
+        except Exception:
+            pass
+        return 0.0
 
     def _explain_match(self, job: Job) -> Dict[str, Any]:
         """Build an explainable, evidence-grounded reason set for a recommendation.
