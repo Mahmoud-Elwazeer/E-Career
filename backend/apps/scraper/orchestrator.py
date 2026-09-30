@@ -21,7 +21,7 @@ from apps.core.models import PipelineHealth, PlatformConfig
 
 from .ats import (
     greenhouse, lever, ashby, bamboohr, workday,
-    smartrecruiters, workable, teamtailor, eightfold
+    smartrecruiters, workable, teamtailor, eightfold, icims
 )
 from .pipeline.url_resolver import is_direct_company_url, verify_url_live
 from .pipeline.legitimacy import calculate_legitimacy_score, assess_job
@@ -67,6 +67,7 @@ class ScraperOrchestrator:
         'workable': 10,
         'teamtailor': 10,
         'eightfold': 5,
+        'icims': 3,
     }
     
     # Maximum consecutive failures before auto-disable
@@ -198,6 +199,7 @@ class ScraperOrchestrator:
             'workable': workable.fetch_workable_jobs,
             'teamtailor': teamtailor.fetch_teamtailor_jobs,
             'eightfold': eightfold.fetch_eightfold_jobs,
+            'icims': icims.fetch_icims_jobs,
         }
         fn = dispatch.get(platform)
         if not fn:
@@ -251,6 +253,8 @@ class ScraperOrchestrator:
                 jobs = teamtailor.fetch_teamtailor_jobs(company_slug)
             elif platform == 'eightfold':
                 jobs = eightfold.fetch_eightfold_jobs(company_slug)
+            elif platform == 'icims':
+                jobs = icims.fetch_icims_jobs(company_slug)
             else:
                 logger.warning(f"Unknown platform: {platform}")
                 return [], 0
