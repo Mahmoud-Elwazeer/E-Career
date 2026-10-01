@@ -4,7 +4,7 @@ import {
   MessageCircle, FileText, Mic, Sparkles,
   ClipboardList, Bookmark, Target, Bell,
   Settings as SettingsIcon, PlusCircle, Search,
-  LayoutDashboard, DollarSign, Award, Building2, Network,
+  LayoutDashboard, DollarSign, Award, Building2, Network, BarChart3,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Logo, LogoLockup } from "@/components/Logo";
@@ -80,6 +80,7 @@ const employerPrimaryNav: NavItem[] = [
   { to: "/app/employer/applicants", label: "Applicants", labelAr: "المتقدمون", icon: ClipboardList },
   { to: "/app/employer/talent-search", label: "Talent", labelAr: "المواهب", icon: Users },
   { to: "/app/employer/talent-pools", label: "Pools", labelAr: "المجموعات", icon: Bookmark },
+  { to: "/app/employer/analytics", label: "Analytics", labelAr: "التحليلات", icon: BarChart3 },
 ];
 
 // Employer account/company menu — company management + shared account areas.

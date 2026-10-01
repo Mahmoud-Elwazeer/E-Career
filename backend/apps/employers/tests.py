@@ -1148,3 +1148,52 @@ class TestSeatsAndBilling:
             format="json",
         )
         assert resp.status_code == 201
+
+
+# ============================================================================
+# Employer analytics endpoint (real aggregates)
+# ============================================================================
+
+ANALYTICS_BASE = "/api/v1/employer/profile/analytics/"
+
+
+@pytest.mark.django_db
+class TestEmployerAnalytics:
+    def test_analytics_shape_empty(self, employer_owner):
+        client = _auth_client(employer_owner)
+        resp = client.get(ANALYTICS_BASE)
+        assert resp.status_code == 200
+        assert "funnel" in resp.data
+        assert "applications_over_time" in resp.data
+        assert "top_jobs" in resp.data
+        assert resp.data["funnel"]["total"] == 0
+
+    def test_analytics_window_param_controls_series_length(self, employer_owner):
+        client = _auth_client(employer_owner)
+        resp = client.get(ANALYTICS_BASE, {"days": 7})
+        assert resp.status_code == 200
+        assert resp.data["window_days"] == 7
+        # Series is zero-filled inclusive of both ends -> days + 1 points.
+        assert len(resp.data["applications_over_time"]) == 8
+
+    def test_analytics_window_param_clamped(self, employer_owner):
+        client = _auth_client(employer_owner)
+        resp = client.get(ANALYTICS_BASE, {"days": 9999})
+        assert resp.status_code == 200
+        assert resp.data["window_days"] == 365
+
+    def test_analytics_totals_reflect_real_jobs(self, employer_owner, team_company):
+        from apps.employers.models import JobPosting
+        JobPosting.objects.create(
+            employer=employer_owner.employer_profile, company=team_company,
+            title="Backend Engineer", description="d", requirements="r",
+            apply_url="https://teamcorp.example.com/careers/1", status="published",
+            views_count=42, clicks_count=5,
+        )
+        client = _auth_client(employer_owner)
+        resp = client.get(ANALYTICS_BASE)
+        assert resp.status_code == 200
+        assert resp.data["totals"]["jobs"] == 1
+        assert resp.data["totals"]["views"] == 42
+        assert len(resp.data["top_jobs"]) == 1
+        assert resp.data["top_jobs"][0]["views"] == 42

@@ -264,6 +264,38 @@ export const getEmployerBilling = async (): Promise<EmployerBilling> => {
   return apiRequest<EmployerBilling>('/employer/profile/billing/');
 };
 
+// ── Employer analytics (real aggregates) ─────────────────────────────────────
+export interface EmployerAnalytics {
+  window_days: number;
+  totals: {
+    jobs: number;
+    published_jobs: number;
+    applications: number;
+    views: number;
+    clicks: number;
+  };
+  funnel: {
+    applied: number;
+    viewed: number;
+    shortlisted: number;
+    rejected: number;
+    total: number;
+  };
+  applications_over_time: Array<{ date: string; count: number }>;
+  top_jobs: Array<{
+    id: number;
+    title: string;
+    status: string;
+    views: number;
+    clicks: number;
+    applications: number;
+  }>;
+}
+
+export const getEmployerAnalytics = async (days = 30): Promise<EmployerAnalytics> => {
+  return apiRequest<EmployerAnalytics>('/employer/profile/analytics/', { params: { days } });
+};
+
 // Company Search
 export const searchCompanies = async (query: string): Promise<{ companies: Company[] }> => {
   return apiRequest('/employer/companies/search/', { params: { q: query } });

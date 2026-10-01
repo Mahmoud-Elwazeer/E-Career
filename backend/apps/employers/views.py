@@ -325,6 +325,88 @@ class EmployerProfileViewSet(viewsets.ModelViewSet):
             },
         })
 
+    @action(detail=False, methods=['get'])
+    def analytics(self, request):
+        """Real hiring analytics for the employer's company.
+
+        Every number is a DB aggregate over this employer's JobPosting /
+        JobApplication rows — no fabricated series. Returns:
+          - funnel: applied -> viewed -> shortlisted -> rejected counts
+          - applications_over_time: daily counts for the last N days (default 30)
+          - top_jobs: per-posting views/clicks/applications (top by applications)
+          - totals: headline counts
+        """
+        from datetime import timedelta
+        from django.db.models.functions import TruncDate
+
+        try:
+            employer = request.user.employer_profile
+        except EmployerProfile.DoesNotExist:
+            # A team member without their own profile still belongs to a company.
+            company, _role = _resolve_company_and_role(request.user)
+            if company is None:
+                return Response({'error': 'No company found.'}, status=status.HTTP_404_NOT_FOUND)
+            postings = JobPosting.objects.filter(company=company)
+        else:
+            postings = JobPosting.objects.filter(employer=employer)
+
+        try:
+            days = max(1, min(365, int(request.query_params.get('days', 30))))
+        except (TypeError, ValueError):
+            days = 30
+        since = timezone.now() - timedelta(days=days)
+
+        applications = JobApplication.objects.filter(job__employer_posting__in=postings)
+
+        # Funnel — counts by status (real).
+        funnel = applications.aggregate(
+            applied=Count('id', filter=Q(status='applied')),
+            viewed=Count('id', filter=Q(status='viewed')),
+            shortlisted=Count('id', filter=Q(status='shortlisted')),
+            rejected=Count('id', filter=Q(status='rejected')),
+        )
+        funnel['total'] = applications.count()
+
+        # Applications over time — daily buckets over the window, zero-filled so
+        # the chart has a continuous axis (zero-fill is honest: 0 real apps).
+        raw = (applications.filter(applied_at__gte=since)
+               .annotate(day=TruncDate('applied_at'))
+               .values('day').annotate(count=Count('id')).order_by('day'))
+        by_day = {row['day'].isoformat(): row['count'] for row in raw if row['day']}
+        series = []
+        start_date = since.date()
+        for i in range(days + 1):
+            d = (start_date + timedelta(days=i)).isoformat()
+            series.append({'date': d, 'count': by_day.get(d, 0)})
+
+        # Per-job performance (real views/clicks + live application counts).
+        top_jobs = []
+        for jp in postings.order_by('-views_count')[:50]:
+            app_count = JobApplication.objects.filter(job__employer_posting=jp).count()
+            top_jobs.append({
+                'id': jp.id,
+                'title': jp.title,
+                'status': jp.status,
+                'views': jp.views_count,
+                'clicks': jp.clicks_count,
+                'applications': app_count,
+            })
+        top_jobs.sort(key=lambda j: j['applications'], reverse=True)
+
+        return Response({
+            'window_days': days,
+            'totals': {
+                'jobs': postings.count(),
+                'published_jobs': postings.filter(status='published').count(),
+                'applications': funnel['total'],
+                'views': postings.aggregate(v=Sum('views_count'))['v'] or 0,
+                'clicks': postings.aggregate(c=Sum('clicks_count'))['c'] or 0,
+            },
+            'funnel': funnel,
+            'applications_over_time': series,
+            'top_jobs': top_jobs[:10],
+        })
+
 
 def _resolve_company_and_role(user):
     """Resolve (company, role) for an employer user.
