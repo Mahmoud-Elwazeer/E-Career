@@ -87,7 +87,7 @@ const employerPrimaryNav: NavItem[] = [
 // /app/employer/register; billing + settings are the shared account pages;
 // Browse Jobs (candidate board) is available here rather than in primary nav.
 const employerSecondaryNav: NavItem[] = [
-  { to: "/app/employer/register", label: "Company & Profile", labelAr: "الشركة والملف", icon: Building2 },
+  { to: "/app/employer/company", label: "Company Profile", labelAr: "ملف الشركة", icon: Building2 },
   { to: "/app/jobs", label: "Browse Jobs", labelAr: "تصفح الوظائف", icon: Briefcase },
   { to: "/app/billing", label: "Billing & Plans", labelAr: "الفوترة والباقات", icon: DollarSign },
   { to: "/app/settings", label: "Settings", labelAr: "الإعدادات", icon: SettingsIcon },

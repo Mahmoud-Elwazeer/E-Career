@@ -52,6 +52,7 @@ from apps.events.types import (
     EMPLOYER_VERIFICATION_REQUESTED,
     EMPLOYER_TEAM_INVITED,
     EMPLOYER_TEAM_JOINED,
+    USER_PROFILE_UPDATED,
 )
 
 
@@ -225,6 +226,66 @@ class EmployerProfileViewSet(viewsets.ModelViewSet):
             'engagement': engagement_stats,
             'is_verified': employer.is_verified,
         })
+
+    @action(detail=False, methods=['get', 'patch'])
+    def company(self, request):
+        """Get or edit the caller's company profile.
+
+        GET: any employer/active team member on the company can read it.
+        PATCH: only the company owner or an admin team member may edit it
+        (frontend permission is NOT trusted — this is enforced server-side).
+        """
+        from .serializers import CompanyManageSerializer
+
+        company, member_role = _resolve_company_and_role(request.user)
+        if company is None:
+            return Response(
+                {'error': 'No company is associated with your account.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if request.method == 'GET':
+            return Response(CompanyManageSerializer(company).data)
+
+        # PATCH — owner/admin only.
+        if member_role not in ('owner', 'admin'):
+            return Response(
+                {'error': 'Only a company owner or admin can edit the company profile.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        serializer = CompanyManageSerializer(company, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        emit(
+            event_type=USER_PROFILE_UPDATED,
+            category='employer',
+            user=request.user,
+            target_type='company',
+            target_id=str(company.id),
+            data={'company': company.name, 'fields': list(request.data.keys())},
+            request=request,
+        )
+        return Response(CompanyManageSerializer(company).data)
+
+
+def _resolve_company_and_role(user):
+    """Resolve (company, role) for an employer user.
+
+    Prefers an owner EmployerProfile; otherwise falls back to an active,
+    accepted team membership. Returns (None, None) if neither exists. The role
+    is the team-membership role when available (authoritative for management),
+    else 'owner' for the profile owner.
+    """
+    from .permissions import _get_team_membership
+
+    membership = _get_team_membership(user)
+    if membership:
+        return membership.company, membership.role
+    profile = getattr(user, 'employer_profile', None)
+    if profile is not None:
+        # A profile without a team row is treated as the company owner.
+        return profile.company, 'owner'
+    return None, None
 
 
 class JobPostingViewSet(viewsets.ModelViewSet):

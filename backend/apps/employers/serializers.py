@@ -6,8 +6,30 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import EmployerProfile, EmployerTeamMember, JobPosting, JobApplication, KnockoutQuestion, CandidateRanking, TalentDiscovery, TalentPool, TalentPoolCandidate
 from apps.jobs.serializers import CompanySerializer
+from apps.jobs.models import Company
 
 User = get_user_model()
+
+
+class CompanyManageSerializer(serializers.ModelSerializer):
+    """Editable company profile for the company's own employers/owners.
+
+    Scoped to the branding/identity fields an employer should control. Slug,
+    verification and activation are NOT editable here (slug is identity;
+    is_verified is an admin decision; is_active is an admin/ops lever).
+    """
+
+    class Meta:
+        model = Company
+        fields = [
+            "id", "uuid", "name", "slug", "logo_url", "snippet", "about",
+            "description", "industry", "website", "domain", "size",
+            "headquarters", "linkedin_url", "careers_page_url", "github_org",
+            "is_verified", "is_active", "created_at",
+        ]
+        read_only_fields = [
+            "id", "uuid", "slug", "is_verified", "is_active", "created_at",
+        ]
 
 
 class EmployerProfileSerializer(serializers.ModelSerializer):

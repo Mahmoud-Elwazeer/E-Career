@@ -137,6 +137,51 @@ export const getEmployerStats = async (): Promise<EmployerStats> => {
   return apiRequest<EmployerStats>('/employer/profile/stats/');
 };
 
+// Company profile (the employer's own company — editable by owner/admin)
+export interface ManagedCompany {
+  id: number;
+  uuid: string;
+  name: string;
+  slug: string;
+  logo_url: string;
+  snippet: string;
+  about: string;
+  description: string;
+  industry: string;
+  website: string;
+  domain: string;
+  size: string;
+  headquarters: string;
+  linkedin_url: string;
+  careers_page_url: string;
+  github_org: string;
+  is_verified: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export type ManagedCompanyUpdate = Partial<
+  Pick<
+    ManagedCompany,
+    | 'name' | 'logo_url' | 'snippet' | 'about' | 'description' | 'industry'
+    | 'website' | 'domain' | 'size' | 'headquarters' | 'linkedin_url'
+    | 'careers_page_url' | 'github_org'
+  >
+>;
+
+export const getManagedCompany = async (): Promise<ManagedCompany> => {
+  return apiRequest<ManagedCompany>('/employer/profile/company/');
+};
+
+export const updateManagedCompany = async (
+  data: ManagedCompanyUpdate,
+): Promise<ManagedCompany> => {
+  return apiRequest<ManagedCompany>('/employer/profile/company/', {
+    method: 'PATCH',
+    body: data,
+  });
+};
+
 // Company Search
 export const searchCompanies = async (query: string): Promise<{ companies: Company[] }> => {
   return apiRequest('/employer/companies/search/', { params: { q: query } });

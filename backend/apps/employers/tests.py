@@ -969,3 +969,69 @@ class TestRequestVerification:
         resp = client.get(PROFILE_BASE)
         assert resp.status_code == 200
         assert resp.data["verification_requested_at"] is not None
+
+
+# ============================================================================
+# Company profile management (/employer/profile/company/)
+# ============================================================================
+
+COMPANY_BASE = "/api/v1/employer/profile/company/"
+
+
+@pytest.mark.django_db
+class TestCompanyManagement:
+    def test_owner_can_read_company(self, employer_owner, team_company):
+        client = _auth_client(employer_owner)
+        resp = client.get(COMPANY_BASE)
+        assert resp.status_code == 200
+        assert resp.data["name"] == team_company.name
+
+    def test_owner_can_edit_company(self, employer_owner, team_company):
+        client = _auth_client(employer_owner)
+        resp = client.patch(COMPANY_BASE, {"about": "We build things.", "size": "11-50"}, format="json")
+        assert resp.status_code == 200
+        team_company.refresh_from_db()
+        assert team_company.about == "We build things."
+        assert team_company.size == "11-50"
+
+    def test_admin_team_member_can_edit(self, team_member_admin, team_company):
+        user, _ = team_member_admin
+        client = _auth_client(user)
+        resp = client.patch(COMPANY_BASE, {"headquarters": "Cairo"}, format="json")
+        assert resp.status_code == 200
+        team_company.refresh_from_db()
+        assert team_company.headquarters == "Cairo"
+
+    def test_recruiter_cannot_edit(self, team_member_recruiter, team_company):
+        user, _ = team_member_recruiter
+        client = _auth_client(user)
+        resp = client.patch(COMPANY_BASE, {"about": "nope"}, format="json")
+        assert resp.status_code == 403
+        team_company.refresh_from_db()
+        assert team_company.about != "nope"
+
+    def test_recruiter_can_still_read(self, team_member_recruiter):
+        user, _ = team_member_recruiter
+        client = _auth_client(user)
+        resp = client.get(COMPANY_BASE)
+        assert resp.status_code == 200
+
+    def test_slug_and_verification_are_not_editable(self, employer_owner, team_company):
+        client = _auth_client(employer_owner)
+        original_slug = team_company.slug
+        resp = client.patch(
+            COMPANY_BASE,
+            {"slug": "hacked-slug", "is_verified": True, "name": "Renamed Co"},
+            format="json",
+        )
+        assert resp.status_code == 200
+        team_company.refresh_from_db()
+        assert team_company.slug == original_slug       # read-only, unchanged
+        assert team_company.is_verified is False         # read-only, unchanged
+        assert team_company.name == "Renamed Co"          # editable, changed
+
+    def test_plain_user_has_no_company(self, plain_user):
+        client = _auth_client(plain_user)
+        resp = client.get(COMPANY_BASE)
+        # IsEmployer blocks a non-employer before the action runs.
+        assert resp.status_code in (403, 404)
