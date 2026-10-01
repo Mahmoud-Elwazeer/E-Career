@@ -10,7 +10,7 @@ independently of migrations.
 import pytest
 
 from apps.payments import platforms
-from apps.payments.references import Platform, generate_reference
+from apps.payments.references import Platform, Category, generate_reference
 
 
 # ── Registry invariants ───────────────────────────────────────────────────────
@@ -88,3 +88,47 @@ def test_generate_reference_accepts_every_registered_code():
     for code in platforms.codes():
         ref = generate_reference(code)
         assert ref.startswith(f"{code}-")
+
+
+# ── Transaction category segment ──────────────────────────────────────────────
+def test_reference_without_category_is_legacy_three_segment():
+    # Backward compatibility: omitting category keeps the old shape so already
+    # stored references remain valid.
+    ref = generate_reference("C")
+    parts = ref.split("-")
+    assert len(parts) == 3
+    assert parts[0] == "C"
+
+
+def test_reference_with_category_is_four_segment():
+    ref = generate_reference("C", Category.PAYMENT)
+    parts = ref.split("-")
+    assert len(parts) == 4
+    assert parts[0] == "C"
+    assert parts[1] == "PAY"
+    # YYYYMMDD date segment
+    assert len(parts[2]) == 8 and parts[2].isdigit()
+
+
+def test_reference_rejects_unknown_category():
+    with pytest.raises(ValueError):
+        generate_reference("C", "NOPE")
+
+
+def test_every_category_produces_a_well_formed_reference():
+    for cat in Category.ALL:
+        ref = generate_reference("C", cat)
+        assert ref.startswith(f"C-{cat}-")
+
+
+def test_reference_stays_within_column_limit():
+    # The reference column is CharField(max_length=40) on every model.
+    ref = generate_reference("C", Category.SUBSCRIPTION, suffix_length=12)
+    assert len(ref) <= 40
+
+
+def test_reference_carries_no_pii():
+    # The reference is built only from platform code, category, UTC date and a
+    # random suffix — never from user identity.
+    ref = generate_reference("E", Category.INVOICE)
+    assert ref == f"E-INV-{ref.split('-')[2]}-{ref.split('-')[3]}"

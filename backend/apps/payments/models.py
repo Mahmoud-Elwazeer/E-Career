@@ -12,7 +12,7 @@ from django.conf import settings
 from django.db import models
 
 from apps.core.models import UUIDModel
-from .references import Platform, generate_reference
+from .references import Platform, Category, generate_reference
 
 # Re-export ledger models so `from apps.payments.models import *` and Django
 # app model discovery see them as part of this app.
@@ -134,7 +134,7 @@ class Order(UUIDModel):
 
     def save(self, *args, **kwargs):
         if not self.reference:
-            self.reference = generate_reference(self.platform_code)
+            self.reference = generate_reference(self.platform_code, Category.ORDER)
         super().save(*args, **kwargs)
 
 
@@ -187,7 +187,7 @@ class Payment(UUIDModel):
 
     def save(self, *args, **kwargs):
         if not self.reference:
-            self.reference = generate_reference(self.platform_code)
+            self.reference = generate_reference(self.platform_code, Category.PAYMENT)
         super().save(*args, **kwargs)
 
     def can_transition_to(self, new_status: str) -> bool:
@@ -234,7 +234,7 @@ class Invoice(UUIDModel):
 
     def save(self, *args, **kwargs):
         if not self.reference:
-            self.reference = generate_reference(self.order.platform_code)
+            self.reference = generate_reference(self.order.platform_code, Category.INVOICE)
         super().save(*args, **kwargs)
 
 
@@ -276,7 +276,7 @@ class Refund(UUIDModel):
 
     def save(self, *args, **kwargs):
         if not self.reference:
-            self.reference = generate_reference(self.payment.platform_code)
+            self.reference = generate_reference(self.payment.platform_code, Category.REFUND)
         super().save(*args, **kwargs)
 
 
@@ -358,7 +358,7 @@ class AdjustmentRequest(UUIDModel):
 
     def save(self, *args, **kwargs):
         if not self.reference:
-            self.reference = generate_reference(self.platform_code)
+            self.reference = generate_reference(self.platform_code, Category.ADJUSTMENT)
         super().save(*args, **kwargs)
 
     def __str__(self):

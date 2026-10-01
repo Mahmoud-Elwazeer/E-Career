@@ -13,7 +13,7 @@ from typing import Sequence
 from django.db import transaction as db_transaction, IntegrityError
 
 from .models_ledger import LedgerAccount, LedgerTransaction, LedgerEntry
-from .references import generate_reference, Platform
+from .references import generate_reference, Platform, Category
 
 
 @dataclass(frozen=True)
@@ -60,7 +60,7 @@ def post_transaction(
     try:
         with db_transaction.atomic():
             txn = LedgerTransaction.objects.create(
-                reference=generate_reference(platform_code),
+                reference=generate_reference(platform_code, Category.TRANSACTION),
                 platform_code=platform_code,
                 description=description,
                 idempotency_key=idempotency_key,
