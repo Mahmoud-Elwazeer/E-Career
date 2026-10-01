@@ -47,9 +47,10 @@ class Migration(migrations.Migration):
                 default=dict,
                 blank=True,
                 help_text=(
-                    "Feature gating map {feature_key: bool}. An explicit False "
-                    "disables that feature for the plan; unset keys stay enabled. "
-                    "A legacy list of enabled keys is still honored."
+                    "Feature gating map {feature_key: bool}. An explicit False disables "
+                    "that feature for the plan; unset keys stay enabled (so new features "
+                    "aren't silently locked out). A legacy list of enabled keys is still "
+                    "honored for backward compatibility."
                 ),
             ),
         ),
