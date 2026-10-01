@@ -588,6 +588,10 @@ class SubscriptionPlan(UUIDModel):
         default=50,
         help_text="Max candidate discoveries per month. 0 = unlimited.",
     )
+    seat_limit = models.IntegerField(
+        default=0,
+        help_text="Max active team seats for a company on this plan. 0 = unlimited.",
+    )
     ai_features_enabled = models.BooleanField(
         default=False,
         help_text="Whether AI-powered features (ranking, matching) are available",

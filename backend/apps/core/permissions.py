@@ -57,6 +57,13 @@ def _gate_plan(plan, check_type, current_count=0, feature=None):
                 f"Your plan ({plan.name}) allows up to {limit} active job postings. "
                 "Contact admin to upgrade."
             )
+    elif check_type == "seats":
+        limit = getattr(plan, "seat_limit", 0)
+        if limit and current_count >= limit:
+            raise PermissionDenied(
+                f"Your plan ({plan.name}) allows up to {limit} team seats. "
+                "Contact admin to upgrade."
+            )
     elif check_type == "candidate_search":
         limit = plan.candidate_search_limit
         if limit and current_count >= limit:

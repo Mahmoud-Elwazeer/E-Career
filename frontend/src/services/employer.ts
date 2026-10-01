@@ -236,6 +236,34 @@ export const removeTeamMember = async (id: number): Promise<void> => {
   await apiRequest(`/employer/team/${id}/`, { method: 'DELETE' });
 };
 
+// ── Employer-scoped billing snapshot (plan + seat/job usage) ─────────────────
+export interface EmployerBilling {
+  company: { id: number; name: string; is_verified: boolean };
+  has_subscription: boolean;
+  plan: {
+    name: string;
+    status: string;
+    started_at: string;
+    seat_limit: number;
+    job_posting_limit: number;
+    candidate_search_limit: number;
+    ai_features_enabled: boolean;
+    feature_flags: Record<string, boolean>;
+  } | null;
+  usage: {
+    seats_used: number;
+    seats_limit: number;
+    seats_remaining: number | null;
+    active_jobs: number;
+    jobs_limit: number;
+    jobs_remaining: number | null;
+  };
+}
+
+export const getEmployerBilling = async (): Promise<EmployerBilling> => {
+  return apiRequest<EmployerBilling>('/employer/profile/billing/');
+};
+
 // Company Search
 export const searchCompanies = async (query: string): Promise<{ companies: Company[] }> => {
   return apiRequest('/employer/companies/search/', { params: { q: query } });

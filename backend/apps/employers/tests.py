@@ -1087,3 +1087,64 @@ class TestEmailInviteFlow:
         assert resp.data["pending_registration"] is False
         member = EmployerTeamMember.objects.get(user=invitee_user, company=team_company)
         assert member.role == "recruiter"
+
+
+# ============================================================================
+# Seat entitlement + employer billing snapshot
+# ============================================================================
+
+BILLING_BASE = "/api/v1/employer/profile/billing/"
+
+
+@pytest.mark.django_db
+class TestSeatsAndBilling:
+    def _assign_plan(self, company, **plan_kwargs):
+        from apps.core.models import SubscriptionPlan, CompanySubscription
+        plan = SubscriptionPlan.objects.create(name=f"Plan {company.id}", **plan_kwargs)
+        CompanySubscription.objects.create(company=company, plan=plan, status="active")
+        return plan
+
+    def test_billing_snapshot_without_plan(self, employer_owner, team_company):
+        client = _auth_client(employer_owner)
+        resp = client.get(BILLING_BASE)
+        assert resp.status_code == 200
+        assert resp.data["has_subscription"] is False
+        # Owner created a team row at company creation in real flow; here the
+        # fixture made a profile only, so seats_used reflects actual rows.
+        assert "seats_used" in resp.data["usage"]
+
+    def test_billing_snapshot_with_plan_reports_limits(self, employer_owner, team_company):
+        self._assign_plan(team_company, seat_limit=3, job_posting_limit=10)
+        client = _auth_client(employer_owner)
+        resp = client.get(BILLING_BASE)
+        assert resp.status_code == 200
+        assert resp.data["has_subscription"] is True
+        assert resp.data["plan"]["seat_limit"] == 3
+        assert resp.data["usage"]["seats_limit"] == 3
+
+    def test_seat_limit_blocks_invite_over_cap(self, employer_owner, team_company):
+        # seat_limit=1; the owner's own team row consumes it, so the next invite
+        # must be denied with 403.
+        from apps.employers.models import EmployerTeamMember
+        EmployerTeamMember.objects.create(
+            user=employer_owner, company=team_company, role="owner",
+            is_active=True, accepted_at=timezone.now(),
+        )
+        self._assign_plan(team_company, seat_limit=1)
+        client = _auth_client(employer_owner)
+        resp = client.post(
+            TEAM_BASE + "invite/",
+            {"email": "overflow@example.com", "role": "recruiter"},
+            format="json",
+        )
+        assert resp.status_code == 403
+
+    def test_no_plan_means_unlimited_seats(self, employer_owner, team_company):
+        client = _auth_client(employer_owner)
+        # No subscription -> no seat cap -> invite succeeds.
+        resp = client.post(
+            TEAM_BASE + "invite/",
+            {"email": "freeseat@example.com", "role": "viewer"},
+            format="json",
+        )
+        assert resp.status_code == 201

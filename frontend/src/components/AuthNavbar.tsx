@@ -90,7 +90,7 @@ const employerSecondaryNav: NavItem[] = [
   { to: "/app/employer/company", label: "Company Profile", labelAr: "ملف الشركة", icon: Building2 },
   { to: "/app/employer/team", label: "Team", labelAr: "الفريق", icon: Users },
   { to: "/app/jobs", label: "Browse Jobs", labelAr: "تصفح الوظائف", icon: Briefcase },
-  { to: "/app/billing", label: "Billing & Plans", labelAr: "الفوترة والباقات", icon: DollarSign },
+  { to: "/app/employer/billing", label: "Billing & Plans", labelAr: "الفوترة والباقات", icon: DollarSign },
   { to: "/app/settings", label: "Settings", labelAr: "الإعدادات", icon: SettingsIcon },
 ];
 

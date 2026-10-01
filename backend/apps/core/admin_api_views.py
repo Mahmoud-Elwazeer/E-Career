@@ -1161,6 +1161,7 @@ class SubscriptionPlanSerializer(serializers.Serializer):
     feature_flags = serializers.JSONField(required=False)
     job_posting_limit = serializers.IntegerField(required=False)
     candidate_search_limit = serializers.IntegerField(required=False)
+    seat_limit = serializers.IntegerField(required=False)
     ai_features_enabled = serializers.BooleanField(required=False)
     is_active = serializers.BooleanField(required=False)
     created_at = serializers.DateTimeField(read_only=True)
@@ -1187,7 +1188,7 @@ class SubscriptionPlanListView(generics.ListCreateAPIView):
                 model = SubscriptionPlan
                 fields = [
                     "uuid", "name", "description", "feature_flags",
-                    "job_posting_limit", "candidate_search_limit",
+                    "job_posting_limit", "candidate_search_limit", "seat_limit",
                     "ai_features_enabled", "is_active", "created_at",
                 ]
 
@@ -1212,7 +1213,7 @@ class SubscriptionPlanDetailView(generics.RetrieveUpdateDestroyAPIView):
                 model = SubscriptionPlan
                 fields = [
                     "uuid", "name", "description", "feature_flags",
-                    "job_posting_limit", "candidate_search_limit",
+                    "job_posting_limit", "candidate_search_limit", "seat_limit",
                     "ai_features_enabled", "is_active", "created_at",
                 ]
 

@@ -267,6 +267,64 @@ class EmployerProfileViewSet(viewsets.ModelViewSet):
         )
         return Response(CompanyManageSerializer(company).data)
 
+    @action(detail=False, methods=['get'])
+    def billing(self, request):
+        """Employer-scoped billing snapshot: the company's active plan, seat
+        usage, and entitlement limits — all from real data. No fabricated
+        numbers; seat usage is a live count of active team members.
+        """
+        from apps.core.models import CompanySubscription
+
+        company, _role = _resolve_company_and_role(request.user)
+        if company is None:
+            return Response(
+                {'error': 'No company is associated with your account.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        sub = (CompanySubscription.objects
+               .filter(company=company, status__in=('active', 'trial'))
+               .select_related('plan').first())
+
+        active_seats = EmployerTeamMember.objects.filter(
+            company=company, is_active=True,
+        ).count()
+        active_jobs = JobPosting.objects.filter(
+            company=company, status__in=('draft', 'published', 'pending_review'),
+        ).count()
+
+        plan_data = None
+        if sub:
+            p = sub.plan
+            plan_data = {
+                'name': p.name,
+                'status': sub.status,
+                'started_at': sub.started_at,
+                'seat_limit': p.seat_limit,
+                'job_posting_limit': p.job_posting_limit,
+                'candidate_search_limit': p.candidate_search_limit,
+                'ai_features_enabled': p.ai_features_enabled,
+                'feature_flags': p.feature_flags,
+            }
+
+        def _remaining(limit, used):
+            # 0 limit = unlimited; otherwise remaining never goes below 0.
+            return None if not limit else max(0, limit - used)
+
+        return Response({
+            'company': {'id': company.id, 'name': company.name, 'is_verified': company.is_verified},
+            'plan': plan_data,
+            'has_subscription': bool(sub),
+            'usage': {
+                'seats_used': active_seats,
+                'seats_limit': plan_data['seat_limit'] if plan_data else 0,
+                'seats_remaining': _remaining(plan_data['seat_limit'] if plan_data else 0, active_seats),
+                'active_jobs': active_jobs,
+                'jobs_limit': plan_data['job_posting_limit'] if plan_data else 0,
+                'jobs_remaining': _remaining(plan_data['job_posting_limit'] if plan_data else 0, active_jobs),
+            },
+        })
+
 
 def _resolve_company_and_role(user):
     """Resolve (company, role) for an employer user.
@@ -1011,6 +1069,15 @@ class EmployerTeamViewSet(viewsets.ViewSet):
 
         serializer = EmployerTeamInviteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        # Seat entitlement: an active member (accepted or pending) consumes a
+        # seat. Enforce the plan's seat_limit server-side (raises PermissionDenied
+        # -> 403) before creating another one. No active plan => unlimited.
+        from apps.core.permissions import check_entitlement
+        active_seats = EmployerTeamMember.objects.filter(
+            company=company, is_active=True,
+        ).count()
+        check_entitlement(company, "seats", current_count=active_seats)
 
         from django.contrib.auth import get_user_model
         User = get_user_model()
