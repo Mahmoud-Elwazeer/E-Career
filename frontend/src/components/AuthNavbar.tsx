@@ -79,6 +79,7 @@ const employerPrimaryNav: NavItem[] = [
   { to: "/app/employer/dashboard", label: "Dashboard", labelAr: "لوحة التحكم", icon: LayoutDashboard },
   { to: "/app/employer/applicants", label: "Applicants", labelAr: "المتقدمون", icon: ClipboardList },
   { to: "/app/employer/talent-search", label: "Talent", labelAr: "المواهب", icon: Users },
+  { to: "/app/employer/talent-pools", label: "Pools", labelAr: "المجموعات", icon: Bookmark },
 ];
 
 // Employer account/company menu — company management + shared account areas.

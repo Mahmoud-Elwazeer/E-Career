@@ -320,6 +320,14 @@ export const addCandidateToPool = async (poolId: number, data: AddCandidateData)
   return apiRequest<TalentPoolCandidate>(`/employer/talent-pools/${poolId}/add_candidate/`, { method: 'POST', body: data });
 };
 
+export const removeCandidateFromPool = async (poolId: number, userId: number): Promise<void> => {
+  return apiRequest<void>(`/employer/talent-pools/${poolId}/remove-candidate/${userId}/`, { method: 'DELETE' });
+};
+
+export const deleteTalentPool = async (poolId: number): Promise<void> => {
+  return apiRequest<void>(`/employer/talent-pools/${poolId}/`, { method: 'DELETE' });
+};
+
 export const rankCandidates = async (jobId: number, candidateIds?: number[], rankAll?: boolean): Promise<CandidateRanking[]> => {
   return apiRequest<CandidateRanking[]>('/employer/rankings/rank/', {
     method: 'POST',
@@ -364,6 +372,8 @@ export default {
   createTalentPool,
   getTalentPoolDetail,
   addCandidateToPool,
+  removeCandidateFromPool,
+  deleteTalentPool,
   rankCandidates,
   listRankings,
 };
