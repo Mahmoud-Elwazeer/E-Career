@@ -60,4 +60,7 @@ def get_provider(name: str) -> PaymentProvider:
     if name == "alexbank":
         from .alexbank_provider import AlexBankProvider
         return AlexBankProvider()
+    if name == "alexbank_mock":
+        from .alexbank_provider import AlexBankMockProvider
+        return AlexBankMockProvider()
     raise ProviderError(f"Unknown payment provider: {name!r}")

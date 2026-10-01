@@ -377,3 +377,18 @@ def platform_registry(request):
         "is_chargeable": p.is_chargeable,
     } for p in platforms.all_platforms()]
     return Response({"success": True, "data": data})
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminRole])
+def provider_health(request):
+    """Readiness of payment provider adapters (no outbound calls to providers).
+
+    Currently surfaces the AlexBank adapter so ops can see whether the bank
+    integration is configured and whether live money operations are enabled
+    (they stay disabled until the bank contract is wired).
+    """
+    from .providers import AlexBankProvider
+    return Response({"success": True, "data": {
+        "alexbank": AlexBankProvider().health(),
+    }})

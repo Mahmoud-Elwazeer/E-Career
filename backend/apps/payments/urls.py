@@ -27,4 +27,5 @@ urlpatterns = [
     path("admin/ai/", admin_views.ai_query, name="admin-ai"),
     path("admin/audit/", admin_views.audit_log, name="admin-audit"),
     path("admin/platforms/", admin_views.platform_registry, name="admin-platforms"),
+    path("admin/provider-health/", admin_views.provider_health, name="admin-provider-health"),
 ]
