@@ -634,3 +634,38 @@ class CompanySubscription(UUIDModel):
 
     def __str__(self):
         return f"{self.company} — {self.plan.name} ({self.status})"
+
+
+class UserSubscription(UUIDModel):
+    """
+    Links an individual User to a SubscriptionPlan with a status lifecycle.
+
+    Deliberately mirrors CompanySubscription field-for-field so the entitlement
+    engine treats an individual and an organization as the SAME kind of subject
+    (one plan definition, one gating path) — the only difference is which column
+    the subscription hangs off. This keeps the entitlement logic unified instead
+    of forking into a parallel individual-only code path.
+    """
+
+    STATUS_CHOICES = CompanySubscription.STATUS_CHOICES
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="subscriptions",
+    )
+    plan = models.ForeignKey(
+        SubscriptionPlan,
+        on_delete=models.PROTECT,
+        related_name="user_subscriptions",
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="trial")
+    started_at = models.DateTimeField(default=timezone.now)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "core_user_subscription"
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"{self.user} — {self.plan.name} ({self.status})"

@@ -15,7 +15,7 @@ from __future__ import annotations
 from django.db import transaction as db_transaction
 from django.utils import timezone
 
-from apps.core.models import SubscriptionPlan, CompanySubscription
+from apps.core.models import SubscriptionPlan, CompanySubscription, UserSubscription
 
 from .models import Order, Payment, Invoice, InvoiceItem, Package, Coupon, FinancialAuditLog
 from .ledger import post_transaction, Posting, get_or_create_account
@@ -268,8 +268,14 @@ def reject_adjustment(*, adjustment, approver, note=""):
 
 
 def _grant_entitlement(order: Order):
-    """Grant the package's entitlement. Employer packages activate a
-    CompanySubscription against the order's company."""
+    """Grant the package's entitlement to the order's subject.
+
+    One plan definition, one grant path: an order billed to a Company activates
+    a CompanySubscription; an order with no company (an individual purchase)
+    activates a UserSubscription for the ordering user. Both reference the SAME
+    SubscriptionPlan, so downstream gating is identical regardless of subject.
+    Idempotent via get_or_create (safe under the webhook+verify retry race).
+    """
     plan: SubscriptionPlan | None = order.package.entitlement_plan
     if not plan:
         return
@@ -278,5 +284,8 @@ def _grant_entitlement(order: Order):
             company=order.company, plan=plan,
             defaults={"status": "active"},
         )
-    # Individual entitlements: current entitlement model is company-scoped;
-    # individual-plan grants attach when the individual entitlement model lands.
+    else:
+        UserSubscription.objects.get_or_create(
+            user=order.user, plan=plan,
+            defaults={"status": "active"},
+        )

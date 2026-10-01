@@ -2,36 +2,54 @@ from rest_framework.permissions import BasePermission
 from rest_framework.exceptions import PermissionDenied
 
 
-def check_entitlement(company, check_type, current_count=0, feature=None):
-    """
-    Check whether a company's active subscription allows an action.
+def resolve_active_plan(subject):
+    """Return the active/trial SubscriptionPlan for a subject, or None.
 
-    check_type:
-        "job_posting"      — gated by plan.job_posting_limit
-        "candidate_search" — gated by plan.candidate_search_limit
-        "ai_feature"       — gated by plan.ai_features_enabled
-        "feature"          — gated by plan.feature_flags[feature] (admin-configurable)
-    current_count: how many the company has already used (for count-limited types)
-    feature: feature-flag key (required when check_type == "feature")
+    A *subject* is whatever a purchase can be billed to — today an individual
+    ``User`` or an organization ``Company``. Both hang a subscription off the
+    SAME ``SubscriptionPlan``; the only difference is which model/column the
+    subscription lives on. Resolving the plan here (not the gating) is the one
+    place that is subject-aware, so the gate itself stays identical for everyone.
 
-    Returns True if allowed, raises PermissionDenied if not.
-    If no active subscription exists, the action is allowed (no gating), so the
-    platform stays usable for un-subscribed companies while admins configure plans.
+    None means "no active subscription" — the caller treats that as unrestricted
+    so the platform stays usable while admins configure plans.
     """
     try:
-        from apps.core.models import CompanySubscription
+        from apps.core.models import CompanySubscription, UserSubscription
+        from apps.jobs.models import Company
     except ImportError:
+        return None
+
+    if subject is None:
+        return None
+
+    # Organization subject.
+    if isinstance(subject, Company):
+        sub = (CompanySubscription.objects
+               .filter(company=subject, status__in=("active", "trial"))
+               .select_related("plan").first())
+        return sub.plan if sub else None
+
+    # Individual subject (duck-typed: anything that isn't a Company is treated
+    # as a user). Guard with hasattr so a stray type can't crash the gate.
+    if hasattr(subject, "pk"):
+        sub = (UserSubscription.objects
+               .filter(user=subject, status__in=("active", "trial"))
+               .select_related("plan").first())
+        return sub.plan if sub else None
+
+    return None
+
+
+def _gate_plan(plan, check_type, current_count=0, feature=None):
+    """Subject-agnostic gate. Given a resolved plan (or None), allow or deny.
+
+    This is the ONE place the entitlement rules live, shared by individuals and
+    organizations. Returns True if allowed, raises PermissionDenied otherwise.
+    """
+    if plan is None:
         return True
 
-    sub = CompanySubscription.objects.filter(
-        company=company,
-        status__in=("active", "trial"),
-    ).select_related("plan").first()
-
-    if not sub:
-        return True
-
-    plan = sub.plan
     if check_type == "job_posting":
         limit = plan.job_posting_limit
         if limit and current_count >= limit:
@@ -65,6 +83,33 @@ def check_entitlement(company, check_type, current_count=0, feature=None):
                     f"Your plan ({plan.name}) does not include '{feature}'. Contact admin to upgrade."
                 )
     return True
+
+
+def check_entitlement_for(subject, check_type, current_count=0, feature=None):
+    """Unified entitlement gate for ANY subject (individual User or Company).
+
+    check_type:
+        "job_posting"      — gated by plan.job_posting_limit
+        "candidate_search" — gated by plan.candidate_search_limit
+        "ai_feature"       — gated by plan.ai_features_enabled
+        "feature"          — gated by plan.feature_flags[feature] (admin-configurable)
+    current_count: how many the subject has already used (count-limited types)
+    feature: feature-flag key (required when check_type == "feature")
+
+    Returns True if allowed, raises PermissionDenied if not. No active
+    subscription => allowed (platform stays usable while admins configure plans).
+    """
+    return _gate_plan(resolve_active_plan(subject), check_type, current_count, feature)
+
+
+def check_entitlement(company, check_type, current_count=0, feature=None):
+    """Backward-compatible company-scoped gate.
+
+    Thin wrapper over the unified ``check_entitlement_for`` so existing callers
+    that pass a Company keep working unchanged. New code can call
+    ``check_entitlement_for`` with either a User or a Company.
+    """
+    return check_entitlement_for(company, check_type, current_count, feature)
 
 
 def feature_is_disabled(flags, feature) -> bool:
