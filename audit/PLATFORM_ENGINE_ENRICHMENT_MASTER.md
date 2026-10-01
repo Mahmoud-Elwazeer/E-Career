@@ -602,3 +602,39 @@ iCIMS had a correct tenant-scoped connector but was never in the orchestrator di
 `RecommendationEngine._calculate_content_score` was a THIRD parallel skill/experience/location formula (Jaccard + own weights) diverging from the engine. Now delegates to `unified_matching_engine.score` normalized 0-1 (skill-Jaccard fallback only if the engine can't run for a profile), so a job's fit reads consistently in Recommendations, search, detail, and the match report.
 
 Net effect: the "different score on different pages" fragmentation is closed across candidate-side matching + recommendations. (Employer-side ranking_service keeps its own weights intentionally — it scores candidates-for-a-job with knockout/education factors, a legitimately different computation.)
+
+
+---
+
+## PHASE 0 AUDIT — Financial / Payments / Billing / Org architecture (2026-10-01)
+
+Audit before any build (per the multi-audience + financial directive). KEY FINDING: a production-grade financial subsystem ALREADY EXISTS in `backend/apps/payments/` — this is extend-and-connect work, NOT a rebuild. Open-source financial tools (Formance/Blnk/Kill Bill/Midaz) are NOT needed — the native ledger already does double-entry.
+
+### What already exists (REAL, not stubs)
+- **Provider adapter layer** `apps/payments/providers/base.py`: abstract `PaymentProvider` (create_payment/verify_payment/refund_payment/parse_webhook) + `get_provider(name)` factory. **Stripe adapter = real** (hosted Checkout, signature-verified webhooks, refunds). **AlexBank adapter = real scaffold** that raises "awaiting contract" until credentials land (never fakes success).
+- **Commerce domain** `apps/payments/models.py`: `Package` (sellable product, audience individual|employer, platform_code, minor-units price, entitlement_plan FK), `Coupon`, `Order` (unique namespaced reference, status machine), `Payment` (explicit state-machine TRANSITIONS, provider_reference, ledger_transaction FK), `PaymentAttempt`, `Invoice`+`InvoiceItem`, `Refund`, `WebhookEvent`, `AdjustmentRequest`, `FinancialAuditLog`, `IdempotencyKey`.
+- **Double-entry ledger** `apps/payments/models_ledger.py` + `ledger.py`: `LedgerAccount` (kind asset/liability/revenue/refund/fees/escrow; balance DERIVED, never mutable), `LedgerTransaction` (unique idempotency_key, is_balanced), `LedgerEntry` (signed minor units, immutable). Money ALWAYS integer minor units + ISO currency.
+- **Purchase flow** `apps/payments/services.py`: `create_order` → `mark_order_paid` (atomic, idempotent: posts balanced ledger txn, links payment, creates invoice, grants entitlement, writes audit log). Backend verification is authoritative, not frontend redirect.
+- **Reconciliation** `apps/payments/analytics.py::reconcile()` — real: compares Orders/Payments/Ledger, emits exceptions (missing_ledger/amount_mismatch/orphan_ledger/status_mismatch), optional provider cross-check. Ledger (not provider) is source of truth.
+- **Entitlements** `apps/core/models.py` SubscriptionPlan (feature_flags, job/candidate limits, ai_features_enabled) + CompanySubscription; gated by `apps/core/permissions.py::check_entitlement` (already used by employer views + talent pools). Company-scoped.
+- **Admin Financial Control Center** `apps/payments/admin_views.py` (IsAdminRole): overview/ledger/reconciliation/transactions/refund/adjustments(dual-control)/subscriptions/exports(CSV,XLSX,PDF)/AI(NL→real analytics)/audit. Frontend `AdminFinance.tsx` consumes it with REAL data (react-query, platform filter, KPIs, refund button, AI box).
+- **Webhooks** `apps/payments/views.py::WebhookView` — signature-verified, deduped via WebhookEvent unique(provider,event_id), replay-safe, calls idempotent mark_order_paid.
+- **Secrets** `apps/payments/secrets.py` — **AWS Secrets Manager already the default** (boto3, PAYMENTS_SECRET_ID bundle, env fallback). Key NAMES: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, ALEXBANK_MERCHANT_ID/API_KEY/BASE_URL, PAYMENTS_SUCCESS_URL/CANCEL_URL.
+- **Identity/org**: `accounts.User.role` single-valued (jobseeker/employer/admin); `employers.EmployerProfile` + `EmployerTeamMember` (owner/admin/recruiter/hiring_manager/viewer); company = `jobs.Company`. NO separate Organization/Institution/Government entity or multi-workspace/active-context yet.
+
+### Open-source tool verdicts (per directive §35)
+- Formance / Blnk / Midaz → **DO NOT USE** — native double-entry ledger already exists; adding one duplicates the source of truth (directive forbids multiple ledgers).
+- Kill Bill → **DO NOT USE now** — subscriptions are modeled (Package.interval + CompanySubscription); no evidence current billing is insufficient.
+- AWS Secrets Manager → **KEEP** — already integrated.
+- Vault → **DO NOT USE** — Secrets Manager already covers it; no advantage.
+- Saleor Dashboard → **REFERENCE ONLY** — UX patterns for AdminFinance tables/filters.
+
+### Genuine gaps (real work, if prioritized)
+1. **AlexBank live integration** — BLOCKED on bank credentials/spec (directive §11 says ask, don't guess). Need: merchant/API creds, sandbox+prod endpoints, signature/3DS spec, webhook/callback format, refund+reconciliation API, supported currencies. Scaffold + factory + secrets already wired.
+2. **Individual entitlements** — only company-scoped today (acknowledged gap in services).
+3. **Government/Institution** — no org entity beyond employer Company; would be a new Organization type if a real program exists.
+4. **feature_flags shape bug** — SubscriptionPlan.feature_flags is a list on the model but check_entitlement reads it as a dict (`.get(feature) is False`); reconcile before adding flags.
+5. Business/Institution dedicated landing pages (frontend only).
+
+### Decision
+No financial rebuild. The directive's "build a financial architecture" is ALREADY SATISFIED. Next real increments are config/connection (AlexBank creds) + the frontend org-experience separation already in progress — not new ledger/payment infra.
