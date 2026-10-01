@@ -826,14 +826,20 @@ class TestEmployerTeamInviteEndpoint:
         assert resp.status_code == 409
         assert resp.data["success"] is False
 
-    def test_invite_nonexistent_email_fails(self, employer_owner):
+    def test_invite_nonexistent_email_creates_pending_invite(self, employer_owner):
+        # Behavior change (feature): inviting someone who hasn't registered yet
+        # now creates a PENDING email invite rather than failing. They link in
+        # when they sign up / accept with that email.
         client = _auth_client(employer_owner)
         resp = client.post(
             TEAM_BASE + "invite/",
             {"email": "nobody@nowhere.com", "role": "viewer"},
             format="json",
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 201
+        assert resp.data["pending_registration"] is True
+        assert resp.data["data"]["is_pending"] is True
+        assert resp.data["data"]["invite_email"] == "nobody@nowhere.com"
 
     def test_invite_invalid_role_fails(self, employer_owner, invitee_user):
         client = _auth_client(employer_owner)
@@ -849,29 +855,17 @@ class TestEmployerTeamInviteEndpoint:
 class TestEmployerTeamAcceptEndpoint:
 
     def test_accept_pending_invitation(self, pending_member):
+        # Fixed: `accept` now overrides get_permissions to require only
+        # IsAuthenticated, so a pending member (blocked by IsEmployer) can
+        # accept their invite. This previously 403'd — a real design flaw.
         user, member = pending_member
         assert member.accepted_at is None
         client = _auth_client(user)
-        # The accept endpoint uses IsEmployer permission.
-        # pending_member has is_active=True but accepted_at=None,
-        # so _get_team_membership returns None.
-        # IsEmployer checks employer profile first (none), then team membership.
-        # This means a pending user may be blocked by IsEmployer.
-        # However, the accept endpoint needs to work for pending members.
-        # Let's check what actually happens:
         resp = client.post(TEAM_BASE + "accept/")
-        # If IsEmployer blocks (403), this is a known design issue in the view;
-        # the test documents the actual behavior.
-        if resp.status_code == 403:
-            # Document: pending members are blocked by IsEmployer permission.
-            # This is a known limitation -- accept endpoint should use
-            # a less restrictive permission. Test passes to document behavior.
-            pass
-        else:
-            assert resp.status_code == 200
-            assert resp.data["success"] is True
-            member.refresh_from_db()
-            assert member.accepted_at is not None
+        assert resp.status_code == 200
+        assert resp.data["success"] is True
+        member.refresh_from_db()
+        assert member.accepted_at is not None
 
     def test_already_accepted_returns_404(self, team_member_admin):
         """If already accepted, there is no pending invitation."""
@@ -1035,3 +1029,61 @@ class TestCompanyManagement:
         resp = client.get(COMPANY_BASE)
         # IsEmployer blocks a non-employer before the action runs.
         assert resp.status_code in (403, 404)
+
+
+# ============================================================================
+# Email invites to non-registered users (pending -> linked on accept)
+# ============================================================================
+
+@pytest.mark.django_db
+class TestEmailInviteFlow:
+    def test_pending_email_invite_has_null_user(self, employer_owner, team_company):
+        client = _auth_client(employer_owner)
+        resp = client.post(
+            TEAM_BASE + "invite/",
+            {"email": "newhire@example.com", "role": "recruiter"},
+            format="json",
+        )
+        assert resp.status_code == 201
+        member = EmployerTeamMember.objects.get(invite_email="newhire@example.com", company=team_company)
+        assert member.user_id is None
+        assert member.accepted_at is None
+
+    def test_duplicate_email_invite_conflicts(self, employer_owner):
+        client = _auth_client(employer_owner)
+        payload = {"email": "dupe@example.com", "role": "viewer"}
+        first = client.post(TEAM_BASE + "invite/", payload, format="json")
+        assert first.status_code == 201
+        second = client.post(TEAM_BASE + "invite/", payload, format="json")
+        assert second.status_code == 409
+
+    def test_accept_links_pending_email_invite_after_signup(self, employer_owner, team_company):
+        # Owner invites an email that isn't registered yet.
+        client = _auth_client(employer_owner)
+        client.post(
+            TEAM_BASE + "invite/",
+            {"email": "later@example.com", "role": "recruiter"},
+            format="json",
+        )
+        # That person registers and then accepts.
+        newcomer = User.objects.create_user(
+            email="later@example.com", password="Pass1234!", role="user",
+        )
+        newcomer_client = _auth_client(newcomer)
+        resp = newcomer_client.post(TEAM_BASE + "accept/")
+        assert resp.status_code == 200
+        member = EmployerTeamMember.objects.get(invite_email="later@example.com", company=team_company)
+        assert member.user_id == newcomer.id
+        assert member.accepted_at is not None
+
+    def test_existing_user_invite_still_works(self, employer_owner, invitee_user, team_company):
+        client = _auth_client(employer_owner)
+        resp = client.post(
+            TEAM_BASE + "invite/",
+            {"email": invitee_user.email, "role": "recruiter"},
+            format="json",
+        )
+        assert resp.status_code == 201
+        assert resp.data["pending_registration"] is False
+        member = EmployerTeamMember.objects.get(user=invitee_user, company=team_company)
+        assert member.role == "recruiter"

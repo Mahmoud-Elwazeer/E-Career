@@ -182,6 +182,60 @@ export const updateManagedCompany = async (
   });
 };
 
+// ── Team management (multi-seat) ─────────────────────────────────────────────
+export type TeamRole = 'owner' | 'admin' | 'recruiter' | 'hiring_manager' | 'viewer';
+
+export interface TeamMember {
+  id: number;
+  user_email: string | null;
+  user_name: string | null;
+  company_name: string;
+  invite_email: string;
+  role: TeamRole;
+  role_display: string;
+  invited_by_email: string | null;
+  invited_at: string;
+  accepted_at: string | null;
+  is_active: boolean;
+  is_pending: boolean;
+}
+
+interface TeamListResponse { success: boolean; data: TeamMember[] }
+interface TeamMemberResponse { success: boolean; data: TeamMember; pending_registration?: boolean }
+
+export const listTeamMembers = async (): Promise<TeamMember[]> => {
+  const res = await apiRequest<TeamListResponse>('/employer/team/');
+  return res.data;
+};
+
+export const inviteTeamMember = async (
+  email: string,
+  role: Exclude<TeamRole, 'owner'>,
+): Promise<TeamMemberResponse> => {
+  return apiRequest<TeamMemberResponse>('/employer/team/invite/', {
+    method: 'POST',
+    body: { email, role },
+  });
+};
+
+export const acceptTeamInvite = async (): Promise<TeamMemberResponse> => {
+  return apiRequest<TeamMemberResponse>('/employer/team/accept/', { method: 'POST' });
+};
+
+export const updateTeamMemberRole = async (
+  id: number,
+  role: Exclude<TeamRole, 'owner'>,
+): Promise<TeamMemberResponse> => {
+  return apiRequest<TeamMemberResponse>(`/employer/team/${id}/`, {
+    method: 'PATCH',
+    body: { role },
+  });
+};
+
+export const removeTeamMember = async (id: number): Promise<void> => {
+  await apiRequest(`/employer/team/${id}/`, { method: 'DELETE' });
+};
+
 // Company Search
 export const searchCompanies = async (query: string): Promise<{ companies: Company[] }> => {
   return apiRequest('/employer/companies/search/', { params: { q: query } });

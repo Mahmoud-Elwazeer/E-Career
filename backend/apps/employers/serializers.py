@@ -463,23 +463,34 @@ class AddCandidateSerializer(serializers.Serializer):
 
 
 class EmployerTeamMemberSerializer(serializers.ModelSerializer):
-    user_email = serializers.EmailField(source='user.email', read_only=True)
+    # Null-safe: a pending email invite has no linked user yet.
+    user_email = serializers.SerializerMethodField()
     user_name = serializers.SerializerMethodField()
     company_name = serializers.CharField(source='company.name', read_only=True)
     role_display = serializers.CharField(source='get_role_display', read_only=True)
     invited_by_email = serializers.EmailField(source='invited_by.email', read_only=True)
+    is_pending = serializers.SerializerMethodField()
 
     class Meta:
         model = EmployerTeamMember
         fields = [
-            'id', 'user_email', 'user_name', 'company_name',
+            'id', 'user_email', 'user_name', 'company_name', 'invite_email',
             'role', 'role_display', 'invited_by_email',
-            'invited_at', 'accepted_at', 'is_active',
+            'invited_at', 'accepted_at', 'is_active', 'is_pending',
         ]
-        read_only_fields = ['invited_at', 'accepted_at']
+        read_only_fields = ['invited_at', 'accepted_at', 'invite_email']
+
+    def get_user_email(self, obj):
+        return obj.user.email if obj.user_id else (obj.invite_email or None)
 
     def get_user_name(self, obj):
-        return obj.user.get_full_name() or obj.user.email
+        if obj.user_id:
+            return obj.user.get_full_name() or obj.user.email
+        return obj.invite_email or None
+
+    def get_is_pending(self, obj):
+        # Pending = invited but not yet accepted (or user not yet registered).
+        return obj.accepted_at is None
 
 
 class EmployerTeamInviteSerializer(serializers.Serializer):
@@ -487,8 +498,5 @@ class EmployerTeamInviteSerializer(serializers.Serializer):
     role = serializers.ChoiceField(
         choices=['admin', 'recruiter', 'hiring_manager', 'viewer'],
     )
-
-    def validate_email(self, value):
-        if not User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("No user with this email address exists on the platform.")
-        return value
+    # Note: a non-registered email is allowed — it becomes a pending invite that
+    # links to the user when they sign up / accept with that email.

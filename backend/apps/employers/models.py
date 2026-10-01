@@ -63,11 +63,18 @@ class EmployerTeamMember(models.Model):
         ('viewer', 'Viewer'),
     ]
 
+    # user is NULL for a pending email invite to someone who hasn't signed up
+    # yet; it is linked when they register/accept with that email.
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
         on_delete=models.CASCADE,
         related_name='employer_team_memberships',
     )
+    # The email a pending invite was sent to (set when user is NULL, and kept
+    # for audit once linked). Lets us invite people who aren't registered yet.
+    invite_email = models.EmailField(blank=True, db_index=True)
     company = models.ForeignKey(
         'jobs.Company',
         on_delete=models.CASCADE,
@@ -92,7 +99,8 @@ class EmployerTeamMember(models.Model):
         verbose_name_plural = 'Employer Team Members'
 
     def __str__(self):
-        return f"{self.user.email} @ {self.company.name} ({self.role})"
+        who = self.user.email if self.user_id else (self.invite_email or 'pending')
+        return f"{who} @ {self.company.name} ({self.role})"
 
 class JobPosting(UUIDModel):
     """

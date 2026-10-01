@@ -302,7 +302,17 @@ class JobPostingViewSet(viewsets.ModelViewSet):
     GET /api/v1/employer/jobs/{id}/applicants/ - Get applicants
     """
     permission_classes = [IsAuthenticated, IsVerifiedEmployer]
-    
+
+    # Write actions additionally require the finer-grained CanPostJobs role
+    # (owner/admin/recruiter) — a hiring_manager/viewer can read but not create
+    # or mutate postings. Reads stay at IsVerifiedEmployer.
+    _WRITE_ACTIONS = {'create', 'update', 'partial_update', 'destroy', 'publish', 'close', 'reopen'}
+
+    def get_permissions(self):
+        if getattr(self, 'action', None) in self._WRITE_ACTIONS:
+            return [IsAuthenticated(), IsVerifiedEmployer(), CanPostJobs()]
+        return [IsAuthenticated(), IsVerifiedEmployer()]
+
     def get_queryset(self):
         return JobPosting.objects.filter(
             employer=self.request.user.employer_profile
@@ -503,7 +513,17 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
     """
     serializer_class = JobApplicationSerializer
     permission_classes = [IsAuthenticated, IsVerifiedEmployer]
-    
+
+    # Mutating an application (status update, shortlist, reject) additionally
+    # requires CanViewApplicants (owner/admin/recruiter/hiring_manager) at the
+    # object level — a viewer can list but not act on applicants.
+    _WRITE_ACTIONS = {'update', 'partial_update', 'shortlist', 'reject'}
+
+    def get_permissions(self):
+        if getattr(self, 'action', None) in self._WRITE_ACTIONS:
+            return [IsAuthenticated(), IsVerifiedEmployer(), CanViewApplicants()]
+        return [IsAuthenticated(), IsVerifiedEmployer()]
+
     def get_queryset(self):
         employer = self.request.user.employer_profile
         queryset = JobApplication.objects.filter(
@@ -931,6 +951,14 @@ class EmployerTeamViewSet(viewsets.ViewSet):
     """Manage employer team members (multi-seat hiring teams)."""
     permission_classes = [IsAuthenticated, IsEmployer]
 
+    def get_permissions(self):
+        # `accept` must be reachable by an invitee who is NOT yet an employer
+        # (their only membership is pending, so IsEmployer would wrongly block
+        # them). The action itself verifies a real pending invite exists.
+        if getattr(self, 'action', None) == 'accept':
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsEmployer()]
+
     def _get_company(self, user):
         if hasattr(user, 'employer_profile'):
             return user.employer_profile.company
@@ -986,30 +1014,60 @@ class EmployerTeamViewSet(viewsets.ViewSet):
 
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        target_user = User.objects.get(email=serializer.validated_data['email'])
+        email = serializer.validated_data['email']
+        role = serializer.validated_data['role']
+        target_user = User.objects.filter(email=email).first()
 
-        existing = EmployerTeamMember.objects.filter(user=target_user, company=company).first()
+        # Already a member (registered) or already an outstanding email invite?
+        if target_user:
+            existing = EmployerTeamMember.objects.filter(user=target_user, company=company).first()
+        else:
+            existing = EmployerTeamMember.objects.filter(
+                invite_email__iexact=email, company=company, user__isnull=True
+            ).first()
         if existing:
             return Response({
                 'success': False,
-                'error': 'User is already a team member.',
+                'error': 'This person is already invited or on the team.',
                 'data': EmployerTeamMemberSerializer(existing).data,
             }, status=status.HTTP_409_CONFLICT)
 
         member = EmployerTeamMember.objects.create(
-            user=target_user,
+            user=target_user,                       # None => pending email invite
+            invite_email='' if target_user else email,
             company=company,
-            role=serializer.validated_data['role'],
+            role=role,
             invited_by=request.user,
+        )
+        emit(
+            event_type=EMPLOYER_TEAM_INVITED,
+            category='employer',
+            user=request.user,
+            target_type='company',
+            target_id=str(company.id),
+            data={'email': email, 'role': role, 'registered': bool(target_user)},
+            request=request,
         )
         return Response({
             'success': True,
+            'pending_registration': not bool(target_user),
             'data': EmployerTeamMemberSerializer(member).data,
         }, status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['post'])
     def accept(self, request):
         from django.utils import timezone
+        # Link any pending email invite addressed to this user's email first,
+        # so someone invited before registering can accept after signing up.
+        pending_email_invites = EmployerTeamMember.objects.filter(
+            user__isnull=True, invite_email__iexact=request.user.email, is_active=True,
+        )
+        for inv in pending_email_invites:
+            # Respect the unique_together(user, company): skip if already linked.
+            if not EmployerTeamMember.objects.filter(user=request.user, company=inv.company).exists():
+                inv.user = request.user
+                inv.save(update_fields=['user'])
+
         membership = EmployerTeamMember.objects.filter(
             user=request.user, is_active=True, accepted_at__isnull=True
         ).first()
@@ -1017,6 +1075,15 @@ class EmployerTeamViewSet(viewsets.ViewSet):
             return Response({'success': False, 'error': 'No pending invitation.'}, status=status.HTTP_404_NOT_FOUND)
         membership.accepted_at = timezone.now()
         membership.save(update_fields=['accepted_at'])
+        emit(
+            event_type=EMPLOYER_TEAM_JOINED,
+            category='employer',
+            user=request.user,
+            target_type='company',
+            target_id=str(membership.company_id),
+            data={'role': membership.role},
+            request=request,
+        )
         return Response({'success': True, 'data': EmployerTeamMemberSerializer(membership).data})
 
     def partial_update(self, request, pk=None):

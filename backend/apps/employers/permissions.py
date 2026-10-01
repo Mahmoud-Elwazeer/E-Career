@@ -96,18 +96,48 @@ class CanPostJobs(permissions.BasePermission):
         return False
 
 
+def _resolve_posting(obj):
+    """Resolve the owning EmployerProfile + company_id from either a JobPosting
+    or a JobApplication (whose employer link is job.employer_posting).
+
+    Returns (employer_profile_or_None, company_id_or_None). This keeps the
+    permission usable on both the postings and the applications viewsets without
+    assuming one object shape.
+    """
+    # JobPosting-like: has a direct .employer / .company_id.
+    emp = getattr(obj, 'employer', None)
+    company_id = getattr(obj, 'company_id', None)
+    if emp is not None and company_id is not None:
+        return emp, company_id
+    # JobApplication-like: reach the employer posting through the mirrored job.
+    job = getattr(obj, 'job', None)
+    posting = getattr(job, 'employer_posting', None) if job is not None else None
+    if posting is not None:
+        return getattr(posting, 'employer', None), getattr(posting, 'company_id', None)
+    return None, None
+
+
 class CanViewApplicants(permissions.BasePermission):
     """
-    Check if employer can view applicants. Allows admin/recruiter/hiring_manager team members.
+    Check if employer can view/act on applicants. Allows admin/recruiter/
+    hiring_manager team members (and the company owner). Works for both a
+    JobPosting object and a JobApplication object.
     """
     message = "You do not have permission to view these applicants."
 
     def has_object_permission(self, request, view, obj):
         if not request.user.is_authenticated:
             return False
+        employer, company_id = _resolve_posting(obj)
+        if company_id is None:
+            return False
         if request.user.role in ['employer', 'admin'] and hasattr(request.user, 'employer_profile'):
-            return obj.employer.user == request.user
+            if employer is not None and getattr(employer, 'user_id', None) == request.user.id:
+                return True
+            # Owner by profile on the same company.
+            if request.user.employer_profile.company_id == company_id:
+                return True
         membership = _get_team_membership(request.user)
         if membership and membership.role in ('owner', 'admin', 'recruiter', 'hiring_manager'):
-            return membership.company_id == obj.company_id
+            return membership.company_id == company_id
         return False
