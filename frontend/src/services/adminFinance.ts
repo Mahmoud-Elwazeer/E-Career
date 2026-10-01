@@ -68,3 +68,36 @@ export interface AiAnswer {
 export async function askFinanceAi(question: string): Promise<AiAnswer> {
   return apiRequest<AiAnswer>(`/payments/admin/ai/`, { method: "POST", body: { question } });
 }
+
+// ── Platform registry (single source of truth for the platform filter) ───────
+export interface PlatformDef {
+  code: string;
+  name: string;
+  slug: string;
+  merchant_prefix: string;
+  default_currency: string;
+  status: string;
+  audience: string;
+  is_chargeable: boolean;
+}
+
+export async function getPlatformRegistry(): Promise<PlatformDef[]> {
+  const res = await apiRequest<{ success: boolean; data: PlatformDef[] }>(`/payments/admin/platforms/`);
+  return res?.data ?? [];
+}
+
+// ── Provider health (no outbound provider calls) ─────────────────────────────
+export interface ProviderHealth {
+  provider: string;
+  configured: boolean;
+  live_enabled: boolean;
+  missing_secrets: string[];
+  note?: string;
+}
+
+export async function getProviderHealth(): Promise<Record<string, ProviderHealth>> {
+  const res = await apiRequest<{ success: boolean; data: Record<string, ProviderHealth> }>(
+    `/payments/admin/provider-health/`,
+  );
+  return res?.data ?? {};
+}

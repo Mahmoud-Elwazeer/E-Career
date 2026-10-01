@@ -14,16 +14,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { formatMoney } from "@/services/billing";
-import { getOverview, getReconciliation, getAdminTransactions, issueRefund, askFinanceAi, type AiAnswer } from "@/services/adminFinance";
-import { Sparkles, RotateCcw } from "lucide-react";
+import {
+  getOverview, getReconciliation, getAdminTransactions, issueRefund, askFinanceAi,
+  getPlatformRegistry, getProviderHealth, type AiAnswer, type PlatformDef,
+} from "@/services/adminFinance";
+import { Sparkles, RotateCcw, ShieldCheck, ShieldAlert, Server } from "lucide-react";
 
-const PLATFORMS = [
-  { code: "", label: "All" },
-  { code: "C", label: "Career" },
-  { code: "E", label: "Education" },
-  { code: "F", label: "Freelancing" },
-  { code: "K", label: "Kids" },
-];
+// A reference is {PLATFORM}-{CATEGORY}-{YYYYMMDD}-{RANDOM} for new refs, or the
+// legacy 3-segment {PLATFORM}-{YYYYMMDD}-{RANDOM}. Surface the category segment
+// (PAY/REF/INV/SUB/ADJ/ORD/TXN) when present; empty for legacy refs.
+const KNOWN_CATEGORIES = new Set(["ORD", "PAY", "REF", "INV", "SUB", "ADJ", "TXN"]);
+function refCategory(reference: string): string {
+  const parts = (reference || "").split("-");
+  return parts.length >= 4 && KNOWN_CATEGORIES.has(parts[1]) ? parts[1] : "";
+}
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
@@ -68,6 +72,18 @@ export default function AdminFinance() {
     }
   };
 
+  // Platform filter is driven by the registry (single source of truth), not a
+  // hardcoded list — new USAM products appear here automatically.
+  const registry = useQuery({ queryKey: ["admin-fin-platforms"], queryFn: getPlatformRegistry });
+  const platforms: Array<{ code: string; label: string }> = [
+    { code: "", label: "All" },
+    ...(registry.data ?? []).map((p: PlatformDef) => ({ code: p.code, label: p.name })),
+  ];
+  const platformName = (code: string) =>
+    (registry.data ?? []).find((p) => p.code === code)?.name ?? code;
+
+  const providerHealth = useQuery({ queryKey: ["admin-fin-provider-health"], queryFn: getProviderHealth });
+
   const overview = useQuery({
     queryKey: ["admin-fin-overview", platform],
     queryFn: () => getOverview({ platform: platform || undefined }),
@@ -91,9 +107,9 @@ export default function AdminFinance() {
         description="Live revenue, transactions and reconciliation across USAM products."
       />
 
-      {/* Platform filter */}
+      {/* Platform filter — options come from the registry endpoint */}
       <div className="mb-6 flex flex-wrap items-center gap-2">
-        {PLATFORMS.map((p) => (
+        {platforms.map((p) => (
           <button
             key={p.code}
             onClick={() => setPlatform(p.code)}
@@ -104,10 +120,45 @@ export default function AdminFinance() {
             {p.label}
           </button>
         ))}
-        <Button variant="outline" size="sm" className="ms-auto gap-1.5" onClick={() => { overview.refetch(); recon.refetch(); txns.refetch(); }}>
+        <Button variant="outline" size="sm" className="ms-auto gap-1.5" onClick={() => { overview.refetch(); recon.refetch(); txns.refetch(); providerHealth.refetch(); }}>
           <RefreshCw className="h-3.5 w-3.5" /> Refresh
         </Button>
       </div>
+
+      {/* Provider health — adapter readiness (no outbound provider calls) */}
+      <Card className="mb-6">
+        <CardContent className="p-5">
+          <div className="mb-3 flex items-center gap-2 text-body font-medium">
+            <Server className="h-4 w-4 text-primary" /> Payment provider health
+          </div>
+          {providerHealth.isLoading ? (
+            <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {Object.values(providerHealth.data ?? {}).map((h) => (
+                <div key={h.provider} className="rounded-xl border border-border px-4 py-3 min-w-[200px]">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-body font-medium capitalize">{h.provider}</span>
+                    {h.live_enabled ? (
+                      <span className="inline-flex items-center gap-1 text-caption text-success"><ShieldCheck className="h-3.5 w-3.5" /> live</span>
+                    ) : h.configured ? (
+                      <span className="inline-flex items-center gap-1 text-caption text-warning-foreground"><ShieldAlert className="h-3.5 w-3.5" /> configured</span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-caption text-muted-foreground"><ShieldAlert className="h-3.5 w-3.5" /> not configured</span>
+                    )}
+                  </div>
+                  {h.missing_secrets.length > 0 && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">Missing: {h.missing_secrets.join(", ")}</p>
+                  )}
+                </div>
+              ))}
+              {Object.keys(providerHealth.data ?? {}).length === 0 && (
+                <p className="text-caption text-muted-foreground">No provider health data.</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* AI financial workspace — read-only, answers from real analytics */}
       <Card className="mb-6">
@@ -162,7 +213,7 @@ export default function AdminFinance() {
               {o.revenue_by_platform.length === 0 ? <p className="text-caption text-muted-foreground">No revenue yet.</p> :
                 o.revenue_by_platform.map((r) => (
                   <div key={r.platform_code} className="flex items-center justify-between py-1 text-caption">
-                    <span>{r.platform_code}</span><span className="font-mono-data">{money(r.total)} ({r.count})</span>
+                    <span>{platformName(r.platform_code)}</span><span className="font-mono-data">{money(r.total)} ({r.count})</span>
                   </div>
                 ))}
             </CardContent></Card>
@@ -229,8 +280,15 @@ export default function AdminFinance() {
                   <tbody>
                     {(txns.data ?? []).map((t) => (
                       <tr key={t.reference} className="border-b last:border-0">
-                        <td className="p-3 font-mono-data text-caption">{t.reference}</td>
-                        <td className="p-3">{t.platform}</td>
+                        <td className="p-3 font-mono-data text-caption">
+                          {t.reference}
+                          {refCategory(t.reference) && (
+                            <span className="ms-2 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                              {refCategory(t.reference)}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3">{platformName(t.platform)}</td>
                         <td className="p-3">{t.package}</td>
                         <td className="p-3 font-mono-data">{formatMoney(t.amount, t.currency)}</td>
                         <td className="p-3">{t.status}</td>

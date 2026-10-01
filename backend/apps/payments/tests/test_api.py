@@ -67,3 +67,45 @@ def test_order_status_owner_only(auth_client, user):
 def test_webhook_unknown_provider_rejected():
     resp = APIClient().post("/api/v1/payments/webhooks/notaprovider/", {}, format="json")
     assert resp.status_code == 400
+
+
+# ============================================================================
+# Admin Finance multi-platform control center (registry + provider health)
+# ============================================================================
+
+@pytest.fixture
+def admin_user():
+    return User.objects.create_user(email="finadmin@test.com", password="pw12345x", role="admin")
+
+
+@pytest.fixture
+def admin_client(admin_user):
+    c = APIClient()
+    c.force_authenticate(user=admin_user)
+    return c
+
+
+def test_platform_registry_endpoint_returns_all_platforms(admin_client):
+    resp = admin_client.get("/api/v1/payments/admin/platforms/")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    codes = {p["code"] for p in data}
+    assert {"C", "E", "F", "K"} <= codes
+    career = next(p for p in data if p["code"] == "C")
+    assert career["name"] == "Career"
+    assert career["merchant_prefix"] == "USAM-CAREER"
+
+
+def test_provider_health_endpoint_reports_alexbank(admin_client):
+    resp = admin_client.get("/api/v1/payments/admin/provider-health/")
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert "alexbank" in data
+    assert data["alexbank"]["live_enabled"] is False  # blocked until bank contract
+
+
+def test_admin_finance_endpoints_require_admin(user):
+    # A non-admin must not reach the registry or provider-health endpoints.
+    c = APIClient(); c.force_authenticate(user=user)
+    assert c.get("/api/v1/payments/admin/platforms/").status_code == 403
+    assert c.get("/api/v1/payments/admin/provider-health/").status_code == 403
