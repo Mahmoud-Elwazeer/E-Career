@@ -40,6 +40,9 @@ EMPLOYER_JOB_UPDATED = "employer_job_updated"
 EMPLOYER_JOB_CLOSED = "employer_job_closed"
 EMPLOYER_CANDIDATE_VIEWED = "employer_candidate_viewed"
 EMPLOYER_CANDIDATE_SHORTLISTED = "employer_candidate_shortlisted"
+EMPLOYER_VERIFICATION_REQUESTED = "employer_verification_requested"
+EMPLOYER_TEAM_INVITED = "employer_team_invited"
+EMPLOYER_TEAM_JOINED = "employer_team_joined"
 
 # System Events
 SCRAPER_RUN_STARTED = "scraper_run_started"

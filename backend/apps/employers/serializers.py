@@ -22,9 +22,13 @@ class EmployerProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'user_email', 'user_name', 'company', 'company_id',
             'job_title', 'phone', 'is_verified', 'verified_at',
+            'verification_requested_at', 'verification_note',
             'created_at'
         ]
-        read_only_fields = ['id', 'is_verified', 'verified_at', 'created_at']
+        read_only_fields = [
+            'id', 'is_verified', 'verified_at', 'verification_requested_at',
+            'created_at',
+        ]
 
 
 class EmployerProfileWriteSerializer(serializers.ModelSerializer):

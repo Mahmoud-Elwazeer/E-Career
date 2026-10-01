@@ -32,7 +32,14 @@ class EmployerProfile(models.Model):
         on_delete=models.SET_NULL,
         related_name='employer_verifications_done'
     )
-    
+    # Self-serve verification request: persisted so admins have a real queue to
+    # act on and the employer can see their request was received (not a no-op).
+    verification_requested_at = models.DateTimeField(null=True, blank=True)
+    verification_note = models.TextField(
+        blank=True,
+        help_text="Optional context the employer provides when requesting verification",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:

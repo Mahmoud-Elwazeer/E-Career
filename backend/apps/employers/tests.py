@@ -928,3 +928,44 @@ class TestEmployerTeamDeleteEndpoint:
         client = _auth_client(employer_owner)
         resp = client.delete(f"{TEAM_BASE}99999/")
         assert resp.status_code == 404
+
+
+# ============================================================================
+# Employer verification request (self-serve, persisted + event-emitting)
+# ============================================================================
+
+PROFILE_BASE = "/api/v1/employer/profile/"
+
+
+@pytest.mark.django_db
+class TestRequestVerification:
+    def test_request_verification_persists_timestamp(self, unverified_employer):
+        client = _auth_client(unverified_employer)
+        resp = client.post(PROFILE_BASE + "request_verification/",
+                            {"note": "Our domain is teamcorp.example.com"}, format="json")
+        assert resp.status_code == 200
+        assert resp.data["status"] == "pending"
+        unverified_employer.employer_profile.refresh_from_db()
+        prof = unverified_employer.employer_profile
+        assert prof.verification_requested_at is not None
+        assert prof.verification_note == "Our domain is teamcorp.example.com"
+
+    def test_request_verification_without_note(self, unverified_employer):
+        client = _auth_client(unverified_employer)
+        resp = client.post(PROFILE_BASE + "request_verification/", {}, format="json")
+        assert resp.status_code == 200
+        unverified_employer.employer_profile.refresh_from_db()
+        assert unverified_employer.employer_profile.verification_requested_at is not None
+
+    def test_already_verified_cannot_request(self, employer_owner):
+        # employer_owner fixture is is_verified=True.
+        client = _auth_client(employer_owner)
+        resp = client.post(PROFILE_BASE + "request_verification/", {}, format="json")
+        assert resp.status_code == 400
+
+    def test_profile_exposes_verification_requested_at(self, unverified_employer):
+        client = _auth_client(unverified_employer)
+        client.post(PROFILE_BASE + "request_verification/", {}, format="json")
+        resp = client.get(PROFILE_BASE)
+        assert resp.status_code == 200
+        assert resp.data["verification_requested_at"] is not None

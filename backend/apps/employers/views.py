@@ -49,6 +49,9 @@ from apps.events.types import (
     EMPLOYER_JOB_CLOSED,
     EMPLOYER_CANDIDATE_VIEWED,
     EMPLOYER_CANDIDATE_SHORTLISTED,
+    EMPLOYER_VERIFICATION_REQUESTED,
+    EMPLOYER_TEAM_INVITED,
+    EMPLOYER_TEAM_JOINED,
 )
 
 
@@ -135,7 +138,13 @@ class EmployerProfileViewSet(viewsets.ModelViewSet):
     
     @action(detail=False, methods=['post'])
     def request_verification(self, request):
-        """Request employer verification"""
+        """Request employer verification.
+
+        Persists the request (timestamp + optional note) so admins have a real
+        queue to act on and the employer can see it was received, and emits an
+        event so the admin/notification layer is informed. Admin approval still
+        happens via the admin surface (sets is_verified + verified_at/by).
+        """
         try:
             employer = request.user.employer_profile
         except EmployerProfile.DoesNotExist:
@@ -143,20 +152,33 @@ class EmployerProfileViewSet(viewsets.ModelViewSet):
                 {'error': 'Employer profile not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
-        
+
         if employer.is_verified:
             return Response(
                 {'error': 'Already verified'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # In a real system, this would trigger a notification to admins
-        # For now, we just mark that they requested it
-        # Admin will verify through Django admin
-        
+
+        note = (request.data.get('note') or '').strip()[:2000]
+        employer.verification_requested_at = timezone.now()
+        if note:
+            employer.verification_note = note
+        employer.save(update_fields=['verification_requested_at', 'verification_note'])
+
+        emit(
+            event_type=EMPLOYER_VERIFICATION_REQUESTED,
+            category='employer',
+            user=request.user,
+            target_type='company',
+            target_id=str(employer.company_id),
+            data={'company': employer.company.name, 'note': note},
+            request=request,
+        )
+
         return Response({
             'message': 'Verification request submitted. An admin will review your profile.',
-            'status': 'pending'
+            'status': 'pending',
+            'requested_at': employer.verification_requested_at.isoformat(),
         })
     
     @action(detail=False, methods=['get'])

@@ -20,6 +20,8 @@ export interface EmployerProfile {
   phone: string;
   is_verified: boolean;
   verified_at: string | null;
+  verification_requested_at: string | null;
+  verification_note: string;
   created_at: string;
 }
 
@@ -122,8 +124,13 @@ export const updateEmployerProfile = async (data: {
   return apiRequest('/employer/profile/', { method: 'PUT', body: data });
 };
 
-export const requestVerification = async (): Promise<{ message: string; status: string }> => {
-  return apiRequest('/employer/profile/request_verification/', { method: 'POST' });
+export const requestVerification = async (
+  note?: string,
+): Promise<{ message: string; status: string; requested_at?: string }> => {
+  return apiRequest('/employer/profile/request_verification/', {
+    method: 'POST',
+    body: note ? { note } : {},
+  });
 };
 
 export const getEmployerStats = async (): Promise<EmployerStats> => {

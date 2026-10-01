@@ -2,12 +2,13 @@
  * Employer Dashboard Page
  * Phase 3A: Employer Portal — token-based, shell-consistent, bilingual.
  */
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate } from "react-router-dom";
 import {
-  Plus, Briefcase, Users, Eye, Clock, AlertCircle, Search, Loader2, RotateCcw,
+  Plus, Briefcase, Users, Eye, Clock, AlertCircle, Search, Loader2, RotateCcw, CheckCircle2,
 } from "lucide-react";
-import { getEmployerProfile, getEmployerStats, getJobPostings } from "@/services/employer";
+import { getEmployerProfile, getEmployerStats, getJobPostings, requestVerification } from "@/services/employer";
 import { AppShell } from "@/components/shells/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { StatCard } from "@/components/StatCard";
@@ -26,6 +27,8 @@ const statusBadgeClass: Record<string, string> = {
 export default function EmployerDashboard() {
   const { lang } = useTheme();
   const isAr = lang === "ar";
+  const queryClient = useQueryClient();
+  const [verifyNote, setVerifyNote] = useState("");
 
   const {
     data: profile,
@@ -37,6 +40,13 @@ export default function EmployerDashboard() {
     queryKey: ["employer-profile"],
     queryFn: getEmployerProfile,
     retry: false,
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: (note?: string) => requestVerification(note),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["employer-profile"] });
+    },
   });
 
   const { data: stats } = useQuery({
@@ -92,27 +102,68 @@ export default function EmployerDashboard() {
     );
   }
 
-  // Pending verification
+  // Pending verification — actionable: the employer can submit a real
+  // verification request (persisted + emits an admin event), and the screen
+  // reflects whether a request is already on record.
   if (!profile?.is_verified) {
+    const alreadyRequested = Boolean(profile?.verification_requested_at) || verifyMutation.isSuccess;
     return (
       <AppShell>
         <div className="page-shell flex items-center justify-center py-20">
           <div className="surface-card max-w-md text-center p-8">
             <div className="w-16 h-16 bg-warning/15 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clock className="w-8 h-8 text-warning-foreground" />
+              {alreadyRequested ? (
+                <CheckCircle2 className="w-8 h-8 text-success" />
+              ) : (
+                <Clock className="w-8 h-8 text-warning-foreground" />
+              )}
             </div>
             <h2 className="text-heading-2 mb-3">
-              {isAr ? "قيد المراجعة" : "Verification pending"}
+              {alreadyRequested
+                ? (isAr ? "تم استلام طلبك" : "Verification requested")
+                : (isAr ? "التحقق مطلوب" : "Verify your company")}
             </h2>
-            <p className="text-body text-muted-foreground mb-6">
-              {isAr
-                ? "حساب صاحب العمل الخاص بك قيد المراجعة. سنُعلمك فور الموافقة."
-                : "Your employer account is pending verification. We'll notify you once approved."}
+            <p className="text-body text-muted-foreground mb-4">
+              {alreadyRequested
+                ? (isAr
+                    ? "طلب التحقق قيد المراجعة من قبل الإدارة. سنُعلمك فور الموافقة."
+                    : "Your verification request is being reviewed. We'll notify you once approved.")
+                : (isAr
+                    ? "قبل نشر الوظائف، اطلب التحقق من شركتك. يمكنك إضافة أي معلومات تساعد المراجعة."
+                    : "Before posting jobs, request verification for your company. Add any context that helps the review.")}
             </p>
-            <p className="text-caption text-muted-foreground">
+            <p className="text-caption text-muted-foreground mb-5">
               {isAr ? "الشركة: " : "Company: "}
               <span className="font-medium text-foreground">{profile?.company?.name}</span>
             </p>
+
+            {!alreadyRequested && (
+              <div className="text-start">
+                <textarea
+                  value={verifyNote}
+                  onChange={(e) => setVerifyNote(e.target.value)}
+                  rows={3}
+                  placeholder={isAr
+                    ? "اختياري: نطاق الشركة، موقعها، أو أي دليل يدعم التحقق"
+                    : "Optional: company domain, website, or any evidence to support verification"}
+                  className="w-full px-4 py-3 border border-input rounded-lg focus:ring-2 focus:ring-ring mb-3 text-body"
+                />
+                {verifyMutation.isError && (
+                  <p className="text-caption text-destructive mb-3">
+                    {(verifyMutation.error as { message?: string } | null)?.message
+                      ?? (isAr ? "تعذّر إرسال الطلب." : "Could not submit the request.")}
+                  </p>
+                )}
+                <Button
+                  className="w-full gap-2"
+                  disabled={verifyMutation.isPending}
+                  onClick={() => verifyMutation.mutate(verifyNote.trim() || undefined)}
+                >
+                  {verifyMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {isAr ? "طلب التحقق" : "Request verification"}
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </AppShell>
