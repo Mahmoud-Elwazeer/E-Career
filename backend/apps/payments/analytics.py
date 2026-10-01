@@ -12,7 +12,25 @@ from datetime import timedelta
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 
+from . import platforms
 from .models import Order, Payment, Refund, LedgerAccount, WebhookEvent
+
+
+def _label_platforms(rows):
+    """Attach the registry's human-readable platform name to code-keyed rows.
+
+    `rows` are dicts from a `.values("platform_code")` aggregate. Unknown codes
+    (legacy/stray data) fall back to the raw code so a report never crashes.
+    """
+    out = []
+    for r in rows:
+        code = r.get("platform_code")
+        try:
+            r["platform_name"] = platforms.get(code).name if code else "Unknown"
+        except ValueError:
+            r["platform_name"] = code or "Unknown"
+        out.append(r)
+    return out
 
 
 def _apply_filters(qs, *, platform_code=None, currency=None, since=None, until=None):
@@ -65,7 +83,7 @@ def financial_overview(*, platform_code=None, currency=None, since=None, until=N
         "avg_transaction_value": int(gross / paid_orders.count()) if paid_orders.count() else 0,
         "transactions_today": paid_orders.filter(created_at__gte=day_ago).count(),
         "transactions_month": paid_orders.filter(created_at__gte=month_ago).count(),
-        "revenue_by_platform": list(
+        "revenue_by_platform": _label_platforms(
             paid_orders.values("platform_code").annotate(total=Sum("total"), count=Count("id")).order_by("-total")
         ),
         "revenue_by_currency": list(

@@ -16,21 +16,26 @@ from __future__ import annotations
 import secrets
 from datetime import datetime, timezone
 
+from . import platforms
+
 
 class Platform:
-    CAREER = "C"
-    EDUCATION = "E"
-    FREELANCING = "F"
-    KIDS = "K"
+    """Backward-compatible facade over the centralized ``platforms`` registry.
 
-    CHOICES = [
-        (CAREER, "Career"),
-        (EDUCATION, "Education"),
-        (FREELANCING, "Freelancing"),
-        (KIDS, "Kids"),
-    ]
+    Historically this held the hardcoded code list. The codes now live in ONE
+    place (``platforms._DEFS``); this class just re-exports them so every
+    existing consumer — model-field ``choices``/defaults, ``dict(CHOICES)``,
+    ``in ALL`` membership checks — keeps working unchanged.
+    """
 
-    ALL = {CAREER, EDUCATION, FREELANCING, KIDS}
+    CAREER = platforms.get_by_slug("career").code
+    EDUCATION = platforms.get_by_slug("education").code
+    FREELANCING = platforms.get_by_slug("freelancing").code
+    KIDS = platforms.get_by_slug("kids").code
+
+    CHOICES = platforms.choices()
+
+    ALL = set(platforms.codes())
 
 
 # Crockford base32 alphabet (excludes I, L, O, U to avoid confusion).
@@ -47,7 +52,7 @@ def generate_reference(platform_code: str, *, suffix_length: int = 8) -> str:
     Raises ValueError for an unknown platform code so a typo can never mint an
     unattributable financial reference.
     """
-    if platform_code not in Platform.ALL:
+    if not platforms.is_valid(platform_code):
         raise ValueError(f"Unknown platform code: {platform_code!r}")
     day = datetime.now(timezone.utc).strftime("%Y%m%d")
     return f"{platform_code}-{day}-{_random_suffix(suffix_length)}"

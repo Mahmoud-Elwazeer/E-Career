@@ -16,7 +16,7 @@ from rest_framework.response import Response
 
 from apps.core.permissions import IsAdminRole
 
-from . import analytics
+from . import analytics, platforms
 from .models import Payment, Order, WebhookEvent, FinancialAuditLog
 
 
@@ -174,7 +174,7 @@ def adjustments(request):
                 amount=request.data.get("amount"),
                 currency=request.data.get("currency", "EGP"),
                 reason=request.data.get("reason", ""),
-                platform_code=request.data.get("platform_code", "C"),
+                platform_code=request.data.get("platform_code", platforms.DEFAULT_CODE),
             )
         except (ValueError, TypeError) as e:
             return Response({"success": False, "message": str(e)}, status=400)
@@ -355,3 +355,25 @@ def audit_log(request):
         "after": a.after,
     } for a in FinancialAuditLog.objects.select_related("actor").order_by("-created_at")[:200]]
     return Response({"success": True, "data": rows})
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminRole])
+def platform_registry(request):
+    """The centralized Platform/Product registry.
+
+    Lets admin surfaces (e.g. the finance platform filter) be driven by the
+    single source of truth instead of hardcoding C/E/F/K. Read-only — platform
+    identity is structural and changes via code review, not an admin form.
+    """
+    data = [{
+        "code": p.code,
+        "name": p.name,
+        "slug": p.slug,
+        "merchant_prefix": p.merchant_prefix,
+        "default_currency": p.default_currency,
+        "status": p.status,
+        "audience": p.audience,
+        "is_chargeable": p.is_chargeable,
+    } for p in platforms.all_platforms()]
+    return Response({"success": True, "data": data})
