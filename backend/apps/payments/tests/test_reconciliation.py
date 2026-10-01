@@ -154,8 +154,11 @@ def test_reconcile_flags_amount_mismatch_on_unbalanced_ledger():
     # Corrupt the ledger so the transaction no longer balances.
     txn = pay.ledger_transaction
     entry = txn.entries.first()
-    entry.amount = entry.amount + 1  # breaks the sum-to-zero invariant
-    entry.save(update_fields=["amount"])
+    # Ledger entries are immutable at the model layer; simulate on-disk
+    # corruption via a raw queryset update (bypasses the save() guard) so the
+    # reconciler's balance check has something unbalanced to catch.
+    from apps.payments.models import LedgerEntry
+    LedgerEntry.objects.filter(pk=entry.pk).update(amount=entry.amount + 1)
     result = analytics.reconcile()
     types = {e["type"] for e in result["exceptions"]}
     assert "amount_mismatch" in types
@@ -179,3 +182,90 @@ def test_reconcile_flags_status_mismatch_succeeded_payment_on_unpaid_order():
     result = analytics.reconcile()
     msgs = [e for e in result["exceptions"] if e["type"] == "status_mismatch"]
     assert any("payment" in e for e in msgs)
+
+
+# ============================================================================
+# Ledger immutability (enforced, not just documented)
+# ============================================================================
+
+def test_ledger_entry_cannot_be_updated():
+    from apps.payments.models_ledger import LedgerImmutableError
+    get_or_create_account("imm:cash", name="Cash", kind="asset")
+    get_or_create_account("imm:rev", name="Rev", kind="revenue")
+    txn = post_transaction(
+        idempotency_key="imm-1",
+        postings=[Posting("imm:cash", 1000), Posting("imm:rev", -1000)],
+    )
+    entry = txn.entries.first()
+    entry.amount = 999
+    with pytest.raises(LedgerImmutableError):
+        entry.save()
+
+
+def test_ledger_entry_cannot_be_deleted():
+    from apps.payments.models_ledger import LedgerImmutableError
+    get_or_create_account("imm2:cash", name="Cash", kind="asset")
+    get_or_create_account("imm2:rev", name="Rev", kind="revenue")
+    txn = post_transaction(
+        idempotency_key="imm-2",
+        postings=[Posting("imm2:cash", 1000), Posting("imm2:rev", -1000)],
+    )
+    entry = txn.entries.first()
+    with pytest.raises(LedgerImmutableError):
+        entry.delete()
+
+
+def test_initial_entry_insert_still_works():
+    # The guard must not block the FIRST write (post_transaction creates entries).
+    get_or_create_account("imm3:cash", name="Cash", kind="asset")
+    get_or_create_account("imm3:rev", name="Rev", kind="revenue")
+    txn = post_transaction(
+        idempotency_key="imm-3",
+        postings=[Posting("imm3:cash", 500), Posting("imm3:rev", -500)],
+    )
+    assert txn.entries.count() == 2
+
+
+# ============================================================================
+# Orphan-ledger reconciliation
+# ============================================================================
+
+def test_reconcile_flags_orphan_ledger():
+    # A balanced ledger movement with NO linked order/refund/adjustment.
+    get_or_create_account("orph:cash", name="Cash", kind="asset")
+    get_or_create_account("orph:rev", name="Rev", kind="revenue")
+    post_transaction(
+        idempotency_key="orphan-1",
+        postings=[Posting("orph:cash", 1000), Posting("orph:rev", -1000)],
+        description="mystery movement",
+    )
+    result = analytics.reconcile()
+    types = {e["type"] for e in result["exceptions"]}
+    assert "orphan_ledger" in types
+
+
+def test_reconcile_does_not_flag_order_ledger_as_orphan():
+    # A normal paid order's ledger txn is linked via Payment -> not an orphan.
+    _paid_order("notorphan@test.com", amount=6000)
+    result = analytics.reconcile()
+    orphans = [e for e in result["exceptions"] if e["type"] == "orphan_ledger"]
+    assert orphans == []
+
+
+def test_reconcile_does_not_flag_approved_adjustment_as_orphan():
+    # An approved manual adjustment posts a ledger txn linked via
+    # AdjustmentRequest.ledger_transaction -> must NOT be flagged orphan.
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    requester = User.objects.create_user(email="adj-req@test.com", password="x")
+    approver = User.objects.create_user(email="adj-app@test.com", password="x")
+    get_or_create_account("adj:a", name="A", kind="asset")
+    get_or_create_account("adj:b", name="B", kind="revenue")
+    adj = services.request_adjustment(
+        requester=requester, account_code="adj:a", counter_account_code="adj:b",
+        amount=1000, currency="EGP", reason="correction",
+    )
+    services.approve_adjustment(adjustment=adj, approver=approver)
+    result = analytics.reconcile()
+    orphans = [e for e in result["exceptions"] if e["type"] == "orphan_ledger"]
+    assert orphans == []

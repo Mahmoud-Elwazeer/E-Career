@@ -83,12 +83,17 @@ class LedgerTransaction(UUIDModel):
         return int(agg["total"] or 0) == 0
 
 
+class LedgerImmutableError(Exception):
+    """Raised on any attempt to update or delete a posted ledger entry."""
+
+
 class LedgerEntry(UUIDModel):
     """An immutable signed posting to one account within a transaction.
 
     Positive `amount` credits the account balance; negative debits it. Entries
     are never updated or deleted — corrections are made with a reversing
-    transaction.
+    transaction. Immutability is now ENFORCED (not just documented): save() only
+    permits the initial insert, and delete() always raises.
     """
 
     transaction = models.ForeignKey(LedgerTransaction, on_delete=models.PROTECT,
@@ -106,6 +111,20 @@ class LedgerEntry(UUIDModel):
 
     def __str__(self):
         return f"{self.account.code} {self.amount:+d} {self.currency}"
+
+    def save(self, *args, **kwargs):
+        # Allow only the initial insert. An existing row in the DB means this is
+        # an update attempt — forbidden; post a reversing transaction instead.
+        if self.pk and LedgerEntry.objects.filter(pk=self.pk).exists():
+            raise LedgerImmutableError(
+                "Ledger entries are immutable; post a reversing transaction to correct."
+            )
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise LedgerImmutableError(
+            "Ledger entries are immutable and cannot be deleted; post a reversing transaction."
+        )
 
 
 class IdempotencyKey(UUIDModel):

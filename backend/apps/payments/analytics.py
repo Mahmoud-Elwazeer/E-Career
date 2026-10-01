@@ -153,6 +153,31 @@ def reconcile(*, provider_verify=False) -> dict:
         exceptions.append({"type": "status_mismatch", "payment": p.reference,
                            "detail": f"Succeeded payment on non-paid order ({p.order.status})"})
 
+    # 3. Orphan ledger: a posted LedgerTransaction that no business object links
+    #    to. Legitimate movements are reachable from a Payment, a Refund, or an
+    #    approved AdjustmentRequest (manual entries are NOT orphans — they are
+    #    linked via AdjustmentRequest.ledger_transaction). Anything else is a
+    #    ledger movement with no provenance and must be investigated.
+    from .models import Refund, AdjustmentRequest, LedgerTransaction
+
+    linked_ids = set()
+    linked_ids.update(
+        Payment.objects.exclude(ledger_transaction__isnull=True)
+        .values_list("ledger_transaction_id", flat=True)
+    )
+    linked_ids.update(
+        Refund.objects.exclude(ledger_transaction__isnull=True)
+        .values_list("ledger_transaction_id", flat=True)
+    )
+    linked_ids.update(
+        AdjustmentRequest.objects.exclude(ledger_transaction__isnull=True)
+        .values_list("ledger_transaction_id", flat=True)
+    )
+    orphans = LedgerTransaction.objects.exclude(id__in=linked_ids)
+    for txn in orphans.iterator(chunk_size=500):
+        exceptions.append({"type": "orphan_ledger", "ledger": txn.reference,
+                           "detail": "Ledger transaction with no linked order/refund/adjustment"})
+
     return {
         "matched": matched,
         "exception_count": len(exceptions),
