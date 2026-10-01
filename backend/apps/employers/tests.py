@@ -1248,3 +1248,48 @@ class TestIndividualCannotAccessEmployerSurface:
         client = APIClient()
         for url in (COMPANY_BASE, BILLING_BASE, ANALYTICS_BASE, TEAM_BASE):
             assert client.get(url).status_code == 401
+
+
+# ============================================================================
+# Organization layer — org_type on Company (one stack, many audiences)
+# ============================================================================
+
+CREATE_COMPANY = "/api/v1/employer/companies/create/"
+
+
+@pytest.mark.django_db
+class TestOrgType:
+    def test_create_company_defaults_to_business(self, plain_user):
+        from apps.jobs.models import Company
+        client = _auth_client(plain_user)
+        resp = client.post(CREATE_COMPANY, {"name": "Default Org"}, format="json")
+        assert resp.status_code == 201
+        company = Company.objects.get(name="Default Org")
+        assert company.org_type == "business"
+
+    def test_create_company_accepts_valid_org_type(self, invitee_user):
+        from apps.jobs.models import Company
+        client = _auth_client(invitee_user)
+        resp = client.post(
+            CREATE_COMPANY, {"name": "State Agency", "org_type": "government"}, format="json",
+        )
+        assert resp.status_code == 201
+        assert Company.objects.get(name="State Agency").org_type == "government"
+
+    def test_create_company_rejects_bad_org_type_falls_back(self, jobseeker):
+        from apps.jobs.models import Company
+        client = _auth_client(jobseeker)
+        resp = client.post(
+            CREATE_COMPANY, {"name": "Weird Org", "org_type": "pirates"}, format="json",
+        )
+        assert resp.status_code == 201
+        assert Company.objects.get(name="Weird Org").org_type == "business"
+
+    def test_company_endpoint_exposes_and_edits_org_type(self, employer_owner, team_company):
+        client = _auth_client(employer_owner)
+        get_resp = client.get(COMPANY_BASE)
+        assert "org_type" in get_resp.data
+        patch_resp = client.patch(COMPANY_BASE, {"org_type": "university"}, format="json")
+        assert patch_resp.status_code == 200
+        team_company.refresh_from_db()
+        assert team_company.org_type == "university"

@@ -22,7 +22,7 @@ class CompanyManageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = [
-            "id", "uuid", "name", "slug", "logo_url", "snippet", "about",
+            "id", "uuid", "name", "slug", "org_type", "logo_url", "snippet", "about",
             "description", "industry", "website", "domain", "size",
             "headquarters", "linkedin_url", "careers_page_url", "github_org",
             "is_verified", "is_active", "created_at",

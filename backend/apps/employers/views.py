@@ -312,7 +312,10 @@ class EmployerProfileViewSet(viewsets.ModelViewSet):
             return None if not limit else max(0, limit - used)
 
         return Response({
-            'company': {'id': company.id, 'name': company.name, 'is_verified': company.is_verified},
+            'company': {
+                'id': company.id, 'name': company.name,
+                'org_type': company.org_type, 'is_verified': company.is_verified,
+            },
             'plan': plan_data,
             'has_subscription': bool(sub),
             'usage': {
@@ -1289,9 +1292,13 @@ def create_company(request):
         slug = f"{base}-{i}"
 
     with db_txn.atomic():
+        org_type = request.data.get('org_type', 'business') or 'business'
+        if org_type not in dict(Company.ORG_TYPE_CHOICES):
+            org_type = 'business'
         company = Company.objects.create(
             name=name,
             slug=slug,
+            org_type=org_type,
             industry=request.data.get('industry', '') or 'technology',
             website=request.data.get('website', '') or '',
             description=request.data.get('description', '') or '',

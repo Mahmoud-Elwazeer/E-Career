@@ -11,7 +11,8 @@ import { Navigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Building2, Loader2, AlertCircle, RotateCcw, Save, ShieldCheck, Clock } from "lucide-react";
 import {
-  getManagedCompany, updateManagedCompany, type ManagedCompany, type ManagedCompanyUpdate,
+  getManagedCompany, updateManagedCompany,
+  type ManagedCompany, type ManagedCompanyUpdate, type OrgType,
 } from "@/services/employer";
 import { AppShell } from "@/components/shells/AppShell";
 import { PageHeader } from "@/components/PageHeader";
@@ -52,7 +53,7 @@ export default function CompanySettings() {
   useEffect(() => {
     if (data) {
       setForm({
-        name: data.name, website: data.website, domain: data.domain,
+        name: data.name, org_type: data.org_type, website: data.website, domain: data.domain,
         headquarters: data.headquarters, size: data.size, logo_url: data.logo_url,
         linkedin_url: data.linkedin_url, careers_page_url: data.careers_page_url,
         github_org: data.github_org, snippet: data.snippet, about: data.about,
@@ -60,6 +61,13 @@ export default function CompanySettings() {
       });
     }
   }, [data]);
+
+  const ORG_TYPES: Array<{ value: OrgType; en: string; ar: string }> = [
+    { value: "business", en: "Business", ar: "شركة" },
+    { value: "government", en: "Government", ar: "جهة حكومية" },
+    { value: "university", en: "University", ar: "جامعة" },
+    { value: "ngo", en: "NGO / Non-profit", ar: "منظمة غير ربحية" },
+  ];
 
   const save = useMutation({
     mutationFn: (payload: ManagedCompanyUpdate) => updateManagedCompany(payload),
@@ -157,6 +165,22 @@ export default function CompanySettings() {
                 ? "هذه البيانات تظهر للمرشحين على صفحة شركتك العامة."
                 : "This information is shown to candidates on your public company page."}
             </p>
+          </div>
+
+          <div>
+            <label htmlFor="org_type" className="block text-caption font-medium text-foreground mb-1">
+              {isAr ? "نوع المؤسسة" : "Organization type"}
+            </label>
+            <select
+              id="org_type"
+              value={(form.org_type as OrgType) ?? "business"}
+              onChange={(e) => setForm((f) => ({ ...f, org_type: e.target.value as OrgType }))}
+              className="w-full sm:w-1/2 px-3 py-2 border border-input rounded-lg focus:ring-2 focus:ring-ring text-body bg-background"
+            >
+              {ORG_TYPES.map((o) => (
+                <option key={o.value} value={o.value}>{isAr ? o.ar : o.en}</option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

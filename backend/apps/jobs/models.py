@@ -15,7 +15,15 @@ JobManager = models.Manager.from_queryset(JobQuerySet)
 
 
 class Company(UUIDModel):
-    """A company that posts jobs."""
+    """An organization that posts jobs / hires on the platform.
+
+    `org_type` is the Organization-layer dimension: the SAME Company +
+    EmployerProfile + EmployerTeamMember + CompanySubscription stack serves a
+    business, a government body, a university, or an NGO — distinguished by this
+    field, not by a parallel model or a second auth system. New audiences reuse
+    the single User identity and the existing team/role/billing/entitlement
+    machinery; only product copy and (optionally) entitlement plans differ.
+    """
 
     INDUSTRY_CHOICES = [
         ("technology", "Technology"),
@@ -29,8 +37,19 @@ class Company(UUIDModel):
         ("other", "Other"),
     ]
 
+    ORG_TYPE_CHOICES = [
+        ("business", "Business"),
+        ("government", "Government"),
+        ("university", "University"),
+        ("ngo", "NGO / Non-profit"),
+    ]
+
     name = models.CharField(max_length=200, db_index=True)
     slug = models.SlugField(max_length=220, unique=True, db_index=True)
+    org_type = models.CharField(
+        max_length=20, choices=ORG_TYPE_CHOICES, default="business", db_index=True,
+        help_text="Organization kind — reuses the same hiring/team/billing stack for all audiences",
+    )
     logo_url = models.URLField(max_length=500, blank=True)
     snippet = models.CharField(max_length=300, blank=True, help_text="Short company description")
     about = models.TextField(blank=True, help_text="Full company description")

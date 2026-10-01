@@ -138,11 +138,14 @@ export const getEmployerStats = async (): Promise<EmployerStats> => {
 };
 
 // Company profile (the employer's own company — editable by owner/admin)
+export type OrgType = "business" | "government" | "university" | "ngo";
+
 export interface ManagedCompany {
   id: number;
   uuid: string;
   name: string;
   slug: string;
+  org_type: OrgType;
   logo_url: string;
   snippet: string;
   about: string;
@@ -163,7 +166,7 @@ export interface ManagedCompany {
 export type ManagedCompanyUpdate = Partial<
   Pick<
     ManagedCompany,
-    | 'name' | 'logo_url' | 'snippet' | 'about' | 'description' | 'industry'
+    | 'name' | 'org_type' | 'logo_url' | 'snippet' | 'about' | 'description' | 'industry'
     | 'website' | 'domain' | 'size' | 'headquarters' | 'linkedin_url'
     | 'careers_page_url' | 'github_org'
   >
@@ -238,7 +241,7 @@ export const removeTeamMember = async (id: number): Promise<void> => {
 
 // ── Employer-scoped billing snapshot (plan + seat/job usage) ─────────────────
 export interface EmployerBilling {
-  company: { id: number; name: string; is_verified: boolean };
+  company: { id: number; name: string; org_type: OrgType; is_verified: boolean };
   has_subscription: boolean;
   plan: {
     name: string;
