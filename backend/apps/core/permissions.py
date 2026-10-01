@@ -52,14 +52,36 @@ def check_entitlement(company, check_type, current_count=0, feature=None):
                 f"Your plan ({plan.name}) does not include AI features. Contact admin to upgrade."
             )
     elif check_type == "feature":
-        flags = getattr(plan, "feature_flags", None) or {}
-        # A feature is allowed unless explicitly disabled in the plan's flags,
-        # so adding a new admin-configurable feature never silently locks users out.
-        if feature is not None and flags.get(feature) is False:
-            raise PermissionDenied(
-                f"Your plan ({plan.name}) does not include '{feature}'. Contact admin to upgrade."
-            )
+        # Canonical shape is a dict {feature_key: bool} where an explicit False
+        # disables the feature. We tolerate a legacy LIST (older data where the
+        # list held the ENABLED keys) so stale rows never 500 the gate:
+        #   - dict: deny only if flags.get(feature) is False
+        #   - list: deny only if the list is non-empty AND feature not in it
+        #           (an allow-list); an empty list disables nothing.
+        if feature is not None:
+            disabled = feature_is_disabled(getattr(plan, "feature_flags", None), feature)
+            if disabled:
+                raise PermissionDenied(
+                    f"Your plan ({plan.name}) does not include '{feature}'. Contact admin to upgrade."
+                )
     return True
+
+
+def feature_is_disabled(flags, feature) -> bool:
+    """Return True iff `feature` is explicitly disabled by a plan's flags.
+
+    Canonical: flags is a dict {key: bool}; disabled == flags.get(key) is False.
+    Backward-compatible with a legacy list of ENABLED keys: disabled == the list
+    is non-empty and does not contain the key. None/empty => not disabled (so a
+    newly-added feature is never silently locked out before admins configure it).
+    """
+    if not flags:
+        return False
+    if isinstance(flags, dict):
+        return flags.get(feature) is False
+    if isinstance(flags, (list, tuple, set)):
+        return len(flags) > 0 and feature not in flags
+    return False
 
 
 class IsAdminRole(BasePermission):

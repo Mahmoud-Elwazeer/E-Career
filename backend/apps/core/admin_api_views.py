@@ -1156,7 +1156,9 @@ class SubscriptionPlanSerializer(serializers.Serializer):
     uuid = serializers.UUIDField(read_only=True)
     name = serializers.CharField(max_length=100)
     description = serializers.CharField(required=False, allow_blank=True)
-    feature_flags = serializers.ListField(child=serializers.CharField(), required=False)
+    # Canonical shape is a dict {feature_key: bool}; a legacy list is still
+    # accepted for backward compatibility. JSONField accepts either.
+    feature_flags = serializers.JSONField(required=False)
     job_posting_limit = serializers.IntegerField(required=False)
     candidate_search_limit = serializers.IntegerField(required=False)
     ai_features_enabled = serializers.BooleanField(required=False)

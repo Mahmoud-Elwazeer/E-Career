@@ -571,8 +571,14 @@ class SubscriptionPlan(UUIDModel):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     feature_flags = models.JSONField(
-        default=list,
-        help_text="List of FeatureFlag keys this plan unlocks",
+        default=dict,
+        blank=True,
+        help_text=(
+            "Feature gating map {feature_key: bool}. An explicit False disables "
+            "that feature for the plan; unset keys stay enabled (so new features "
+            "aren't silently locked out). A legacy list of enabled keys is still "
+            "honored for backward compatibility."
+        ),
     )
     job_posting_limit = models.IntegerField(
         default=5,
