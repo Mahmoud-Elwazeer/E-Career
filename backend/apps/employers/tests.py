@@ -1197,3 +1197,54 @@ class TestEmployerAnalytics:
         assert resp.data["totals"]["views"] == 42
         assert len(resp.data["top_jobs"]) == 1
         assert resp.data["top_jobs"][0]["views"] == 42
+
+
+# ============================================================================
+# Individual vs Business separation — non-employers must be blocked (backend
+# is authoritative; no frontend-only permissions).
+# ============================================================================
+
+@pytest.fixture
+def jobseeker(db):
+    """A real individual (jobseeker role) with no employer profile/membership."""
+    return User.objects.create_user(
+        email="individual@example.com", password="Pass1234!",
+        first_name="Indi", last_name="Vidual", role="jobseeker",
+    )
+
+
+@pytest.mark.django_db
+class TestIndividualCannotAccessEmployerSurface:
+    """Every employer management endpoint must reject a plain individual."""
+
+    def test_jobseeker_blocked_on_company(self, jobseeker):
+        resp = _auth_client(jobseeker).get(COMPANY_BASE)
+        assert resp.status_code in (403, 404)
+
+    def test_jobseeker_blocked_on_billing(self, jobseeker):
+        resp = _auth_client(jobseeker).get(BILLING_BASE)
+        assert resp.status_code in (403, 404)
+
+    def test_jobseeker_blocked_on_analytics(self, jobseeker):
+        resp = _auth_client(jobseeker).get(ANALYTICS_BASE)
+        assert resp.status_code in (403, 404)
+
+    def test_jobseeker_blocked_on_team_list(self, jobseeker):
+        resp = _auth_client(jobseeker).get(TEAM_BASE)
+        assert resp.status_code in (403, 404)
+
+    def test_jobseeker_blocked_on_team_invite(self, jobseeker):
+        resp = _auth_client(jobseeker).post(
+            TEAM_BASE + "invite/", {"email": "x@y.com", "role": "viewer"}, format="json",
+        )
+        assert resp.status_code in (403, 404)
+
+    def test_jobseeker_blocked_on_profile_stats(self, jobseeker):
+        resp = _auth_client(jobseeker).get(PROFILE_BASE + "stats/")
+        assert resp.status_code in (403, 404)
+
+    def test_unauthenticated_blocked_everywhere(self):
+        from rest_framework.test import APIClient
+        client = APIClient()
+        for url in (COMPANY_BASE, BILLING_BASE, ANALYTICS_BASE, TEAM_BASE):
+            assert client.get(url).status_code == 401
