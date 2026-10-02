@@ -1,0 +1,41 @@
+{
+  "meta": {"totalCount": 14},
+  "result": [
+    {
+      "id": "439",
+      "jobOpeningName": "Full Remote - Estimating Coordinator",
+      "departmentId": "18317",
+      "departmentLabel": "Estimating Department",
+      "employmentStatusLabel": "Full-Time",
+      "employmentType": null,
+      "location": {"city": null, "state": null},
+      "atsLocation": {"country": "Philippines", "state": "Remote", "city": "Remote"},
+      "isRemote": null,
+      "locationType": "1"
+    },
+    {
+      "id": "451",
+      "jobOpeningName": "Delivery and Field Maintenance Personnel (Opa Locka)",
+      "departmentId": "18441",
+      "departmentLabel": "Curtain Care FIELD Department",
+      "employmentStatusLabel": "Full-Time",
+      "employmentType": null,
+      "location": {"city": null, "state": null},
+      "atsLocation": {"country": "United States", "state": "Florida", "city": "Opa Locka"},
+      "isRemote": null,
+      "locationType": "1"
+    },
+    {
+      "id": "",
+      "jobOpeningName": "",
+      "departmentId": "0",
+      "departmentLabel": "",
+      "employmentStatusLabel": "",
+      "employmentType": null,
+      "location": {"city": null, "state": null},
+      "atsLocation": {},
+      "isRemote": null,
+      "locationType": "1"
+    }
+  ]
+}

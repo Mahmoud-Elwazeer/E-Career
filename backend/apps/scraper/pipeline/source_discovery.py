@@ -33,6 +33,7 @@ ATS_ENDPOINTS: Dict[str, str] = {
     "recruitee": "https://{slug}.recruitee.com/api/offers/",
     "personio": "https://{slug}.jobs.personio.de/search.json",
     "breezy": "https://{slug}.breezy.hr/json",
+    "bamboohr": "https://{slug}.bamboohr.com/careers/list",
 }
 
 # How to read a "job count" out of each provider's payload shape so a 200 with
@@ -55,6 +56,8 @@ def _count_jobs(provider: str, payload) -> Optional[int]:
             return len(payload) if isinstance(payload, list) else None
         if provider == "breezy":
             return len(payload) if isinstance(payload, list) else None
+        if provider == "bamboohr":
+            return len(payload.get("result", []))
     except (AttributeError, TypeError):
         return None
     return None

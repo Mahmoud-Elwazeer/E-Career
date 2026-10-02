@@ -1,0 +1,19 @@
+{
+  "meta": {},
+  "result": {
+    "jobOpening": {
+      "jobOpeningShareUrl": "https://cubecare.bamboohr.com/careers/439",
+      "jobOpeningName": "Full Remote - Estimating Coordinator",
+      "jobOpeningStatus": "Open",
+      "departmentId": "18317",
+      "departmentLabel": "Estimating Department",
+      "employmentStatusLabel": "Full-Time",
+      "atsLocation": {"country": "Philippines", "state": "Remote", "city": "Remote"},
+      "description": "<p>Why Choose Cube Care?</p><p>Real job description HTML here.</p>",
+      "compensation": "Experience-based",
+      "datePosted": "2026-09-02",
+      "minimumExperience": "Mid-level",
+      "locationType": "1"
+    }
+  }
+}
