@@ -560,10 +560,16 @@ class ScraperOrchestrator:
                 # 9. Search index sync — measure that persisted jobs actually
                 #    reach the search backend (§20). Counted separately so a
                 #    Typesense outage shows as indexed<created, not silent loss.
+                #    sync_job() now returns a real success boolean (it used to
+                #    swallow its own exceptions and return None, which made
+                #    this always increment even when Typesense 401'd) - only
+                #    count indexed when actually confirmed indexed.
                 try:
                     from apps.search.service import SearchService
-                    SearchService().sync_job(job)
-                    metrics.indexed += 1
+                    if SearchService().sync_job(job):
+                        metrics.indexed += 1
+                    else:
+                        logger.warning("search_sync_not_indexed job=%s", job.id)
                 except Exception as se:
                     logger.warning("search_sync_failed job=%s error=%s", job.id, se)
 

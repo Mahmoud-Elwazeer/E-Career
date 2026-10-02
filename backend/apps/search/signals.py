@@ -23,10 +23,18 @@ def job_saved(sender, instance, created, **kwargs):
     """
     if instance.quality_state in Job.QUALITY_VISIBLE_STATES:
         try:
-            search_service.sync_job(instance)
-            logger.info(f"Synced job {instance.id} to search (created={created})")
+            indexed = search_service.sync_job(instance)
         except Exception as e:
             logger.error(f"Failed to sync job {instance.id} to search: {e}")
+            return
+        if indexed:
+            logger.info(f"Synced job {instance.id} to search (created={created})")
+        else:
+            # sync_job() swallowed the real error internally (index_job()
+            # catches its own exceptions) - don't claim success. The actual
+            # backend/reason is already logged by index_job() as
+            # search_index_job_failed / search_index_circuit_open.
+            logger.warning(f"Job {instance.id} NOT indexed to search (created={created})")
 
 
 @receiver(post_delete, sender=Job)

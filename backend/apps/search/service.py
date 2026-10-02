@@ -111,19 +111,24 @@ class SearchService:
                     raise
             raise
 
-    def index_job(self, document: dict) -> None:
+    def index_job(self, document: dict) -> bool:
+        """Index one job document. Returns True only on confirmed success -
+        callers (sync_job, signals) must not report success unless this
+        returns True. Never raises - failures are logged and reflected only
+        in the return value."""
         global _INDEX_CIRCUIT_FAILURES, _INDEX_CIRCUIT_OPEN_UNTIL
 
         now = time.monotonic()
         if now < _INDEX_CIRCUIT_OPEN_UNTIL:
             # Breaker open: skip the live call entirely during a known outage
             # window instead of repeating it for every job in the run.
-            return
+            return False
 
         try:
             self.primary.index_document(JOBS_COLLECTION, document)
             with _INDEX_CIRCUIT_LOCK:
                 _INDEX_CIRCUIT_FAILURES = 0
+            return True
         except Exception as e:
             logger.error("search_index_job_failed", error=str(e), doc_id=document.get("id"))
             with _INDEX_CIRCUIT_LOCK:
@@ -138,6 +143,7 @@ class SearchService:
                              "jobs remain saved to DB, just not indexed to Typesense "
                              "until the breaker closes or the API key is fixed",
                     )
+            return False
 
     def index_jobs_batch(self, documents: list[dict]) -> int:
         try:
@@ -146,17 +152,18 @@ class SearchService:
             logger.error("search_batch_index_failed", error=str(e), count=len(documents))
             return 0
 
-    def sync_job(self, job) -> None:
+    def sync_job(self, job) -> bool:
         """Serialize a Job model to a search document and index it.
 
-        Convenience used by the post_save signal (apps.search.signals). Fixes the
-        'SearchService object has no attribute sync_job' error that left every
-        newly ingested job saved-but-not-searchable. Reuses the canonical
-        document builder so search fields stay consistent with the schema.
+        Convenience used by the post_save signal (apps.search.signals) and the
+        orchestrator's per-job ingestion step. Returns True only if the
+        document was actually confirmed indexed - callers must not log/count
+        success otherwise. Reuses the canonical document builder so search
+        fields stay consistent with the schema.
         """
         from apps.search.document import job_to_search_document
         document = job_to_search_document(job)
-        self.index_job(document)
+        return self.index_job(document)
 
     def delete_job(self, job_id: str) -> None:
         try:

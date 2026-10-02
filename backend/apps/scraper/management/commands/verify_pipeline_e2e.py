@@ -10,9 +10,16 @@ they flow into the matching engine for a candidate. Read-only by default; use
 
 Usage:
   python manage.py verify_pipeline_e2e
-  python manage.py verify_pipeline_e2e --reindex          # sync visible jobs first
-  python manage.py verify_pipeline_e2e --query "engineer" # search probe term
-  python manage.py verify_pipeline_e2e --profile <user_id># match jobs for a candidate
+  python manage.py verify_pipeline_e2e --reindex                    # sync ALL visible jobs (can be slow/large - prefer --limit first)
+  python manage.py verify_pipeline_e2e --reindex --limit 10         # sync only 10 jobs - safe bounded test
+  python manage.py verify_pipeline_e2e --reindex --job-id <job_id>  # sync exactly one job - smallest possible test
+  python manage.py verify_pipeline_e2e --query "engineer"           # search probe term
+  python manage.py verify_pipeline_e2e --profile <user_id>          # match jobs for a candidate
+
+Fail-fast: if the first 3 reindex attempts all fail (e.g. Typesense 401), the
+--reindex loop stops immediately with ONE diagnostic line instead of repeating
+the same error for every remaining job. Always test with --job-id or a small
+--limit before running --reindex against the full job table.
 """
 from django.core.management.base import BaseCommand
 
@@ -22,6 +29,10 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--reindex", action="store_true")
+        parser.add_argument("--limit", type=int, default=0,
+                             help="Max number of jobs to reindex (0 = no limit, all visible jobs)")
+        parser.add_argument("--job-id", type=str, default="",
+                             help="Reindex exactly one job by id (smallest possible test)")
         parser.add_argument("--query", type=str, default="engineer")
         parser.add_argument("--profile", type=str, default="")
         parser.add_argument("--match-limit", type=int, default=10)
@@ -57,14 +68,44 @@ class Command(BaseCommand):
             from apps.search.service import SearchService
             svc = SearchService()
             if opts["reindex"]:
-                synced, failed = 0, 0
                 qs = Job.objects.visible() if hasattr(Job.objects, "visible") else Job.objects.all()
+                if opts["job_id"]:
+                    qs = qs.filter(id=opts["job_id"])
+                elif opts["limit"]:
+                    qs = qs[: opts["limit"]]
+                else:
+                    self.stdout.write(self.style.WARNING(
+                        "no --limit or --job-id given: reindexing ALL visible jobs. "
+                        "If this is the first run after a config change, Ctrl+C and "
+                        "retry with --job-id <id> or --limit 10 first."
+                    ))
+
+                synced, failed, attempted = 0, 0, 0
+                FAIL_FAST_THRESHOLD = 3
+                last_error = None
                 for job in qs.iterator():
+                    attempted += 1
                     try:
-                        svc.sync_job(job); synced += 1
-                    except Exception:
+                        ok = svc.sync_job(job)
+                    except Exception as e:
+                        ok = False
+                        last_error = str(e)
+                    if ok:
+                        synced += 1
+                    else:
                         failed += 1
-                self.stdout.write(f"reindex: synced={synced} failed={failed}")
+                        if failed >= FAIL_FAST_THRESHOLD and synced == 0:
+                            self.stdout.write(self.style.ERROR(
+                                f"reindex: ABORTING after {attempted} attempts, "
+                                f"{failed} consecutive failures, 0 successes. "
+                                f"Likely cause: Typesense auth/connectivity is broken, "
+                                f"not per-job data issues. Last error: {last_error}\n"
+                                f"Fix TYPESENSE_API_KEY / connectivity, then retry with "
+                                f"--job-id <id> to confirm one job indexes before "
+                                f"attempting a larger --limit or a full reindex."
+                            ))
+                            break
+                self.stdout.write(f"reindex: attempted={attempted} synced={synced} failed={failed}")
             # health of the backends
             try:
                 self.stdout.write(f"primary healthy: {svc.primary.health_check()}")
