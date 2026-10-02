@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import threading
+import time
+
 import structlog
 from django.conf import settings
 
@@ -8,6 +11,22 @@ from .plugins.typesense_plugin import TypesenseSearchPlugin
 from .plugins.postgres_plugin import PostgresSearchPlugin
 
 logger = structlog.get_logger()
+
+# Circuit breaker for index_job(): during a bulk ingestion run (e.g. a Lever/
+# Ashby/Greenhouse source with hundreds of jobs), a single bad TYPESENSE_API_KEY
+# previously caused one live HTTP call + two ERROR log lines PER JOB, every
+# job, for the whole run (confirmed live: 833 jobs from openai-ashby alone).
+# This doesn't change behavior (jobs still fall back correctly, search is
+# unaffected since search_jobs already health-checks before querying) — it
+# just stops hammering an endpoint already known to be down this run, and
+# collapses the log spam to one WARNING per open/close transition instead of
+# one ERROR pair per job. Class-level (not instance-level) because callers
+# create a fresh SearchService() per job (see orchestrator._process_jobs).
+_INDEX_CIRCUIT_LOCK = threading.Lock()
+_INDEX_CIRCUIT_FAILURES = 0
+_INDEX_CIRCUIT_OPEN_UNTIL = 0.0
+_INDEX_CIRCUIT_FAILURE_THRESHOLD = 3
+_INDEX_CIRCUIT_COOLDOWN_SECONDS = 300
 
 JOBS_COLLECTION = "jobs"
 
@@ -93,10 +112,32 @@ class SearchService:
             raise
 
     def index_job(self, document: dict) -> None:
+        global _INDEX_CIRCUIT_FAILURES, _INDEX_CIRCUIT_OPEN_UNTIL
+
+        now = time.monotonic()
+        if now < _INDEX_CIRCUIT_OPEN_UNTIL:
+            # Breaker open: skip the live call entirely during a known outage
+            # window instead of repeating it for every job in the run.
+            return
+
         try:
             self.primary.index_document(JOBS_COLLECTION, document)
+            with _INDEX_CIRCUIT_LOCK:
+                _INDEX_CIRCUIT_FAILURES = 0
         except Exception as e:
             logger.error("search_index_job_failed", error=str(e), doc_id=document.get("id"))
+            with _INDEX_CIRCUIT_LOCK:
+                _INDEX_CIRCUIT_FAILURES += 1
+                if _INDEX_CIRCUIT_FAILURES >= _INDEX_CIRCUIT_FAILURE_THRESHOLD:
+                    _INDEX_CIRCUIT_OPEN_UNTIL = now + _INDEX_CIRCUIT_COOLDOWN_SECONDS
+                    logger.warning(
+                        "search_index_circuit_open",
+                        reason=str(e),
+                        cooldown_seconds=_INDEX_CIRCUIT_COOLDOWN_SECONDS,
+                        note="skipping further index_job calls for this window; "
+                             "jobs remain saved to DB, just not indexed to Typesense "
+                             "until the breaker closes or the API key is fixed",
+                    )
 
     def index_jobs_batch(self, documents: list[dict]) -> int:
         try:
