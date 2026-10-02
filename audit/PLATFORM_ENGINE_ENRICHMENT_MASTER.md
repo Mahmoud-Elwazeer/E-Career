@@ -707,3 +707,92 @@ errors are erased at build, do not throw at runtime). Left for separate, deliber
 cleanup, not bundled into this incident fix.
 
 **Status: CLOSED.** Current production frontend baseline is `94e68d1`.
+
+
+---
+
+## Scraping Runtime Truth Audit + OSS Re-Verification (2026-10-02, commits 569991d, 6f691a0)
+
+Re-verified against CURRENT code (not the claims in this doc's earlier sections) per
+`AGENTS.md`'s "do not trust status docs at face value" rule. Two real, previously
+undetected bugs were found and fixed; two findings from earlier sections were
+re-confirmed accurate.
+
+### Bugs found + fixed this pass
+
+1. **`jobspy==0.31.0` was the wrong PyPI package (fixed, 569991d).** The pinned
+   name resolves to `jobs.py` by Josiah Carlson — a Redis job-queue coordinator,
+   unrelated to job scraping, LGPL-licensed, `py_modules=['jobs']` (not `jobspy`).
+   `apps/scraper/regional/jobspy_wrapper.py` does `from jobspy import scrape_jobs`
+   inside a `try/except ImportError: JOBSPY_AVAILABLE = False` — confirmed live in
+   the local venv that this raises `ModuleNotFoundError`, so the Egypt/regional
+   discovery path has been silently returning `[]` the entire time despite every
+   prior audit doc in this file claiming "jobspy: keep, in use, discovery-only."
+   **Fix:** pinned `python-jobspy==1.2.0` (MIT, speedyapply/JobSpy, the actual
+   scraper, `import jobspy` works) in both `backend/requirements.txt` and
+   `backend/requirements/base.txt`. Verified by installing into an isolated
+   target directory (not the real venv) and confirming
+   `from jobspy import scrape_jobs` succeeds and is callable.
+   **Server action required:** `pip install -r requirements.txt` (or targeted
+   `pip install python-jobspy==1.2.0` after uninstalling the wrong `jobspy`) on
+   next deploy for this fix to take effect.
+
+2. **Orchestrator/tasks dispatch maps had drifted again (fixed, 6f691a0).**
+   `orchestrator.py` dispatched `eightfold` but not `oracle`/`sap`; `tasks.py`
+   dispatched `oracle`/`sap` but not `eightfold`. Celery Beat only schedules
+   `tasks.scrape_all_sources` (confirmed: `seed_beat_schedule.py` seeds
+   `apps.scraper.tasks.scrape_all_sources`, not the richer
+   `orchestrator.scrape_all_sources_orchestrated`) — meaning `netflix-eightfold`
+   (the one Eightfold connector with 474 real live jobs) was never actually run
+   by the scheduled production task. Fixed both dispatch tables to include all
+   12 wired platforms identically. `oracle`/`sap` remain `SUPPORTED=False` no-op
+   stubs (intentional — no verified per-tenant registry exists), so adding them
+   to orchestrator.py's dispatch has no runtime effect but prevents future drift.
+   Verified: `manage.py check` exit 0; `apps.scraper` test suite (4 tests, run
+   against `config.settings.test` sqlite backend) passes.
+
+### Findings re-confirmed accurate (no action needed)
+- `croniter==2.0.1` is correctly pinned and imported — historical "missing
+  croniter" import failure does not reproduce.
+- Scrapling/Crawl4AI/ScrapeGraphAI: zero actual Python imports anywhere in
+  `backend/` (repo-wide grep). `extraction_adapter.py` defines only the
+  tier/protocol contract; `OutOfProcessBackend.available()` requires a
+  `runner_cmd` that nothing in the codebase ever sets — fully inert.
+- `VerificationEngine.verify_job()` does write `Job.status` on every path
+  (the historical "never writes status" bug is fixed).
+- `UnifiedMatchingEngine` convergence is real: `MatchingService` delegates to
+  it with a legacy fallback only on exception.
+- Rashid's `search_jobs` and `get_recommendations` tools have correct
+  signatures matching the real services.
+
+### New gap found, not yet fixed (lower priority, documented honestly)
+- Recruitee, Jobvite, and Personio have **no connector implementation at all**
+  anywhere in `apps/scraper/ats/` — despite being named as supported ATS
+  integrations in this project's `AGENTS.md` agent-roster doc. Not started.
+- The Dockerfile (`backend/Dockerfile`) installs from the flat
+  `backend/requirements.txt`, not `backend/requirements/base.txt` — so
+  `playwright==1.45.0` (only listed in the `requirements/` tree) is **not**
+  actually present in the built production image, despite being referenced as
+  an available Tier-2 fallback in `workday.py`'s historical implementation
+  (now moot since Workday was rewritten browser-free, but worth noting for any
+  future connector that assumes Playwright is installed).
+
+### OSS re-verification — Scrapling / Crawl4AI / ScrapeGraphAI (live PyPI/GitHub check, 2026-10-02)
+
+Re-pulled exact current license/version/requirements directly from PyPI JSON
+APIs and GitHub LICENSE files (not from memory or prior docs):
+
+| Library | Repo | License (verified) | Latest version | Python req | Decision |
+|---|---|---|---|---|---|
+| Scrapling | github.com/D4Vinci/Scrapling | BSD-3-Clause (confirmed via PyPI classifier + LICENSE text) | 0.4.15 | `>=3.10` | **OPTIONAL adapter only.** `lxml>=6.1.1` conflicts with `docling==2.31.0`'s `lxml<6.0.0,>=4.0.0` pin — this is a REAL, currently-unresolved conflict (docling's pin confirmed via PyPI). Installing Scrapling into the main venv would break the CV parser. |
+| Crawl4AI | github.com/unclecode/crawl4ai | Apache-2.0 (confirmed via GitHub LICENSE file) | 0.9.4 (current) | `>=3.10` | **OPTIONAL Tier-4 adapter, re-evaluate the "disabled" reason.** The repo's disabled comment (`requires litellm==1.48.0 unavailable on Python 3.10`) refers to the OLD pinned `crawl4ai==0.3.7`, which really did hard-pin `litellm==1.48.0`. The CURRENT 0.9.4 release instead depends on `unclecode-litellm==1.81.13` (a fork, not stock litellm, `requires_python >=3.9`) — the specific conflict cited no longer describes the latest release. This does not mean 0.9.4 is conflict-free (not independently dependency-resolved against this project's full requirements.txt in this pass), but the stated reason for disabling is stale and should be re-tested before continuing to cite it. Flagged for a follow-up `pip install --dry-run`/resolver check in an isolated environment — not done in this pass (would require installing into a disposable venv and running a full resolve, which risks touching the real venv if not isolated carefully). |
+| ScrapeGraphAI | github.com/ScrapeGraphAI/Scrapegraph-ai | MIT (confirmed via GitHub LICENSE file; PyPI classifier badge also says MIT) | 2.3.0 | **`>=3.12,<4.0`** | **REJECT for embedding (unchanged verdict, new reason confirmed).** This project's Docker image is `python:3.11-slim` (confirmed in `backend/Dockerfile`) — ScrapeGraphAI 2.3.0 requires Python ≥3.12, so it cannot even be installed in the current production image without a Python version bump, on top of the existing "duplicates Bedrock extraction" rationale. Also pulls a full LangChain stack (`langchain>=1.2.0`, `langchain-aws`, `langchain-community`, etc.) — heavy, duplicative. |
+
+**Correction to an earlier claim in this document:** the OSS audit above (§5,
+"OPEN_SOURCE_ENGINE_ENRICHMENT_AUDIT.md") stated Crawl4AI needs
+`litellm==1.48.0` "unavailable on this Python" as a current, active blocker.
+That was true of the pinned `0.3.7` version at the time; it is not accurate as
+a description of the current upstream `0.9.4` release. The underlying business
+decision (keep OPTIONAL, do not force into the main venv) is unchanged — only
+the specific stated reason needed correction. No code change made here; this
+is a documentation correction pending a real dependency-resolution test.
