@@ -22,7 +22,7 @@ from apps.core.models import PipelineHealth, PlatformConfig
 from .ats import (
     greenhouse, lever, ashby, bamboohr, workday,
     smartrecruiters, workable, teamtailor, eightfold, icims,
-    oracle, sap, recruitee, personio,
+    oracle, sap, recruitee, personio, jobvite,
 )
 from .pipeline.url_resolver import is_direct_company_url, verify_url_live
 from .pipeline.legitimacy import calculate_legitimacy_score, assess_job
@@ -205,6 +205,7 @@ class ScraperOrchestrator:
             'sap': sap.fetch_sap_jobs,
             'recruitee': recruitee.fetch_recruitee_jobs,
             'personio': personio.fetch_personio_jobs,
+            'jobvite': jobvite.fetch_jobvite_jobs,
         }
         fn = dispatch.get(platform)
         if not fn:
@@ -268,6 +269,8 @@ class ScraperOrchestrator:
                 jobs = recruitee.fetch_recruitee_jobs(company_slug)
             elif platform == 'personio':
                 jobs = personio.fetch_personio_jobs(company_slug)
+            elif platform == 'jobvite':
+                jobs = jobvite.fetch_jobvite_jobs(company_slug)
             else:
                 logger.warning(f"Unknown platform: {platform}")
                 return [], 0

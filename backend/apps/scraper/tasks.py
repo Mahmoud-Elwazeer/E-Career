@@ -11,7 +11,7 @@ from apps.core.models import PipelineHealth, PlatformConfig
 
 from .ats import (
     greenhouse, lever, ashby, bamboohr, smartrecruiters, workable, teamtailor,
-    workday, icims, oracle, sap, eightfold, recruitee, personio,
+    workday, icims, oracle, sap, eightfold, recruitee, personio, jobvite,
 )
 from .orchestrator import orchestrator, scrape_all_sources_orchestrated
 from .pipeline.url_resolver import is_direct_company_url, verify_url_live
@@ -154,6 +154,8 @@ def scrape_source(source: Source) -> List[Dict]:
         return oracle.fetch_oracle_jobs(company_slug)
     elif platform == 'sap':
         return sap.fetch_sap_jobs(company_slug)
+    elif platform == 'jobvite':
+        return jobvite.fetch_jobvite_jobs(company_slug)
     else:
         # Keep this dispatch in sync with ScraperOrchestrator.scrape_source in
         # orchestrator.py. A configured Source whose platform is unknown here

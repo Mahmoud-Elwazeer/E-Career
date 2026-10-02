@@ -60,6 +60,9 @@ STRUCTURED_ATS = {
     "recruitee",
     "eightfold",
     "personio",
+    "jobvite",  # DISCOVERY_UNSUPPORTED stub (see ats/jobvite.py) - routes
+                # structurally like oracle/sap, honestly returns [] until
+                # per-tenant credentials exist.
 }
 
 
