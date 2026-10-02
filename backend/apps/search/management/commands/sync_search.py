@@ -37,23 +37,37 @@ class Command(BaseCommand):
         parser.add_argument(
             "--status",
             type=str,
-            default="active",
-            help="Job status to sync (default: active)",
+            default="",
+            help=(
+                "DEPRECATED: filter on legacy Job.status instead of "
+                "quality_state. Job.status is set once by VerificationEngine's "
+                "first pass and never corrected afterward, so it does NOT "
+                "reliably reflect current visibility (confirmed live: "
+                "thousands of healthy probably_active/direct_verified jobs "
+                "have status='rejected'). Omit this flag to use the "
+                "authoritative Job.objects.visible() filter instead."
+            ),
         )
     
     def handle(self, *args, **options):
         batch_size = options.get("batch_size", 100)
         dry_run = options.get("dry_run", False)
-        status = options.get("status", "active")
+        status = options.get("status", "")
         
-        self.stdout.write(self.style.SUCCESS(f"Starting search sync (status={status}, batch_size={batch_size})"))
+        if status:
+            self.stdout.write(self.style.WARNING(
+                f"--status={status} given: filtering on legacy Job.status, "
+                f"which may miss most real scraped jobs. Omit --status to "
+                f"use Job.objects.visible() (quality_state-based) instead."
+            ))
+            queryset = Job.objects.filter(status=status)
+        else:
+            queryset = Job.objects.visible()
+        total_jobs = queryset.count()
+        self.stdout.write(self.style.SUCCESS(f"Starting search sync (batch_size={batch_size})"))
         
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN MODE - No changes will be made"))
-        
-        # Get jobs to sync
-        queryset = Job.objects.filter(status=status)
-        total_jobs = queryset.count()
         
         self.stdout.write(f"Found {total_jobs} jobs to sync")
         

@@ -39,10 +39,21 @@ class Command(BaseCommand):
             service.ensure_collection()
 
         batch_size = options["batch_size"]
+        # Filter on quality_state (QUALITY_VISIBLE_STATES), NOT status="active".
+        # Job.status is set once by VerificationEngine's first verification
+        # pass and is never corrected afterward - a job whose trust_score was
+        # briefly low right after creation gets status="rejected" permanently,
+        # even after later re-scrapes/re-verification mark it
+        # quality_state="probably_active" or "direct_verified" (confirmed
+        # live: 3572 jobs were probably_active+rejected, 246 were
+        # direct_verified+rejected). quality_state is the field the rest of
+        # the platform (Job.objects.visible(), verify_pipeline_e2e) treats as
+        # authoritative for visibility - sync_typesense must match that or it
+        # silently excludes the vast majority of real scraped jobs.
         jobs_qs = (
-            Job.objects.select_related("company")
+            Job.objects.visible()
+            .select_related("company")
             .prefetch_related("tags")
-            .filter(status="active", is_expired=False)
             .order_by("id")
         )
 
