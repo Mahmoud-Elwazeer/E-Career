@@ -145,6 +145,24 @@ services:
       - ecareer_network
     restart: unless-stopped
 
+  # Scrapling adaptive-extraction runner (Tier 3, §15/§16) - built from its own
+  # Dockerfile (apps/scraper/extraction_runners/Dockerfile), NEVER installed
+  # into the backend image/venv (confirmed real lxml>=6.1.1 vs docling's
+  # lxml<6.0.0 conflict). This service does not run as a long-lived server -
+  # `docker compose run --rm scrapling_runner` pipes one JSON request on
+  # stdin and reads one JSON response on stdout per the OutOfProcessBackend
+  # contract. `profiles: [tools]` keeps it out of a plain `docker compose up`
+  # so it never auto-starts; invoke on demand only.
+  scrapling_runner:
+    build:
+      context: ./backend/apps/scraper/extraction_runners
+      dockerfile: Dockerfile
+    image: usam-scrapling-runner:0.4.15
+    container_name: ecareer_scrapling_runner
+    profiles: ["tools"]
+    networks:
+      - ecareer_network
+
   # Change Detection (career page monitoring)
   changedetection:
     image: ghcr.io/dgtlmoon/changedetection.io:latest

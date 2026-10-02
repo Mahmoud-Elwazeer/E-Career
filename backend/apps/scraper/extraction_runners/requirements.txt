@@ -1,0 +1,15 @@
+# Pinned dependencies for the ISOLATED Scrapling adaptive-extraction runner
+# (§15/§16). This venv/image is intentionally SEPARATE from the main Django
+# backend venv (../../../requirements.txt) because Scrapling pins
+# `lxml>=6.1.1` while this project's `docling` (CV parser) requires
+# `lxml<6.0.0` - a real, confirmed conflict verified against current PyPI
+# metadata (not assumed). Never add this file's contents to the main
+# requirements.txt.
+#
+# Version confirmed current via https://pypi.org/pypi/scrapling/json on
+# 2026-10-02 (latest release: 0.4.15, matching the pin below).
+#
+# `[fetchers]` extra is required for Fetcher/StealthyFetcher (the two classes
+# scrapling_runner.py actually imports) - it pulls in curl_cffi + playwright +
+# patchright + browserforge for the stealthy/anti-bot-bypass fetch path.
+scrapling[fetchers]==0.4.15

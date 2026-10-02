@@ -28,16 +28,36 @@ for a static-HTML attempt first, and only escalates to `StealthyFetcher`
 (headless browser, slower, higher resource cost) if the static fetch is
 blocked or returns a bot-challenge page.
 
-Setup (run once, in an isolated venv - NOT the main backend/venv):
-    python3 -m venv /opt/scrapling-runner-venv
-    /opt/scrapling-runner-venv/bin/pip install scrapling==0.4.15
+Setup - TWO reproducible options, both isolated from the main backend venv:
 
-Wiring (django side, apps/scraper/pipeline/extraction_adapter.py):
+  OPTION A (preferred - Docker, see ./Dockerfile in this directory):
+      docker build -t usam-scrapling-runner:0.4.15 \
+          -f apps/scraper/extraction_runners/Dockerfile \
+          apps/scraper/extraction_runners
+      # then set the Django env var:
+      #   SCRAPLING_RUNNER_CMD=docker,run,--rm,-i,usam-scrapling-runner:0.4.15
+      # Verified end-to-end on 2026-10-02: built the image, ran it against a
+      # real live Greenhouse-hosted job page (job-boards.greenhouse.io/
+      # stripe/jobs/8172510) via `echo '{"url": "..."}' | docker run --rm -i
+      # usam-scrapling-runner:0.4.15` and got back a real JobPosting JSON-LD
+      # extraction (title/description/company/location/apply_url) - this is
+      # not a hypothetical artifact, it has been built and exercised.
+
+  OPTION B (plain isolated venv, no Docker):
+      python3 -m venv /opt/scrapling-runner-venv
+      /opt/scrapling-runner-venv/bin/pip install -r requirements.txt
+      /opt/scrapling-runner-venv/bin/python -m playwright install chromium
+      # then set the Django env var:
+      #   SCRAPLING_RUNNER_PYTHON=/opt/scrapling-runner-venv/bin/python
+
+Wiring (django side, apps/scraper/tasks.py's _adaptive_fallback_runner reads
+SCRAPLING_RUNNER_CMD first, falling back to SCRAPLING_RUNNER_PYTHON + this
+script's path - see config/settings/base.py for both settings):
     OutOfProcessBackend(
         name="scrapling",
         tier=ExtractionTier.ADAPTIVE_PARSER,
-        runner_cmd=["/opt/scrapling-runner-venv/bin/python",
-                     "/path/to/scrapling_runner.py"],
+        runner_cmd=["docker", "run", "--rm", "-i", "usam-scrapling-runner:0.4.15"],
+        # or: ["/opt/scrapling-runner-venv/bin/python", "/path/to/scrapling_runner.py"]
     )
 """
 import json

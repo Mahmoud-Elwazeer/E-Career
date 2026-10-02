@@ -45,32 +45,47 @@ class Command(BaseCommand):
             default=getattr(settings, "SCRAPLING_RUNNER_PYTHON", "") or os.environ.get("SCRAPLING_RUNNER_PYTHON", ""),
             help="Path to the python executable inside the isolated Scrapling venv",
         )
+        parser.add_argument(
+            "--runner-cmd",
+            default="",
+            help=(
+                "Comma-separated full command for the runner, e.g. "
+                "'docker,run,--rm,-i,usam-scrapling-runner:0.4.15' "
+                "(see apps/scraper/extraction_runners/Dockerfile). "
+                "Takes priority over --runner-python when set."
+            ),
+        )
 
     def handle(self, *args, **opts):
         url = opts["url"]
         runner_python = opts["runner_python"]
+        runner_cmd_opt = opts["runner_cmd"]
 
-        if not runner_python:
+        if runner_cmd_opt:
+            runner_cmd = [p for p in runner_cmd_opt.split(",") if p]
+        elif runner_python:
+            runner_script = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                "..", "extraction_runners", "scrapling_runner.py",
+            )
+            runner_cmd = [runner_python, os.path.normpath(runner_script)]
+        else:
             self.stdout.write(self.style.ERROR(
-                "No runner configured. Set --runner-python to the isolated "
-                "Scrapling venv's python executable, e.g.:\n"
+                "No runner configured. Either:\n"
+                "  python manage.py test_adaptive_extraction --url <url> "
+                "--runner-cmd docker,run,--rm,-i,usam-scrapling-runner:0.4.15\n"
+                "or:\n"
                 "  python manage.py test_adaptive_extraction --url <url> "
                 "--runner-python /opt/scrapling-runner-venv/bin/python\n"
-                "(Scrapling must be installed in that SEPARATE venv first - "
-                "see apps/scraper/extraction_runners/scrapling_runner.py.)"
+                "(see apps/scraper/extraction_runners/Dockerfile and "
+                "scrapling_runner.py for setup.)"
             ))
             return
-
-        runner_script = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "..", "extraction_runners", "scrapling_runner.py",
-        )
-        runner_script = os.path.normpath(runner_script)
 
         backend = OutOfProcessBackend(
             name="scrapling",
             tier=ExtractionTier.ADAPTIVE_PARSER,
-            runner_cmd=[runner_python, runner_script],
+            runner_cmd=runner_cmd,
         )
 
         self.stdout.write(f"Backend available: {backend.available()}")

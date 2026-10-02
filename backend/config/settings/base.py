@@ -339,11 +339,24 @@ CHANGE_DETECTION_URL = config('CHANGE_DETECTION_URL', default='http://localhost:
 CHANGE_DETECTION_API_KEY = config('CHANGE_DETECTION_API_KEY', default='')
 
 # ── Scrapling adaptive-extraction runner (Tier 3, §15/§16) ───────────────────
-# Path to the python executable inside the ISOLATED Scrapling venv (NEVER the
-# main backend venv - lxml>=6.1.1 required by Scrapling conflicts with
-# docling's lxml<6.0.0 pin). Empty by default: the Tier-3 adaptive fallback is
-# inert (returns []) until this is explicitly configured for a given
-# environment. See apps/scraper/extraction_runners/scrapling_runner.py.
+# Two ways to point the Tier-3 adaptive fallback at the ISOLATED Scrapling
+# runtime (NEVER the main backend venv - lxml>=6.1.1 required by Scrapling
+# conflicts with docling's lxml<6.0.0 pin, a confirmed real conflict):
+#
+#   1. SCRAPLING_RUNNER_CMD - the full command list to invoke per-extraction,
+#      e.g. for the reproducible Docker image built from
+#      apps/scraper/extraction_runners/Dockerfile:
+#        SCRAPLING_RUNNER_CMD=docker,run,--rm,-i,usam-scrapling-runner:0.4.15
+#      Takes priority over SCRAPLING_RUNNER_PYTHON when set.
+#   2. SCRAPLING_RUNNER_PYTHON - path to a python executable inside a plain
+#      isolated venv (non-Docker setup); the runner script path is appended
+#      automatically by _adaptive_fallback_runner (apps/scraper/tasks.py).
+#
+# Both are empty by default: the Tier-3 adaptive fallback is inert (returns
+# []) until one is explicitly configured for a given environment. See
+# apps/scraper/extraction_runners/scrapling_runner.py and
+# apps/scraper/extraction_runners/Dockerfile for build/run instructions.
+SCRAPLING_RUNNER_CMD = config('SCRAPLING_RUNNER_CMD', default='', cast=Csv())
 SCRAPLING_RUNNER_PYTHON = config('SCRAPLING_RUNNER_PYTHON', default='')
 
 # ── AWS Billing Alerts Configuration ───────────────────────────────────────────

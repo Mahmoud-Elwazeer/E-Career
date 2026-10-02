@@ -221,20 +221,29 @@ def _adaptive_fallback_runner(source: Source) -> List[Dict]:
     if not url:
         return []
 
+    # Two equally-valid ways to configure the isolated runner (§5 of the
+    # Dockerfile docstring): a full command list (e.g. the reproducible
+    # Docker image) takes priority over a bare python-executable path.
+    runner_cmd_list = list(getattr(settings, 'SCRAPLING_RUNNER_CMD', []) or [])
     runner_python = getattr(settings, 'SCRAPLING_RUNNER_PYTHON', '') or os.environ.get('SCRAPLING_RUNNER_PYTHON', '')
-    if not runner_python:
+
+    if runner_cmd_list:
+        runner_cmd = runner_cmd_list
+    elif runner_python:
+        runner_script = os.path.normpath(os.path.join(
+            os.path.dirname(__file__), "extraction_runners", "scrapling_runner.py",
+        ))
+        runner_cmd = [runner_python, runner_script]
+    else:
         log.info("adaptive_fallback_no_runner_configured", source=source.slug)
         return []
 
     try:
         from .pipeline.extraction_adapter import OutOfProcessBackend, ExtractionTier
 
-        runner_script = os.path.normpath(os.path.join(
-            os.path.dirname(__file__), "extraction_runners", "scrapling_runner.py",
-        ))
         backend = OutOfProcessBackend(
             name="scrapling", tier=ExtractionTier.ADAPTIVE_PARSER,
-            runner_cmd=[runner_python, runner_script],
+            runner_cmd=runner_cmd,
         )
         if not backend.available():
             return []
