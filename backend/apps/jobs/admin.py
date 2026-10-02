@@ -63,16 +63,39 @@ class SourceAdmin(ModelAdmin):
     """
     Enhanced Source admin with unfold styling.
     """
-    list_display = ["name", "type", "url", "is_active", "job_count", "created_at"]
-    list_filter = ["type", "is_active"]
-    search_fields = ["name", "slug", "url"]
+    list_display = [
+        "name", "type", "ats_platform", "lifecycle_state", "is_active",
+        "job_count", "jobs_found_last_run", "historical_average_jobs",
+        "consecutive_zero_yield_runs", "error_count", "created_at",
+    ]
+    list_filter = ["type", "ats_platform", "lifecycle_state", "is_active",
+                   "adaptive_allowed", "terms_review_status", "legal_review_status"]
+    search_fields = ["name", "slug", "url", "country", "region"]
     ordering = ["name"]
-    readonly_fields = ["uuid", "created_at", "updated_at"]
+    readonly_fields = [
+        "uuid", "created_at", "updated_at",
+        "jobs_found_last_run", "jobs_added_last_run", "last_run_at",
+        "last_run_status", "error_count", "last_error",
+        "last_success_at", "last_failure_at", "last_nonzero_at",
+        "historical_average_jobs", "consecutive_zero_yield_runs",
+        "lifecycle_state", "migration_history", "last_discovery_at",
+    ]
     prepopulated_fields = {"slug": ("name",)}
-    
+    actions = ["enable_sources", "disable_sources"]
+
     @display(description="Active Jobs")
     def job_count(self, obj):
         return obj.jobs.filter(status='active').count()
+
+    @admin.action(description="Enable selected sources")
+    def enable_sources(self, request, queryset):
+        count = queryset.update(is_active=True)
+        self.message_user(request, f"{count} source(s) enabled.")
+
+    @admin.action(description="Disable selected sources")
+    def disable_sources(self, request, queryset):
+        count = queryset.update(is_active=False)
+        self.message_user(request, f"{count} source(s) disabled.")
 
 
 @admin.register(Tag)

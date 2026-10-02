@@ -141,3 +141,40 @@ class TestScraperIntegration(TestCase):
 
         self.assertIn("total_found", result)
         self.assertIn("total_added", result)
+
+    @patch("apps.scraper.orchestrator.greenhouse.fetch_greenhouse_jobs")
+    @patch("apps.scraper.orchestrator.verify_url_live")
+    def test_max_jobs_per_run_caps_persisted_jobs(self, mock_verify_url, mock_fetch):
+        """§4 source registry audit: Source.max_jobs_per_run bounds how many
+        jobs a single run persists, even if the connector returned more."""
+        mock_fetch.return_value = [
+            {
+                "title": f"Role {i}",
+                "description": "A real job description that is long enough "
+                               "to pass the legitimacy content-length check "
+                               "comfortably for this test case here.",
+                "location": "Remote",
+                "direct_apply_url": f"https://boards.greenhouse.io/testcorp/jobs/{i}",
+                "ats_platform": "greenhouse",
+                "ats_job_id": f"gh-cap-{i}",
+                "company_slug": "testcorp",
+            }
+            for i in range(5)
+        ]
+        mock_verify_url.return_value = True
+        self.source.max_jobs_per_run = 2
+        self.source.save(update_fields=["max_jobs_per_run"])
+
+        orchestrator = ScraperOrchestrator()
+        jobs, added = orchestrator.scrape_source(self.source)
+
+        self.assertEqual(len(jobs), 5)  # fetch is uncapped
+        self.assertEqual(added, 2)      # persistence is capped
+
+    def test_rate_limit_override_takes_priority_over_platform_default(self):
+        """A Source.rate_limit_override of 0 must block every request for
+        that source regardless of the platform-wide RATE_LIMITS default."""
+        orchestrator = ScraperOrchestrator()
+        self.assertFalse(orchestrator.check_rate_limit("greenhouse", rate_limit_override=0))
+        # Platform default (10/min) still allows requests when no override given.
+        self.assertTrue(orchestrator.check_rate_limit("greenhouse"))

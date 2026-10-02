@@ -61,11 +61,26 @@ def scrape_all_sources(self):
                 added = process_and_store_jobs(jobs, source)
                 
                 # Update source stats
+                now = timezone.now()
                 source.jobs_found_last_run = len(jobs)
                 source.jobs_added_last_run = added
                 source.last_run_status = 'success'
                 source.error_count = 0
                 source.last_error = ''
+                source.last_success_at = now
+                if len(jobs) > 0:
+                    source.last_nonzero_at = now
+                # §4/§11 anomaly-detection input: exponential moving average
+                # (alpha=0.3) of jobs found per run, so "historical average
+                # 700, this run 0" can be measured against a real trailing
+                # average instead of a hardcoded threshold. EMA chosen over a
+                # simple running mean so it adapts to a source's genuinely
+                # growing/shrinking posting volume rather than being anchored
+                # to its very first runs forever.
+                prev_avg = source.historical_average_jobs or 0.0
+                source.historical_average_jobs = (
+                    len(jobs) if prev_avg == 0.0 else (0.3 * len(jobs) + 0.7 * prev_avg)
+                )
                 source.save()
                 
                 total_found += len(jobs)
@@ -76,6 +91,7 @@ def scrape_all_sources(self):
                 source.last_run_status = 'failed'
                 source.error_count += 1
                 source.last_error = str(e)
+                source.last_failure_at = timezone.now()
                 source.save()
                 continue
         
@@ -221,6 +237,10 @@ def _adaptive_fallback_runner(source: Source) -> List[Dict]:
     # Step 2: real Tier-3 adaptive extraction via the isolated Scrapling
     # out-of-process runner. Inert (returns []) unless SCRAPLING_RUNNER_PYTHON
     # is configured — Scrapling is never installed into this venv.
+    if not getattr(source, 'adaptive_allowed', True):
+        log.info("adaptive_fallback_disabled_for_source", source=source.slug)
+        return []
+
     url = getattr(source, 'url', '') or ''
     if not url:
         return []

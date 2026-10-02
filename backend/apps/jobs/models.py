@@ -236,6 +236,119 @@ class Source(UUIDModel):
 
     # ============ END NEW FIELDS ============
 
+    # ── §4 Source registry field audit (production-scale directive) ──
+    # Added ONLY fields with a real, wired consumer in this same change (or
+    # the immediately-following anomaly-detection work) — NOT a blind copy of
+    # the directive's full wishlist. Fields deliberately NOT added, with the
+    # reason, so the omission is a decision rather than a silent gap:
+    #   priority            - no priority-aware dispatch loop exists; sources
+    #                         are processed in Source.objects order today.
+    #                         Adding this field with nothing reading it would
+    #                         be exactly the "dead metadata" anti-pattern the
+    #                         directive itself warns against.
+    #   trust_level         - already COMPUTED per-job from real evidence by
+    #                         legitimacy.calculate_source_trust() (ats
+    #                         platform + job id + apply url presence). A
+    #                         stored per-Source field would duplicate and
+    #                         could drift from the authoritative computed
+    #                         value - the computed version is strictly
+    #                         better, so no field was added.
+    #   acquisition_strategy - this is exactly what StrategyRouter.decide_route()
+    #                         computes dynamically from ats_platform/
+    #                         requires_playwright/type. Storing a parallel
+    #                         static field would let it desync from the real
+    #                         routing decision.
+    #   discovery_only, AI_allowed - no discovery-only source or Tier-4 AI
+    #                         runner exists yet in this codebase (Crawl4AI/
+    #                         ScrapeGraphAI remain DEFER per the audit doc) -
+    #                         there is nothing to read these flags yet. Will
+    #                         add when a real consumer exists, not before.
+    #   rediscovery_state   - redundant with the existing lifecycle_state
+    #                         (active/degraded/migrated/disabled/invalid) +
+    #                         last_discovery_at, added in the §9/§10 work.
+    #   consecutive_failures - redundant with existing error_count, which
+    #                         tasks.py already resets to 0 on every success -
+    #                         it already IS a consecutive-failure counter.
+    #   zero_yield_count    - redundant with existing
+    #                         consecutive_zero_yield_runs (§9/§10).
+    country = models.CharField(
+        max_length=80, blank=True, db_index=True,
+        help_text="Primary country this source's postings target (admin/matrix metadata)",
+    )
+    region = models.CharField(
+        max_length=80, blank=True,
+        help_text="Region/market grouping (e.g. MENA, EU, NA) - admin/matrix metadata",
+    )
+    industry = models.CharField(
+        max_length=80, blank=True,
+        help_text="Industry focus if this source is industry-specific (free text, admin metadata)",
+    )
+    adaptive_allowed = models.BooleanField(
+        default=True,
+        help_text=(
+            "If False, this source's Tier-3 adaptive (Scrapling) fallback is "
+            "disabled even if its platform is unstructured - an admin "
+            "kill-switch for a specific flaky/legal-sensitive source without "
+            "having to disable adaptive extraction platform-wide. Read by "
+            "apps.scraper.tasks._adaptive_fallback_runner."
+        ),
+    )
+    rate_limit_override = models.IntegerField(
+        null=True, blank=True,
+        help_text=(
+            "Requests/minute override for this source, replacing the "
+            "platform-wide default in ScraperOrchestrator.RATE_LIMITS. "
+            "Null = use the platform default."
+        ),
+    )
+    max_jobs_per_run = models.IntegerField(
+        null=True, blank=True,
+        help_text=(
+            "Hard cap on jobs persisted from a single run of this source "
+            "(bounded-ingestion control for scale testing / a newly-added "
+            "source). Null = no cap."
+        ),
+    )
+    last_success_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Last run that completed without a fetch/dispatch exception "
+                  "(distinct from last_run_at, which also records failed runs)",
+    )
+    last_failure_at = models.DateTimeField(null=True, blank=True)
+    last_nonzero_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="Last run where jobs_found_last_run > 0 - lets anomaly "
+                  "detection measure exactly how long a source has been "
+                  "silently zero, not just whether its LAST run was zero.",
+    )
+    historical_average_jobs = models.FloatField(
+        default=0.0,
+        help_text=(
+            "Exponential moving average of jobs_found_last_run across runs, "
+            "updated each run. Consumed by anomaly detection to flag "
+            "'historical average 700, current run 0' style regressions "
+            "instead of comparing against a hardcoded threshold."
+        ),
+    )
+    TERMS_REVIEW_CHOICES = [
+        ("not_required", "Not Required"),
+        ("pending", "Pending Review"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+    terms_review_status = models.CharField(
+        max_length=20, choices=TERMS_REVIEW_CHOICES, default="not_required",
+        help_text="ToS/robots.txt compliance review status for this source",
+    )
+    legal_review_status = models.CharField(
+        max_length=20, choices=TERMS_REVIEW_CHOICES, default="not_required",
+        help_text="Legal review status (e.g. required before enabling an "
+                  "aggregator-adjacent or outreach-adjacent source)",
+    )
+    notes = models.TextField(
+        blank=True, help_text="Free-text admin notes about this source",
+    )
+
     # ── §9/§10 Source lifecycle state + migration tracking ──
     # ACTIVE     : healthy, ingesting normally
     # DEGRADED   : fetching but not persisting (zero-yield / all-rejected)

@@ -23,12 +23,13 @@ class _FakeSource:
     """Minimal stand-in for apps.jobs.models.Source (avoid DB in these tests)."""
 
     def __init__(self, slug, ats_platform, url="https://example.com/careers",
-                 requires_playwright=False, type="scraper"):
+                 requires_playwright=False, type="scraper", adaptive_allowed=True):
         self.slug = slug
         self.ats_platform = ats_platform
         self.url = url
         self.requires_playwright = requires_playwright
         self.type = type
+        self.adaptive_allowed = adaptive_allowed
 
 
 def test_known_platform_routes_structured_and_calls_existing_connector():
@@ -125,3 +126,25 @@ def test_adaptive_runner_invokes_scrapling_backend_when_configured():
 
     instance.extract.assert_called_once_with("https://no-ats-co.example/careers")
     assert jobs == [{"title": "Found via Scrapling"}]
+
+
+def test_adaptive_allowed_false_blocks_scrapling_even_when_configured():
+    """§4 source registry audit: adaptive_allowed=False is an admin
+    kill-switch for a specific source's Tier-3 fallback, independent of
+    whether SCRAPLING_RUNNER_CMD/PYTHON is globally configured."""
+    source = _FakeSource(
+        slug="flaky-co", ats_platform="", url="https://flaky-co.example/careers",
+        adaptive_allowed=False,
+    )
+    discovery_result = DiscoveryResult(slug="flaky-co", healthy=False)
+
+    with patch(
+        "apps.scraper.pipeline.source_discovery.discover_ats",
+        return_value=discovery_result,
+    ), patch("django.conf.settings.SCRAPLING_RUNNER_PYTHON", "/fake/venv/bin/python", create=True), patch(
+        "apps.scraper.pipeline.extraction_adapter.OutOfProcessBackend"
+    ) as MockBackend:
+        jobs = tasks.scrape_source(source)
+
+    MockBackend.assert_not_called()
+    assert jobs == []

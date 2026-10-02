@@ -114,17 +114,20 @@ class ScraperOrchestrator:
             logger.error(f"Failed to check schedule for source {source.id}: {e}")
             return False
     
-    def check_rate_limit(self, platform: str) -> bool:
+    def check_rate_limit(self, platform: str, rate_limit_override: Optional[int] = None) -> bool:
         """
         Check if we can make a request for a platform.
         
         Args:
             platform: ATS platform name
+            rate_limit_override: a specific Source's rate_limit_override field
+                (requests/minute), taking priority over the platform default
+                when set (§4 source registry audit).
             
         Returns:
             True if request allowed, False if rate limited
         """
-        limit = self.RATE_LIMITS.get(platform, 10)
+        limit = rate_limit_override if rate_limit_override is not None else self.RATE_LIMITS.get(platform, 10)
         current_time = timezone.now()
         
         # Initialize tracker if needed
@@ -235,8 +238,9 @@ class ScraperOrchestrator:
         if company_slug.endswith(f"-{platform}"):
             company_slug = company_slug[:-len(f"-{platform}")]
         
-        # Check rate limit
-        if not self.check_rate_limit(platform):
+        # Check rate limit (a per-Source override takes priority over the
+        # platform-wide default — §4 source registry audit).
+        if not self.check_rate_limit(platform, getattr(source, 'rate_limit_override', None)):
             logger.warning(f"Rate limit exceeded for platform {platform}")
             return [], 0
         
@@ -333,7 +337,17 @@ class ScraperOrchestrator:
             fetched=len(jobs),
         )
 
+        max_per_run = getattr(source, 'max_jobs_per_run', None)
+
         for job_data in jobs:
+            # §4/§18 bounded-ingestion control: a per-Source cap on jobs
+            # PERSISTED (created+updated) in a single run, for a newly-added
+            # or scale-tested source. Checked before processing each job so a
+            # capped run still reports accurate fetched/rejected counts for
+            # jobs it chose not to process, instead of silently truncating.
+            if max_per_run is not None and (metrics.created + metrics.updated) >= max_per_run:
+                metrics.reject('MAX_JOBS_PER_RUN_CAP', job_data.get('title'))
+                continue
             try:
                 # 1. Validate apply URL
                 apply_url = job_data.get('direct_apply_url') or job_data.get('apply_url')
