@@ -82,7 +82,50 @@ class EngineHealthView(APIView):
         except Exception as e:
             checks.append({"name": "Recommendation Feedback", "status": "error", "message": str(e)})
 
-        # 6. AI provider (Bedrock) — classified status (no secrets)
+        # 6. Search backend (Typesense primary + Postgres fallback) — no
+        # secrets exposed (never reads/prints TYPESENSE_API_KEY). Reports
+        # the primary's real health_check(), the jobs collection document
+        # count (so an auth/config regression like the 2026-10-02 missing-
+        # key incident is visible here instead of only in Celery logs), and
+        # whether the fallback is in active use. Does not duplicate
+        # SearchService - calls the exact same methods the app itself uses.
+        try:
+            from apps.search.service import get_search_service
+            svc = get_search_service()
+            primary_healthy = svc.primary.health_check()
+            if primary_healthy:
+                try:
+                    coll = svc.primary.client.collections["jobs"].retrieve()
+                    doc_count = coll.get("num_documents")
+                    checks.append({
+                        "name": "Search (Typesense)",
+                        "status": "healthy",
+                        "message": f"primary healthy, jobs collection: {doc_count} documents",
+                    })
+                except Exception as ce:
+                    # Typesense server is up but the jobs collection itself
+                    # is missing/misconfigured - distinct from an auth
+                    # failure, surfaced separately rather than conflated.
+                    checks.append({
+                        "name": "Search (Typesense)",
+                        "status": "warning",
+                        "message": f"primary healthy but jobs collection unavailable: {ce}",
+                    })
+            else:
+                # health_check() returned False - typically an auth failure
+                # (missing/invalid TYPESENSE_API_KEY) or the server being
+                # unreachable. Fallback keeps search FUNCTIONAL but this
+                # must show as degraded, not healthy - a repeat of the
+                # 2026-10-02 incident must be visible here immediately.
+                checks.append({
+                    "name": "Search (Typesense)",
+                    "status": "warning",
+                    "message": "primary (Typesense) unhealthy - serving search via Postgres fallback",
+                })
+        except Exception as e:
+            checks.append({"name": "Search (Typesense)", "status": "error", "message": str(e)})
+
+        # 7. AI provider (Bedrock) — classified status (no secrets)
         try:
             from apps.intelligence.bedrock_client import bedrock_health
             bh = bedrock_health()
