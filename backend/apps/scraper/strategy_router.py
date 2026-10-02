@@ -59,6 +59,7 @@ STRUCTURED_ATS = {
     "sap",
     "recruitee",
     "eightfold",
+    "personio",
 }
 
 

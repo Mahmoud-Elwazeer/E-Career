@@ -74,6 +74,13 @@ SOURCES = [
     # real, current postings. Apply URL is careers_url (the job's own
     # listing page), not careers_apply_url (the "/c/new" application form).
     ("veocareers-recruitee", "VEO Worldwide Services", "recruitee"),
+
+    # ── Personio XML job feed (§6, new connector) ──
+    # Verified live 2026-10-02: f24.jobs.personio.de/xml -> 9 real, current
+    # positions with full descriptions and salary data. NOT a universal
+    # endpoint - only exists for employers who've explicitly enabled the
+    # XML feed in their Personio settings (see personio.py module docstring).
+    ("f24-personio", "F24 AG", "personio"),
 ]
 
 
@@ -179,4 +186,6 @@ def _board_url(slug: str, platform: str) -> str:
         return f"https://{company}.myworkdayjobs.com/"
     if platform == "recruitee":
         return f"https://{company}.recruitee.com/"
+    if platform == "personio":
+        return f"https://{company}.jobs.personio.de/"
     return f"https://{company}.com/careers"
