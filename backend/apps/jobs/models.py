@@ -113,6 +113,67 @@ class Company(UUIDModel):
         return self.name
 
 
+class CompanyResolutionIdentity(UUIDModel):
+    """A cached, evidence-backed mapping from (ATS platform, tenant slug) to
+    the ONE canonical Company (§11 Company Resolution Service).
+
+    This is the persisted memory of CompanyResolutionService
+    (apps/jobs/company_resolution.py). Without it, every ingestion run has to
+    re-derive "which Company is this?" from a slug/name heuristic every time,
+    and two different ATS tenants for the SAME real employer (e.g. a company
+    scraped via both -greenhouse and, after a later ATS migration, -lever)
+    have no way to collapse onto one Company short of exact slug luck. Once a
+    (platform, tenant_slug) pair has been resolved once, this table makes the
+    next resolution a direct, explainable lookup instead of a fresh guess —
+    and it is also the evidence trail a future "claim this company" workflow
+    needs (which ATS tenants were ever observed for this canonical Company,
+    and on what basis).
+    """
+
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="resolution_identities",
+    )
+    platform = models.CharField(
+        max_length=30, db_index=True,
+        help_text="ATS platform this tenant was observed on (greenhouse, lever, ashby, ...)",
+    )
+    tenant_slug = models.CharField(
+        max_length=150, db_index=True,
+        help_text="The company's slug/tenant id on that ATS platform",
+    )
+    domain = models.CharField(
+        max_length=255, blank=True,
+        help_text="Company domain observed at the time this identity was resolved, if any",
+    )
+    source = models.ForeignKey(
+        "jobs.Source", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="resolved_company_identities",
+        help_text="The scraper Source this identity was first resolved from, if any",
+    )
+    confidence = models.FloatField(
+        default=1.0, help_text="How confident this (platform, tenant_slug) -> Company mapping is",
+    )
+    matched_by = models.CharField(
+        max_length=20, blank=True,
+        help_text="How this identity's Company was determined: domain | slug | created",
+    )
+    evidence = models.JSONField(
+        default=dict, blank=True, help_text="Supporting evidence for this resolution (auditability)",
+    )
+
+    class Meta:
+        db_table = "jobs_company_resolution_identity"
+        unique_together = [("platform", "tenant_slug")]
+        verbose_name = "Company Resolution Identity"
+        verbose_name_plural = "Company Resolution Identities"
+        indexes = [
+            models.Index(fields=["company"], name="jobs_cri_company_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.platform}:{self.tenant_slug} -> {self.company.name}"
+
+
 class Source(UUIDModel):
     """A job board or source website where jobs are scraped/imported from."""
 

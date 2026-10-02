@@ -17,6 +17,7 @@ from celery import shared_task
 from django.utils import timezone
 
 from apps.jobs.models import Job, Source, Company
+from apps.jobs.company_resolution import company_resolver
 from apps.core.models import PipelineHealth, PlatformConfig
 
 from .ats import (
@@ -382,30 +383,24 @@ class ScraperOrchestrator:
                     continue
                 metrics.normalized += 1
 
-                # 4. Get or create company — keyed on a stable slug, but stored
-                #    with the resolved human employer name (njob.company_name).
-                company_slug_key = (
-                    (njob.company_slug or njob.company_name or source.name)
-                    .lower().replace(' ', '-')
+                # 4. Resolve to ONE canonical company (§11 Company Resolution
+                #    Service, apps/jobs/company_resolution.py) instead of the
+                #    inline get_or_create that used to live here. Behavior is
+                #    preserved (slug-stripping heuristic, name backfill) but
+                #    now also persists a (platform, tenant_slug) -> Company
+                #    identity so tasks.py's production path and this manual
+                #    path resolve the SAME employer to the SAME Company, and
+                #    a future ATS migration for this employer is recognized
+                #    instead of spawning a duplicate Company row.
+                resolution = company_resolver.resolve(
+                    platform=njob.ats_provider,
+                    tenant_slug=njob.company_slug,
+                    company_name=njob.company_name,
+                    company_domain=njob.company_domain,
+                    fallback_name=source.name,
+                    source=source,
                 )
-                # Strip a trailing ATS suffix from the KEY so airbnb-greenhouse
-                # and a future airbnb-lever collapse to one "airbnb" company.
-                for _sfx in ('-greenhouse', '-lever', '-ashby', '-workday',
-                             '-smartrecruiters', '-icims', '-workable',
-                             '-teamtailor', '-bamboohr', '-oracle', '-sap'):
-                    if company_slug_key.endswith(_sfx):
-                        company_slug_key = company_slug_key[: -len(_sfx)]
-                        break
-                company, _created_co = Company.objects.get_or_create(
-                    slug=company_slug_key,
-                    defaults={'name': njob.company_name or source.name},
-                )
-                # Backfill a real name if the company was previously created
-                # with a slug-like placeholder name.
-                if (not _created_co and njob.company_name
-                        and company.name.lower().replace(' ', '-') == company.slug):
-                    company.name = njob.company_name
-                    company.save(update_fields=['name'])
+                company = resolution.company
                 
                 # 5. Generate job hash
                 job_hash = generate_job_hash({

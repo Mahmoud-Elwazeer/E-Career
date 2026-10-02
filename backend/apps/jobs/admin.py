@@ -8,7 +8,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 from import_export.admin import ImportExportModelAdmin
 
-from apps.jobs.models import Company, Source, Tag, Job, JobTag
+from apps.jobs.models import Company, CompanyResolutionIdentity, Source, Tag, Job, JobTag
 
 
 class JobTagInline(TabularInline):
@@ -32,6 +32,30 @@ class CompanyAdmin(ModelAdmin):
     @display(description="Active Jobs")
     def job_count(self, obj):
         return obj.jobs.filter(status='active').count()
+
+
+@admin.register(CompanyResolutionIdentity)
+class CompanyResolutionIdentityAdmin(ModelAdmin):
+    """
+    Read-mostly admin for inspecting Company Resolution Service evidence:
+    which (ATS platform, tenant slug) pairs resolved to which canonical
+    Company, how (identity/domain/slug/created), and with what confidence.
+    Useful for auditing before a future Company Claim decision.
+    """
+    list_display = ["platform", "tenant_slug", "company_link", "matched_by",
+                     "confidence", "created_at"]
+    list_filter = ["platform", "matched_by"]
+    search_fields = ["tenant_slug", "company__name", "company__slug", "domain"]
+    ordering = ["-created_at"]
+    readonly_fields = ["uuid", "created_at", "updated_at", "evidence"]
+    autocomplete_fields = ["company", "source"]
+
+    @display(description="Company", ordering="company__name")
+    def company_link(self, obj):
+        return format_html(
+            '<a href="/admin/jobs/company/{}/change/">{}</a>',
+            obj.company.id, obj.company.name,
+        )
 
 
 @admin.register(Source)

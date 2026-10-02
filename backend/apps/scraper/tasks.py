@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import List, Dict
 
 from apps.jobs.models import Job, Source, Company
+from apps.jobs.company_resolution import company_resolver
 from apps.core.models import PipelineHealth, PlatformConfig
 
 from .ats import (
@@ -310,12 +311,24 @@ def process_and_store_jobs(jobs: List[Dict], source: Source) -> int:
             if legitimacy_score < 0.4:
                 continue
             
-            # 4. Get or create company
-            company_name = job_data.get('company_slug', source.name)
-            company, _ = Company.objects.get_or_create(
-                slug=company_name.lower().replace(' ', '-'),
-                defaults={'name': company_name}
+            # 4. Resolve to ONE canonical company (§11 Company Resolution
+            #    Service) instead of the old inline get_or_create, which
+            #    stored the raw lowercase board slug as the company's NAME
+            #    (e.g. a company literally named "stripe"). The resolver also
+            #    persists a (platform, tenant_slug) -> Company identity so a
+            #    future ATS migration for this same employer (see
+            #    source_discovery.py's Notion/Plaid/Ramp lesson) reuses this
+            #    Company instead of creating a duplicate.
+            platform = job_data.get('ats_platform', '') or (source.ats_platform or '')
+            tenant_slug = job_data.get('company_slug', '') or source.slug
+            resolution = company_resolver.resolve(
+                platform=platform,
+                tenant_slug=tenant_slug,
+                company_domain=job_data.get('company_domain', ''),
+                fallback_name=source.name,
+                source=source,
             )
+            company = resolution.company
             
             # 5. Generate job hash for deduplication
             job_hash = generate_job_hash({
