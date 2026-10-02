@@ -1098,3 +1098,56 @@ Not done (flagged, out of scope): verifying whether Qdrant has any real
 Django-side caller; the earlier liveness-check Celery tasks
 (`daily_liveness_check`/`weekly_reverification`) are still unscheduled
 (separate, pre-existing gap, not part of the durability fix).
+
+
+---
+
+## Crawl4AI / ScrapeGraphAI — final dependency re-verification (2026-10-02)
+
+Earlier this session (prior entry, "OSS re-verification") flagged that
+Crawl4AI's stated "disabled: requires litellm==1.48.0" reason was stale
+(current release depends on a fork, `unclecode-litellm`, not stock litellm)
+but did not run a real resolver test. Did so now, decisively:
+
+**Test performed:** `pip install --dry-run "crawl4ai==0.9.4" "docling==2.31.0"`
+in the real backend venv (which already has all of docling's other
+dependencies installed) — this exercises pip's actual constraint solver
+across both packages simultaneously, not just each package's declared
+range in isolation.
+
+**Result: zero conflicts.** Pip resolved both to a single compatible
+`lxml==5.4.0` — Crawl4AI 0.9.4 requires `lxml<7,>=5.3`, docling 2.31.0
+requires `lxml<6.0.0,>=4.0.0`; `5.3 ≤ x < 6.0` satisfies both simultaneously.
+**Correction:** the lxml conflict is real for **Scrapling** (`lxml>=6.1.1`,
+zero overlap with docling's `<6.0.0`) but does **not** apply to Crawl4AI —
+this was conflated in earlier audit passes. Crawl4AI's actual cost is
+weight, not an incompatibility: the dry-run resolved and would download
+~648MB (confirmed by letting the real install run), including a full
+Playwright **and** a full Patchright (a Playwright fork) browser-automation
+stack, `unclecode-litellm` (an 18MB LiteLLM fork), `transformers`,
+`huggingface-hub`, `openai`'s SDK, and more — none of which this platform's
+existing scraping stack needs for any currently-identified source.
+
+**Verdict: DEFER, not REJECT.** No dependency blocker exists (corrected from
+earlier framing). The real reason to not install it now is that **no
+current source has demonstrated a need for Tier-4 AI extraction** — every
+real connector gap found this session (Recruitee/Jobvite/Personio missing
+entirely, Oracle/SAP needing per-tenant registries) is a Tier-0/structured
+problem, not a "the HTML is unparseable without an LLM" problem. Installing
+648MB of browser+LLM infrastructure with no concrete consumer would be
+exactly the "integration == pip install, no real caller" anti-pattern this
+engagement has repeatedly rejected elsewhere (Scrapling, extraction_adapter,
+StrategyRouter were all found inert before being given a real caller this
+session). If/when a source is found that genuinely defeats Tier-0/1/2/3
+(the Scrapling adaptive tier built this session), re-evaluate Crawl4AI as
+an out-of-process Tier-4 backend using the exact same `OutOfProcessBackend`
+contract — no new infrastructure design needed, just a second runner script
+following `scrapling_runner.py`'s pattern.
+
+**ScrapeGraphAI — verdict unchanged, REJECT confirmed.** Already established
+earlier this session: requires Python ≥3.12, this project's Docker image is
+`python:3.11-slim` — cannot be installed without a Python version bump,
+independent of any dependency-resolution question. Also pulls a full
+LangChain stack. No re-test needed; the blocker is a hard Python-version
+mismatch, not a soft dependency range that could resolve favorably like
+Crawl4AI's did.
