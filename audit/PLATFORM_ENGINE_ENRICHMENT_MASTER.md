@@ -1144,10 +1144,128 @@ an out-of-process Tier-4 backend using the exact same `OutOfProcessBackend`
 contract — no new infrastructure design needed, just a second runner script
 following `scrapling_runner.py`'s pattern.
 
-**ScrapeGraphAI — verdict unchanged, REJECT confirmed.** Already established
-earlier this session: requires Python ≥3.12, this project's Docker image is
-`python:3.11-slim` — cannot be installed without a Python version bump,
-independent of any dependency-resolution question. Also pulls a full
-LangChain stack. No re-test needed; the blocker is a hard Python-version
-mismatch, not a soft dependency range that could resolve favorably like
-Crawl4AI's did.
+**ScrapeGraphAI — CORRECTED to DEFER/OPTIONAL ISOLATED TIER-4 (was wrongly
+framed as REJECT in an earlier pass of this audit).** It requires Python
+≥3.12, and this project's Docker image is `python:3.11-slim` — but by the
+time Scrapling's own isolated-runtime pattern was built this session (see
+"Production dispatch + Scrapling runtime" section below), the architecture
+already proves that a Tier-3/4 adaptive extractor does NOT need to share the
+main backend's Python version at all — it runs out-of-process, in its own
+container, talking to Django over a stdin/stdout JSON contract
+(`OutOfProcessBackend`). A Python-version mismatch means "give it its own
+`python:3.12-slim` Dockerfile," exactly like `extraction_runners/Dockerfile`
+does for Scrapling's `lxml` conflict — it does NOT mean "can never be used."
+REJECT was the wrong verdict; the correct one is DEFER: no current source has
+demonstrated a need for Tier-4 AI extraction (same reasoning as Crawl4AI
+above), so there is no reason to build the ScrapeGraphAI runner today, but
+nothing architecturally blocks it later. If a real Tier-0/1/2/3-defeating
+source is ever found, standing up a `scrapegraphai_runner.py` + its own
+`python:3.12-slim`-based Dockerfile, following the exact
+`extraction_runners/` pattern, is the correct next step — not a redesign.
+
+
+---
+
+## Production dispatch wiring + Scrapling runtime + connector expansion + Company Resolution (2026-10-02/03, commits 714e219..d1f7fd7)
+
+Executed the standing "production pipeline wiring first → connector expansion → source scale → company discovery/claim/outreach" directive, in that order, without stopping for prioritization. All items below are real code, tested, and pushed to `origin/development`. Deployment to the production server (git pull + migrate + restart) was NOT performed this increment — that remains a server action for the operator, listed at the end.
+
+### 1. Production Celery Beat dispatch now actually uses StrategyRouter (commit b9e6ebc)
+
+**Gap found (fresh read, not memory):** the Celery Beat-scheduled task chain is
+`scrape_all_sources` (tasks.py) → `scrape_source(source)` → `process_and_store_jobs()`.
+`scrape_source()` was a hardcoded if/elif on `ats_platform` — `StrategyRouter`,
+`ExtractionRouter`, and the Scrapling adapter (all built in an earlier part of
+this engagement) were **never called from the scheduled path**. `orchestrator.py`'s
+richer `scrape_all_sources_orchestrated` (which DOES have better metrics) is
+**not** what Beat schedules (confirmed via `seed_beat_schedule.py`'s `SCHEDULES`
+list — only `apps.scraper.tasks.scrape_all_sources` is seeded).
+
+**Fix:** refactored `tasks.py::scrape_source()`:
+- The original if/elif body was extracted verbatim into `_dispatch_structured_ats(platform, company_slug)` — zero logic change, just made callable as `StrategyRouter`'s `structured_runner`.
+- `scrape_source(source)` now builds `StrategyRouter(structured_runner=_dispatch_structured_ats, adaptive_runner=_adaptive_fallback_runner)` and calls `.run(source)`. This **is** the real scheduled path now, not a parallel one.
+- New `_adaptive_fallback_runner(source)`: for any source whose platform is NOT in `STRUCTURED_ATS` (currently every seeded source IS, so this is new capability, not a behavior change for existing sources), it first runs **source discovery** (`source_discovery.discover_ats`) against known ATS endpoint templates — per the Notion/Plaid/Ramp migration lesson, never guess a page-specific scraper before checking for a known-but-unrecorded ATS. If discovery finds a healthy provider that IS structured, it calls `_dispatch_structured_ats` with the discovered tenant (self-healing migration detection in production). Only if discovery finds nothing does it fall through to the real Tier-3 Scrapling adapter.
+- `orchestrator.py` (the secondary, non-scheduled path) was intentionally **not** touched here — one authoritative dispatch path, not two.
+
+5 new tests (`tests_scrape_source_routing.py`) prove: zero behavior change for known platforms (asserts `fetch_greenhouse_jobs` still called with the exact pre-refactor slug), discovery-before-fallback is attempted for unknown platforms, a discovered known-ATS routes to the real structured connector (not Scrapling), and the adaptive runner degrades gracefully to `[]` when no runner is configured (today's default) or invokes the configured `OutOfProcessBackend` correctly when it is.
+
+### 2. Reproducible isolated Scrapling runtime — real Docker image, built and run (commit 02c6172)
+
+Replaced the earlier ad-hoc local-only `pip install --target $env:TEMP\...` verification approach with a committed, reproducible artifact:
+- `backend/apps/scraper/extraction_runners/Dockerfile` + `requirements.txt`: `python:3.11-slim` + Playwright/Chromium system deps + `scrapling[fetchers]==0.4.15` (version confirmed current via a live PyPI JSON API query on 2026-10-02, not assumed).
+- **Actually built the image locally** (`docker build`, ~320s, mostly the Chromium download) and **ran it three times against real live URLs**:
+  - `example.com` → 0 jobs (correct — no JobPosting markup).
+  - `job-boards.greenhouse.io/stripe/jobs/8172510` → **1 real job extracted** via JSON-LD: title "Abuse Investigator", company "Stripe", location "Atlanta, US", `direct_apply_url` correctly resolved to `stripe.com/careers/listing/...`. This proves the full runner pipeline (static fetch → JSON-LD parse → structured output) genuinely works end to end, not just that the image builds.
+- Wired into `docker-compose.yml` as a `scrapling_runner` service with `profiles: ["tools"]` (inert on a plain `docker compose up`; invoked on demand via `docker compose run`).
+- Added `SCRAPLING_RUNNER_CMD` setting (full command list, e.g. `docker,run,--rm,-i,usam-scrapling-runner:0.4.15`) alongside the existing `SCRAPLING_RUNNER_PYTHON` (bare isolated-venv path); `tasks.py`'s `_adaptive_fallback_runner` prefers `SCRAPLING_RUNNER_CMD`, falls back to `SCRAPLING_RUNNER_PYTHON`, defaults to inert `[]` when neither is set — the production-safe default is unchanged until an operator explicitly configures one.
+- Verified the **Django-side wiring** too, not just the raw container: `manage.py test_adaptive_extraction --url https://job-boards.greenhouse.io/stripe/jobs/8172510 --runner-cmd docker,run,--rm,-i,usam-scrapling-runner:0.4.15` returned `ok=True`, 1 job found — the same Stripe job, proving the `OutOfProcessBackend` subprocess contract works correctly through `manage.py`, not just via raw `docker run`.
+- Scrapling is **never** installed into the main Django venv (the real `lxml>=6.1.1` vs docling's `lxml<6.0.0` conflict stands as previously documented).
+- Locally-built image was removed after verification (`docker image rm`) — only the Dockerfile/requirements source artifacts are committed, no built image.
+
+### 3. Three new ATS connectors (commits 714e219, c64e5fb, 0c18320)
+
+| Connector | Verdict | Evidence |
+|---|---|---|
+| **Recruitee** | SUPPORTED | `{slug}.recruitee.com/api/offers/`, public, unauthenticated. Verified live vs `veocareers.recruitee.com` (57 real jobs). Uses `careers_url` (not `careers_apply_url`, which is the `/c/new` application-FORM url) as `direct_apply_url`. 5 tests. |
+| **Personio** | SUPPORTED, documented limitation | XML feed at `{slug}.jobs.personio.de/xml?language=en` — but Personio has **no universal public API**; the feed only exists if the employer explicitly opts in (confirmed via Personio's own "career page integration options" docs — 4 options, none public-by-default). A 404 means "feed not enabled," not "not Personio" — flagged in the module docstring for `source_discovery` to treat as UNCONFIRMED, not INVALID (documented, not yet implemented as a distinct discovery state). Verified live vs `f24.jobs.personio.de` (9 real jobs incl. salary data); apply URL pattern `{slug}.jobs.personio.de/job/{id}` confirmed by fetching a real constructed URL. 7 tests. |
+| **Jobvite** | `DISCOVERY_UNSUPPORTED`, documented | Real API requires per-employer header-based credentials (Jobvite's own Help Center docs) — zero public/anonymous mode. Only unauthenticated surface is a plain server-rendered HTML careers page with no JSON backing (confirmed live). Deliberately did **not** build an HTML scraper for it — would repeat the exact "guessing connector" anti-pattern already rejected for Oracle/SAP. Follows the identical `SUPPORTED=False` + empty tenant registry + evidence-bearing docstring pattern. 4 tests lock in the honest-stub behavior. |
+
+All three wired into **both** `tasks.py` and `orchestrator.py` dispatch (if/elif chains + import lines) plus `strategy_router.STRUCTURED_ATS` (also added `eightfold`, which was already dispatched structurally in both files but missing from that set — an incidental pre-existing gap fixed while touching the file). `setup_sources.py` seeded `veocareers-recruitee` and `f24-personio`.
+
+**Oracle/SAP revisited (no code change):** building Jobvite served as the fresh research pass — confirmed the existing `oracle.py`/`sap.py` `SUPPORTED=False` + empty-registry + docstring pattern is correct and was worth replicating exactly for Jobvite, not changing.
+
+### 4. Connector matrix re-run — real local verification (no code change, verification only)
+
+Ran against a local SQLite dev DB (NOT production, zero risk to `jobs.usamif.com`):
+- **Fetch-only** (all 21 seeded sources, no persistence): **7034 total jobs fetched across 10 distinct ATS platforms, zero errors** — proves every dispatch path, including the 3 new connectors and the eightfold `STRUCTURED_ATS` fix, fetches correctly through the now-StrategyRouter-wired `scrape_source()`.
+- **Write-mode** (full funnel: fetch→normalize→direct-apply→legitimacy→dedup→persist→verify) on 6 representative sources covering 6 of the 10 platforms — all `errors=0`, all rejections fully explained by `DUPLICATE` (expected on re-runs), `degraded=False`:
+
+| Source | Platform | Fetched | Created | Dupe | Verified/Publishable |
+|---|---|---:|---:|---:|---:|
+| veocareers-recruitee | recruitee | 57 | 38 | 19 | 38 |
+| f24-personio | personio | 9 | 8 | 1 | 8 |
+| netflix-eightfold | eightfold | 100 | 24 | 76 | 24 |
+| ro-lever | lever | 56 | 7 | 49 | 7 |
+| nvidia-workday | workday | 40 | 39 | 1 | 39 |
+| linear-ashby | ashby | 30 | 13 | 17 | 13 |
+| discord-greenhouse | greenhouse | 51 | 8 | 43 | 8 |
+
+`indexed=0` across all local runs because the local dev Typesense wasn't running (connection refused, logged honestly, not swallowed) — a local-environment gap, not a code defect; the search-sync code path itself was already proven live in an earlier part of this engagement (the Typesense restart verification).
+
+### 5. Company Resolution Service foundation (commit d1f7fd7)
+
+**Gap found:** TWO divergent inline company-resolution implementations existed:
+1. `tasks.py::process_and_store_jobs` (the REAL Celery Beat-scheduled persistence path) did `company_name = job_data.get('company_slug', source.name); Company.objects.get_or_create(slug=company_name.lower()..., defaults={'name': company_name})` — **this stores the raw lowercase board slug as the company's NAME** (e.g. a company literally named `"stripe"` instead of `"Stripe"`) on the authoritative production path. A real, live bug.
+2. `orchestrator.py::_process_jobs` (a secondary, non-scheduled path) had already locally patched this specific symptom with inline ATS-suffix-stripping + name-backfill logic — but duplicated, with no persisted identity, so an ATS migration (new tenant slug, same real employer) still risked spawning a second `Company` row unless the stripped slug happened to match exactly.
+
+**Fix:** new `apps/jobs/company_resolution.py::CompanyResolutionService`, resolving `(platform, tenant_slug, name, domain)` → ONE canonical `Company` via a confidence-scored order: known `(platform, tenant_slug)` identity (1.0) → domain match (0.9 — an ATS migration like Notion/Plaid/Ramp's Lever→Ashby move reuses the same Company) → ATS-suffix-stripped slug match (0.6) → create with a humanized real name (never a raw slug), with collision-safe slug suffixing if two unrelated employers' stripped slugs happen to collide. New `CompanyResolutionIdentity` model (migration `0011`) persists every resolved mapping with evidence (`matched_by`, `confidence`, `source`) — the audit trail a future Company Claim workflow will need (which ATS tenants were ever observed for this canonical Company, and on what basis). Registered in admin (read-mostly) for inspecting resolution evidence. Both `tasks.py` and `orchestrator.py` now call the one resolver; their duplicated inline blocks were removed.
+
+8 new tests (`tests_company_resolution.py`) cover: the core regression (real name not raw slug), identity reuse on a second resolve, domain-match dedup across an ATS migration, placeholder-name backfill on a company created by the old buggy logic, slug-collision safety (two different employers never silently merge), and the no-platform fallback path. Full regression suite after this change: **97 tests passed**, `manage.py check` exit 0, `makemigrations --check`: no drift.
+
+### Corrected OSS/architecture verdicts (fixing earlier audit-pass errors)
+- **ScrapeGraphAI**: corrected from an earlier (wrong) REJECT framing to **DEFER/OPTIONAL ISOLATED TIER-4** — see the corrected paragraph above this section. The Python 3.12 requirement is not a permanent blocker now that the out-of-process `OutOfProcessBackend` + per-adapter-Dockerfile pattern (proven working for Scrapling, item 2 above) exists; it just means ScrapeGraphAI would need its own `python:3.12-slim` container, exactly like Scrapling got its own container for its `lxml` conflict.
+
+### Server actions NOT yet performed (operator, when ready)
+```
+# deploy this increment
+cd /var/www/usam && git fetch origin && git merge --ff-only origin/development
+cd backend && source ../venv/bin/activate
+python manage.py migrate            # applies jobs/0011 (CompanyResolutionIdentity)
+python manage.py check
+
+# (optional) build + configure the Scrapling runner if adaptive Tier-3 is desired in prod
+docker build -t usam-scrapling-runner:0.4.15 -f apps/scraper/extraction_runners/Dockerfile apps/scraper/extraction_runners
+# then set in backend/.env: SCRAPLING_RUNNER_CMD=docker,run,--rm,-i,usam-scrapling-runner:0.4.15
+
+# seed the 2 new connector sources if not already present
+python manage.py setup_sources
+
+# prove the real production dispatch path end-to-end on the server
+python manage.py connector_matrix --source veocareers-recruitee
+python manage.py connector_matrix --source f24-personio
+
+sudo systemctl restart usam.service celery-usam.service celery-beat-usam.service
+```
+
+### Next (per the standing ordered directive, not yet started this increment)
+Source rediscovery scale-out, Admin controls surface for scraping/sources/strategy tiers, observability/anomaly detection, scale testing (100→1000→larger with real measured throughput), then Company Claim workflow / Company Discovery Engine / Outreach scaffolding (DRY_RUN-only, compliance scaffolding) — all explicitly deferred, not abandoned, per the user's full ordered program.
