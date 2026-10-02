@@ -638,3 +638,72 @@ Audit before any build (per the multi-audience + financial directive). KEY FINDI
 
 ### Decision
 No financial rebuild. The directive's "build a financial architecture" is ALREADY SATISFIED. Next real increments are config/connection (AlexBank creds) + the frontend org-experience separation already in progress — not new ledger/payment infra.
+
+
+---
+
+## INCIDENT CLOSED — Frontend production crash (2026-09-21/22, commit `94e68d1`)
+
+**Baseline before this incident:** `170c4f5` (frontend; production had been correctly
+deployed to this commit — all server-side checks passed: services, migrations,
+nginx, direct `:8000` bypass all 200).
+
+**Symptom:** `jobs.usamif.com` returned HTTP 200 everywhere (server/nginx/API all
+healthy — confirmed via a full 15-point read-only forensic check) but the live
+site rendered a **blank white page in the browser**. Server-side health checks
+alone were insufficient evidence; the incident was only correctly diagnosed after
+browser console evidence was provided.
+
+**Root cause (proven, not assumed):** `frontend/src/components/AuthNavbar.tsx`
+referenced the `Users` icon (lucide-react) at two call sites (line 81, pre-existing
+from `31f8ae2`; line 92, introduced this session by `b8bf31a8` team-nav work) but
+`Users` was never added to the `lucide-react` import list (only singular `User`
+was imported). Result: `Uncaught ReferenceError: Users is not defined` at
+`index-BvqyechS.js:471` — crashes the entire React app before first render.
+
+**Contributing tooling gap found and noted:** `npm run typecheck` (bare
+`tsc --noEmit`) reads the root `tsconfig.json`, which only has `references` (no
+`files`) — TypeScript project-references mode does not type-check referenced
+projects under plain `--noEmit`, so `src/` was silently never type-checked by that
+script all session. Correct invocation: `tsc --noEmit -p tsconfig.app.json`. This
+gap should be fixed in `package.json`'s `typecheck` script as a follow-up (not
+done as part of this incident fix, to keep the change minimal).
+
+**Fix (exact source change):**
+```diff
+- Briefcase, Info, Menu, User, LogOut, CheckCircle2,
++ Briefcase, Info, Menu, User, Users, LogOut, CheckCircle2,
+```
+in `frontend/src/components/AuthNavbar.tsx` (one line, one file).
+
+**Bundle hash timeline:**
+| Stage | Bundle hash | Built from |
+|---|---|---|
+| Broken (live, caused the incident) | `index-BvqyechS.js` | `170c4f5` (bug pre-existing + introduced this session, never caught by typecheck) |
+| Intermediate rebuild (server ran `npm run build` before the fix was pulled) | `index-BgUlnVAY.js` | still `170c4f5` — same bug, new hash only |
+| **Final working** | **`index-DYl8FF0K.js`** | `94e68d1` (fix applied) |
+
+**Deployment performed (frontend-only):**
+1. Fix committed locally and pushed: `170c4f5..94e68d1` → `origin/development`.
+2. Server: `git fetch origin && git merge --ff-only origin/development` → confirmed `94e68d1`.
+3. Server: `cd frontend && npm run build` → new hash `index-DYl8FF0K.js`, build exit 0.
+4. Server: `sudo systemctl reload nginx` (reload, not restart).
+
+**Unchanged (explicitly verified not touched):** backend code, database, migrations,
+nginx config, systemd unit files, `.env`. Only the frontend static bundle was
+rebuilt and nginx was reloaded to pick up the new `index.html`/asset references.
+
+**Live verification after fix:**
+- `index.html` on production now references `/assets/index-DYl8FF0K.js` (confirmed via direct fetch).
+- `GET /` → 200, `GET /login` → 200, `GET /app/employer/dashboard` → 200, `GET /api/v1/payments/packages/` → 200.
+- **Browser confirmation (user-reported):** page renders content again, incident
+  resolved — "THE WEBSITE IS BACK AND THE LIVE FRONTEND IS RENDERING AGAIN."
+
+**Not touched / deliberately deferred (different severity class, non-crashing):**
+pre-existing `TS2339`/`TS2322` errors (`AppUser.name`, `AuthContextValue.logout`,
+`PageHeaderProps.description`, `mock-data.ts` type mismatches, `Index.tsx` type-only
+`Industry` reference) — confirmed harmless via a successful `npm run build` (type
+errors are erased at build, do not throw at runtime). Left for separate, deliberate
+cleanup, not bundled into this incident fix.
+
+**Status: CLOSED.** Current production frontend baseline is `94e68d1`.
