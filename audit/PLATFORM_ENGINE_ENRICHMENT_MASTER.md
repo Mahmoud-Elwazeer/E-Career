@@ -981,3 +981,120 @@ coverage bug fixed (code, `73b86b7`). Full production backfill completed and
 verified at 100% of visible jobs. Remaining follow-ups (not blocking, not
 done this pass): supervise the Typesense process properly (systemd unit +
 reinstalled binary), decide the fate of the stale `Job.status` field.
+
+
+---
+
+## TYPESENSE DOCKER DURABILITY — PROVEN (2026-10-02, commits 741ecd8, ce82dc2)
+
+### Correction to the earlier risk statement
+A previous entry in this document (and this session's own initial diagnosis)
+stated "Typesense has no supervisor" based on an incomplete read of `ps aux`
+output (a bare `/opt/typesense-server --data-dir /data --api-key=... --enable-cors`
+command line with no systemd unit visible). That was **wrong** — confirmed via
+`docker inspect` and the process's own cgroup path
+(`/system.slice/docker-<id>.scope`):
+
+**The accurate state is: Typesense is Docker-supervised with `restart:
+unless-stopped`, running inside a real container (`usam_typesense`, image
+`typesense/typesense:27.1`, created 2026-08-01) with a persistent named
+Docker volume (`usam_typesense_data`), and `docker.service` is enabled on
+boot.** This already protects against process crashes, Docker daemon
+restarts, and full host reboots — no additional systemd unit was needed or
+built (a parallel systemd unit would have conflicted with `docker-proxy`,
+which already owns port 8108).
+
+A second container, `usam_qdrant` (image `qdrant/qdrant:v1.11.3`, ports
+6333-6334), was also found running under the same Docker Compose project
+(`usam`) — this directly contradicts an older entry in
+`OPEN_SOURCE_ENGINE_ENRICHMENT_AUDIT.md` claiming "Vector infra Qdrant:
+MISSING (never built)... pure documentation fiction." Qdrant is real and
+running on the production server; whether anything in the Django codebase
+actually talks to it was not re-verified in this pass (flagged as a
+follow-up — the earlier audit's code-level finding that no `qdrant-client`
+dependency exists may still be accurate even though the container itself
+is real; these are two separate questions).
+
+### The actual gap found (now closed)
+The Docker Compose file that originally created `usam_typesense`/`usam_qdrant`
+(`docker-compose.services.yml`, per the container's own
+`com.docker.compose.project.config_files` label) does not exist anywhere on
+the server's disk. If the container object were ever lost (`docker rm`, a
+Docker engine upgrade, host migration), there was no recreation recipe —
+only the live `docker inspect` output, which disappears with the container.
+
+**Fix:** reconstructed `deploy/docker-compose.services.yml` from the live
+`docker inspect` facts (image, restart policy, port mapping, command,
+volumes). The named volumes are declared `external: true` with their exact
+live names (`usam_typesense_data`, `usam_qdrant_data`) specifically so a
+real recreation reuses the existing data rather than Compose silently
+creating new, empty, project-prefixed volumes. `TYPESENSE_API_KEY` uses
+Compose's required-variable syntax (`${TYPESENSE_API_KEY:?...}`) so a
+missing key hard-fails `docker compose config`/`up` instead of silently
+defaulting — the same failure *class* (not the same code) as the original
+Django-side incident, now closed off at the infrastructure-recreation layer
+too. Validated locally (`docker compose config`, not run against the live
+server): renders cleanly with the key set, fails with a clear message
+without it.
+
+### Restart-survival test — PASS (live, 2026-10-02 16:41 UTC)
+Per the user's explicit, scoped authorization (`docker restart
+usam_typesense` only — no `rm`, no `down`, no volume/image changes), ran the
+Docker-native restart test with before/after comparison:
+
+| Check | Before | After |
+|---|---|---|
+| App health | `{"ok":true}` | `{"ok":true}` (briefly `{"ok":false}` for ~4s during restart, then recovered) |
+| Collections | `['jobs']` | `['jobs']` |
+| `jobs` document count | 3926 | 3926 |
+| DB visible jobs | 3926 | 3926 |
+| Django `primary healthy` | True | True |
+| `engineer` search hits | 2439 | 2439 |
+| 401/404 errors | none | none |
+
+`RestartCount=0` after the test (a graceful restart, not a crash-triggered
+one). **Zero data loss, zero document loss, zero collection loss.** The
+persistent volume + `unless-stopped` restart policy work exactly as
+designed. This is now proven with live evidence, not just inferred from
+Docker's stated guarantees.
+
+### Admin observability — extended, not duplicated (ce82dc2)
+`GET /api/v1/admin-api/engine-health/` (`EngineHealthView`, pre-existing)
+gained a "Search (Typesense)" check reusing `SearchService` exactly as the
+app itself does (`svc.primary.health_check()` + collection document count).
+Reports `warning` with an explicit "serving via Postgres fallback" message
+when Typesense is unreachable/unauthenticated — this is precisely the
+signal that was missing during the 2026-10-02 incident (the app degraded
+gracefully with zero visible admin-facing indication anything was wrong).
+Never reads or exposes `TYPESENSE_API_KEY`.
+
+### Recreation runbook (if the container object is ever lost)
+```bash
+# 1. Confirm the volumes still exist (they survive container loss)
+sudo docker volume ls | grep usam_
+
+# 2. Set the required secret (same value already in backend/.env)
+export TYPESENSE_API_KEY=<the-existing-key>   # do not commit, do not echo elsewhere
+
+# 3. Validate before applying
+cd /path/to/E-Career
+docker compose -f deploy/docker-compose.services.yml config
+
+# 4. Recreate (reuses the existing named volumes - no data loss if they're intact)
+sudo docker compose -f deploy/docker-compose.services.yml up -d
+
+# 5. Verify
+curl -s http://127.0.0.1:8108/health
+cd backend && source ../venv/bin/activate
+python manage.py verify_pipeline_e2e --query engineer
+```
+If the named volumes themselves are also lost (full data loss, not just
+container loss), skip straight to `python manage.py sync_typesense` after
+step 4 — Postgres remains the authoritative source of truth and the full
+3926-job index rebuilds in under 9 seconds (proven live this session).
+
+### Status: Typesense durability work CLOSED for this increment.
+Not done (flagged, out of scope): verifying whether Qdrant has any real
+Django-side caller; the earlier liveness-check Celery tasks
+(`daily_liveness_check`/`weekly_reverification`) are still unscheduled
+(separate, pre-existing gap, not part of the durability fix).
