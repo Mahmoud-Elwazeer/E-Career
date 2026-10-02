@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  Briefcase, Info, Menu, User, LogOut, CheckCircle2,
+  Briefcase, Info, Menu, User, Users, LogOut, CheckCircle2,
   MessageCircle, FileText, Mic, Sparkles,
   ClipboardList, Bookmark, Target, Bell,
   Settings as SettingsIcon, PlusCircle, Search,
