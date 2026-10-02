@@ -34,8 +34,11 @@ def daily_liveness_check():
     """
     cutoff_date = timezone.now() - timedelta(days=7)
 
-    jobs_to_check = Job.objects.filter(
-        status='active',
+    # quality_state is authoritative for visibility, not status (status is
+    # stale/write-once-rejected - see Job.objects.visible()). Using the old
+    # status='active' filter here meant most real scraped jobs were never
+    # selected for liveness re-checking at all.
+    jobs_to_check = Job.objects.active().filter(
         posted_at__lt=cutoff_date,
     ).filter(
         Q(direct_apply_url__isnull=False) & ~Q(direct_apply_url='') |
@@ -114,7 +117,8 @@ def weekly_reverification():
     - Re-verifies all "active" jobs
     - Sends notification if many jobs from one source are dead
     """
-    active_jobs = Job.objects.filter(status='active')[:100]
+    # quality_state is authoritative, not status (see daily_liveness_check note above)
+    active_jobs = Job.objects.active()[:100]
 
     total_checked = 0
     expired_count = 0

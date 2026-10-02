@@ -100,9 +100,16 @@ class RecommendationEngine:
     
     def _build_mappings(self):
         """Build job and skill ID mappings."""
-        # Get all active jobs
-        jobs = Job.objects.filter(status='active').values_list('id', 'uuid')
-        self._job_mapping = {str(job.uuid): idx for idx, job in enumerate(jobs)}
+        # Get all visible jobs (quality_state-based - status is stale/
+        # write-once-rejected and excludes most real scraped jobs, see
+        # Job.objects.visible()).
+        # NOTE: .values_list() returns plain tuples, not model instances -
+        # a pre-existing bug here accessed `job.uuid` as if iterating model
+        # objects, which would AttributeError on every real call. Fixed as
+        # part of the same pass that corrected the status/quality_state
+        # filter (both bugs were found while adding regression tests).
+        jobs = Job.objects.visible().values_list('id', 'uuid')
+        self._job_mapping = {str(job_uuid): idx for idx, (job_id, job_uuid) in enumerate(jobs)}
         
         # Get all skills
         from apps.skills.models import Skill
@@ -117,8 +124,8 @@ class RecommendationEngine:
             logger.warning("Scipy not installed, using fallback recommendations")
             return None
         
-        # Get all active jobs
-        jobs = Job.objects.filter(status='active')
+        # Get all visible jobs (quality_state-based, see _build_mappings note above)
+        jobs = Job.objects.visible()
         
         n_jobs = len(jobs)
         n_skills = len(self.skill_mapping)
@@ -228,7 +235,7 @@ class RecommendationEngine:
             return {'error': 'Scipy not installed'}
         
         if jobs is None:
-            jobs = Job.objects.filter(status='active')
+            jobs = Job.objects.visible()
         
         # Build mappings if not already built
         if self._job_mapping is None:
@@ -499,8 +506,9 @@ class RecommendationEngine:
         except Exception:
             suppressed, fb_weights = set(), {}
 
-        # Get active jobs with related data
-        jobs = Job.objects.filter(status='active').select_related('company').prefetch_related('skills')[:500]
+        # Get visible jobs with related data (quality_state-based - status is
+        # stale for most real scraped jobs, see Job.objects.visible())
+        jobs = Job.objects.visible().select_related('company').prefetch_related('skills')[:500]
 
         # Score jobs
         scored_jobs = []

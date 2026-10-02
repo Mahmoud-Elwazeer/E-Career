@@ -29,7 +29,10 @@ class JobSitemap(Sitemap):
     protocol = "https"
     
     def items(self):
-        return Job.objects.filter(status='active', is_expired=False)
+        # quality_state is authoritative for visibility, not the legacy
+        # status field (status is stale/write-once-rejected - see
+        # Job.objects.visible() and apps/jobs/views.py for the same fix).
+        return Job.objects.visible().filter(is_expired=False)
     
     def lastmod(self, obj):
         return obj.updated_at if hasattr(obj, 'updated_at') else obj.created_at

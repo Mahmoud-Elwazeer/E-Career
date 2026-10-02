@@ -232,3 +232,102 @@ class TestDataMigrationMapping(TestCase):
         Job.objects.filter(pk=job.pk, status="archived").update(quality_state="archived")
         job.refresh_from_db()
         self.assertEqual(job.quality_state, "archived")
+
+
+class TestStaleStatusCannotExcludeValidJobs(TestCase):
+    """Regression tests for the live-confirmed bug (2026-10-02): Job.status is
+    write-once-rejected by VerificationEngine and never corrected back on a
+    later successful re-verification, so a stale status="rejected" must NOT
+    exclude an otherwise-healthy (quality_state-visible) job from any public
+    or recommendation surface. Confirmed live: 3572 jobs were
+    quality_state=probably_active+status=rejected, 246 were
+    quality_state=direct_verified+status=rejected - both groups must be
+    treated as fully visible/eligible.
+
+    These tests build a job in exactly that stale state (the realistic
+    production shape, not a hypothetical) and assert every fixed call site
+    still finds/includes it.
+    """
+
+    def setUp(self):
+        self.company = Company.objects.create(name="StaleCo", slug="staleco-qs")
+
+    def _make_stale_rejected_but_healthy(self, quality_state, slug_suffix,
+                                          direct_apply_url="https://staleco.com/apply/1"):
+        """A job shaped exactly like the real production bug: quality_state
+        says it's healthy/visible, but status is stuck at 'rejected' from an
+        earlier failed verification pass that was later superseded."""
+        return Job.objects.create(
+            company=self.company,
+            title="Staff Engineer",
+            slug=f"stale-{slug_suffix}",
+            location="Remote",
+            location_type="remote",
+            industry="technology",
+            experience_level="senior",
+            description="Test",
+            source_url="https://staleco.com/job",
+            direct_apply_url=direct_apply_url,
+            posted_at=datetime.date.today(),
+            status="rejected",  # stale - the exact production bug shape
+            quality_state=quality_state,
+        )
+
+    def test_job_objects_visible_includes_stale_rejected_probably_active(self):
+        job = self._make_stale_rejected_but_healthy("probably_active", "pa")
+        self.assertIn(job.pk, Job.objects.visible().values_list("pk", flat=True))
+
+    def test_job_objects_visible_includes_stale_rejected_direct_verified(self):
+        job = self._make_stale_rejected_but_healthy("direct_verified", "dv")
+        self.assertIn(job.pk, Job.objects.visible().values_list("pk", flat=True))
+
+    def test_job_objects_active_includes_stale_rejected_probably_active(self):
+        job = self._make_stale_rejected_but_healthy("probably_active", "a1")
+        self.assertIn(job.pk, Job.objects.active().values_list("pk", flat=True))
+
+    def test_job_save_view_finds_stale_rejected_job(self):
+        """apps/jobs/views.py JobSaveView - fixed to use .visible() instead
+        of status='active'."""
+        from django.contrib.auth import get_user_model
+        job = self._make_stale_rejected_but_healthy("direct_verified", "save")
+        # Mirrors the exact lookup inside JobSaveView.post()
+        found = Job.objects.visible().filter(slug=job.slug).first()
+        self.assertIsNotNone(found)
+        self.assertEqual(found.pk, job.pk)
+
+    def test_job_detail_queryset_includes_stale_rejected_job(self):
+        """apps/jobs/views.py JobListView.get_queryset() - the public job
+        list - fixed to use .visible() instead of status='active' AND
+        quality_state__in=... (the redundant status filter was the bug)."""
+        job = self._make_stale_rejected_but_healthy("probably_active", "list")
+        qs = Job.objects.visible().exclude(is_expired=True)
+        self.assertIn(job.pk, qs.values_list("pk", flat=True))
+
+    def test_sitemap_includes_stale_rejected_job(self):
+        """apps/jobs/sitemaps.py JobSitemap.items() - fixed to use
+        .visible() instead of status='active'."""
+        from apps.jobs.sitemaps import JobSitemap
+        job = self._make_stale_rejected_but_healthy("direct_verified", "sitemap")
+        items = JobSitemap().items()
+        self.assertIn(job.pk, items.values_list("pk", flat=True))
+
+    def test_recommendation_engine_mappings_include_stale_rejected_job(self):
+        """apps/search/recommendation_engine.py _build_mappings() - fixed to
+        use .visible() instead of status='active'."""
+        job = self._make_stale_rejected_but_healthy("probably_active", "rec")
+        from apps.search.recommendation_engine import RecommendationEngine
+        from django.contrib.auth import get_user_model
+        user = get_user_model().objects.create_user(
+            email="staletest@example.com", password="x"
+        )
+        engine = RecommendationEngine(user)
+        engine._build_mappings()
+        self.assertIn(str(job.uuid), engine._job_mapping)
+
+    def test_a_truly_rejected_job_is_still_excluded(self):
+        """Sanity check: this isn't a blanket bypass - a job that is
+        GENUINELY rejected (quality_state='rejected', not just a stale
+        status field) must still be excluded everywhere."""
+        job = self._make_stale_rejected_but_healthy("rejected", "genuine")
+        self.assertNotIn(job.pk, Job.objects.visible().values_list("pk", flat=True))
+        self.assertNotIn(job.pk, Job.objects.active().values_list("pk", flat=True))

@@ -36,7 +36,10 @@ class JobSaveView(APIView):
     
     def post(self, request, slug):
         try:
-            job = Job.objects.get(slug=slug, status="active")
+            # quality_state is authoritative for visibility, not status (status
+            # is write-once-rejected by VerificationEngine and never corrected
+            # back on a later successful re-verification - see Job.objects.visible()).
+            job = Job.objects.visible().get(slug=slug)
         except Job.DoesNotExist:
             return Response(
                 {"success": False, "data": None, "message": "Job not found.", "errors": None},
@@ -118,7 +121,7 @@ class JobAskRashidView(APIView):
     
     def get(self, request, slug):
         try:
-            job = Job.objects.select_related("company", "source").prefetch_related("tags").get(slug=slug, status="active")
+            job = Job.objects.visible().select_related("company", "source").prefetch_related("tags").get(slug=slug)
         except Job.DoesNotExist:
             return Response(
                 {"success": False, "data": None, "message": "Job not found.", "errors": None},
@@ -392,14 +395,19 @@ class JobListView(generics.ListCreateAPIView):
     ordering = ["-posted_at"]
 
     def get_queryset(self):
-        # Public listing must respect the Job Quality Engine, not just status.
-        # Previously this filtered on status="active" alone, which exposed
-        # rejected/duplicate/broken jobs and bypassed the direct-apply moat.
-        # Now we require a visible quality_state and exclude expired jobs, so
-        # aggregator/unverified-rejected postings never surface publicly.
+        # Public listing must respect the Job Quality Engine (quality_state),
+        # not the legacy Job.status field. status is write-once-rejected by
+        # VerificationEngine (set to "rejected" on a failed first pass) and
+        # is NEVER corrected back on a later successful re-verification -
+        # confirmed live: thousands of healthy probably_active/direct_verified
+        # jobs still carry a stale status="rejected". A status="active" filter
+        # here previously excluded the vast majority of real scraped jobs from
+        # the public listing while Typesense search (which already used
+        # quality_state correctly) returned them fine - visible site search
+        # and the job list page were silently out of sync. Job.objects.visible()
+        # is the single authoritative filter, already used by search/matching.
         qs = (
-            Job.objects.filter(status="active")
-            .filter(quality_state__in=Job.QUALITY_VISIBLE_STATES)
+            Job.objects.visible()
             .exclude(is_expired=True)
             .select_related("company", "source")
             .prefetch_related("tags", "saves")
@@ -518,7 +526,7 @@ class JobApplyView(APIView):
 
     def post(self, request, slug):
         try:
-            job = Job.objects.select_related("source").get(slug=slug, status="active")
+            job = Job.objects.visible().select_related("source").get(slug=slug)
         except Job.DoesNotExist:
             return Response(
                 {"success": False, "data": None, "message": "Job not found.", "errors": None},
@@ -589,7 +597,7 @@ class SimilarJobsView(generics.ListAPIView):
         except Job.DoesNotExist:
             return Job.objects.none()
         return (
-            Job.objects.filter(status="active")
+            Job.objects.visible()
             .exclude(pk=job.pk)
             .filter(industry=job.industry)
             .select_related("company", "source")
@@ -604,7 +612,7 @@ class JobSubmitApplicationView(APIView):
 
     def post(self, request, slug):
         try:
-            job = Job.objects.select_related("source").get(slug=slug, status="active")
+            job = Job.objects.visible().select_related("source").get(slug=slug)
         except Job.DoesNotExist:
             return Response(
                 {"success": False, "data": None, "message": "Job not found.", "errors": None},

@@ -67,7 +67,11 @@ def sync_all_jobs_to_search(self) -> tuple[int, int]:
         Tuple of (synced_count, failed_count)
     """
     try:
-        queryset = Job.objects.filter(status="active")
+        # quality_state is authoritative for visibility, not status (status
+        # is stale/write-once-rejected - see Job.objects.visible()). Note:
+        # this task currently has zero callers anywhere in the codebase
+        # (dead code) - fixed for correctness in case it's wired up later.
+        queryset = Job.objects.visible()
         synced, failed = search_service.sync_all_jobs(queryset)
         logger.info(f"Synced {synced} jobs to search, {failed} failed")
         return synced, failed
