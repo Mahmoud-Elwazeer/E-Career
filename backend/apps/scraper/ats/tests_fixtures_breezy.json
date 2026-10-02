@@ -1,0 +1,111 @@
+[
+  {
+    "id": "05c2e3ac74c6",
+    "friendly_id": "05c2e3ac74c6-chief-compliance-officer",
+    "name": "Chief Compliance Officer",
+    "url": "https://zero-hash.breezy.hr/p/05c2e3ac74c6-chief-compliance-officer",
+    "published_date": "2026-08-20T15:02:53.669Z",
+    "type": {
+      "id": "fullTime",
+      "name": "Full-Time"
+    },
+    "location": {
+      "country": {
+        "name": "United Kingdom",
+        "id": "GB"
+      },
+      "city": "London",
+      "primary": true,
+      "is_remote": true,
+      "remote_details": {
+        "value": "remote-location",
+        "label": "Fully remote, within chosen location(s)"
+      },
+      "name": "London, GB",
+      "id": "562a46a44fac"
+    },
+    "department": "Legal & Compliance",
+    "salary": "",
+    "company": {
+      "name": "zerohash",
+      "logo_url": null,
+      "friendly_id": "zero-hash",
+      "isMultipleLocationsEnabled": true
+    },
+    "locations": [
+      {
+        "country": { "name": "United Kingdom", "id": "GB" },
+        "city": "London",
+        "primary": true,
+        "is_remote": true,
+        "name": "London, GB",
+        "id": "562a46a44fac"
+      }
+    ]
+  },
+  {
+    "id": "ae1afd2556e5",
+    "friendly_id": "ae1afd2556e5-director-senior-director-relationship-management",
+    "name": "Director / Senior Director, Relationship Management",
+    "url": "https://zero-hash.breezy.hr/p/ae1afd2556e5-director-senior-director-relationship-management",
+    "published_date": "2026-09-14T17:58:30.327Z",
+    "type": {
+      "id": "fullTime",
+      "name": "Full-Time"
+    },
+    "location": {
+      "country": { "name": "United States", "id": "US" },
+      "state": { "id": "IL", "name": "Illinois" },
+      "city": "Chicago",
+      "primary": true,
+      "is_remote": true,
+      "remote_details": {
+        "value": "remote",
+        "label": "Fully remote, no location restrictions"
+      },
+      "name": "Chicago, IL",
+      "id": "c99b3779bf4e"
+    },
+    "department": "Revenue",
+    "salary": "",
+    "company": {
+      "name": "zerohash",
+      "logo_url": null,
+      "friendly_id": "zero-hash",
+      "isMultipleLocationsEnabled": true
+    },
+    "locations": [
+      {
+        "country": { "name": "United States", "id": "US" },
+        "state": { "id": "IL", "name": "Illinois" },
+        "city": "Chicago",
+        "primary": true,
+        "is_remote": true,
+        "name": "Chicago, IL",
+        "id": "c99b3779bf4e"
+      },
+      {
+        "country": { "name": "United States", "id": "US" },
+        "state": { "id": "NY", "name": "New York" },
+        "city": "New York",
+        "primary": false,
+        "is_remote": true,
+        "name": "New York, NY",
+        "id": "a0f48485f31f"
+      }
+    ]
+  },
+  {
+    "id": "missing-url-should-be-skipped",
+    "friendly_id": "bad-entry",
+    "name": "Entry With No URL (must be skipped)",
+    "url": "",
+    "published_date": "2026-09-01T00:00:00.000Z",
+    "type": { "id": "partTime", "name": "Part-Time" },
+    "location": { "name": "Remote", "is_remote": true },
+    "department": "QA",
+    "salary": "",
+    "company": { "name": "zerohash", "friendly_id": "zero-hash" },
+    "locations": []
+  }
+]

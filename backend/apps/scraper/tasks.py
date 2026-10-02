@@ -13,6 +13,7 @@ from apps.core.models import PipelineHealth, PlatformConfig
 from .ats import (
     greenhouse, lever, ashby, bamboohr, smartrecruiters, workable, teamtailor,
     workday, icims, oracle, sap, eightfold, recruitee, personio, jobvite,
+    breezy,
 )
 from .orchestrator import orchestrator, scrape_all_sources_orchestrated
 from .strategy_router import StrategyRouter
@@ -154,6 +155,8 @@ def _dispatch_structured_ats(platform: str, company_slug: str) -> List[Dict]:
         return sap.fetch_sap_jobs(company_slug)
     elif platform == 'jobvite':
         return jobvite.fetch_jobvite_jobs(company_slug)
+    elif platform == 'breezy':
+        return breezy.fetch_breezy_jobs(company_slug)
     else:
         # A configured Source routed here with an unknown platform string.
         # StrategyRouter only calls this for Tier.STRUCTURED decisions, i.e.

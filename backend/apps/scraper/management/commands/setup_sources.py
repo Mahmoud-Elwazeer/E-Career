@@ -81,6 +81,12 @@ SOURCES = [
     # endpoint - only exists for employers who've explicitly enabled the
     # XML feed in their Personio settings (see personio.py module docstring).
     ("f24-personio", "F24 AG", "personio"),
+
+    # ── Breezy HR public careers-board JSON feed (new connector) ──
+    # Verified live 2026-10-03: zero-hash.breezy.hr/json -> 25 real, current
+    # positions. Apply URL is the position's own detail page on the
+    # employer's breezy.hr subdomain (moat-compliant, direct).
+    ("zero-hash-breezy", "Zero Hash", "breezy"),
 ]
 
 
@@ -188,4 +194,6 @@ def _board_url(slug: str, platform: str) -> str:
         return f"https://{company}.recruitee.com/"
     if platform == "personio":
         return f"https://{company}.jobs.personio.de/"
+    if platform == "breezy":
+        return f"https://{company}.breezy.hr/"
     return f"https://{company}.com/careers"

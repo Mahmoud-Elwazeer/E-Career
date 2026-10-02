@@ -63,6 +63,8 @@ STRUCTURED_ATS = {
     "jobvite",  # DISCOVERY_UNSUPPORTED stub (see ats/jobvite.py) - routes
                 # structurally like oracle/sap, honestly returns [] until
                 # per-tenant credentials exist.
+    "breezy",   # public unauthenticated JSON feed at {slug}.breezy.hr/json,
+                # verified live 2026-10-03 (see ats/breezy.py).
 }
 
 

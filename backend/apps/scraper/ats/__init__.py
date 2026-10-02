@@ -12,6 +12,7 @@ from .eightfold import EightfoldScraper, fetch_eightfold_jobs
 from .icims import IcimsScraper, fetch_icims_jobs
 from .oracle import OracleScraper, fetch_oracle_jobs
 from .sap import SAPScraper, fetch_sap_jobs
+from .breezy import BreezyScraper, fetch_breezy_jobs
 
 __all__ = [
     'BaseATSScraper',
@@ -39,4 +40,6 @@ __all__ = [
     'fetch_oracle_jobs',
     'SAPScraper',
     'fetch_sap_jobs',
+    'BreezyScraper',
+    'fetch_breezy_jobs',
 ]
