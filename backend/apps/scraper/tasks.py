@@ -11,7 +11,7 @@ from apps.core.models import PipelineHealth, PlatformConfig
 
 from .ats import (
     greenhouse, lever, ashby, bamboohr, smartrecruiters, workable, teamtailor,
-    workday, icims, oracle, sap, eightfold,
+    workday, icims, oracle, sap, eightfold, recruitee,
 )
 from .orchestrator import orchestrator, scrape_all_sources_orchestrated
 from .pipeline.url_resolver import is_direct_company_url, verify_url_live
@@ -146,6 +146,8 @@ def scrape_source(source: Source) -> List[Dict]:
         return icims.fetch_icims_jobs(company_slug)
     elif platform == 'eightfold':
         return eightfold.fetch_eightfold_jobs(company_slug)
+    elif platform == 'recruitee':
+        return recruitee.fetch_recruitee_jobs(company_slug)
     elif platform == 'oracle':
         return oracle.fetch_oracle_jobs(company_slug)
     elif platform == 'sap':

@@ -68,6 +68,12 @@ SOURCES = [
     # /postings -> totalFound 4820. Apply URL is the jobs.smartrecruiters.com
     # careers page (NOT the API ref — that bug is fixed in the connector).
     ("boschgroup-smartrecruiters", "Bosch", "smartrecruiters"),
+
+    # ── Recruitee public careers-site API (§6, new connector) ──
+    # Verified live 2026-10-02: veocareers.recruitee.com/api/offers/ -> 57
+    # real, current postings. Apply URL is careers_url (the job's own
+    # listing page), not careers_apply_url (the "/c/new" application form).
+    ("veocareers-recruitee", "VEO Worldwide Services", "recruitee"),
 ]
 
 
@@ -171,4 +177,6 @@ def _board_url(slug: str, platform: str) -> str:
         # Workday host (tenant.wdN.myworkdayjobs.com) + site are resolved from
         # WORKDAY_TENANTS in the connector; use a generic landing URL here.
         return f"https://{company}.myworkdayjobs.com/"
+    if platform == "recruitee":
+        return f"https://{company}.recruitee.com/"
     return f"https://{company}.com/careers"

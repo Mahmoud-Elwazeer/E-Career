@@ -57,6 +57,8 @@ STRUCTURED_ATS = {
     "icims",
     "oracle",
     "sap",
+    "recruitee",
+    "eightfold",
 }
 
 
