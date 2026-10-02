@@ -36,6 +36,39 @@ ATS_ENDPOINTS: Dict[str, str] = {
     "bamboohr": "https://{slug}.bamboohr.com/careers/list",
 }
 
+# Providers that CANNOT be probed with a single `{slug}` -> JSON endpoint
+# template, and are therefore intentionally excluded from ATS_ENDPOINTS
+# (not a gap - a documented limitation per-provider):
+#
+#   workday      - the public CXS JSON API needs tenant + wd_server + site
+#                  (e.g. nvidia / wd5 / NVIDIAExternalCareerSite). None of
+#                  those three are derivable from a bare company slug; the
+#                  wd_server shard in particular is assigned by Workday with
+#                  no public lookup. Resolved per-tenant in WORKDAY_TENANTS
+#                  (ats/workday.py) instead - add entries there as new
+#                  tenants are confirmed live, same pattern as Eightfold.
+#   eightfold    - the public API needs {host, domain} (e.g.
+#                  explore.jobs.netflix.net / netflix.com); host is a
+#                  per-employer subdomain of eightfold's own infrastructure,
+#                  not derivable from the company slug. Resolved per-tenant
+#                  in EIGHTFOLD_TENANTS (ats/eightfold.py).
+#   icims        - the public career portal is HTML (BeautifulSoup-parsed
+#                  job links), not a JSON endpoint, so it doesn't fit this
+#                  module's (status, json_payload) fetcher contract or the
+#                  job-count-from-JSON heuristic in _count_jobs(). The tenant
+#                  IS slug-derivable (careers-{tenant}.icims.com), so this is
+#                  a real, addressable gap, not a permanent one - tracked for
+#                  a follow-up HTML-aware discovery probe, not built here to
+#                  avoid conflating two different fetcher contracts in one
+#                  pass.
+#   teamtailor   - the public API (api.teamtailor.com) requires a per-company
+#                  secret API key (confirmed live: an unauthenticated request
+#                  returns a 406/401, never a company's postings) - there is
+#                  no unauthenticated discovery surface at all for Teamtailor.
+#   oracle, sap, jobvite - already documented DISCOVERY_UNSUPPORTED in their
+#                  respective ats/*.py modules (per-tenant host/credentials
+#                  required, no generic slug-based public endpoint exists).
+
 # How to read a "job count" out of each provider's payload shape so a 200 with
 # an empty board is not mistaken for a healthy source.
 def _count_jobs(provider: str, payload) -> Optional[int]:
