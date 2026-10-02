@@ -893,3 +893,91 @@ repo), compare its SHA-256 fingerprint against the app's. If they differ,
 update `backend/.env`'s `TYPESENSE_API_KEY` to match and restart
 `usam.service`/`celery-usam.service`/`celery-beat-usam.service` only — do
 not touch Typesense itself unless its own config is confirmed wrong.
+
+
+---
+
+## TYPESENSE 401 + SYNC COVERAGE INCIDENT — CLOSED (2026-10-02, commits b744dc0, 73b86b7, server-side .env fix)
+
+Full resolution of the Typesense indexing incident that began with a
+multi-thousand-line 401 flood during `verify_pipeline_e2e --reindex`.
+
+### Root cause 1 — TYPESENSE_API_KEY missing from backend/.env (server config, not code)
+Diagnosed per the required format (code inspection first, no secrets printed,
+fingerprint-based comparison):
+- Typesense server: bare `/opt/typesense-server --data-dir /data --api-key=... --enable-cors`
+  process (PID 1599, running since Aug 6), **not managed by systemd or Docker**,
+  no config file at `/etc/typesense/`, no startup script or shell history
+  recoverable — fully unsupervised.
+- App side: `grep '^TYPESENSE_API_KEY=' backend/.env | sha256sum` returned the
+  SHA-256 of an **empty string** — the line was completely absent, so
+  `config('TYPESENSE_API_KEY', default='ecareer_typesense_dev_key')` in
+  `config/settings/base.py:363` silently used the hardcoded dev-default,
+  which Typesense correctly rejected with 401.
+- **Fix (server-side, no code change):** extracted the real key directly from
+  the running process's `/proc/1599/cmdline` and appended it to `backend/.env`
+  as `TYPESENSE_API_KEY=<value>` (never printed in chat), then restarted
+  `usam.service celery-usam.service celery-beat-usam.service` only — Typesense
+  itself was never touched, confirmed already healthy (`{"ok":true}`).
+- **Operational risk flagged, not fixed this pass:** the Typesense binary
+  itself is also missing from disk (`/opt/typesense-server`: No such file or
+  directory) while the process keeps running from the deleted inode. If this
+  process ever stops or the server reboots, there is currently no binary and
+  no supervisor to restart it. Follow-up recommended: reinstall the Typesense
+  binary and wrap it in a proper systemd unit (not done — out of scope for
+  this incident, flagged for the user).
+
+### Root cause 2 — sync_typesense/sync_search filtered on the wrong field (real code bug, fixed)
+After the key fix, a `--limit 1` test passed but the full `sync_typesense`
+backfill only synced **108 jobs**, not the expected 3926 visible jobs. Root
+cause confirmed via a live DB cross-tab (not guessed):
+```
+status breakdown:            rejected=3945, active=129
+quality_state x status:      probably_active+rejected=3572 (!)
+                              direct_verified+rejected=246  (!!)
+                              expired+rejected=106
+                              probably_active+active=106
+                              expired+active=21
+                              duplicate+rejected=21
+                              direct_verified+active=2
+```
+`VerificationEngine.verify_job()`'s rejection branches set both `status` and
+`quality_state`, but its success branch only ever sets `quality_state` —
+`status` is never corrected back to `"active"` once set. A job whose first
+verification pass scored below the trust threshold (common immediately after
+creation) keeps `status="rejected"` **permanently**, even after later
+re-scrapes mark it `quality_state="probably_active"` or fully
+`"direct_verified"`. `sync_typesense.py`/`sync_search.py` both filtered on
+`status="active"`, so they synced only: 129 seed/demo jobs (`seed_jobs.py`
+explicitly sets `status='active'`) plus a handful of real jobs that happened
+to pass verification perfectly on the first attempt.
+
+**Fix (73b86b7):** both commands switched to `Job.objects.visible()`
+(`quality_state`-based), the same authoritative filter already used by
+`verify_pipeline_e2e` and the rest of the platform. `sync_search.py` keeps an
+opt-in `--status` flag for the old behavior with an explicit warning.
+
+**Note:** `Job.status` itself remains stale/inconsistent with `quality_state`
+for ~95% of real jobs. Not backfilled or removed this pass (would need a
+decision on whether `status` should be deprecated entirely in favor of
+`quality_state`, or corrected via a data migration) — flagged as a follow-up,
+not silently patched over.
+
+### Live verification (production, 2026-10-02)
+- Single-job test: `verify_pipeline_e2e --reindex --job-id <id>` →
+  `attempted=1 synced=1 failed=0`, search query returned the real job with
+  `ats_platform` populated. No 401, no 404.
+- 10-job test: `--reindex --limit 10` → `attempted=10 synced=10 failed=0`.
+- Collection existed but was empty (`typesense_collection_not_found` on first
+  search) — created via `SearchService.ensure_collection()` (one-time, schema
+  only, no data write).
+- Full backfill after the field-filter fix: `python manage.py sync_typesense`
+  → **`Indexed 3926/3926 jobs in 8.8s`** — exactly matches
+  `Job.objects.visible().count()`. 100% coverage, not a partial/lossy sync.
+
+### Status: RESOLVED
+Typesense authentication fixed (server `.env` config). Search indexing
+coverage bug fixed (code, `73b86b7`). Full production backfill completed and
+verified at 100% of visible jobs. Remaining follow-ups (not blocking, not
+done this pass): supervise the Typesense process properly (systemd unit +
+reinstalled binary), decide the fate of the stale `Job.status` field.
