@@ -796,3 +796,100 @@ a description of the current upstream `0.9.4` release. The underlying business
 decision (keep OPTIONAL, do not force into the main venv) is unchanged — only
 the specific stated reason needed correction. No code change made here; this
 is a documentation correction pending a real dependency-resolution test.
+
+
+---
+
+## Typesense 401 investigation + search-indexing truthfulness fixes (2026-10-02, commits 04d9ba9, b744dc0)
+
+User ran `python manage.py verify_pipeline_e2e --reindex --query engineer` on
+the server and hit a multi-thousand-line flood: production Typesense returns
+`401 Forbidden - a valid x-typesense-api-key header must be sent` on every
+single job. Confirmed via code (not guessed) and fixed what could be fixed
+without server access.
+
+### Root cause location (confirmed via code read, not assumption)
+- `apps/search/plugins/typesense_plugin.py:32-40` builds the Typesense client
+  from `settings.TYPESENSE_HOST/PORT/PROTOCOL/API_KEY`.
+- `config/settings/base.py:359-363` reads those via `python-decouple`'s
+  `config()` — env vars (or `.env`). **If `TYPESENSE_API_KEY` is absent from
+  the environment, Django silently uses the literal default
+  `ecareer_typesense_dev_key`** baked into the code and `.env.example` — a
+  wrong-but-valid-looking key, which produces exactly a 401, not a crash.
+- **Gap found:** `deploy/ec2-setup.sh` (this repo's own server bootstrap
+  script) installs Postgres, nginx, certbot, ufw — it **never installs or
+  configures Typesense at all**. The `docker-compose.yml` Typesense service
+  definitions (root and `backend/`) look like local/dev-only infra. This
+  means Typesense was stood up on the production server through a process
+  not captured anywhere in this repo — I cannot determine from code alone
+  whether the live key matches what Django is configured to send, or
+  whether Typesense itself is in Docker, a native binary, or something else.
+  **This remains unresolved and requires the user to run a one-time,
+  non-secret-echoing diagnostic on the server** (service/process discovery +
+  key length/SHA-256 fingerprint comparison) before the actual 401 can be
+  fixed — not done this pass, correctly flagged as blocked rather than guessed.
+
+### Fixed this pass (code-side, no secrets touched, no server access needed)
+
+1. **Log-flood circuit breaker** (04d9ba9, prior entry) — `index_job()` now
+   stops making live Typesense calls after 3 consecutive failures for a
+   5-minute cooldown, logging one WARNING instead of two ERRORs per job.
+
+2. **False-success logging fixed** (b744dc0) — `apps/search/signals.py`'s
+   `post_save` handler logged `"Synced job X to search"` unconditionally,
+   even immediately after `sync_job()` had just failed. Root cause:
+   `index_job()`/`sync_job()` caught their own exceptions and returned
+   `None` on every path (success or failure look identical to a caller).
+   Both now return a real `bool` (`True` only on confirmed Typesense
+   success); the signal now logs success vs. a `NOT indexed` warning based
+   on that real value.
+
+3. **False `indexed` metric fixed** (b744dc0) — `orchestrator.py`'s
+   `_process_jobs` incremented `metrics.indexed += 1` unconditionally right
+   after calling `sync_job()`, regardless of whether it actually succeeded.
+   This means every `scrape_run_metrics` log line's `indexed` count has been
+   wrong for as long as Typesense has been returning 401 — it was counting
+   *attempts*, not successes. Now gated on the real return value.
+
+4. **Inverse bug found and fixed in the same pass** — `sync_search.py`
+   already did `if result: synced += 1`, which was the *correct* pattern,
+   but since `sync_job()` always returned `None` (falsy) before this fix,
+   that command's `synced` counter has always silently reported `0` even
+   when indexing was actually working. Both the over-counting (orchestrator)
+   and under-counting (sync_search) bugs are now fixed by the same root
+   change — `sync_job()` returning a truthful bool.
+
+5. **`verify_pipeline_e2e` bounded + fail-fast** (b744dc0) — added
+   `--limit N` and `--job-id ID` so a reindex can be tested on one job or a
+   small batch instead of unconditionally hitting every visible job in the
+   table. Added fail-fast: aborts after 3 consecutive failures with zero
+   successes, printing one diagnostic instead of repeating the same 401 for
+   every remaining job (this is exactly what produced the flood).
+
+### Verified (local, this pass)
+`manage.py check` exit 0. `apps/search/tests_sync_job.py` (3 tests) and
+`apps/scraper` integration tests (4 tests) pass via `pytest` — the project's
+actually-configured test runner per `pytest.ini` (`python_files = tests.py
+test_*.py *_tests.py`). Note: `manage.py test` does **not** discover files
+named `tests_*.py` (wrong prefix order) — this affected several existing
+test files in this repo (`tests_sync_job.py`, `tests_provenance.py`, etc.)
+and is a pre-existing test-discovery gap, not something changed this pass;
+flagging it here so a future pass uses `pytest`, not `manage.py test`, when
+verifying fixes in this codebase.
+
+### Still blocked — needs user action on the server
+Typesense authentication itself is not fixed — only the symptoms (log flood,
+false metrics) are. To actually fix the 401, run on the server (no secrets
+printed):
+```bash
+systemctl list-units --type=service | grep -i typesense
+docker ps 2>/dev/null | grep -i typesense
+curl -s http://127.0.0.1:8108/health
+grep '^TYPESENSE_API_KEY=' /var/www/usam/backend/.env | sha256sum
+```
+Once the Typesense server's own key is known (via whatever process started
+it — systemd `EnvironmentFile`, Docker env, or a config file not in this
+repo), compare its SHA-256 fingerprint against the app's. If they differ,
+update `backend/.env`'s `TYPESENSE_API_KEY` to match and restart
+`usam.service`/`celery-usam.service`/`celery-beat-usam.service` only — do
+not touch Typesense itself unless its own config is confirmed wrong.
