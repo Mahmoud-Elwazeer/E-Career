@@ -338,6 +338,14 @@ AI_MODEL_OVERRIDES = {}  # Override model routing per task type
 CHANGE_DETECTION_URL = config('CHANGE_DETECTION_URL', default='http://localhost:5000')
 CHANGE_DETECTION_API_KEY = config('CHANGE_DETECTION_API_KEY', default='')
 
+# ── Scrapling adaptive-extraction runner (Tier 3, §15/§16) ───────────────────
+# Path to the python executable inside the ISOLATED Scrapling venv (NEVER the
+# main backend venv - lxml>=6.1.1 required by Scrapling conflicts with
+# docling's lxml<6.0.0 pin). Empty by default: the Tier-3 adaptive fallback is
+# inert (returns []) until this is explicitly configured for a given
+# environment. See apps/scraper/extraction_runners/scrapling_runner.py.
+SCRAPLING_RUNNER_PYTHON = config('SCRAPLING_RUNNER_PYTHON', default='')
+
 # ── AWS Billing Alerts Configuration ───────────────────────────────────────────
 # CloudWatch billing alarm thresholds (in USD)
 AWS_BILLING_ALERT_THRESHOLD = config('AWS_BILLING_ALERT_THRESHOLD', default=100, cast=float)

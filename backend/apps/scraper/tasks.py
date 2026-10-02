@@ -14,6 +14,7 @@ from .ats import (
     workday, icims, oracle, sap, eightfold, recruitee, personio, jobvite,
 )
 from .orchestrator import orchestrator, scrape_all_sources_orchestrated
+from .strategy_router import StrategyRouter
 from .pipeline.url_resolver import is_direct_company_url, verify_url_live
 from .pipeline.legitimacy import calculate_legitimacy_score
 from .pipeline.deduplicator import generate_job_hash, generate_job_slug
@@ -114,18 +115,14 @@ def scrape_all_sources(self):
         raise self.retry(exc=exc, countdown=60 * 10)  # Retry in 10 minutes
 
 
-def scrape_source(source: Source) -> List[Dict]:
-    """
-    Scrape jobs from a single source based on ATS platform.
-    """
-    platform = source.ats_platform.lower() if source.ats_platform else ''
+def _dispatch_structured_ats(platform: str, company_slug: str) -> List[Dict]:
+    """TIER 0 (STRUCTURED) connector dispatch.
 
-    # Extract company slug (remove ATS platform suffix)
-    # e.g., "stripe-greenhouse" -> "stripe"
-    company_slug = source.slug
-    if company_slug.endswith(f"-{platform}"):
-        company_slug = company_slug[:-len(f"-{platform}")]
-
+    This is the ORIGINAL scrape_source if/elif body, unchanged, now extracted
+    into its own function so StrategyRouter can call it as `structured_runner`
+    without any duplicated logic. Keep this in sync with
+    ScraperOrchestrator.scrape_source in orchestrator.py (same dispatch set).
+    """
     if platform == 'greenhouse':
         return greenhouse.fetch_greenhouse_jobs(company_slug)
     elif platform == 'lever':
@@ -157,14 +154,116 @@ def scrape_source(source: Source) -> List[Dict]:
     elif platform == 'jobvite':
         return jobvite.fetch_jobvite_jobs(company_slug)
     else:
-        # Keep this dispatch in sync with ScraperOrchestrator.scrape_source in
-        # orchestrator.py. A configured Source whose platform is unknown here
-        # would silently yield zero jobs, so log it for visibility.
+        # A configured Source routed here with an unknown platform string.
+        # StrategyRouter only calls this for Tier.STRUCTURED decisions, i.e.
+        # platform IS in STRATEGY_ROUTER's STRUCTURED_ATS set, so reaching
+        # this branch means STRUCTURED_ATS and this dispatch have drifted out
+        # of sync - log loudly so that drift is visible instead of silent.
         import structlog
         structlog.get_logger().warning(
-            "scrape_source_unknown_platform", platform=platform, source=source.slug
+            "scrape_source_structured_dispatch_gap", platform=platform
         )
         return []
+
+
+def _adaptive_fallback_runner(source: Source) -> List[Dict]:
+    """TIER 3 (ADAPTIVE) fallback for sources with no known structured ATS
+    connector.
+
+    Per the Notion lesson (§8-10): never guess a page-specific scraper for an
+    "unknown" source before checking whether it is actually a KNOWN ATS we
+    just haven't recorded (employer migrated, or the seed data is stale). So
+    this always runs source discovery FIRST and only drops to the real
+    out-of-process Scrapling adaptive extractor if discovery finds nothing.
+    """
+    import os
+    import structlog
+    from django.conf import settings
+
+    log = structlog.get_logger()
+    company_slug = source.slug
+    platform = (source.ats_platform or '').lower()
+    if platform and company_slug.endswith(f"-{platform}"):
+        company_slug = company_slug[: -len(f"-{platform}")]
+
+    # Step 1: source discovery — probe known ATS endpoint templates before
+    # ever paying for the heavier adaptive/out-of-process tier.
+    try:
+        import requests
+        from .strategy_router import STRUCTURED_ATS
+        from .pipeline.source_discovery import discover_ats
+
+        def _fetcher(url):
+            r = requests.get(url, timeout=15, headers={"User-Agent": "usam-jobs-discovery/1.0"})
+            try:
+                payload = r.json()
+            except ValueError:
+                payload = None
+            return r.status_code, payload
+
+        discovery = discover_ats(company_slug, fetcher=_fetcher)
+        if discovery.healthy and discovery.provider in STRUCTURED_ATS:
+            log.info(
+                "adaptive_fallback_discovered_known_ats",
+                source=source.slug, provider=discovery.provider,
+                job_count=discovery.job_count,
+            )
+            jobs = _dispatch_structured_ats(discovery.provider, discovery.tenant or company_slug)
+            if jobs:
+                return jobs
+    except Exception as e:
+        log.warning("adaptive_fallback_discovery_failed", source=source.slug, error=str(e))
+
+    # Step 2: real Tier-3 adaptive extraction via the isolated Scrapling
+    # out-of-process runner. Inert (returns []) unless SCRAPLING_RUNNER_PYTHON
+    # is configured — Scrapling is never installed into this venv.
+    url = getattr(source, 'url', '') or ''
+    if not url:
+        return []
+
+    runner_python = getattr(settings, 'SCRAPLING_RUNNER_PYTHON', '') or os.environ.get('SCRAPLING_RUNNER_PYTHON', '')
+    if not runner_python:
+        log.info("adaptive_fallback_no_runner_configured", source=source.slug)
+        return []
+
+    try:
+        from .pipeline.extraction_adapter import OutOfProcessBackend, ExtractionTier
+
+        runner_script = os.path.normpath(os.path.join(
+            os.path.dirname(__file__), "extraction_runners", "scrapling_runner.py",
+        ))
+        backend = OutOfProcessBackend(
+            name="scrapling", tier=ExtractionTier.ADAPTIVE_PARSER,
+            runner_cmd=[runner_python, runner_script],
+        )
+        if not backend.available():
+            return []
+        result = backend.extract(url)
+        if not result.ok:
+            log.info("adaptive_fallback_no_jobs", source=source.slug, error=result.error)
+        return result.jobs or []
+    except Exception as e:
+        log.warning("adaptive_fallback_runner_failed", source=source.slug, error=str(e))
+        return []
+
+
+def scrape_source(source: Source) -> List[Dict]:
+    """
+    Scrape jobs from a single source.
+
+    Routes through StrategyRouter (apps.scraper.strategy_router) so the tiered
+    acquisition strategy is the REAL dispatch path, not a parallel/inert one.
+    structured_runner wraps the exact pre-existing if/elif dispatch (zero
+    behavior change for any source with a known ats_platform); adaptive_runner
+    is the new Tier-3 fallback (source discovery -> Scrapling out-of-process),
+    only reached for sources whose platform is NOT in STRUCTURED_ATS.
+    """
+    router = StrategyRouter(
+        structured_runner=_dispatch_structured_ats,
+        adaptive_runner=_adaptive_fallback_runner,
+    )
+    jobs, _decision = router.run(source)
+    return jobs
 
 
 def process_and_store_jobs(jobs: List[Dict], source: Source) -> int:
