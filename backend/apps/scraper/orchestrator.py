@@ -319,6 +319,7 @@ class ScraperOrchestrator:
         added_count = 0
         blocked_count = 0
         verified_count = 0
+        run_started_at = timezone.now()
         
         # Initialize verification engine
         verification_engine = VerificationEngine()
@@ -606,7 +607,26 @@ class ScraperOrchestrator:
         # FIRST so metrics are always retrievable even if logging misbehaves.
         summary = metrics.to_dict()
         summary['degraded'] = metrics.is_degraded
+        summary['zero_yield_anomaly'] = metrics.is_zero_yield_anomaly
         self._last_run_metrics = summary
+
+        # §5/§10/§8: persist this run (incl. Direct-Apply resolution metrics)
+        # so "which source produces the most VERIFIED DIRECT APPLY jobs" is a
+        # real query, not a log grep. A persistence failure here must never
+        # break the actual scraping run that already succeeded.
+        try:
+            from .models import ScraperRun
+            from .strategy_router import decide_route
+            tier_name = ""
+            try:
+                tier_name = decide_route(source).tier.name
+            except Exception:
+                pass
+            ScraperRun.record(source, summary, strategy_tier=tier_name,
+                               started_at=run_started_at, finished_at=timezone.now())
+        except Exception as rec_err:
+            logger.warning("scraper_run_persist_failed: %s", rec_err)
+
         try:
             if metrics.is_zero_yield_anomaly:
                 logger.warning("scrape_zero_yield_anomaly: %s", summary)
