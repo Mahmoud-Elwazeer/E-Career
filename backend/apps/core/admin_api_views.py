@@ -226,11 +226,46 @@ class ScraperDashboardView(APIView):
             )
         )
 
+        # §8 Direct-Apply resolution metrics - answers "which source produces
+        # the most jobs?" (fetched) vs "which source produces the most
+        # VERIFIED DIRECT APPLY jobs?" (direct_apply_verified), which the
+        # directive explicitly says matters more than raw job count.
+        direct_apply_metrics = []
+        try:
+            from apps.scraper.models import ScraperRun
+            from django.db.models import Sum
+
+            per_source = (
+                ScraperRun.objects.values("source__slug", "source__name")
+                .annotate(
+                    total_fetched=Sum("fetched"),
+                    total_direct_apply_candidates=Sum("direct_apply_candidates"),
+                    total_direct_apply_verified=Sum("direct_apply_verified"),
+                    total_runs=Count("id"),
+                )
+                .order_by("-total_direct_apply_verified")
+            )
+            for row in per_source:
+                candidates = row["total_direct_apply_candidates"] or 0
+                verified = row["total_direct_apply_verified"] or 0
+                direct_apply_metrics.append({
+                    "source_slug": row["source__slug"],
+                    "source_name": row["source__name"],
+                    "fetched": row["total_fetched"] or 0,
+                    "direct_apply_candidates": candidates,
+                    "direct_apply_verified": verified,
+                    "resolution_rate": round(verified / candidates, 4) if candidates else 0.0,
+                    "runs": row["total_runs"],
+                })
+        except Exception:
+            direct_apply_metrics = []
+
         return Response({
             "sources": sources_data,
             "scrape_stats": scrape_stats,
             "scraper_health": scraper_health,
             "pipeline_health": pipeline_data,
+            "direct_apply_metrics": direct_apply_metrics,
         })
 
 
@@ -524,7 +559,7 @@ class SourceControlView(APIView):
     """
 
     permission_classes = [IsAdminRole]
-    VALID_ACTIONS = {"start", "stop", "pause", "run_now"}
+    VALID_ACTIONS = {"start", "stop", "pause", "run_now", "rediscover"}
 
     def post(self, request, source_uuid):
         from apps.jobs.models import Source
@@ -544,6 +579,7 @@ class SourceControlView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        rediscover_result = None
         if action == "start":
             source.is_active = True
             source.save(update_fields=["is_active"])
@@ -560,6 +596,42 @@ class SourceControlView(APIView):
                     {"detail": "Scraper tasks module not available."},
                     status=status.HTTP_501_NOT_IMPLEMENTED,
                 )
+        elif action == "rediscover":
+            # §3/§6: run source rediscovery SYNCHRONOUSLY for this one source
+            # (a single HTTP probe, not a full scrape - fast enough to not
+            # need a Celery task) and return the verdict immediately so the
+            # admin sees MIGRATED/ACTIVE/INVALID right away. Dry-run only -
+            # the admin reviews the evidence before a separate "apply" step
+            # (the rediscover_sources management command's --apply flag),
+            # so this action can NEVER silently retire/duplicate a source.
+            import requests as _requests
+            from apps.scraper.pipeline.source_discovery import discover_ats, compare_for_migration
+
+            def _fetcher(url):
+                try:
+                    r = _requests.get(url, timeout=15, headers={"User-Agent": "usam-source-discovery/1.0"})
+                    try:
+                        payload = r.json()
+                    except ValueError:
+                        payload = None
+                    return r.status_code, payload
+                except _requests.RequestException:
+                    return 0, None
+
+            platform = (source.ats_platform or "").lower()
+            slug = source.slug
+            if platform and slug.endswith(f"-{platform}"):
+                slug = slug[: -len(f"-{platform}")]
+            discovery = discover_ats(slug, fetcher=_fetcher)
+            verdict = compare_for_migration(platform, discovery)
+            rediscover_result = {
+                "verdict": verdict["verdict"],
+                "reason": verdict.get("reason", ""),
+                "new_provider": verdict.get("new_provider"),
+                "job_count": discovery.job_count,
+            }
+            source.last_discovery_at = timezone.now()
+            source.save(update_fields=["last_discovery_at"])
 
         # Log the action
         ActivityLog.objects.create(
@@ -573,11 +645,14 @@ class SourceControlView(APIView):
             },
         )
 
-        return Response({
+        response_data = {
             "detail": f"Action '{action}' applied to source '{source.name}'.",
             "source_uuid": str(source.uuid),
             "is_active": source.is_active,
-        })
+        }
+        if rediscover_result is not None:
+            response_data["rediscover"] = rediscover_result
+        return Response(response_data)
 
 
 # ---------------------------------------------------------------------------

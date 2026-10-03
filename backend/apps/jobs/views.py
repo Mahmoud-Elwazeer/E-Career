@@ -241,11 +241,24 @@ class CompanyDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 @extend_schema(tags=["Sources"])
 class SourceListView(generics.ListCreateAPIView):
-    """GET /api/v1/jobs/sources/ — List sources. POST — Create (admin)."""
+    """GET /api/v1/jobs/sources/ — List sources. POST — Create (admin).
 
-    queryset = Source.objects.filter(is_active=True).order_by("name")
+    Public/anonymous callers only see active sources (this is a public API,
+    scraper plumbing details for disabled sources shouldn't leak). An admin
+    caller sees ALL sources, active or not — otherwise the admin's own
+    "Pause" action (AdminSourcesManager.tsx) makes a source vanish from the
+    list it just reloaded, with no way to Resume it short of Django admin
+    directly. This was a real bug: pause -> source disappears -> stuck.
+    """
+
     serializer_class = SourceSerializer
     pagination_class = None  # small dataset, return all
+
+    def get_queryset(self):
+        user = self.request.user
+        if user and user.is_authenticated and getattr(user, "role", None) == "admin":
+            return Source.objects.all().order_by("name")
+        return Source.objects.filter(is_active=True).order_by("name")
 
     def get_permissions(self):
         if self.request.method == "POST":

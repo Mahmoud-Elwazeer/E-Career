@@ -102,8 +102,26 @@ class TestScraperDashboard:
         assert "scrape_stats" in data
         assert "scraper_health" in data
         assert "pipeline_health" in data
+        assert "direct_apply_metrics" in data
         assert len(data["sources"]) >= 1
         assert data["scrape_stats"]["total_jobs"] >= 1
+
+    def test_direct_apply_metrics_reflects_scraper_runs(self, admin_client, source):
+        """§8: the dashboard must answer 'which source produces the most
+        VERIFIED DIRECT APPLY jobs' as real aggregated data from ScraperRun,
+        not a placeholder."""
+        from apps.scraper.models import ScraperRun
+
+        ScraperRun.record(source, {
+            "fetched": 100, "direct_apply_candidate": 90, "direct_apply_verified": 85,
+        })
+        resp = admin_client.get(self.url)
+        data = unwrap(resp)
+        row = next(r for r in data["direct_apply_metrics"] if r["source_slug"] == source.slug)
+        assert row["fetched"] == 100
+        assert row["direct_apply_candidates"] == 90
+        assert row["direct_apply_verified"] == 85
+        assert row["resolution_rate"] == round(85 / 90, 4)
 
     def test_non_admin_rejected(self, non_admin_client):
         resp = non_admin_client.get(self.url)
@@ -279,6 +297,55 @@ class TestSourceControl:
         url = reverse("source-control", kwargs={"source_uuid": fake_uuid})
         resp = admin_client.post(url, {"action": "start"}, format="json")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_rediscover_action_returns_verdict_without_mutating_is_active(self, admin_client, source):
+        """§6 admin control plane: 'rediscover' is a dry-run probe only - it
+        must report a verdict but never flip is_active/lifecycle_state
+        itself (that remains the separate --apply step of
+        rediscover_sources, reviewed by a human)."""
+        from apps.scraper.pipeline.source_discovery import DiscoveryResult
+
+        fake_discovery = DiscoveryResult(
+            slug=source.slug, provider=None, healthy=False,
+        )
+        url = reverse("source-control", kwargs={"source_uuid": source.uuid})
+        with patch(
+            "apps.scraper.pipeline.source_discovery.discover_ats", return_value=fake_discovery,
+        ):
+            resp = admin_client.post(url, {"action": "rediscover"}, format="json")
+        assert resp.status_code == status.HTTP_200_OK
+        data = unwrap(resp)
+        assert data["rediscover"]["verdict"] == "INVALID"
+        source.refresh_from_db()
+        assert source.last_discovery_at is not None
+        assert source.is_active is True  # unchanged by a dry-run probe
+
+    def test_rediscover_reports_migration_without_creating_successor(self, admin_client, source):
+        """A MIGRATED verdict from the admin action must be reported for
+        human review - it must NOT auto-create a successor Source or retire
+        the original (that's the separate, explicit --apply step)."""
+        from apps.scraper.pipeline.source_discovery import DiscoveryResult
+        from apps.jobs.models import Source
+
+        source.ats_platform = "lever"
+        source.save(update_fields=["ats_platform"])
+        fake_discovery = DiscoveryResult(
+            slug=source.slug, provider="ashby", tenant=source.slug,
+            endpoint="https://api.ashbyhq.com/posting-api/job-board/x",
+            job_count=42, healthy=True,
+        )
+        url = reverse("source-control", kwargs={"source_uuid": source.uuid})
+        with patch(
+            "apps.scraper.pipeline.source_discovery.discover_ats", return_value=fake_discovery,
+        ):
+            resp = admin_client.post(url, {"action": "rediscover"}, format="json")
+        assert resp.status_code == status.HTTP_200_OK
+        data = unwrap(resp)
+        assert data["rediscover"]["verdict"] == "MIGRATED"
+        assert data["rediscover"]["new_provider"] == "ashby"
+        source.refresh_from_db()
+        assert source.is_active is True
+        assert not Source.objects.filter(slug__endswith="-ashby").exists()
 
 
 # ---------------------------------------------------------------------------

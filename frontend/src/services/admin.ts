@@ -210,10 +210,23 @@ export async function fetchAdminAlerts(): Promise<AdminAlert[]> {
 
 // ── Scraper source control (backend-ready, was unused) ────────────────────────
 // POST /admin-api/sources/{source_uuid}/control/ — start | stop | pause | run_now
-export type SourceControlAction = "start" | "stop" | "pause" | "run_now";
+export type SourceControlAction = "start" | "stop" | "pause" | "run_now" | "rediscover";
+
+export interface SourceControlResponse {
+  detail?: string;
+  message?: string;
+  source_uuid?: string;
+  is_active?: boolean;
+  rediscover?: {
+    verdict: "ACTIVE" | "MIGRATED" | "INVALID";
+    reason: string;
+    new_provider: string | null;
+    job_count: number;
+  };
+}
 
 export async function controlSource(sourceUuid: string, action: SourceControlAction) {
-  return apiRequest<{ success?: boolean; message?: string }>(
+  return apiRequest<SourceControlResponse>(
     `/admin-api/sources/${sourceUuid}/control/`,
     { method: "POST", body: { action } },
   );

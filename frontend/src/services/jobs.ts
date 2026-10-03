@@ -22,6 +22,23 @@ export interface Source {
   logo_url: string;
   type: string;
   is_active: boolean;
+  // Admin-only fields (present when fetched by an admin user; absent on the
+  // public-facing list) - §4/§6 Source registry audit + admin control plane.
+  ats_platform?: string;
+  lifecycle_state?: "active" | "degraded" | "migrated" | "disabled" | "invalid";
+  last_run_at?: string | null;
+  last_run_status?: string;
+  jobs_found_last_run?: number;
+  jobs_added_last_run?: number;
+  error_count?: number;
+  consecutive_zero_yield_runs?: number;
+  historical_average_jobs?: number;
+  last_success_at?: string | null;
+  last_failure_at?: string | null;
+  last_nonzero_at?: string | null;
+  adaptive_allowed?: boolean;
+  max_jobs_per_run?: number | null;
+  rate_limit_override?: number | null;
 }
 
 export interface Tag {

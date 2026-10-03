@@ -32,8 +32,22 @@ class CompanyWriteSerializer(serializers.ModelSerializer):
 class SourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Source
-        fields = ["id", "uuid", "name", "slug", "url", "logo_url", "type", "is_active", "created_at"]
-        read_only_fields = ["id", "uuid", "created_at"]
+        fields = [
+            "id", "uuid", "name", "slug", "url", "logo_url", "type", "is_active", "created_at",
+            # §6 admin control plane: lifecycle/health fields so AdminSourcesManager
+            # can show real status instead of just is_active true/false.
+            "ats_platform", "lifecycle_state", "last_run_at", "last_run_status",
+            "jobs_found_last_run", "jobs_added_last_run", "error_count",
+            "consecutive_zero_yield_runs", "historical_average_jobs",
+            "last_success_at", "last_failure_at", "last_nonzero_at",
+            "adaptive_allowed", "max_jobs_per_run", "rate_limit_override",
+        ]
+        read_only_fields = [
+            "id", "uuid", "created_at", "lifecycle_state", "last_run_at",
+            "last_run_status", "jobs_found_last_run", "jobs_added_last_run",
+            "error_count", "consecutive_zero_yield_runs", "historical_average_jobs",
+            "last_success_at", "last_failure_at", "last_nonzero_at",
+        ]
 
 
 class TagSerializer(serializers.ModelSerializer):

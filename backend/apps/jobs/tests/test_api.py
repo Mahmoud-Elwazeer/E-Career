@@ -239,6 +239,41 @@ class TestSourceAPI:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["success"] is True
 
+    def test_paused_source_hidden_from_public_list(self, api_client, source):
+        """A public/anonymous caller must not see a paused (is_active=False)
+        source - this is a public-facing API, scraper plumbing for a
+        disabled source shouldn't leak."""
+        source.is_active = False
+        source.save(update_fields=["is_active"])
+        url = reverse("jobs:source-list")
+        response = api_client.get(url)
+        slugs = [s["slug"] for s in response.data["data"]]
+        assert source.slug not in slugs
+
+    def test_paused_source_visible_to_admin(self, admin_client, source):
+        """Real bug fix: previously SourceListView ALWAYS filtered to
+        is_active=True, so pausing a source via the admin's own 'Pause'
+        button made it vanish from the admin's source list with no way to
+        Resume it short of Django admin directly. An admin caller must see
+        every source regardless of is_active."""
+        source.is_active = False
+        source.save(update_fields=["is_active"])
+        url = reverse("jobs:source-list")
+        response = admin_client.get(url)
+        slugs = [s["slug"] for s in response.data["data"]]
+        assert source.slug in slugs
+
+    def test_admin_source_list_exposes_lifecycle_health_fields(self, admin_client, source):
+        """§6 admin control plane: the admin-facing source list must expose
+        the lifecycle/health fields added in the §4 Source registry audit,
+        not just id/name/url/is_active."""
+        url = reverse("jobs:source-list")
+        response = admin_client.get(url)
+        row = next(s for s in response.data["data"] if s["slug"] == source.slug)
+        for field in ("lifecycle_state", "historical_average_jobs",
+                      "consecutive_zero_yield_runs", "adaptive_allowed"):
+            assert field in row
+
 
 @pytest.mark.django_db
 class TestTagAPI:

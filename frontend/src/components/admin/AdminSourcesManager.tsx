@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Plus, RefreshCw, Trash2, Pencil, Loader2, Play, Pause } from "lucide-react";
+import { Plus, RefreshCw, Trash2, Pencil, Loader2, Play, Pause, Search, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -80,26 +80,48 @@ export function AdminSourcesManager() {
     }
   };
 
-  // Scraper run control (start/stop/pause/run_now) — wires the backend
-  // SourceControlView that previously had no UI.
+  // Scraper run control (start/stop/pause/run_now/rediscover) — wires the
+  // backend SourceControlView that previously had no UI.
   const [controlBusy, setControlBusy] = useState<string | null>(null);
   const handleControl = async (source: Source, action: SourceControlAction) => {
     setControlBusy(`${source.uuid}:${action}`);
     try {
       const res = await controlSource(source.uuid, action);
-      toast({
-        title:
-          action === "run_now" ? (isAr ? "بدأ التشغيل" : "Scrape started")
-          : action === "pause" ? (isAr ? "تم الإيقاف المؤقت" : "Source paused")
-          : action === "start" ? (isAr ? "تم التفعيل" : "Source resumed")
-          : (isAr ? "تم الإيقاف" : "Source stopped"),
-        description: res?.message,
-      });
+      if (action === "rediscover" && res?.rediscover) {
+        const r = res.rediscover;
+        toast({
+          title: isAr ? "نتيجة إعادة الاكتشاف" : `Rediscovery: ${r.verdict}`,
+          description:
+            r.verdict === "MIGRATED"
+              ? `${isAr ? "منصة جديدة محتملة" : "Possible new provider"}: ${r.new_provider} (${r.job_count} ${isAr ? "وظيفة" : "jobs"}). ${isAr ? "راجع واطبّق عبر الأمر المخصص." : "Review and apply via the rediscover_sources command."}`
+              : r.reason,
+          variant: r.verdict === "INVALID" ? "destructive" : "default",
+        });
+      } else {
+        toast({
+          title:
+            action === "run_now" ? (isAr ? "بدأ التشغيل" : "Scrape started")
+            : action === "pause" ? (isAr ? "تم الإيقاف المؤقت" : "Source paused")
+            : action === "start" ? (isAr ? "تم التفعيل" : "Source resumed")
+            : (isAr ? "تم الإيقاف" : "Source stopped"),
+          description: res?.detail ?? res?.message,
+        });
+      }
       load();
     } catch (e: any) {
       toast({ title: "Failed", description: e?.message, variant: "destructive" });
     } finally {
       setControlBusy(null);
+    }
+  };
+
+  const lifecycleBadgeVariant = (state?: string): "default" | "secondary" | "destructive" | "outline" => {
+    switch (state) {
+      case "degraded": return "destructive";
+      case "migrated": return "outline";
+      case "invalid": return "destructive";
+      case "disabled": return "secondary";
+      default: return "default";
     }
   };
 
@@ -165,9 +187,29 @@ export function AdminSourcesManager() {
                     <p className="text-body font-medium">{source.name}</p>
                     <a href={source.url} target="_blank" rel="noopener noreferrer"
                       className="text-caption text-primary hover:underline">{source.url}</a>
+                    {source.lifecycle_state && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {source.ats_platform && <span className="me-2">{source.ats_platform}</span>}
+                        {isAr ? "آخر تشغيل" : "last run"}: {source.jobs_found_last_run ?? 0} {isAr ? "وظيفة" : "jobs"}
+                        {typeof source.historical_average_jobs === "number" && (
+                          <span className="ms-2">({isAr ? "المتوسط" : "avg"} {source.historical_average_jobs.toFixed(0)})</span>
+                        )}
+                        {!!source.consecutive_zero_yield_runs && (
+                          <span className="ms-2 text-destructive inline-flex items-center gap-0.5">
+                            <AlertTriangle className="h-2.5 w-2.5" />
+                            {source.consecutive_zero_yield_runs} {isAr ? "تشغيلات صفرية" : "zero-yield runs"}
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  {source.lifecycle_state && source.lifecycle_state !== "active" && (
+                    <Badge variant={lifecycleBadgeVariant(source.lifecycle_state)}>
+                      {source.lifecycle_state}
+                    </Badge>
+                  )}
                   <Badge variant={source.is_active ? "default" : "secondary"}>
                     {source.is_active ? (isAr ? "نشط" : "Active") : (isAr ? "متوقف" : "Paused")}
                   </Badge>
@@ -181,6 +223,17 @@ export function AdminSourcesManager() {
                       ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       : <Play className="h-3.5 w-3.5" />}
                     <span className="text-caption">{isAr ? "تشغيل" : "Run"}</span>
+                  </Button>
+                  <Button
+                    variant="outline" size="sm" className="h-7 gap-1 px-2"
+                    onClick={() => handleControl(source, "rediscover")}
+                    disabled={controlBusy === `${source.uuid}:rediscover`}
+                    title={isAr ? "إعادة اكتشاف نظام التوظيف" : "Probe for ATS migration (dry-run, no changes applied)"}
+                  >
+                    {controlBusy === `${source.uuid}:rediscover`
+                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      : <Search className="h-3.5 w-3.5" />}
+                    <span className="text-caption">{isAr ? "اكتشاف" : "Rediscover"}</span>
                   </Button>
                   <Button
                     variant="ghost" size="icon" className="h-7 w-7"
