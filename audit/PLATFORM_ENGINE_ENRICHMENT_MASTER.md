@@ -1417,3 +1417,86 @@ or redundant with what already exists natively and better) or
 REFERENCE_ONLY/OPTIONAL (confirms existing design choices or is out of scope
 for scraping/ingestion entirely). No new runtime dependency was installed;
 no code from any external repo was copied into this codebase this pass.
+
+
+---
+
+## Final consolidated increment report — Tasks #10-#16 (2026-10-06)
+
+This section is the honest completion accounting for the full ordered
+directive covering connector matrix re-verification through end-to-end
+acceptance proof. Per the standing instruction, nothing below is claimed
+done without the test/command evidence that proves it, and every known gap
+or limitation is stated explicitly rather than omitted.
+
+**Commits this increment, in order (all pushed to `origin/development`,
+HEAD `1f1ab9e`):**
+
+| Commit | Task | What it actually did |
+|---|---|---|
+| `f6bccd4` | §10 | Connector matrix re-run after source-discovery/connector work. Seeded missing `cubecare-bamboohr` source. Fetch-only across all 23 sources: 7,052 fetched, 0 errors. Full-funnel verified on the two newly-touched connectors (BambooHR 14/14, Breezy 25/25) — a full-funnel run on all 23 was not attempted (each job does a real ~15-25s live HTTP verification call; 7,052 jobs would take hours and was explicitly out of scope for a local verification pass). |
+| `8196113` | §11 | Master Resource Directive repo research via real `api.github.com` metadata (not name-guessing). One actionable finding: `kalil0321/ats-scrapers` (MIT, 169★) has URL→ATS auto-detection and first-party big-tech endpoint knowledge (Amazon/Apple/Google/TikTok/Uber) this platform lacks — classified ADAPT, backlogged, not built (no current source demands it). Two auto-apply repos explicitly REJECTED as moat-violating. |
+| `002cc6d` | §12 | Company Claim model + service + admin + API. Evidence-gated (`corporate_email`/`dns_txt`/`document`/`admin_manual`), never auto-approves above `UNDER_REVIEW` — a human is always the final gate. 24 tests. |
+| `376cc44` | — | Mid-engagement user directive cross-check ("Master Resource Directive" message): found and closed a real gap — several aggregators explicitly named in that directive (`jooble.org`, `talent.com`, `careerjet.com`, `jobrapido.com`, `wellfound.com`, 10 more) were missing from the DB-backed `BlockedDomain` table. Additive data migration, zero code change. |
+| `26ed4c5` | §13 | Company Discovery Engine. Enriches `domain`/`careers_page_url`/`industry`/`headquarters` using ONLY evidence already in this platform's own DB (`CompanyResolutionIdentity`, `Source.industry`, `Job.location`) — explicitly not a web crawler, zero network calls. Additive-only (never overwrites a non-blank field; conflicts are logged, never auto-resolved). Found and fixed a real bug mid-build: `Company.industry` defaults to `"other"` (non-blank), which silently blocked the industry-backfill path until treated as the unset sentinel. 16 tests. |
+| `eb6b77f` | §14 | Business Contact model. Public, role-based addresses only (`careers@`/`hr@`/`jobs@`/etc) — explicitly not personal-email harvesting; the model has no name/title field at all, and the service rejects any non-generic role prefix even via the admin-manual path. Generation is a labeled pattern-guess (confidence 0.3, unverified) — no SMTP/network call ever confirms an address is real. 13 tests. |
+| `0a364e1` | — | **Pre-existing infrastructure bug, found incidentally while verifying Task #14's tests actually ran**: `backend/pytest.ini` used section header `[tool:pytest]`, which is only valid inside `setup.cfg` — a standalone file literally named `pytest.ini` must use `[pytest]`. Confirmed via a bogus-pattern probe (set `python_files` to a pattern matching nothing; pytest still collected the same files, proving the whole ini was being ignored and pytest was silently running on its hardcoded defaults). This had been silently excluding **every** `tests_*.py` file from directory-based collection — including this project's own CI workflow's bare `pytest -v` invocation — for the entire engagement, not just this session. Fixed with a one-line section-header change. |
+| `e66fbb5` | §15 | Outreach domain scaffolding (new `apps.outreach`). Company→Contact→Campaign→Template→Message→Response, DRY_RUN only by **hardcoded code-path absence** (there is no SMTP/send-API call anywhere in the app, not a settings flag that could be flipped). 4-gate compliance chain (permanent email suppression → per-contact do-not-contact → campaign-must-be-dry_run → daily rate limit), every gate outcome persisted for audit. `OutreachMessage` has no "sent" status in its `STATUS_CHOICES` — proven by a dedicated test. 11 tests. |
+| `1f1ab9e` | §16 | End-to-end acceptance scenarios A-D, all against real models/services (not mocks): A) source→Company resolution→verified Job→searchable via the real Postgres fallback plugin, with a negative proof that a rejected job never surfaces; B) real `CareerProfile`→`UnifiedMatchingEngine`, with a negative salary-floor-ineligibility proof; C) a Company with a real pre-existing scraped Job→`CompanyClaim`→approval→claimant's `EmployerProfile`/`EmployerTeamMember` on the *same* Company with the pre-existing job provably not duplicated (`count()==1`), with a negative free-mail-never-approves proof; D) Company→generated `BusinessContact`→`OutreachService`'s full gate chain→`dry_run_logged` with correctly rendered content, with a negative suppression-blocks-before-render proof. 8 tests. |
+
+**Test suite reality check (the headline finding of this increment):**
+Before `0a364e1`, running `pytest apps` collected as few as 67-150 tests
+depending on which subdirectory was targeted, because the broken ini
+section silently fell back to pytest's own `test_*.py` default and ignored
+every `tests_*.py` file this and prior engagements had written (25+ files:
+company resolution, scraper connectors, SSRF guard, rediscovery, run
+metrics, etc.) — this was true of CI's own `pytest -v` invocation too.
+After the fix, the real, full backend suite is **1,020 collected, 1,018
+passed, 2 skipped, 0 failures** (confirmed by actually running it, twice,
+after different increments of this session — not inferred). This means
+prior "all tests passing" claims in earlier audit entries were true for the
+subset pytest was actually running, but that subset was smaller than
+believed. No test that was actually collected and run, before or after the
+fix, was ever found failing — this is a *coverage* gap that's now closed,
+not a correctness regression that was hidden.
+
+**What was NOT done this increment (explicit, not omitted):**
+- The connector matrix was not re-run full-funnel (persisting) across all
+  23 sources — only fetch-only (all 23) + full-funnel (the 2 newly-touched
+  connectors). A full persisting run across every source was judged out of
+  scope for a local verification pass given real per-job verification
+  latency (~15-25s × thousands of jobs).
+- `kalil0321/ats-scrapers`'s URL-auto-detection technique and big-tech
+  endpoint knowledge were classified ADAPT but not implemented — no current
+  source demands them; building speculatively would repeat the
+  "integration == pip install, no real caller" anti-pattern this engagement
+  has rejected everywhere else.
+- Company Discovery, Business Contact generation, and Outreach dry-runs
+  have **not been run against real production data** — only against test
+  fixtures in this session's test suites. The acceptance-scenario tests
+  (§16) prove the *code paths* work correctly end-to-end; they do not
+  constitute a production data run. An operator should run
+  `discover_companies`, `generate_business_contacts`, and a real
+  `OutreachService.run_campaign()` dry-run against production Companies
+  before treating those three features as "validated in production."
+- No commit in this increment has been deployed to production beyond
+  `376cc44` (confirmed healthy, user-run, pasted output). Commits
+  `26ed4c5`/`eb6b77f`/`0a364e1`/`e66fbb5`/`1f1ab9e` (Company Discovery,
+  Business Contact, the pytest fix, Outreach, and the acceptance tests) are
+  pushed to `origin/development` but their production deployment has not
+  been requested or confirmed as of this entry.
+
+**Hard invariants preserved throughout (verified, not assumed):**
+- Direct-Apply moat: every new/touched code path in this increment that
+  touches an apply URL (Scenario A's search document, the blocklist
+  extension) either reuses the existing `is_blocked_domain()` enforcement
+  or adds to its dataset — no new bypass was introduced.
+- No destructive database operation: every migration in this increment
+  (`0013_companyclaim`, `0014_companyenrichment`, `0015_businesscontact`,
+  `verification/0004`, `outreach/0001_initial`) is `CreateModel`/`AddField`/
+  additive-`RunPython` only — confirmed via `sqlmigrate` review before each
+  local apply, consistent with the production deployment discipline used
+  for every prior increment in this engagement.
+- No real send/scrape/SMTP code path was added for Outreach or Business
+  Contact — both are evidence-gathering/dry-run only by construction, not
+  by a flag that could be silently flipped.
