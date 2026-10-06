@@ -72,6 +72,123 @@ def test_out_of_process_backend_inert_without_runner():
     assert res.ok is False and "not configured" in (res.error or "")
 
 
+# ---------------------------------------------------------------------------
+# §9/§13 SSRF guard + resource bounds - OutOfProcessBackend.extract() wiring.
+# Uses real `sys.executable -c "..."` subprocesses (not mocks) to actually
+# exercise the Popen/_read_bounded machinery, since that's exactly the code
+# path a real security review would want proven, not assumed.
+# ---------------------------------------------------------------------------
+import sys
+import json as _json
+
+
+def _echo_runner_cmd():
+    """A tiny real subprocess that reads stdin JSON and echoes back a
+    well-formed {"jobs": [...], "evidence": {...}} - used to prove a SAFE
+    url is actually allowed through to the runner (i.e. the SSRF guard
+    doesn't block everything)."""
+    script = (
+        "import sys, json; "
+        "d = json.loads(sys.stdin.read()); "
+        "print(json.dumps({'jobs': [{'title': 'ok', 'url': d['url']}], 'evidence': {}}))"
+    )
+    return [sys.executable, "-c", script]
+
+
+def test_ssrf_guard_blocks_loopback_before_subprocess_runs():
+    b = OutOfProcessBackend("scrapling", ExtractionTier.ADAPTIVE_PARSER, runner_cmd=_echo_runner_cmd())
+    res = b.extract("http://127.0.0.1:8000/admin")
+    assert res.ok is False
+    assert "SSRF guard" in res.error
+    assert res.evidence.get("ssrf_blocked") is True
+
+
+def test_ssrf_guard_blocks_cloud_metadata_endpoint():
+    b = OutOfProcessBackend("scrapling", ExtractionTier.ADAPTIVE_PARSER, runner_cmd=_echo_runner_cmd())
+    res = b.extract("http://169.254.169.254/latest/meta-data/")
+    assert res.ok is False
+    assert res.evidence.get("ssrf_blocked") is True
+
+
+def test_ssrf_guard_blocks_rfc1918_private_network():
+    b = OutOfProcessBackend("scrapling", ExtractionTier.ADAPTIVE_PARSER, runner_cmd=_echo_runner_cmd())
+    res = b.extract("http://192.168.1.50/internal-admin")
+    assert res.ok is False
+    assert res.evidence.get("ssrf_blocked") is True
+
+
+def test_ssrf_guard_blocks_file_scheme():
+    b = OutOfProcessBackend("scrapling", ExtractionTier.ADAPTIVE_PARSER, runner_cmd=_echo_runner_cmd())
+    res = b.extract("file:///etc/passwd")
+    assert res.ok is False
+    assert res.evidence.get("ssrf_blocked") is True
+
+
+def test_safe_public_url_actually_reaches_the_real_subprocess():
+    """Proves the SSRF guard is not overly broad - a legitimate public URL
+    (IP literal, since this must run offline in CI with no real DNS) still
+    reaches the real runner subprocess and gets a real result back."""
+    b = OutOfProcessBackend("scrapling", ExtractionTier.ADAPTIVE_PARSER, runner_cmd=_echo_runner_cmd())
+    res = b.extract("http://93.184.216.34/careers")
+    assert res.ok is True
+    assert res.jobs == [{"title": "ok", "url": "http://93.184.216.34/careers"}]
+
+
+def test_response_size_limit_kills_oversized_runner_output():
+    """A real subprocess that tries to write far more than
+    OutOfProcessBackend.MAX_RESPONSE_BYTES to stdout must be killed and
+    reported as blocked, not allowed to exhaust memory."""
+    over_limit_mb = 15  # MAX_RESPONSE_BYTES is 10 MB
+    script = (
+        "import sys; "
+        f"sys.stdin.read(); "
+        f"sys.stdout.write('x' * ({over_limit_mb} * 1024 * 1024))"
+    )
+    runner_cmd = [sys.executable, "-c", script]
+    b = OutOfProcessBackend("scrapling", ExtractionTier.ADAPTIVE_PARSER, runner_cmd=runner_cmd)
+    res = b.extract("http://93.184.216.34/careers")
+    assert res.ok is False
+    assert res.evidence.get("response_size_exceeded") is True
+
+
+def test_runner_timeout_is_reported_not_hung():
+    script = "import sys, time; sys.stdin.read(); time.sleep(5)"
+    runner_cmd = [sys.executable, "-c", script]
+    b = OutOfProcessBackend("scrapling", ExtractionTier.ADAPTIVE_PARSER, runner_cmd=runner_cmd)
+    # Shrink the timeout for a fast test by monkeypatching the bounded-read
+    # call's timeout via a tiny subclass override.
+    import apps.scraper.pipeline.extraction_adapter as mod
+
+    orig_extract = mod.OutOfProcessBackend.extract
+
+    class _FastTimeoutBackend(mod.OutOfProcessBackend):
+        def extract(self, url, *, hints=None):
+            # Reuse the real method body logic by temporarily patching the
+            # hardcoded 60s timeout: simplest robust way is to call
+            # _read_bounded directly with a short timeout, mirroring extract().
+            if not self.available():
+                return mod.ExtractionResult(ok=False, tier=self.tier, error="runner not configured")
+            from apps.scraper.pipeline.ssrf_guard import validate_url_safe
+            safety = validate_url_safe(url)
+            if not safety.safe:
+                return mod.ExtractionResult(ok=False, tier=self.tier, error="blocked")
+            payload = _json.dumps({"url": url, "hints": {}})
+            proc = mod.subprocess.Popen(
+                self.runner_cmd, stdin=mod.subprocess.PIPE, stdout=mod.subprocess.PIPE,
+                stderr=mod.subprocess.PIPE, text=False,
+            )
+            try:
+                self._read_bounded(proc, payload, timeout=1)
+                return mod.ExtractionResult(ok=True, tier=self.tier)
+            except mod.subprocess.TimeoutExpired:
+                return mod.ExtractionResult(ok=False, tier=self.tier, error="timed out")
+
+    b = _FastTimeoutBackend("scrapling", ExtractionTier.ADAPTIVE_PARSER, runner_cmd=runner_cmd)
+    res = b.extract("http://93.184.216.34/careers")
+    assert res.ok is False
+    assert "timed out" in (res.error or "")
+
+
 if __name__ == "__main__":
     import sys
     fns = [v for k, v in list(globals().items()) if k.startswith("test_") and callable(v)]

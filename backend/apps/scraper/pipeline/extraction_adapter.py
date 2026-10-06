@@ -17,9 +17,17 @@ funnel stays explainable.
 """
 from __future__ import annotations
 
+import json
+import subprocess
+import threading
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Dict, List, Optional, Protocol
+
+
+class _ResponseTooLarge(Exception):
+    """Raised internally when an out-of-process runner's stdout exceeds
+    OutOfProcessBackend.MAX_RESPONSE_BYTES (§13 resource bound)."""
 
 
 class ExtractionTier(IntEnum):
@@ -121,22 +129,116 @@ class OutOfProcessBackend:
     def extract(self, url: str, *, hints: Optional[Dict] = None) -> ExtractionResult:
         if not self.available():
             return ExtractionResult(ok=False, tier=self.tier, error="runner not configured")
-        import json
-        import subprocess
+
+        # §9/§13 SSRF guard: validated BEFORE a subprocess/container is ever
+        # launched - the primary, always-applied enforcement point for this
+        # Tier-3 adaptive path. See ssrf_guard.py's module docstring for the
+        # full threat model (cloud metadata endpoint, RFC1918, loopback,
+        # non-HTTP schemes) and its documented residual risk (redirect-chain
+        # re-validation is NOT covered here).
+        from .ssrf_guard import validate_url_safe
+        safety = validate_url_safe(url)
+        if not safety.safe:
+            return ExtractionResult(
+                ok=False, tier=self.tier,
+                error=f"blocked by SSRF guard: {safety.reason}",
+                evidence={"backend": self.name, "ssrf_blocked": True, "url": url},
+            )
+
         payload = json.dumps({"url": url, "hints": hints or {}})
         try:
-            proc = subprocess.run(
-                self.runner_cmd, input=payload, capture_output=True,
-                text=True, timeout=60,
+            # §13 resource bound: subprocess.run's capture_output buffers the
+            # ENTIRE stdout in memory with no size limit - a malicious or
+            # buggy runner (e.g. a page that is actually a multi-GB file
+            # served with a misleading content-type) could exhaust worker
+            # memory. Popen + a size-capped read loop enforces a hard ceiling
+            # DURING the read, not just a check after the fact.
+            proc = subprocess.Popen(
+                self.runner_cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, text=False,  # binary mode - _read_bounded enforces the byte cap itself
             )
+            try:
+                stdout_data, stderr_data = self._read_bounded(proc, payload, timeout=60)
+            except _ResponseTooLarge:
+                proc.kill()
+                proc.wait(timeout=5)
+                return ExtractionResult(
+                    ok=False, tier=self.tier,
+                    error=f"runner stdout exceeded {self.MAX_RESPONSE_BYTES} byte limit",
+                    evidence={"backend": self.name, "response_size_exceeded": True},
+                )
             if proc.returncode != 0:
                 return ExtractionResult(ok=False, tier=self.tier,
-                                        error=f"runner exit {proc.returncode}: {proc.stderr[:300]}")
-            data = json.loads(proc.stdout or "{}")
+                                        error=f"runner exit {proc.returncode}: {(stderr_data or '')[:300]}")
+            data = json.loads(stdout_data or "{}")
             return ExtractionResult(
                 ok=bool(data.get("jobs")), tier=self.tier,
                 jobs=data.get("jobs", []),
                 evidence={"backend": self.name, **(data.get("evidence") or {})},
             )
-        except (subprocess.SubprocessError, ValueError) as e:
+        except (subprocess.SubprocessError, ValueError, OSError) as e:
             return ExtractionResult(ok=False, tier=self.tier, error=f"{type(e).__name__}: {e}")
+
+    # 10 MB is far more than any legitimate single-page JobPosting
+    # extraction response needs (even dozens of full job descriptions as
+    # JSON stay well under 1 MB) - this is a hard safety ceiling, not a
+    # tuned-for-throughput limit.
+    MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+
+    def _read_bounded(self, proc, payload: str, *, timeout: int):
+        """Write `payload` to stdin, then read stdout in a thread with a
+        true streaming byte cap (kills the process the moment the cap is
+        exceeded, rather than buffering an unbounded amount first via
+        communicate()). stderr is read in a second thread so neither pipe
+        can deadlock the other if the runner writes a lot to both.
+        """
+        stdout_chunks: list[bytes] = []
+        stderr_chunks: list[bytes] = []
+        exceeded = threading.Event()
+
+        def _pump(stream, chunks: list, cap_bytes: Optional[int]):
+            total = 0
+            try:
+                while True:
+                    chunk = stream.read(65536)
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    if cap_bytes is not None:
+                        total += len(chunk)
+                        if total > cap_bytes:
+                            exceeded.set()
+                            try:
+                                proc.kill()
+                            except Exception:
+                                pass
+                            break
+            except Exception:
+                pass
+
+        proc.stdin.write(payload.encode("utf-8"))
+        proc.stdin.close()
+
+        t_out = threading.Thread(target=_pump, args=(proc.stdout, stdout_chunks, self.MAX_RESPONSE_BYTES))
+        t_err = threading.Thread(target=_pump, args=(proc.stderr, stderr_chunks, self.MAX_RESPONSE_BYTES))
+        t_out.start()
+        t_err.start()
+
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=5)
+            t_out.join(timeout=5)
+            t_err.join(timeout=5)
+            raise
+
+        t_out.join(timeout=5)
+        t_err.join(timeout=5)
+
+        if exceeded.is_set():
+            raise _ResponseTooLarge()
+
+        stdout_data = "".join(c.decode("utf-8", errors="ignore") for c in stdout_chunks)
+        stderr_data = "".join(c.decode("utf-8", errors="ignore") for c in stderr_chunks)
+        return stdout_data, stderr_data

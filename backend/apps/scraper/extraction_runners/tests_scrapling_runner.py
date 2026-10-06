@@ -142,3 +142,54 @@ def test_jsonld_location_handles_list_of_places():
 
 def test_jsonld_location_handles_missing_location():
     assert _extract_jsonld_location({}) == ""
+
+
+# ---------------------------------------------------------------------------
+# §9/§13 SSRF guard - this standalone script's own defense-in-depth copy
+# (duplicated from apps/scraper/pipeline/ssrf_guard.py by design, since this
+# script must stay dependency-free - see its module docstring).
+# ---------------------------------------------------------------------------
+from scrapling_runner import is_url_safe, run as _runner_run  # noqa: E402
+
+
+def test_is_url_safe_allows_public_ip_literal():
+    safe, reason = is_url_safe("http://93.184.216.34/careers")
+    assert safe is True
+
+
+def test_is_url_safe_blocks_loopback():
+    safe, reason = is_url_safe("http://127.0.0.1:8000/admin")
+    assert safe is False
+    assert "blocked" in reason.lower() or "127.0.0.1" in reason
+
+
+def test_is_url_safe_blocks_metadata_ip():
+    safe, reason = is_url_safe("http://169.254.169.254/latest/meta-data/")
+    assert safe is False
+
+
+def test_is_url_safe_blocks_rfc1918():
+    safe, reason = is_url_safe("http://192.168.1.1/internal")
+    assert safe is False
+
+
+def test_is_url_safe_blocks_file_scheme():
+    safe, reason = is_url_safe("file:///etc/passwd")
+    assert safe is False
+    assert "scheme" in reason
+
+
+def test_is_url_safe_blocks_localhost_hostname():
+    safe, reason = is_url_safe("http://localhost/x")
+    assert safe is False
+
+
+def test_run_blocks_unsafe_url_before_any_fetch_attempt():
+    """run() must short-circuit on the SSRF check BEFORE importing/invoking
+    Scrapling's Fetcher at all - proven by the fact this returns the SSRF
+    error even in an environment where scrapling isn't installed (which
+    would otherwise surface as a different 'scrapling not installed'
+    error first if the check order were wrong)."""
+    result = _runner_run("http://127.0.0.1:9999/internal", {})
+    assert result["jobs"] == []
+    assert result["evidence"].get("ssrf_blocked") is True

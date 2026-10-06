@@ -60,8 +60,80 @@ script's path - see config/settings/base.py for both settings):
         # or: ["/opt/scrapling-runner-venv/bin/python", "/path/to/scrapling_runner.py"]
     )
 """
+import ipaddress
 import json
+import socket
 import sys
+from urllib.parse import urlparse
+
+
+# §9/§13 SSRF guard, duplicated (not imported) from
+# apps/scraper/pipeline/ssrf_guard.py - this script's own module docstring
+# requires "zero Django imports, zero dependency on the main backend
+# package" so it can run inside a separate isolated venv/container. This is
+# defense-in-depth: the Django-side OutOfProcessBackend.extract() already
+# validates the URL before ever launching this process, but this script
+# could in principle be invoked directly (e.g. `docker run
+# usam-scrapling-runner` with attacker-controlled stdin), bypassing that
+# gate entirely. See ssrf_guard.py's module docstring for the full threat
+# model and its documented residual risk (redirect-chain hops are not
+# re-validated by either copy of this logic).
+_ALLOWED_SCHEMES = frozenset({"http", "https"})
+_BLOCKED_HOSTNAMES = frozenset({"localhost", "localhost.localdomain", "metadata.google.internal"})
+
+
+def _is_blocked_ip(ip_str: str) -> bool:
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return True  # unparseable -> fail closed
+    return bool(
+        ip.is_loopback or ip.is_private or ip.is_link_local
+        or ip.is_reserved or ip.is_multicast or ip.is_unspecified
+    )
+
+
+def is_url_safe(url: str) -> tuple[bool, str]:
+    """Returns (safe, reason). Mirrors ssrf_guard.validate_url_safe's logic
+    (scheme allowlist, blocked hostname literals, IP-literal check, then
+    full DNS resolution checking every returned address) in a standalone,
+    dependency-free form for this isolated script."""
+    if not url or not isinstance(url, str):
+        return False, "empty or non-string URL"
+    try:
+        parsed = urlparse(url)
+    except ValueError as e:
+        return False, f"unparseable URL: {e}"
+
+    scheme = (parsed.scheme or "").lower()
+    if scheme not in _ALLOWED_SCHEMES:
+        return False, f"disallowed scheme: {scheme!r}"
+
+    hostname = (parsed.hostname or "").lower()
+    if not hostname:
+        return False, "URL has no hostname"
+    if hostname in _BLOCKED_HOSTNAMES:
+        return False, f"blocked hostname literal: {hostname!r}"
+
+    try:
+        literal_ip = ipaddress.ip_address(hostname.strip("[]"))
+        if _is_blocked_ip(str(literal_ip)):
+            return False, f"blocked IP literal: {literal_ip}"
+        return True, ""
+    except ValueError:
+        pass
+
+    try:
+        addrinfo = socket.getaddrinfo(hostname, None)
+    except (socket.gaierror, OSError) as e:
+        return False, f"DNS resolution failed: {type(e).__name__}: {e}"
+    if not addrinfo:
+        return False, "DNS resolution returned no addresses"
+    for entry in addrinfo:
+        ip_str = entry[4][0]
+        if _is_blocked_ip(ip_str):
+            return False, f"resolves to blocked address: {ip_str}"
+    return True, ""
 
 
 def extract_jobs_from_html(html: str, url: str) -> list[dict]:
@@ -152,6 +224,13 @@ def _extract_jsonld_location(item: dict) -> str:
 
 def run(url: str, hints: dict) -> dict:
     evidence: dict = {"url": url, "tier_attempted": "adaptive_parser"}
+
+    # Defense-in-depth SSRF check (see module-level docstring above
+    # is_url_safe) - this script's own gate, independent of whatever
+    # already validated the URL before this process was launched.
+    safe, reason = is_url_safe(url)
+    if not safe:
+        return {"jobs": [], "evidence": {**evidence, "error": f"blocked by SSRF guard: {reason}", "ssrf_blocked": True}}
 
     try:
         from scrapling.fetchers import Fetcher, StealthyFetcher
