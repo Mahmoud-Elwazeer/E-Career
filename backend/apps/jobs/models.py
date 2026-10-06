@@ -376,6 +376,79 @@ class CompanyEnrichment(UUIDModel):
         return f"{self.company.name}.{self.field_name} = {self.value} ({self.method})"
 
 
+class BusinessContact(UUIDModel):
+    """A public, role-based business contact for a Company (Task #14).
+
+    HARD INVARIANT, enforced by BusinessContactService.add() (the only
+    sanctioned way to create a row — not by model validation alone, since
+    migrations/fixtures could otherwise bypass it): the local-part of
+    `email` MUST be a known generic ROLE address (careers, jobs, hr, talent,
+    recruiting, hiring, people, info, contact — see
+    apps/jobs/business_contact.py::GENERIC_ROLE_PREFIXES) and the domain
+    MUST match the Company's own `domain`. This is NOT a personal-email
+    harvesting table — there is deliberately no field for a person's name,
+    title, or personal address. If a future feature needs named-contact
+    outreach, that is an explicit, separate, almost certainly consent-and-
+    legal-review-gated decision — not a quiet extension of this model.
+
+    `is_do_not_contact` is the suppression flag the Outreach scaffolding
+    (Task #15) MUST check before ever addressing a message to this contact.
+    `verified` distinguishes a deterministic pattern-guess (e.g.
+    "careers@acme.com" generated from Company.domain, never confirmed to
+    actually exist) from an admin-confirmed real address — Outreach should
+    treat unverified contacts with the same caution as unverified evidence
+    everywhere else in this codebase (CompanyClaim, CompanyEnrichment):
+    informative, not actionable until a human has looked at it.
+    """
+
+    SOURCE_PATTERN_GUESS = "domain_pattern_guess"
+    SOURCE_ADMIN_MANUAL = "admin_manual"
+    SOURCE_CHOICES = [
+        (SOURCE_PATTERN_GUESS, "Domain Pattern Guess (unverified)"),
+        (SOURCE_ADMIN_MANUAL, "Admin Manual Entry"),
+    ]
+
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="business_contacts",
+    )
+    email = models.EmailField(db_index=True)
+    role_prefix = models.CharField(
+        max_length=30,
+        help_text="The generic role this address represents (careers, jobs, hr, talent, recruiting, hiring, people, info, contact)",
+    )
+    source = models.CharField(max_length=25, choices=SOURCE_CHOICES, db_index=True)
+    confidence = models.FloatField(
+        default=0.0,
+        help_text="0.3 for an unverified pattern guess; set higher only by explicit admin confirmation",
+    )
+    verified = models.BooleanField(
+        default=False,
+        help_text="True only if a human has confirmed this address is real and current",
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    is_do_not_contact = models.BooleanField(
+        default=False, db_index=True,
+        help_text="Suppression flag - Outreach must never address a message to this contact when True",
+    )
+    do_not_contact_reason = models.TextField(blank=True)
+    evidence = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        db_table = "jobs_business_contact"
+        ordering = ["company__name", "role_prefix"]
+        verbose_name = "Business Contact"
+        verbose_name_plural = "Business Contacts"
+        constraints = [
+            models.UniqueConstraint(fields=["company", "email"], name="uniq_business_contact_per_company_email"),
+        ]
+        indexes = [
+            models.Index(fields=["company", "is_do_not_contact"], name="jobs_contact_company_dnc_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.email} ({self.company.name})"
+
+
 class Source(UUIDModel):
     """A job board or source website where jobs are scraped/imported from."""
 

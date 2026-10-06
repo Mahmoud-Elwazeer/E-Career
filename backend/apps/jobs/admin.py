@@ -8,7 +8,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 from import_export.admin import ImportExportModelAdmin
 
-from apps.jobs.models import Company, CompanyClaim, CompanyEnrichment, CompanyResolutionIdentity, Source, Tag, Job, JobTag
+from apps.jobs.models import BusinessContact, Company, CompanyClaim, CompanyEnrichment, CompanyResolutionIdentity, Source, Tag, Job, JobTag
 
 
 class JobTagInline(TabularInline):
@@ -189,6 +189,45 @@ class CompanyEnrichmentAdmin(ModelAdmin):
             '<a href="/admin/jobs/company/{}/change/">{}</a>',
             obj.company.id, obj.company.name,
         )
+
+
+@admin.register(BusinessContact)
+class BusinessContactAdmin(ModelAdmin):
+    """
+    Admin for Business Contacts (Task #14) - public, role-based addresses
+    only. The suppress/unsuppress actions are the operator-facing surface
+    for Outreach's (Task #15) compliance gate.
+    """
+    list_display = ["company_link", "email", "role_prefix", "source",
+                     "confidence", "verified", "is_do_not_contact", "created_at"]
+    list_filter = ["source", "verified", "is_do_not_contact", "role_prefix"]
+    search_fields = ["email", "company__name", "company__slug"]
+    ordering = ["company__name", "role_prefix"]
+    readonly_fields = ["uuid", "created_at", "updated_at", "evidence"]
+    autocomplete_fields = ["company"]
+    actions = ["suppress_contacts", "mark_verified"]
+
+    @display(description="Company", ordering="company__name")
+    def company_link(self, obj):
+        return format_html(
+            '<a href="/admin/jobs/company/{}/change/">{}</a>',
+            obj.company.id, obj.company.name,
+        )
+
+    @admin.action(description="Suppress selected contacts (do-not-contact)")
+    def suppress_contacts(self, request, queryset):
+        from apps.jobs.business_contact import business_contact_service
+        count = 0
+        for contact in queryset.exclude(is_do_not_contact=True):
+            business_contact_service.suppress(contact, reason="Suppressed via admin bulk action")
+            count += 1
+        self.message_user(request, f"{count} contact(s) suppressed.", messages.WARNING)
+
+    @admin.action(description="Mark selected contacts as verified")
+    def mark_verified(self, request, queryset):
+        from django.utils import timezone
+        count = queryset.filter(verified=False).update(verified=True, verified_at=timezone.now())
+        self.message_user(request, f"{count} contact(s) marked verified.", messages.SUCCESS)
 
 
 @admin.register(Source)
