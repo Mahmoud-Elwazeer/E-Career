@@ -87,6 +87,12 @@ SOURCES = [
     # positions. Apply URL is the position's own detail page on the
     # employer's breezy.hr subdomain (moat-compliant, direct).
     ("zero-hash-breezy", "Zero Hash", "breezy"),
+
+    # ── BambooHR public careers-board API (connector rewritten 2026-10-03) ──
+    # Verified live: cubecare.bamboohr.com/careers/list -> 14 real, current
+    # roles. Apply URL is jobOpeningShareUrl, the job's own page on the
+    # employer's bamboohr.com subdomain (moat-compliant, direct).
+    ("cubecare-bamboohr", "CubeCare", "bamboohr"),
 ]
 
 
@@ -196,4 +202,6 @@ def _board_url(slug: str, platform: str) -> str:
         return f"https://{company}.jobs.personio.de/"
     if platform == "breezy":
         return f"https://{company}.breezy.hr/"
+    if platform == "bamboohr":
+        return f"https://{company}.bamboohr.com/careers"
     return f"https://{company}.com/careers"
