@@ -8,7 +8,7 @@ from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 from import_export.admin import ImportExportModelAdmin
 
-from apps.jobs.models import Company, CompanyClaim, CompanyResolutionIdentity, Source, Tag, Job, JobTag
+from apps.jobs.models import Company, CompanyClaim, CompanyEnrichment, CompanyResolutionIdentity, Source, Tag, Job, JobTag
 
 
 class JobTagInline(TabularInline):
@@ -164,6 +164,31 @@ class CompanyClaimAdmin(ModelAdmin):
             )
             count += 1
         self.message_user(request, f"{count} claim(s) revoked.", messages.WARNING)
+
+
+@admin.register(CompanyEnrichment)
+class CompanyEnrichmentAdmin(ModelAdmin):
+    """
+    Read-mostly admin for inspecting Company Discovery Engine evidence
+    (Task #13) - every enrichment attempt, applied or not, with its
+    confidence and (for conflicts) the existing value it disagreed with.
+    Mirrors CompanyResolutionIdentityAdmin's read-mostly, company_link
+    pattern.
+    """
+    list_display = ["company_link", "field_name", "value", "method",
+                     "confidence", "applied", "conflict", "created_at"]
+    list_filter = ["field_name", "method", "applied", "conflict"]
+    search_fields = ["company__name", "company__slug", "value"]
+    ordering = ["-created_at"]
+    readonly_fields = ["uuid", "created_at", "updated_at", "evidence"]
+    autocomplete_fields = ["company"]
+
+    @display(description="Company", ordering="company__name")
+    def company_link(self, obj):
+        return format_html(
+            '<a href="/admin/jobs/company/{}/change/">{}</a>',
+            obj.company.id, obj.company.name,
+        )
 
 
 @admin.register(Source)

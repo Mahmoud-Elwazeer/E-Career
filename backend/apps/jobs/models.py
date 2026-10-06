@@ -309,6 +309,73 @@ class CompanyClaim(UUIDModel):
         return f"{self.claimant} claims {self.company.name} ({self.status})"
 
 
+class CompanyEnrichment(UUIDModel):
+    """Persisted provenance for Company Discovery Engine enrichment
+    decisions (Task #13 — Company Discovery Engine).
+
+    Append-only evidence log: one row per enrichment attempt for a given
+    field on a given run, whether or not it was actually applied. A recorded
+    conflict is as valuable as a recorded application — it tells an admin
+    "we found evidence of X but your existing value Y was left alone",
+    rather than silently either overwriting or discarding the signal.
+
+    Hard invariant: `applied=True` only ever happens for a Company field
+    that was BLANK at the time this row was written. This service NEVER
+    overwrites an existing value, regardless of how confident the new
+    evidence is — the same conservative, additive-only policy already used
+    by CompanyResolutionService._backfill_name_if_placeholder (only backfill
+    a placeholder, never clobber a real value) and by CompanyClaimService
+    (evidence informs, a human always decides). A `conflict=True` row means
+    the field already has a value AND the newly observed evidence disagrees
+    with it — flagged for human review, nothing is touched automatically.
+    """
+
+    FIELD_CHOICES = [
+        ("domain", "Domain"),
+        ("careers_page_url", "Careers Page URL"),
+        ("industry", "Industry"),
+        ("headquarters", "Headquarters"),
+    ]
+
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="enrichments",
+    )
+    field_name = models.CharField(max_length=30, choices=FIELD_CHOICES, db_index=True)
+    value = models.CharField(max_length=500)
+    method = models.CharField(
+        max_length=40,
+        help_text=(
+            "How this value was derived: resolution_identity_domain | "
+            "ats_board_url_pattern | source_industry_backfill | "
+            "job_location_majority. Every method reuses evidence this "
+            "platform already ingested — none of them scrape or fabricate "
+            "new external data."
+        ),
+    )
+    confidence = models.FloatField(default=0.0)
+    evidence = models.JSONField(default=dict, blank=True)
+    applied = models.BooleanField(
+        default=False,
+        help_text="True if this value was actually written to the Company field (only ever happens when that field was blank)",
+    )
+    conflict = models.BooleanField(
+        default=False,
+        help_text="True if this evidence disagrees with an existing non-blank Company field value (flagged for admin review, never auto-overwritten)",
+    )
+
+    class Meta:
+        db_table = "jobs_company_enrichment"
+        ordering = ["-created_at"]
+        verbose_name = "Company Enrichment"
+        verbose_name_plural = "Company Enrichments"
+        indexes = [
+            models.Index(fields=["company", "field_name"], name="jobs_enrich_company_field_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.company.name}.{self.field_name} = {self.value} ({self.method})"
+
+
 class Source(UUIDModel):
     """A job board or source website where jobs are scraped/imported from."""
 
