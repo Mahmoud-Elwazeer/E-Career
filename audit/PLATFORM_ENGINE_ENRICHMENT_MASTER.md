@@ -1269,3 +1269,151 @@ sudo systemctl restart usam.service celery-usam.service celery-beat-usam.service
 
 ### Next (per the standing ordered directive, not yet started this increment)
 Source rediscovery scale-out, Admin controls surface for scraping/sources/strategy tiers, observability/anomaly detection, scale testing (100→1000→larger with real measured throughput), then Company Claim workflow / Company Discovery Engine / Outreach scaffolding (DRY_RUN-only, compliance scaffolding) — all explicitly deferred, not abandoned, per the user's full ordered program.
+
+
+---
+
+## Master Resource Directive — repo research + classification (2026-10-06)
+
+Continuation of the OSS research in §5 above (which covered Scrapling, Crawl4AI,
+ScrapeGraphAI, Crawlee, Scrapy, Playwright, browser-use, Firecrawl, jobspy,
+Gorse, Reactive Resume). This section researches the remaining named
+candidates from the directive's Master Resource Directive appendix. Method:
+real `api.github.com` repo metadata (stars/license/pushed_at/topics) + README
+fetch for each, not name-guessing. Several directive names map to multiple
+real repos sharing that name — all plausible candidates found are listed, with
+the one actually evaluated against E-Career's architecture marked.
+
+| Candidate | Real repo found | License | Stars | Last push | Verdict |
+|---|---|---|---:|---|---|
+| jobseek | `colophon-group/jobseek` (jseek.co) | MIT | 202 | 2026-10-06 (active) | REFERENCE_ONLY |
+| job-boards / job-board-aggregator | `Feashliaa/job-board-aggregator` | MIT | 162 | 2026-10-06 (active) | REFERENCE_ONLY |
+| ats-jobs / ats-jobs-api | `GetAnything-1/ats-jobs-scraper` (Apify actor wrapper) | MIT | 0 | 2026-07-10 (stale) | REJECT |
+| company-career-scraper | `Babak-hasani/company-career-scraper` | MIT | 5 | 2026-03-29 (stale) | REJECT |
+| jobscraper | *(no single canonical repo — 789 GitHub repos match this generic term)* | — | — | — | DEFER (term too generic to evaluate) |
+| job-crawler | `bracketouverte/job-crawler` ("job-scrapper") | **none** | 18 | 2026-06-06 | REFERENCE_ONLY (no code adoption — no LICENSE file) |
+| ats-scrapers | `kalil0321/ats-scrapers` | MIT | 169 | 2026-09-24 (active) | **ADAPT** (selective) |
+| job-agent | `billmal071/job-agent`, `aadityakumarsah/job-agent` (both evaluated) | MIT | 9 / 0 | both stale/new | REJECT |
+| job-application-skill | `useful-skills/job-application-skills` | MIT | 16 | 2026-08-19 | OPTIONAL (not scraping-related) |
+
+### Detailed findings
+
+**`kalil0321/ats-scrapers` — ADAPT (the one real "integrate something" finding
+this pass).** MIT, 169 stars, actively maintained (pushed within the last two
+weeks of this research). Async-first scraper library covering Greenhouse,
+Lever, Ashby, Workday, SmartRecruiters, SuccessFactors, Oracle, iCIMS, Paycom,
+Workable, Personio, **plus first-party big-tech career APIs: Amazon, Apple,
+Google, TikTok, Uber**. Two things are genuinely useful, neither of which
+E-Career has today:
+1. `get_scraper_for_url(url)` — auto-detects which ATS a careers URL belongs
+   to and returns the right scraper, without the caller needing to already
+   know the platform. E-Career's `source_discovery.py` does something
+   related (fingerprints a company across *known* ATS endpoint templates
+   given a slug) but doesn't yet do pure URL-in → platform-out detection.
+   Worth adapting the detection heuristic (likely regex/host-pattern based,
+   per their README's "paste its careers URL" framing) into
+   `source_discovery.py` as an additional entry point — **not** a dependency
+   install, since the architectures differ (their lib is async-first,
+   E-Career's connectors are sync `requests`-based matching the existing
+   codebase convention).
+2. First-party big-tech career API endpoints (Amazon/Apple/Google/TikTok/
+   Uber) are a real, currently-missing connector category — these companies
+   don't run on a standard ATS, so no existing E-Career connector reaches
+   them. If/when sourcing from these specific employers becomes a priority,
+   porting the *endpoint knowledge* (not the code — different async
+   framework) into a new connector module following the existing
+   `apps/scraper/ats/*.py` pattern (one file per platform, `BaseATSScraper`
+   subclass) is the correct next step, same as every other connector this
+   engagement has added. **Not done this pass** — no current source has
+   demanded it; recorded as a backlog candidate (§8b style entry) for an
+   operator to prioritize, not built speculatively.
+
+**`job-crawler` / `bracketouverte/job-crawler` — REFERENCE_ONLY, explicit
+license flag.** The repo has **no LICENSE file** (`"license":null` in the
+GitHub API response) — under default copyright, no one may legally copy,
+modify, or redistribute its code without the author's explicit permission,
+regardless of it being publicly viewable on GitHub. Architecturally
+interesting pattern worth noting for E-Career's own (independently
+implemented) use: an `exclude.jsonl` "quarantine" file that auto-appends
+sources returning permanent 404/410 and skips them on future runs. E-Career
+already has an equivalent concept — `Source.lifecycle_state` +
+`consecutive_zero_yield_runs` + `rediscover_sources` — so this is confirmation
+of an already-correct design, not a gap. No code was read beyond the public
+README for this evaluation, and none will be ported, per the license gap.
+
+**`job-agent` (both `billmal071/job-agent` and `aadityakumarsah/job-agent`)
+— REJECT for integration, confirmed by reading both.** Both scrape
+LinkedIn/Indeed/Glassdoor and auto-apply or autofill using those platforms as
+the job source — this is precisely the category of intermediary this
+platform's stated Direct-Apply moat exists to reject (`AGENTS.md`: "any job
+record whose application URL routes through a third-party apply intermediary
+... should be rejected"). Scraping LinkedIn/Indeed is also a ToS violation
+risk distinct from E-Career's own moat-compliant structured-ATS-API approach.
+The one conceptually interesting idea — `aadityakumarsah/job-agent`'s
+"human-approval gate before auto-apply" — is a different product shape
+(personal job-hunting bot vs. a job platform candidates browse) and isn't
+applicable to E-Career's architecture as-is. REJECT, not ADAPT: nothing here
+should be ported into this codebase.
+
+**`job-board-aggregator` (Feashliaa) — REFERENCE_ONLY.** A genuinely
+well-built sibling project (MIT, 162 stars, actively maintained, real
+GitHub-Actions-cron architecture) but it is a **static-site + separate
+data-repo** design (vanilla JS frontend, chunked gzip JSON pushed to a GitHub
+Pages data repo) — architecturally incompatible with E-Career's Django/
+Postgres/Typesense stack; nothing here is "install this dependency." Two
+ideas worth noting as independent confirmation, already covered by work
+earlier in this engagement:
+- `check_anomalies.py`'s per-platform trend-log anomaly detection is the same
+  concept as this engagement's `_scraper_anomaly_alerts()` (§7/§11,
+  commit `94b414b`) — different implementation, same idea, already shipped.
+- Their "Company Discovery via Common Crawl CDX regex scan for ATS domain
+  patterns, ~95k companies found" is directly relevant background for the
+  still-pending Task #13 (Company Discovery Engine) — confirms Common Crawl
+  CDX scanning is a viable, proven technique for company/ATS-tenant discovery
+  at scale, worth considering as one input source for that task, not a
+  library to install.
+
+**`jobseek` (colophon-group) — REFERENCE_ONLY.** Real, actively developed
+(pushed same day as this research), MIT-licensed SaaS product with a free/Pro
+split and a hosted MCP server (`https://jseek.co/mcp`) exposing read-only
+job-search tools to AI assistants over Streamable HTTP, no auth required. The
+MCP-server-as-the-integration-surface pattern is worth noting for a possible
+future Rashid capability (expose E-Career's own job search as an MCP tool for
+external AI assistants) — but that is a new, unscoped feature idea, not
+something to build in this pass. No code adoption; the product itself is
+proprietary SaaS beyond what's open-sourced in the repo shell.
+
+**`company-career-scraper` (Babak-hasani) and `ats-jobs-scraper`
+(GetAnything-1) — REJECT.** Both are small (16-24KB), near-zero-star,
+single-purpose scripts/Apify-actor wrappers covering exactly the ATS set
+E-Career's own `apps/scraper/ats/` already implements natively, with real
+verification/dedup/direct-apply gating neither of these has. No capability
+gap exists that either would close; evaluating further would be the "pip
+install == integration" anti-pattern this engagement has repeatedly rejected
+elsewhere (Scrapling, Crawl4AI, ScrapeGraphAI entries above).
+
+**`job-application-skill` (useful-skills/job-application-skills) —
+OPTIONAL.** MIT, 16 stars, but it's a Korean-language Claude Agent Skill
+plugin (job-posting analysis, company due-diligence via Korean public-data
+APIs, resume reassembly) — not a scraping or ingestion tool at all, and tied
+to Korean-specific public data sources that don't generalize. Not relevant to
+any of E-Career's scraping/ingestion tasks; filed as OPTIONAL/low-priority
+only because its subject (application-strategy prompting) is thematically
+adjacent to Rashid's career-coach role, with no concrete action implied.
+
+**`jobscraper` — DEFER (unevaluable as named).** "jobscraper" matched 789
+GitHub repositories with no single dominant, canonical project — this
+directive entry is too generic to research as one target. No further action
+without a more specific repo URL from the user.
+
+### Net effect of this research pass
+One real candidate for future (not this-pass) action: `kalil0321/ats-scrapers`'s
+URL-based ATS auto-detection heuristic and its first-party big-tech career-API
+endpoint knowledge (Amazon/Apple/Google/TikTok/Uber), both ADAPT (port the
+*technique*, not the code — license is MIT so copying is legally fine, but
+the async architecture doesn't match this codebase's sync connector
+convention). Everything else in this batch is either REJECT (moat-violating,
+or redundant with what already exists natively and better) or
+REFERENCE_ONLY/OPTIONAL (confirms existing design choices or is out of scope
+for scraping/ingestion entirely). No new runtime dependency was installed;
+no code from any external repo was copied into this codebase this pass.
