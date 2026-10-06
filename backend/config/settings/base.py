@@ -83,6 +83,8 @@ INSTALLED_APPS = [
     "apps.resume",
     # Financial core — payments, ledger, billing
     "apps.payments",
+    # Outreach domain scaffolding (Task #15) — DRY_RUN only, no real send path
+    "apps.outreach",
     # Celery Beat
     "django_celery_beat",
     # WebSocket support (Phase 2B)
