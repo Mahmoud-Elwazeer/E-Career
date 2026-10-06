@@ -2,13 +2,13 @@
 Admin configuration for Jobs app using django-unfold.
 Phase 3C: Admin Dashboard Extensions
 """
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 from import_export.admin import ImportExportModelAdmin
 
-from apps.jobs.models import Company, CompanyResolutionIdentity, Source, Tag, Job, JobTag
+from apps.jobs.models import Company, CompanyClaim, CompanyResolutionIdentity, Source, Tag, Job, JobTag
 
 
 class JobTagInline(TabularInline):
@@ -56,6 +56,114 @@ class CompanyResolutionIdentityAdmin(ModelAdmin):
             '<a href="/admin/jobs/company/{}/change/">{}</a>',
             obj.company.id, obj.company.name,
         )
+
+
+@admin.register(CompanyClaim)
+class CompanyClaimAdmin(ModelAdmin):
+    """
+    Admin review queue for Company Claims (Task #12). Mirrors
+    EmployerProfileAdmin's approve/reject action pattern (bulk actions +
+    ActivityLog audit trail), plus a revoke action for already-approved
+    claims. Approval/rejection/revocation always go through
+    CompanyClaimService so the EmployerProfile/EmployerTeamMember side
+    effects happen consistently - this admin never flips `status` directly
+    via a bulk `.update()` the way the simpler EmployerProfile actions do,
+    because approval here has real side effects beyond the claim row itself.
+    """
+    list_display = [
+        "claimant_email", "company_link", "status_badge", "evidence_type",
+        "confidence", "is_free_mail_domain", "created_at",
+    ]
+    list_filter = ["status", "evidence_type", "is_free_mail_domain"]
+    search_fields = ["claimant__email", "company__name", "company__slug", "claimant_email_domain"]
+    ordering = ["-created_at"]
+    readonly_fields = [
+        "uuid", "created_at", "updated_at", "evidence", "confidence",
+        "claimant_email_domain", "is_free_mail_domain", "dns_challenge_token",
+        "dns_verified_at", "reviewed_by", "reviewed_at",
+    ]
+    autocomplete_fields = ["company", "claimant"]
+    actions = ["approve_claims", "reject_claims", "revoke_claims"]
+
+    @display(description="Claimant", ordering="claimant__email")
+    def claimant_email(self, obj):
+        return obj.claimant.email
+
+    @display(description="Company", ordering="company__name")
+    def company_link(self, obj):
+        return format_html(
+            '<a href="/admin/jobs/company/{}/change/">{}</a>',
+            obj.company.id, obj.company.name,
+        )
+
+    @display(
+        description="Status",
+        label={
+            "pending": "gray",
+            "verification_required": "warning",
+            "under_review": "blue",
+            "approved": "success",
+            "rejected": "danger",
+            "revoked": "danger",
+        },
+    )
+    def status_badge(self, obj):
+        return obj.get_status_display()
+
+    @admin.action(description="Approve selected claims")
+    def approve_claims(self, request, queryset):
+        from apps.core.models import ActivityLog
+        from apps.jobs.company_claim import company_claim_service
+
+        approved, failed = 0, 0
+        for claim in queryset.exclude(status=CompanyClaim.STATUS_APPROVED):
+            try:
+                company_claim_service.approve(claim, reviewed_by=request.user, note="Approved via admin bulk action")
+                ActivityLog.objects.create(
+                    user=request.user, action="approve_company_claim",
+                    target_type="CompanyClaim", target_id=str(claim.pk),
+                    metadata={"company": claim.company.name, "claimant": claim.claimant.email},
+                )
+                approved += 1
+            except ValueError as e:
+                failed += 1
+                self.message_user(request, f"Claim {claim.pk} not approved: {e}", messages.ERROR)
+        if approved:
+            self.message_user(request, f"{approved} claim(s) approved.", messages.SUCCESS)
+        if failed:
+            self.message_user(request, f"{failed} claim(s) could not be approved - see errors above.", messages.WARNING)
+
+    @admin.action(description="Reject selected claims")
+    def reject_claims(self, request, queryset):
+        from apps.core.models import ActivityLog
+        from apps.jobs.company_claim import company_claim_service
+
+        count = 0
+        for claim in queryset.exclude(status__in=[CompanyClaim.STATUS_APPROVED, CompanyClaim.STATUS_REJECTED]):
+            company_claim_service.reject(claim, reviewed_by=request.user, note="Rejected via admin bulk action")
+            ActivityLog.objects.create(
+                user=request.user, action="reject_company_claim",
+                target_type="CompanyClaim", target_id=str(claim.pk),
+                metadata={"company": claim.company.name, "claimant": claim.claimant.email},
+            )
+            count += 1
+        self.message_user(request, f"{count} claim(s) rejected.", messages.WARNING)
+
+    @admin.action(description="Revoke selected (approved) claims")
+    def revoke_claims(self, request, queryset):
+        from apps.core.models import ActivityLog
+        from apps.jobs.company_claim import company_claim_service
+
+        count = 0
+        for claim in queryset.filter(status=CompanyClaim.STATUS_APPROVED):
+            company_claim_service.revoke(claim, reviewed_by=request.user, note="Revoked via admin bulk action")
+            ActivityLog.objects.create(
+                user=request.user, action="revoke_company_claim",
+                target_type="CompanyClaim", target_id=str(claim.pk),
+                metadata={"company": claim.company.name, "claimant": claim.claimant.email},
+            )
+            count += 1
+        self.message_user(request, f"{count} claim(s) revoked.", messages.WARNING)
 
 
 @admin.register(Source)

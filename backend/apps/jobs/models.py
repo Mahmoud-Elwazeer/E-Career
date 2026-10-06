@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.db.models import QuerySet
 from apps.core.models import UUIDModel
@@ -172,6 +173,140 @@ class CompanyResolutionIdentity(UUIDModel):
 
     def __str__(self):
         return f"{self.platform}:{self.tenant_slug} -> {self.company.name}"
+
+
+class CompanyClaim(UUIDModel):
+    """An employer user's claim of ownership over an existing (usually
+    scraper-created) Company row (Task #12, Company Claim workflow).
+
+    Why this exists: EmployerRegistrationView already lets any authenticated
+    user attach themselves to ANY existing active Company by id with zero
+    proof of ownership (see apps/employers/views.py). CompanyClaim is the
+    evidence-gated alternative for claiming a company that was discovered via
+    scraping (has scraper-sourced jobs already) rather than created fresh by
+    an employer — the attach-with-no-proof path remains for brand-new
+    companies an employer creates themselves (create_company), which is a
+    different, already-self-evident case (you can't "claim" what you just
+    created).
+
+    Evidence types (per the directive — same-name or free-mail claims are
+    NEVER sufficient on their own):
+      - corporate_email: claimant's account email domain matches
+        Company.domain (or a domain discovered for this company via
+        CompanyResolutionIdentity). Auto-approvable only when domain match is
+        exact and the email is not a known free-mail provider.
+      - dns_txt: claimant adds a TXT record under their own domain containing
+        a verification token this platform generated (website-ownership
+        proof independent of email). Verified via a live DNS TXT lookup.
+      - document: claimant uploads a document (incorporation certificate,
+        business registration, letterhead) for manual admin review. Always
+        requires VERIFICATION_REQUIRED -> UNDER_REVIEW -> admin decision.
+      - admin_manual: an admin creates/approves a claim directly (e.g. after
+        an out-of-band support conversation), bypassing automated evidence.
+
+    State machine (directive-specified): PENDING -> VERIFICATION_REQUIRED ->
+    UNDER_REVIEW -> APPROVED | REJECTED. An APPROVED claim can later be
+    REVOKED by an admin (company sold, fraud discovered after the fact, etc).
+    Approval does NOT delete or alter the Company's existing scraped jobs or
+    CompanyResolutionIdentity history — it only grants the claimant an
+    EmployerProfile/EmployerTeamMember(role='owner') on that SAME Company row
+    (see apps/jobs/company_claim.py::CompanyClaimService.approve), so already
+    -ingested jobs are retroactively "theirs" with no duplication.
+    """
+
+    STATUS_PENDING = "pending"
+    STATUS_VERIFICATION_REQUIRED = "verification_required"
+    STATUS_UNDER_REVIEW = "under_review"
+    STATUS_APPROVED = "approved"
+    STATUS_REJECTED = "rejected"
+    STATUS_REVOKED = "revoked"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_VERIFICATION_REQUIRED, "Verification Required"),
+        (STATUS_UNDER_REVIEW, "Under Review"),
+        (STATUS_APPROVED, "Approved"),
+        (STATUS_REJECTED, "Rejected"),
+        (STATUS_REVOKED, "Revoked"),
+    ]
+
+    EVIDENCE_CORPORATE_EMAIL = "corporate_email"
+    EVIDENCE_DNS_TXT = "dns_txt"
+    EVIDENCE_DOCUMENT = "document"
+    EVIDENCE_ADMIN_MANUAL = "admin_manual"
+    EVIDENCE_CHOICES = [
+        (EVIDENCE_CORPORATE_EMAIL, "Corporate Email Domain Match"),
+        (EVIDENCE_DNS_TXT, "DNS TXT Record Challenge"),
+        (EVIDENCE_DOCUMENT, "Uploaded Document (Manual Review)"),
+        (EVIDENCE_ADMIN_MANUAL, "Admin Manual Verification"),
+    ]
+
+    company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="claims",
+    )
+    claimant = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="company_claims",
+    )
+    status = models.CharField(
+        max_length=25, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True,
+    )
+    evidence_type = models.CharField(
+        max_length=20, choices=EVIDENCE_CHOICES, db_index=True,
+        help_text="How the claimant is proving ownership",
+    )
+    claimant_email_domain = models.CharField(
+        max_length=255, blank=True,
+        help_text="Domain portion of claimant's account email at claim time (for corporate_email evidence)",
+    )
+    is_free_mail_domain = models.BooleanField(
+        default=False,
+        help_text="True if claimant_email_domain is a known free/consumer mail provider (gmail.com, etc) - such a match is NEVER sufficient evidence on its own",
+    )
+    dns_challenge_token = models.CharField(
+        max_length=64, blank=True,
+        help_text="Random token the claimant must publish as a TXT record (dns_txt evidence only)",
+    )
+    dns_verified_at = models.DateTimeField(null=True, blank=True)
+    confidence = models.FloatField(
+        default=0.0,
+        help_text="Automated confidence this claim's evidence proves real ownership (0.0-1.0); NEVER auto-approves above a conservative threshold - admin review is always the final gate for anything but an exact dns_txt or corporate_email match on a non-free domain",
+    )
+    evidence = models.JSONField(
+        default=dict, blank=True,
+        help_text="Supporting evidence detail (domain comparison, DNS lookup result, document reference, admin note)",
+    )
+    document = models.FileField(
+        upload_to="company_claim_documents/", null=True, blank=True,
+        help_text="Uploaded proof document for 'document' evidence type",
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="company_claims_reviewed",
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_note = models.TextField(blank=True)
+
+    class Meta:
+        db_table = "jobs_company_claim"
+        ordering = ["-created_at"]
+        verbose_name = "Company Claim"
+        verbose_name_plural = "Company Claims"
+        indexes = [
+            models.Index(fields=["company", "status"], name="jobs_claim_company_status_idx"),
+        ]
+        constraints = [
+            # A claimant may have at most one ACTIVE (non-terminal) claim per
+            # company at a time - resubmission after rejection is allowed
+            # (rejected/revoked are terminal, not "active"), but you can't
+            # have two pending claims for the same company simultaneously.
+            models.UniqueConstraint(
+                fields=["company", "claimant"],
+                condition=models.Q(status__in=["pending", "verification_required", "under_review"]),
+                name="uniq_active_claim_per_company_claimant",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.claimant} claims {self.company.name} ({self.status})"
 
 
 class Source(UUIDModel):

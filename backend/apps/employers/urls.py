@@ -20,6 +20,7 @@ from .views import (
     quick_apply_prepare,
     quick_apply_record,
 )
+from .company_claim_views import CompanyClaimViewSet
 
 # Create router
 router = DefaultRouter()
@@ -31,6 +32,7 @@ router.register(r'rankings', CandidateRankingViewSet, basename='employer-ranking
 router.register(r'talent-discoveries', TalentDiscoveryViewSet, basename='employer-talent-discoveries')
 router.register(r'talent-pools', TalentPoolViewSet, basename='employer-talent-pools')
 router.register(r'team', EmployerTeamViewSet, basename='employer-team')
+router.register(r'company-claims', CompanyClaimViewSet, basename='employer-company-claims')
 
 urlpatterns = [
     # Registration
