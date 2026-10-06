@@ -1685,11 +1685,108 @@ class GDPRDeleteActionView(APIView):
 # ---------------------------------------------------------------------------
 
 
+def _scraper_anomaly_alerts(now) -> list:
+    """§7/§11 real anomaly detection, built on persisted signals.
+
+    Three checks, each severity-classified so a harmless fluctuation never
+    pages anyone - only a genuinely large, measured regression does:
+
+    1. Historical-average-vs-current-run: a source's last run count compared
+       against its own Source.historical_average_jobs EMA (§4). A source
+       that normally returns ~700 jobs and just returned 0 is CRITICAL; a
+       dip from 700 to 550 (within normal day-to-day variance) is not
+       flagged at all.
+    2. Normalized-but-not-created: the latest ScraperRun for each source
+       where normalized > 0 but created+updated+duplicates == 0 - jobs
+       passed the contract but NONE were persisted (a real pipeline break,
+       distinct from "the board had nothing new").
+    3. Verified-but-not-direct-apply-verified: a source whose verified count
+       is high but direct_apply_verified is disproportionately low -
+       exactly the "direct-apply destination suddenly becomes an
+       aggregator" signal the moat depends on catching.
+    """
+    from apps.jobs.models import Source
+    from apps.scraper.models import ScraperRun
+
+    alerts: list = []
+
+    # --- Check 1: historical average vs current run ---
+    # Only consider sources with enough run history for the EMA to be
+    # meaningful (an EMA seeded from a single run is not a baseline yet).
+    candidates = Source.objects.filter(
+        is_active=True, historical_average_jobs__gte=10,
+    )
+    for src in candidates:
+        avg = src.historical_average_jobs
+        last = src.jobs_found_last_run
+        if avg <= 0:
+            continue
+        drop_ratio = 1 - (last / avg)
+        if last == 0 and avg >= 10:
+            alerts.append({
+                "severity": "critical",
+                "category": "historical_average_zero_yield",
+                "message": f"{src.name}: historical average {avg:.0f} jobs/run, "
+                           f"last run returned 0",
+                "value": 0, "source_slug": src.slug,
+            })
+        elif drop_ratio >= 0.7:
+            # A ≥70% drop from the source's own baseline - large enough to
+            # not be routine posting-volume noise, not so sensitive that a
+            # normal slow week pages anyone.
+            alerts.append({
+                "severity": "warning",
+                "category": "historical_average_large_drop",
+                "message": f"{src.name}: {drop_ratio:.0%} drop from historical "
+                           f"average ({avg:.0f} -> {last})",
+                "value": last, "source_slug": src.slug,
+            })
+
+    # --- Check 2: normalized but nothing persisted (latest run per source) ---
+    recent_runs = (
+        ScraperRun.objects.filter(source__is_active=True)
+        .select_related("source")
+        .order_by("source_id", "-started_at")
+    )
+    seen_sources = set()
+    for run in recent_runs:
+        if run.source_id in seen_sources:
+            continue  # only the latest run per source
+        seen_sources.add(run.source_id)
+        handled = run.created + run.updated + run.duplicates
+        if run.normalized > 0 and handled == 0:
+            alerts.append({
+                "severity": "critical",
+                "category": "normalized_not_persisted",
+                "message": f"{run.source.name}: {run.normalized} jobs normalized, "
+                           f"0 persisted (created/updated/duplicates all zero) - "
+                           f"a real pipeline break, not an empty board",
+                "value": run.normalized, "source_slug": run.source.slug,
+            })
+        elif run.verified >= 10:
+            # --- Check 3: verified but direct-apply-verified disproportionately low ---
+            da_rate = run.direct_apply_resolution_rate
+            if run.direct_apply_candidates >= 10 and da_rate < 0.5:
+                alerts.append({
+                    "severity": "critical",
+                    "category": "direct_apply_resolution_collapsed",
+                    "message": f"{run.source.name}: only {da_rate:.0%} of apply-URL "
+                               f"candidates verified as direct-apply ({run.direct_apply_verified}"
+                               f"/{run.direct_apply_candidates}) - possible aggregator/"
+                               f"intermediary redirect regression",
+                    "value": round(da_rate, 3), "source_slug": run.source.slug,
+                })
+
+    return alerts
+
+
 class DecisionSupportAlertsView(APIView):
     """
     Aggregated decision-support alerts for the admin dashboard.
     Evaluates current system state against thresholds and returns active alerts.
-    Covers: scraper health, AI cost spikes, queue backlog, model failures.
+    Covers: scraper health, AI cost spikes, queue backlog, model failures,
+    and §7/§11 scraper anomaly detection (historical-average regression,
+    normalized-but-not-persisted, direct-apply resolution collapse).
     """
 
     permission_classes = [IsAdminRole]
@@ -1719,10 +1816,25 @@ class DecisionSupportAlertsView(APIView):
             pass
 
         try:
-            from apps.scraper.models import ScraperSource
+            # REAL BUG FIX: this previously imported `apps.scraper.models.
+            # ScraperSource`, a model that has NEVER existed in this
+            # codebase (the real model is `jobs.Source`) - every call to
+            # this check raised ImportError, silently swallowed by the
+            # bare `except Exception: pass` below, so this stale-source
+            # alert has never fired once in production.
+            from apps.jobs.models import Source
             stale_threshold = now - timedelta(days=2)
-            sources = ScraperSource.objects.filter(is_active=True)
-            stale = [s for s in sources if not s.last_scraped_at or s.last_scraped_at < stale_threshold]
+            sources = Source.objects.filter(is_active=True)
+            # A source that has NEVER run yet (last_run_at is null) is not
+            # "stale" - it just hasn't had its first scheduled run. Only
+            # flag it if it's old enough that it should have run by now
+            # (created more than 2 days ago) or it HAS run before but gone
+            # quiet since.
+            stale = [
+                s for s in sources
+                if (s.last_run_at and s.last_run_at < stale_threshold)
+                or (not s.last_run_at and s.created_at < stale_threshold)
+            ]
             if stale:
                 alerts.append({
                     "severity": "critical" if len(stale) > 2 else "warning",
@@ -1731,6 +1843,17 @@ class DecisionSupportAlertsView(APIView):
                                + ", ".join(s.name for s in stale[:5]),
                     "value": len(stale),
                 })
+        except Exception:
+            pass
+
+        # §7/§11 anomaly detection: historical-average-vs-current-run,
+        # normalized-but-not-created, verified-but-not-direct-apply-verified.
+        # Built on the ScraperRun model (§5) + Source.historical_average_jobs
+        # EMA (§4), both now real, persisted signals rather than a log grep.
+        # Severity classification avoids paging on harmless fluctuations:
+        # only flag a genuinely large, sustained drop/gap, not routine noise.
+        try:
+            alerts.extend(_scraper_anomaly_alerts(now))
         except Exception:
             pass
 

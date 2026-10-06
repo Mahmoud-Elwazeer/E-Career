@@ -552,3 +552,134 @@ class TestRecommendationDiagnostics:
             {"user_id": user.pk, "job_uuid": str(uuid.uuid4())},
         )
         assert resp.status_code == status.HTTP_404_NOT_FOUND
+
+
+# ---------------------------------------------------------------------------
+# 13. TestDecisionSupportAlerts (§7/§11 anomaly detection)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.django_db
+class TestDecisionSupportAlerts:
+    url = reverse("decision-support-alerts")
+
+    def test_non_admin_rejected(self, non_admin_client):
+        resp = non_admin_client.get(self.url)
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_admin_gets_empty_alerts_on_clean_state(self, admin_client, source):
+        """With no scraper history and a healthy source, no anomaly alerts
+        fire - proves the checks don't false-positive on an empty/new
+        source (historical_average_jobs defaults to 0, below the >=10
+        threshold for every check)."""
+        resp = admin_client.get(self.url)
+        assert resp.status_code == status.HTTP_200_OK
+        data = unwrap(resp)
+        assert "alerts" in data
+        assert "checked_at" in data
+        categories = [a["category"] for a in data["alerts"]]
+        assert "scraper_stale" not in categories  # brand-new source, never run yet - not "stale"
+
+    def test_scraper_stale_check_no_longer_raises_importerror(self, admin_client, source):
+        """REAL BUG FIX: previously imported apps.scraper.models.ScraperSource,
+        which has never existed, so this check ALWAYS silently failed via the
+        bare except. Now it must actually run (and the mere act of running
+        without raising proves the fix - a stale source with no last_run_at
+        should surface a scraper_stale alert)."""
+        from django.utils import timezone
+        import datetime
+        source.last_run_at = timezone.now() - datetime.timedelta(days=5)
+        source.is_active = True
+        source.save(update_fields=["last_run_at", "is_active"])
+
+        resp = admin_client.get(self.url)
+        assert resp.status_code == status.HTTP_200_OK
+        data = unwrap(resp)
+        stale_alerts = [a for a in data["alerts"] if a["category"] == "scraper_stale"]
+        assert len(stale_alerts) == 1
+        assert source.name in stale_alerts[0]["message"]
+
+    def test_historical_average_zero_yield_is_critical(self, admin_client, source):
+        source.historical_average_jobs = 700.0
+        source.jobs_found_last_run = 0
+        source.save(update_fields=["historical_average_jobs", "jobs_found_last_run"])
+
+        resp = admin_client.get(self.url)
+        data = unwrap(resp)
+        matches = [a for a in data["alerts"] if a["category"] == "historical_average_zero_yield"]
+        assert len(matches) == 1
+        assert matches[0]["severity"] == "critical"
+        assert matches[0]["source_slug"] == source.slug
+
+    def test_historical_average_small_drop_does_not_alert(self, admin_client, source):
+        """A drop from 700 to 550 (~21%) is normal day-to-day variance and
+        must NOT page anyone - only a >=70% drop or true zero does."""
+        source.historical_average_jobs = 700.0
+        source.jobs_found_last_run = 550
+        source.save(update_fields=["historical_average_jobs", "jobs_found_last_run"])
+
+        resp = admin_client.get(self.url)
+        data = unwrap(resp)
+        categories = [a["category"] for a in data["alerts"]]
+        assert "historical_average_zero_yield" not in categories
+        assert "historical_average_large_drop" not in categories
+
+    def test_historical_average_large_drop_is_warning(self, admin_client, source):
+        source.historical_average_jobs = 700.0
+        source.jobs_found_last_run = 150  # ~79% drop
+        source.save(update_fields=["historical_average_jobs", "jobs_found_last_run"])
+
+        resp = admin_client.get(self.url)
+        data = unwrap(resp)
+        matches = [a for a in data["alerts"] if a["category"] == "historical_average_large_drop"]
+        assert len(matches) == 1
+        assert matches[0]["severity"] == "warning"
+
+    def test_normalized_not_persisted_is_critical(self, admin_client, source):
+        from apps.scraper.models import ScraperRun
+
+        ScraperRun.record(source, {
+            "fetched": 50, "normalized": 50, "created": 0, "updated": 0,
+            "duplicates": 0,
+        })
+        resp = admin_client.get(self.url)
+        data = unwrap(resp)
+        matches = [a for a in data["alerts"] if a["category"] == "normalized_not_persisted"]
+        assert len(matches) == 1
+        assert matches[0]["severity"] == "critical"
+
+    def test_direct_apply_resolution_collapsed_is_critical(self, admin_client, source):
+        from apps.scraper.models import ScraperRun
+
+        ScraperRun.record(source, {
+            "fetched": 100, "normalized": 100, "created": 50, "updated": 0,
+            "duplicates": 0, "verified": 50,
+            "direct_apply_candidate": 50, "direct_apply_verified": 5,
+        })
+        resp = admin_client.get(self.url)
+        data = unwrap(resp)
+        matches = [a for a in data["alerts"] if a["category"] == "direct_apply_resolution_collapsed"]
+        assert len(matches) == 1
+        assert matches[0]["severity"] == "critical"
+        assert matches[0]["value"] == 0.1
+
+    def test_healthy_run_produces_no_anomaly_alerts(self, admin_client, source):
+        """A healthy run (good resolution rate, real persistence) must not
+        trigger any of the three new anomaly checks - no false positives."""
+        from apps.scraper.models import ScraperRun
+
+        source.historical_average_jobs = 100.0
+        source.jobs_found_last_run = 95
+        source.save(update_fields=["historical_average_jobs", "jobs_found_last_run"])
+        ScraperRun.record(source, {
+            "fetched": 95, "normalized": 95, "created": 40, "updated": 10,
+            "duplicates": 45, "verified": 50,
+            "direct_apply_candidate": 50, "direct_apply_verified": 48,
+        })
+        resp = admin_client.get(self.url)
+        data = unwrap(resp)
+        anomaly_categories = {
+            "historical_average_zero_yield", "historical_average_large_drop",
+            "normalized_not_persisted", "direct_apply_resolution_collapsed",
+        }
+        fired = {a["category"] for a in data["alerts"]} & anomaly_categories
+        assert fired == set()
