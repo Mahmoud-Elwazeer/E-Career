@@ -275,7 +275,7 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name="outreachmessage",
             index=models.Index(
-                fields=["campaign", "status"], name="outreach_msg_campaign_status_idx"
+                fields=["campaign", "status"], name="outreach_msg_camp_status_idx"
             ),
         ),
     ]

@@ -144,7 +144,10 @@ class OutreachMessage(UUIDModel):
         verbose_name = "Outreach Message"
         verbose_name_plural = "Outreach Messages"
         indexes = [
-            models.Index(fields=["campaign", "status"], name="outreach_msg_campaign_status_idx"),
+            # Django caps ALL custom index names at 30 chars regardless of
+            # backend (a cross-database portability ceiling, not Postgres's
+            # own 63-char limit) - this name is intentionally short.
+            models.Index(fields=["campaign", "status"], name="outreach_msg_camp_status_idx"),
         ]
 
     def __str__(self):
