@@ -1500,3 +1500,47 @@ not a correctness regression that was hidden.
 - No real send/scrape/SMTP code path was added for Outreach or Business
   Contact — both are evidence-gathering/dry-run only by construction, not
   by a flag that could be silently flipped.
+
+
+## Master Implementation Directive — 5-Repository Enrichment Pass (2026-10-07)
+
+Evaluated 5 external repositories (Aria Icons, Foreman, Repolyze, Open
+Glean, OpenJEV) against E-Career's actual frontend/governance/RAG code —
+not from memory, from direct reads and live `api.github.com` lookups — and
+implemented the justified parts. Full method: Phase 1 verified real
+metadata for all 5 repos via the GitHub API (several directive
+descriptions were stale or imprecise — e.g. Repolyze's GitHub org had
+transferred ownership; corrected below) plus 3 parallel `context-gatherer`
+passes over E-Career's frontend icon/motion system, engineering governance/
+CI, and Rashid/AI-Gateway/RAG architecture. Phases 2-6 implemented the
+evidence-justified slice of each repo in priority order; Phase 7 is this
+table.
+
+**Hard constraint check:** no new runtime icon/UI dependency was added, no
+second design system/RAG/AI-Gateway/governance framework was created, no
+cloned repo code was executed, no opaque candidate/employability scoring
+was introduced, and nothing was integrated as a placeholder — every
+"ADAPT" row below shipped a real consumer wired into existing production
+code paths, with passing tests.
+
+| Resource | License | E-Career Area | Decision | What Was Used | Production Status | Evidence |
+|---|---|---|---|---|---|---|
+| [LeulAria/Aria-Icons](https://github.com/LeulAria/Aria-Icons) | MIT | Frontend icon system (`frontend/src/components/icons/`) | **ADAPT** | Not the `aria-icons` npm package (it's a CLI/MCP icon-*discovery* tool, not a runtime library) — adapted its underlying philosophy ("semantic name, no giant dependency") into a new `CareerIcon.tsx` wrapper around the already-installed `lucide-react`. Also fixed 6 confirmed icon-only-button a11y gaps found during the audit. | **Shipped**, commit `5feec9b`. 8 new Vitest tests pass; `tsc --noEmit` clean; `npm run build` succeeds; full suite 41/41 green. | `frontend/src/components/icons/CareerIcon.tsx`, `frontend/src/components/icons/__tests__/CareerIcon.test.tsx`; a11y fixes in `NotificationBell.tsx`, `AdminSourcesManager.tsx`, `AdminMediaManager.tsx`, `AdminJobsTable.tsx`, `IntelligenceDashboard.tsx`, `JobDetail.tsx`. |
+| [thruwire/foreman](https://github.com/thruwire/foreman) | MIT | Engineering governance (`.claude/agents/qa-verifier.md`, `AGENTS.md`) | **REFERENCE_ONLY** (software) / **ADAPT** (vocabulary) | The software needs a proprietary paid "TypeSafe AI Jev" model we don't have, and supervises CLI subprocess coding agents — not this session's runtime model, so it was never installed/run. Its completion-status vocabulary (CONTINUE/VERIFY/RETRY/RESEARCH/STEER/BLOCKED/NEEDS_HUMAN_DECISION/READY_TO_COMMIT/READY_TO_DEPLOY/DONE) was folded into the *existing* `qa-verifier.md` PASS/FAIL/UNVERIFIABLE persona as an in-progress marker, not a competing framework. | **Shipped**, commit `d5eed3e`. Docs-only change, no build/test impact. | `.claude/agents/qa-verifier.md` (new "Completion status vocabulary" section), 1-line cross-reference in `AGENTS.md`. |
+| [OssiumOfficial/Repolyze](https://github.com/OssiumOfficial/Repolyze) (formerly `MxCorpIn/Repolyze` — ownership transferred per its own README) | MIT | OSS-adoption workflow (`backend/apps/core/management/commands/`) | **REFERENCE_ONLY** (software) / **ADAPT** (input/output shape) | The actual app is a separately-hosted Next.js 16 service needing its own `GITHUB_TOKEN` + `OPENROUTER_API_KEY` — installing it would be the "disconnected second system" this directive explicitly forbids. Adapted its GitHub-URL-in/health-row-out shape into a new `evaluate_repo` Django management command, reusing the pre-existing `GitHubService` instead of a new HTTP client. This formalizes the `\| repo \| license \| stars \| decision \| reason \|` table pattern this engagement's own audit docs had hand-typed at least 4 times with no shared generator. | **Shipped**, commit `8216d6a`. 11 new tests (mocked GitHub API) pass; full `apps/core` suite 165/165 pass; live-verified against the real GitHub API. | `backend/apps/core/management/commands/evaluate_repo.py`, `backend/apps/core/tests/test_evaluate_repo_command.py`. Also fixed a real pre-existing timezone bug in `apps/core/github_service.py` found while wiring this up (naive `datetime.now()` minus a tz-aware parsed GitHub timestamp crashed every real call). |
+| [hydra-db/open-glean](https://github.com/hydra-db/open-glean) | Apache-2.0 | Rashid tool citations (`backend/apps/intelligence/agent.py`) | **REFERENCE_ONLY** (software) / **ADAPT** (citation pattern) | The app is a UI shell proxying to a proprietary paid Hydra DB backend (`@hydradb/sdk` → `api.hydradb.com`) we have no key for, and duplicates this platform's own Next.js stack. Adapted its Deep-Research citation-dedup idea into 3 of Rashid's deterministic (non-LLM, direct-DB-query) tools — `get_career_profile`, `get_salary_insights`, `get_match_score` — each now appends a `_Source: Model#id_` trailer citing the exact rows its answer came from. The full multi-step Deep-Research DAG pattern was explicitly **not** built (bigger lift, no demonstrated user need yet, must route through the existing Bedrock/model_router per the directive's own constraint). | **Shipped** (citations), commit `8a1ae2b`. **Deferred** (DAG). 11 new tests (real DB fixtures, no Bedrock needed) pass; full `apps/intelligence` suite 30/30 and `apps/rashid` suite 17/17 pass. | `backend/apps/intelligence/agent.py` (`format_career_profile`/`format_salary_insights`/`format_match_score` + `format_evidence_trailer`), `backend/apps/intelligence/tests_evidence_citations.py`. Also documented inline (and here) a pre-existing finding: `apps/intelligence/agent.py`'s live tool registry and `apps/rashid/tools.py`'s separate, never-invoked `RASHID_TOOLS` registry implement `search_jobs`/`recommend_jobs` differently — same AGENTS.md-warned "drifting into separate schemas" pattern, not resolved this pass (scope control; flagged for a dedicated follow-up). |
+| [JoshuaSP/open-jev](https://github.com/JoshuaSP/open-jev) | MIT | N/A | **DEFER** | Pure ML research benchmark (DiffusionGemma-26B on Modal + H100 GPU, ≈$3.95/hr) reproducing a proprietary model's typed-JSON decision outputs — not deployable software. No Modal/GPU infra is provisioned or evidenced as available to this project, and there is no demonstrated gap versus the existing Bedrock structured-output capability (`model_router.py`, `bedrock_plugin.py`) that this benchmark would address. Per the directive's own instruction (§24), explicitly deferred rather than built as a speculative experiment. | **Not shipped — DEFER is the terminal decision**, no code written. | This table entry is the full justification; no implementation files. |
+
+### Follow-ups flagged but intentionally not fixed this pass (scope control)
+- `apps/intelligence/agent.py` (live) vs `apps/rashid/tools.py` (dead-end
+  `RASHID_TOOLS` registry) implement `search_jobs`/`recommend_jobs`
+  differently — reconciling the two registries is a real but separable
+  piece of work, documented inline in both files' context and flagged here.
+- Open Glean's Deep-Research DAG pattern (decompose → parallel retrieval →
+  per-branch findings → dedupe citations → synthesize) remains a
+  documented future direction for `apps/intelligence/research_engine.py`,
+  which today does a single-pass LLM call — not built this pass.
+- `model_router.py`'s `TASK_MODEL_MAP` is still a hardcoded alias dict
+  despite `bedrock_client.py` already exposing `list_foundation_models` —
+  a pre-existing, unaddressed "cto" concern already on record in
+  `AGENTS.md`, unchanged by this pass.
