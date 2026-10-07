@@ -5,18 +5,13 @@ Provides typed, tool-calling AI agents backed by AWS Bedrock.
 The primary agent is Rashid (career advisor), but the framework
 supports any domain-specific agent.
 
-KNOWN DUPLICATION (flagged, not fixed in this pass — see
-audit/PLATFORM_ENGINE_ENRICHMENT_MASTER.md for the full writeup): the tools
-registered below via `_register_rashid_tools` are the LIVE tool set actually
-invoked by Rashid chat (through `apps.rashid.service._invoke_via_agent`).
-`apps/rashid/tools.py` defines a SEPARATE `RashidTool`/`RASHID_TOOLS`
-registry with its own `search_jobs`/`recommend_jobs` implementations,
-reachable only via `POST /api/rashid/tools/execute/` — it is never called
-from this agent and has drifted to a different implementation of the same
-two tools. This is exactly the "drifting into separate schemas" anti-pattern
-AGENTS.md warns about for `career`/`skills`/`rashid`. Reconciling the two
-tool registries is out of scope for this pass; this comment exists so the
-next person touching either file sees the other one.
+Tool definitions live in `apps.intelligence.tool_registry` (the canonical
+registry) — this module just wires each registered tool onto the
+pydantic-ai `Agent` as a thin `@agent.tool` wrapper. See that module's
+docstring for the history: this used to be two independent, drifting
+implementations (`agent.py`'s own tool bodies, plus a separate
+`apps/rashid/tools.py` `RASHID_TOOLS` registry reachable only via REST).
+Both now call through the same `TOOL_REGISTRY`.
 """
 from __future__ import annotations
 
@@ -27,6 +22,8 @@ from typing import Any
 from django.conf import settings
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
+
+from apps.intelligence.tool_registry import TOOL_REGISTRY, ToolContext
 
 logger = structlog.get_logger()
 
@@ -49,154 +46,44 @@ class AgentResponse(BaseModel):
     confidence: float = 1.0
 
 
-def format_evidence_trailer(sources: list[str]) -> str:
-    """Format a list of source references as a trailing citation line.
+def _ctx_from_deps(deps: PlatformDeps, **args: Any) -> ToolContext:
+    return ToolContext(
+        user_id=deps.user_id,
+        user_email=deps.user_email,
+        user_name=deps.user_name,
+        language=deps.language,
+        args=args,
+    )
 
-    Evaluated against hydra-db/open-glean (Apache-2.0, 1583 stars): its Deep
-    Research feature dedupes retrieval results into a numbered citation list
-    appended to the synthesized answer. We don't install Open Glean itself
-    (REFERENCE_ONLY — it's a UI shell over a proprietary paid Hydra DB
-    backend we don't have access to), but the same idea — tell the user
-    exactly which record the tool's answer came from — is cheap to add to
-    our own deterministic (non-LLM, direct-DB-query) Rashid tools.
 
-    Returns "" when there's nothing concrete to cite, so tools with no data
-    don't get a misleading empty trailer.
-    """
-    if not sources:
-        return ""
-    return "\n\n_Source: " + "; ".join(sources) + "_"
+# ─────────────────────────────────────────────────────────────────────────
+# Back-compat helpers.
+#
+# These three names (`format_career_profile`, `format_salary_insights`,
+# `format_match_score`) existed before the canonical registry — they're
+# kept as plain-function wrappers over `TOOL_REGISTRY.execute()` so any
+# existing caller/test continues to work unchanged, including the citation
+# trailer behavior from the Open Glean evidence-adaptation pass.
+# `format_evidence_trailer` is kept as a direct re-export of the trailer
+# formatter now owned by `apps.intelligence.evidence`.
+# ─────────────────────────────────────────────────────────────────────────
+
+from apps.intelligence.evidence import format_evidence_trailer  # noqa: E402,F401
 
 
 def format_career_profile(user_id: int, user_name: str) -> str:
-    """Build the Career Profile summary text, with a source trailer citing
-    the exact CareerProfile/TalentScore rows the answer was built from.
-
-    Extracted from the `get_career_profile` agent tool so it's callable (and
-    testable) as a plain function, independent of pydantic-ai/RunContext and
-    without needing a live Bedrock call.
-    """
-    from apps.career.models import CareerProfile, TalentScore
-
-    try:
-        profile = CareerProfile.objects.get(user_id=user_id)
-    except CareerProfile.DoesNotExist:
-        return "No career profile found. Please complete your profile first."
-
-    sources = [f"CareerProfile#{profile.pk}"]
-    lines = [f"**Career Profile for {user_name}:**"]
-
-    if profile.cv_parsed_data:
-        data = profile.cv_parsed_data
-        if data.get("skills"):
-            lines.append(f"- Skills: {', '.join(data['skills'][:10])}")
-        if data.get("experience"):
-            lines.append(f"- Experience entries: {len(data['experience'])}")
-        if data.get("education"):
-            lines.append(f"- Education entries: {len(data['education'])}")
-
-    try:
-        score = TalentScore.objects.filter(user_id=user_id).latest("last_calculated_at")
-        # overall_score is stored 0-1; present as a percentage.
-        lines.append(f"- Talent Score: {round(score.overall_score * 100)}/100")
-        sources.append(f"TalentScore#{score.pk}")
-    except TalentScore.DoesNotExist:
-        lines.append("- Talent Score: Not yet calculated")
-
-    return "\n".join(lines) + format_evidence_trailer(sources)
+    ctx = ToolContext(user_id=user_id, user_name=user_name)
+    return TOOL_REGISTRY.execute("get_career_profile", ctx).with_trailer()
 
 
 def format_salary_insights(job_title: str, location: str = "") -> str:
-    """Build the salary insights text, with a source trailer citing the
-    exact SalaryData rows the average/range was computed from.
-
-    Extracted from the `get_salary_insights` agent tool for the same reason
-    as `format_career_profile` above.
-    """
-    from apps.salary.models import SalaryData
-
-    # SalaryData links to Job (title lives on Job); it has no job_title of
-    # its own. Filter through the job relation.
-    qs = SalaryData.objects.filter(job__title__icontains=job_title)
-    if location:
-        qs = qs.filter(job__location__icontains=location)
-    data = list(qs.select_related("job")[:50])
-    if not data:
-        return f"No salary data available for {job_title}{f' in {location}' if location else ''}."
-
-    # Prefer explicit min/max; fall back to annualized fields when present.
-    lows, highs = [], []
-    currency = "USD"
-    for d in data:
-        lo = d.salary_min if d.salary_min is not None else d.annualized_salary_min
-        hi = d.salary_max if d.salary_max is not None else getattr(d, "annualized_salary_max", None)
-        if lo is not None:
-            lows.append(float(lo))
-        if hi is not None:
-            highs.append(float(hi))
-        if getattr(d, "salary_currency", None):
-            currency = d.salary_currency
-
-    if not lows and not highs:
-        return "Salary data exists but amounts are not available."
-
-    all_vals = lows + highs
-    avg = sum(all_vals) / len(all_vals)
-    min_sal = min(lows) if lows else min(all_vals)
-    max_sal = max(highs) if highs else max(all_vals)
-
-    sources = [f"SalaryData#{d.pk}" for d in data[:5]]
-    if len(data) > 5:
-        sources.append(f"+{len(data) - 5} more")
-
-    return (
-        f"**Salary Insights for {job_title}:**\n"
-        f"- Average: {currency} {avg:,.0f}\n"
-        f"- Range: {currency} {min_sal:,.0f} - {currency} {max_sal:,.0f}\n"
-        f"- Based on {len(data)} data points"
-    ) + format_evidence_trailer(sources)
+    ctx = ToolContext(args={"job_title": job_title, "location": location})
+    return TOOL_REGISTRY.execute("get_salary_insights", ctx).with_trailer()
 
 
 def format_match_score(user_id: int, job_id: str) -> str:
-    """Build the match-score breakdown text, with a source trailer citing
-    the exact CareerProfile and Job rows the score was computed from.
-
-    Extracted from the `get_match_score` agent tool for the same reason as
-    `format_career_profile` above.
-    """
-    from apps.career.models import CareerProfile
-    from apps.jobs.models import Job
-    from apps.profiles.services import MatchingService
-
-    try:
-        profile = CareerProfile.objects.get(user_id=user_id)
-    except CareerProfile.DoesNotExist:
-        return "No career profile found. Please complete your profile first."
-
-    try:
-        job = Job.objects.get(uuid=job_id)
-    except (Job.DoesNotExist, ValueError):
-        return f"Job with ID {job_id} not found."
-
-    service = MatchingService()
-    result = service.get_match_breakdown(profile, job)
-
-    lines = [f"**Match Score for '{job.title}':** {result.get('overall_score', 0):.0f}/100"]
-    breakdown = result.get("breakdown", {})
-    for factor, detail in breakdown.items():
-        score = detail.get("score", 0) if isinstance(detail, dict) else detail
-        reasoning = detail.get("reasoning", "") if isinstance(detail, dict) else ""
-        lines.append(f"- {factor.replace('_', ' ').title()}: {score:.0f}/100{f' — {reasoning}' if reasoning else ''}")
-
-    for strength in result.get("strengths", []):
-        lines.append(f"- Strength: {strength}")
-    for gap in result.get("gaps", []):
-        lines.append(f"- Gap: {gap}")
-    if result.get("recommendation"):
-        lines.append(f"\n**Recommendation:** {result['recommendation']}")
-
-    sources = [f"CareerProfile#{profile.pk}", f"Job#{job.uuid}"]
-    return "\n".join(lines) + format_evidence_trailer(sources)
+    ctx = ToolContext(user_id=user_id, args={"job_id": job_id})
+    return TOOL_REGISTRY.execute("get_match_score", ctx).with_trailer()
 
 
 def get_bedrock_model(model_alias: str = "sonnet") -> str:
@@ -286,7 +173,20 @@ Never fabricate information - if no data is found, tell the user honestly."""
 
 
 def _register_rashid_tools(agent: Agent[PlatformDeps, str]) -> None:
-    """Register platform tools on the Rashid agent."""
+    """Register platform tools on the Rashid agent.
+
+    Every wrapper here does the SAME thing: build a `ToolContext` from the
+    pydantic-ai `RunContext.deps` + the tool's typed arguments, then call
+    `TOOL_REGISTRY.execute(name, ctx)` and return `.with_trailer()` (plain
+    text, since that's the contract pydantic-ai tools must return). The
+    actual business logic lives once, in `apps.intelligence.tool_registry`.
+
+    Typed parameters are kept on each wrapper (not collapsed into a single
+    `**kwargs`-style tool) because pydantic-ai introspects the function
+    signature to build the tool schema the LLM sees — this is the one place
+    the "many tool definitions" shape is actually required by the framework,
+    not duplicated business logic.
+    """
 
     @agent.tool
     async def search_jobs(
@@ -297,37 +197,8 @@ def _register_rashid_tools(agent: Agent[PlatformDeps, str]) -> None:
         limit: int = 5,
     ) -> str:
         """Search for jobs matching the query. Returns job titles, companies, and links."""
-        from apps.search.service import SearchService
-        from apps.search.plugins.base import SearchQuery
-
-        filters: dict[str, Any] = {}
-        if location:
-            filters["location"] = location
-        if remote:
-            filters["work_arrangement"] = "remote"
-
-        service = SearchService()
-        try:
-            response = service.search_jobs(
-                SearchQuery(q=query, filters=filters, page=1, per_page=limit)
-            )
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.warning("rashid_search_jobs_failed", error=str(exc))
-            return "Job search is temporarily unavailable. Please try again shortly."
-
-        hits = getattr(response, "hits", []) or []
-        if not hits:
-            return "No jobs found matching your criteria."
-
-        lines = []
-        for hit in hits[:limit]:
-            data = getattr(hit, "data", {}) or {}
-            lines.append(
-                f"- **{data.get('title', 'Untitled')}** at "
-                f"{data.get('company_name', 'Unknown')} "
-                f"({data.get('location', 'N/A')}) - ID: {data.get('id') or hit.id}"
-            )
-        return "\n".join(lines)
+        tool_ctx = _ctx_from_deps(ctx.deps, query=query, location=location, remote=remote, limit=limit)
+        return TOOL_REGISTRY.execute("search_jobs", tool_ctx).with_trailer()
 
     @agent.tool
     async def analyze_skill_gap(
@@ -336,92 +207,20 @@ def _register_rashid_tools(agent: Agent[PlatformDeps, str]) -> None:
         target_role: str = "",
     ) -> str:
         """Analyze the user's skill gap against their target roles."""
-        if not ctx.deps.user_id:
-            return "User not authenticated. Cannot analyze skills."
-
-        from django.contrib.auth import get_user_model
-        from apps.career.skill_gap_analysis import SkillGapAnalyzer
-
-        User = get_user_model()
-        try:
-            user = User.objects.get(id=ctx.deps.user_id)
-        except User.DoesNotExist:
-            return "User not found."
-
-        try:
-            result = SkillGapAnalyzer(user).analyze()
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.warning("rashid_skill_gap_failed", error=str(exc))
-            return (
-                "Could not perform skill gap analysis. Please add target roles "
-                "and skills to your career profile first."
-            )
-
-        missing = result.get("missing_skills", []) or []
-        if not missing and not result.get("gaps_by_role"):
-            return (
-                "No skill gaps found, or your profile has no target roles yet. "
-                "Add target roles to your career profile for a detailed analysis."
-            )
-
-        lines = [
-            f"**Skill Gap Analysis** (severity: {result.get('gap_severity', 'unknown')}, "
-            f"overall gap score: {result.get('overall_gap_score', 0)}):",
-        ]
-        for skill in missing[:15]:
-            lines.append(f"- Missing: {skill}")
-        recs = result.get("recommendations", []) or []
-        if recs:
-            lines.append("\n**Recommendations:**")
-            for rec in recs[:5]:
-                if isinstance(rec, dict):
-                    lines.append(f"- {rec.get('skill', rec.get('title', ''))}: {rec.get('reason', rec.get('resource', ''))}".rstrip(": "))
-                else:
-                    lines.append(f"- {rec}")
-        return "\n".join(lines)
+        tool_ctx = _ctx_from_deps(ctx.deps, job_id=job_id, target_role=target_role)
+        return TOOL_REGISTRY.execute("analyze_skill_gap", tool_ctx).with_trailer()
 
     @agent.tool
     async def get_career_profile(ctx: RunContext[PlatformDeps]) -> str:
         """Get the user's career profile summary including skills, experience, and talent score."""
-        if not ctx.deps.user_id:
-            return "User not authenticated."
-        return format_career_profile(ctx.deps.user_id, ctx.deps.user_name)
+        tool_ctx = _ctx_from_deps(ctx.deps)
+        return TOOL_REGISTRY.execute("get_career_profile", tool_ctx).with_trailer()
 
     @agent.tool
     async def get_recommendations(ctx: RunContext[PlatformDeps], limit: int = 5) -> str:
         """Get personalized job recommendations for the user."""
-        if not ctx.deps.user_id:
-            return "User not authenticated."
-
-        if not ctx.deps.user_id:
-            return "User not authenticated."
-
-        from django.contrib.auth import get_user_model
-        from apps.search.recommendation_engine import RecommendationEngine
-
-        User = get_user_model()
-        try:
-            user = User.objects.get(id=ctx.deps.user_id)
-        except User.DoesNotExist:
-            return "User not found."
-
-        try:
-            engine = RecommendationEngine(user)
-            jobs = engine.get_recommendations(n_recommendations=limit)
-        except Exception as exc:  # pragma: no cover - defensive
-            logger.warning("rashid_recommendations_failed", error=str(exc))
-            return "Recommendations are temporarily unavailable. Please try again shortly."
-
-        if not jobs:
-            return "No recommendations available yet. Complete your profile and add skills to get personalized recommendations."
-
-        lines = ["**Recommended Jobs:**"]
-        for job in jobs[:limit]:
-            lines.append(
-                f"- **{job.get('job_title')}** at {job.get('company_name')} "
-                f"(match: {job.get('score', 0):.0%})"
-            )
-        return "\n".join(lines)
+        tool_ctx = _ctx_from_deps(ctx.deps, limit=limit)
+        return TOOL_REGISTRY.execute("get_recommendations", tool_ctx).with_trailer()
 
     @agent.tool
     async def prepare_interview(
@@ -431,28 +230,8 @@ def _register_rashid_tools(agent: Agent[PlatformDeps, str]) -> None:
         focus: str = "general",
     ) -> str:
         """Generate interview preparation material for a specific role."""
-        from apps.intelligence import get_ai_service
-        from .llm_plugin import LLMRequest
-
-        service = get_ai_service()
-        prompt = f"""Generate 5 interview questions for a {job_title} position{f' at {company}' if company else ''}.
-Focus area: {focus}
-For each question provide:
-1. The question
-2. What the interviewer is looking for
-3. A brief tip for answering well
-
-Format as a clear numbered list."""
-
-        response = service.generate(LLMRequest(
-            prompt=prompt,
-            system_prompt="You are an expert interview coach.",
-            model="haiku",
-            max_tokens=1500,
-            user_id=ctx.deps.user_id,
-            operation="interview_prep",
-        ))
-        return response.content
+        tool_ctx = _ctx_from_deps(ctx.deps, job_title=job_title, company=company, focus=focus)
+        return TOOL_REGISTRY.execute("prepare_interview", tool_ctx).with_trailer()
 
     @agent.tool
     async def get_salary_insights(
@@ -461,7 +240,8 @@ Format as a clear numbered list."""
         location: str = "",
     ) -> str:
         """Get salary insights for a specific role and location."""
-        return format_salary_insights(job_title, location)
+        tool_ctx = _ctx_from_deps(ctx.deps, job_title=job_title, location=location)
+        return TOOL_REGISTRY.execute("get_salary_insights", tool_ctx).with_trailer()
 
     @agent.tool
     async def get_match_score(
@@ -469,9 +249,8 @@ Format as a clear numbered list."""
         job_id: str,
     ) -> str:
         """Get a detailed match score breakdown between the user's profile and a specific job."""
-        if not ctx.deps.user_id:
-            return "User not authenticated."
-        return format_match_score(ctx.deps.user_id, job_id)
+        tool_ctx = _ctx_from_deps(ctx.deps, job_id=job_id)
+        return TOOL_REGISTRY.execute("get_match_score", tool_ctx).with_trailer()
 
     @agent.tool
     async def tailor_resume(
@@ -479,41 +258,8 @@ Format as a clear numbered list."""
         job_id: str,
     ) -> str:
         """Tailor the user's resume for a specific job, returning before/after ATS scores and suggestions."""
-        if not ctx.deps.user_id:
-            return "User not authenticated."
-
-        from django.contrib.auth import get_user_model
-        from apps.jobs.models import Job
-
-        User = get_user_model()
-        try:
-            user = User.objects.get(id=ctx.deps.user_id)
-        except User.DoesNotExist:
-            return "User not found."
-
-        try:
-            job = Job.objects.get(uuid=job_id)
-        except (Job.DoesNotExist, ValueError):
-            return f"Job with ID {job_id} not found."
-
-        from apps.career.cv_tailor_service import CVTailorService
-        service = CVTailorService()
-        result = service.tailor_for_job(user, job)
-
-        lines = [
-            f"**Resume Tailoring for '{job.title}':**",
-            f"- Original ATS Score: {result['original_score']:.0f}/100",
-            f"- Tailored ATS Score: {result['tailored_score']:.0f}/100",
-            f"- Improvement: +{result['score_delta']:.0f} points",
-            f"- Skill Match: {result['skill_match_ratio']:.0%}",
-        ]
-        if result.get("missing_skills"):
-            lines.append(f"- Missing Skills: {', '.join(result['missing_skills'][:8])}")
-        if result.get("suggestions"):
-            lines.append("\n**Suggestions:**")
-            for s in result["suggestions"][:5]:
-                lines.append(f"  {s}")
-        return "\n".join(lines)
+        tool_ctx = _ctx_from_deps(ctx.deps, job_id=job_id)
+        return TOOL_REGISTRY.execute("tailor_resume", tool_ctx).with_trailer()
 
     @agent.tool
     async def find_referral_contacts(
@@ -521,38 +267,40 @@ Format as a clear numbered list."""
         company_id: str,
     ) -> str:
         """Find insider connections at a company — E-Career users and public GitHub contributors."""
-        if not ctx.deps.user_id:
-            return "User not authenticated."
+        tool_ctx = _ctx_from_deps(ctx.deps, company_id=company_id)
+        return TOOL_REGISTRY.execute("find_referral_contacts", tool_ctx).with_trailer()
 
-        from django.contrib.auth import get_user_model
-        from apps.employers.connections_service import ConnectionsService
+    @agent.tool
+    async def cv_review(ctx: RunContext[PlatformDeps]) -> str:
+        """Review the user's CV and provide improvement suggestions."""
+        tool_ctx = _ctx_from_deps(ctx.deps)
+        return TOOL_REGISTRY.execute("cv_review", tool_ctx).with_trailer()
 
-        User = get_user_model()
-        try:
-            user = User.objects.get(id=ctx.deps.user_id)
-        except User.DoesNotExist:
-            return "User not found."
+    @agent.tool
+    async def cover_letter(
+        ctx: RunContext[PlatformDeps],
+        job_id: str = "",
+        job_title: str = "",
+        company_name: str = "",
+    ) -> str:
+        """Generate a cover letter tailored to a specific job."""
+        tool_ctx = _ctx_from_deps(ctx.deps, job_id=job_id, job_title=job_title, company_name=company_name)
+        return TOOL_REGISTRY.execute("cover_letter", tool_ctx).with_trailer()
 
-        service = ConnectionsService()
-        try:
-            result = service.find_connections(int(company_id), requesting_user=user)
-        except Exception as e:
-            return f"Could not find connections: {e}"
+    @agent.tool
+    async def linkedin_optimizer(ctx: RunContext[PlatformDeps]) -> str:
+        """Give tips to improve the user's LinkedIn profile."""
+        tool_ctx = _ctx_from_deps(ctx.deps)
+        return TOOL_REGISTRY.execute("linkedin_optimizer", tool_ctx).with_trailer()
 
-        company_name = result["company"]["name"]
-        ecareer = result.get("ecareer_connections", [])
-        github = result.get("github_contributors", [])
-
-        if not ecareer and not github:
-            return f"No insider connections found at {company_name}."
-
-        lines = [f"**Connections at {company_name}:** ({result['total_connections']} found)"]
-        for c in ecareer[:5]:
-            role = f" — {c['current_role']}" if c.get("current_role") else ""
-            lines.append(f"- {c['name']}{role} ({c['connection_type'].replace('_', ' ')})")
-        for g in github[:5]:
-            lines.append(f"- GitHub: @{g['username']} ({g['profile_url']})")
-        return "\n".join(lines)
+    @agent.tool
+    async def course_advisor(
+        ctx: RunContext[PlatformDeps],
+        target_role: str = "",
+    ) -> str:
+        """Recommend courses to close the user's skill gaps."""
+        tool_ctx = _ctx_from_deps(ctx.deps, target_role=target_role)
+        return TOOL_REGISTRY.execute("course_advisor", tool_ctx).with_trailer()
 
 
 _rashid_agent: Agent[PlatformDeps, str] | None = None

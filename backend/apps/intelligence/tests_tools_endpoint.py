@@ -36,11 +36,15 @@ class PlatformToolsEndpointTests(APITestCase):
             self.assertIn("name", tool)
             self.assertIn("description", tool)
 
-    def test_registry_matches_rashid_tools(self):
-        from apps.rashid.tools import RASHID_TOOLS
+    def test_registry_matches_canonical_tool_registry(self):
+        """apps/rashid/views.py's list_tools -> apps/rashid/tools.py's
+        get_available_tools() must reflect the SAME canonical registry this
+        endpoint reads from (apps.intelligence.tool_registry.TOOL_REGISTRY) -
+        guards against the two ever drifting apart again."""
+        from apps.intelligence.tool_registry import TOOL_REGISTRY
 
         self.client.force_authenticate(self.user)
         resp = self.client.get(self.url)
         names = {t["name"] for t in resp.data["tools"]}
-        expected = {t.name for t in RASHID_TOOLS.values()}
+        expected = set(TOOL_REGISTRY.names())
         self.assertEqual(names, expected)
