@@ -4,6 +4,19 @@ Pydantic AI Agent Framework for the platform.
 Provides typed, tool-calling AI agents backed by AWS Bedrock.
 The primary agent is Rashid (career advisor), but the framework
 supports any domain-specific agent.
+
+KNOWN DUPLICATION (flagged, not fixed in this pass — see
+audit/PLATFORM_ENGINE_ENRICHMENT_MASTER.md for the full writeup): the tools
+registered below via `_register_rashid_tools` are the LIVE tool set actually
+invoked by Rashid chat (through `apps.rashid.service._invoke_via_agent`).
+`apps/rashid/tools.py` defines a SEPARATE `RashidTool`/`RASHID_TOOLS`
+registry with its own `search_jobs`/`recommend_jobs` implementations,
+reachable only via `POST /api/rashid/tools/execute/` — it is never called
+from this agent and has drifted to a different implementation of the same
+two tools. This is exactly the "drifting into separate schemas" anti-pattern
+AGENTS.md warns about for `career`/`skills`/`rashid`. Reconciling the two
+tool registries is out of scope for this pass; this comment exists so the
+next person touching either file sees the other one.
 """
 from __future__ import annotations
 
@@ -34,6 +47,156 @@ class AgentResponse(BaseModel):
     tool_calls: list[dict[str, Any]] = []
     sources: list[str] = []
     confidence: float = 1.0
+
+
+def format_evidence_trailer(sources: list[str]) -> str:
+    """Format a list of source references as a trailing citation line.
+
+    Evaluated against hydra-db/open-glean (Apache-2.0, 1583 stars): its Deep
+    Research feature dedupes retrieval results into a numbered citation list
+    appended to the synthesized answer. We don't install Open Glean itself
+    (REFERENCE_ONLY — it's a UI shell over a proprietary paid Hydra DB
+    backend we don't have access to), but the same idea — tell the user
+    exactly which record the tool's answer came from — is cheap to add to
+    our own deterministic (non-LLM, direct-DB-query) Rashid tools.
+
+    Returns "" when there's nothing concrete to cite, so tools with no data
+    don't get a misleading empty trailer.
+    """
+    if not sources:
+        return ""
+    return "\n\n_Source: " + "; ".join(sources) + "_"
+
+
+def format_career_profile(user_id: int, user_name: str) -> str:
+    """Build the Career Profile summary text, with a source trailer citing
+    the exact CareerProfile/TalentScore rows the answer was built from.
+
+    Extracted from the `get_career_profile` agent tool so it's callable (and
+    testable) as a plain function, independent of pydantic-ai/RunContext and
+    without needing a live Bedrock call.
+    """
+    from apps.career.models import CareerProfile, TalentScore
+
+    try:
+        profile = CareerProfile.objects.get(user_id=user_id)
+    except CareerProfile.DoesNotExist:
+        return "No career profile found. Please complete your profile first."
+
+    sources = [f"CareerProfile#{profile.pk}"]
+    lines = [f"**Career Profile for {user_name}:**"]
+
+    if profile.cv_parsed_data:
+        data = profile.cv_parsed_data
+        if data.get("skills"):
+            lines.append(f"- Skills: {', '.join(data['skills'][:10])}")
+        if data.get("experience"):
+            lines.append(f"- Experience entries: {len(data['experience'])}")
+        if data.get("education"):
+            lines.append(f"- Education entries: {len(data['education'])}")
+
+    try:
+        score = TalentScore.objects.filter(user_id=user_id).latest("last_calculated_at")
+        # overall_score is stored 0-1; present as a percentage.
+        lines.append(f"- Talent Score: {round(score.overall_score * 100)}/100")
+        sources.append(f"TalentScore#{score.pk}")
+    except TalentScore.DoesNotExist:
+        lines.append("- Talent Score: Not yet calculated")
+
+    return "\n".join(lines) + format_evidence_trailer(sources)
+
+
+def format_salary_insights(job_title: str, location: str = "") -> str:
+    """Build the salary insights text, with a source trailer citing the
+    exact SalaryData rows the average/range was computed from.
+
+    Extracted from the `get_salary_insights` agent tool for the same reason
+    as `format_career_profile` above.
+    """
+    from apps.salary.models import SalaryData
+
+    # SalaryData links to Job (title lives on Job); it has no job_title of
+    # its own. Filter through the job relation.
+    qs = SalaryData.objects.filter(job__title__icontains=job_title)
+    if location:
+        qs = qs.filter(job__location__icontains=location)
+    data = list(qs.select_related("job")[:50])
+    if not data:
+        return f"No salary data available for {job_title}{f' in {location}' if location else ''}."
+
+    # Prefer explicit min/max; fall back to annualized fields when present.
+    lows, highs = [], []
+    currency = "USD"
+    for d in data:
+        lo = d.salary_min if d.salary_min is not None else d.annualized_salary_min
+        hi = d.salary_max if d.salary_max is not None else getattr(d, "annualized_salary_max", None)
+        if lo is not None:
+            lows.append(float(lo))
+        if hi is not None:
+            highs.append(float(hi))
+        if getattr(d, "salary_currency", None):
+            currency = d.salary_currency
+
+    if not lows and not highs:
+        return "Salary data exists but amounts are not available."
+
+    all_vals = lows + highs
+    avg = sum(all_vals) / len(all_vals)
+    min_sal = min(lows) if lows else min(all_vals)
+    max_sal = max(highs) if highs else max(all_vals)
+
+    sources = [f"SalaryData#{d.pk}" for d in data[:5]]
+    if len(data) > 5:
+        sources.append(f"+{len(data) - 5} more")
+
+    return (
+        f"**Salary Insights for {job_title}:**\n"
+        f"- Average: {currency} {avg:,.0f}\n"
+        f"- Range: {currency} {min_sal:,.0f} - {currency} {max_sal:,.0f}\n"
+        f"- Based on {len(data)} data points"
+    ) + format_evidence_trailer(sources)
+
+
+def format_match_score(user_id: int, job_id: str) -> str:
+    """Build the match-score breakdown text, with a source trailer citing
+    the exact CareerProfile and Job rows the score was computed from.
+
+    Extracted from the `get_match_score` agent tool for the same reason as
+    `format_career_profile` above.
+    """
+    from apps.career.models import CareerProfile
+    from apps.jobs.models import Job
+    from apps.profiles.services import MatchingService
+
+    try:
+        profile = CareerProfile.objects.get(user_id=user_id)
+    except CareerProfile.DoesNotExist:
+        return "No career profile found. Please complete your profile first."
+
+    try:
+        job = Job.objects.get(uuid=job_id)
+    except (Job.DoesNotExist, ValueError):
+        return f"Job with ID {job_id} not found."
+
+    service = MatchingService()
+    result = service.get_match_breakdown(profile, job)
+
+    lines = [f"**Match Score for '{job.title}':** {result.get('overall_score', 0):.0f}/100"]
+    breakdown = result.get("breakdown", {})
+    for factor, detail in breakdown.items():
+        score = detail.get("score", 0) if isinstance(detail, dict) else detail
+        reasoning = detail.get("reasoning", "") if isinstance(detail, dict) else ""
+        lines.append(f"- {factor.replace('_', ' ').title()}: {score:.0f}/100{f' — {reasoning}' if reasoning else ''}")
+
+    for strength in result.get("strengths", []):
+        lines.append(f"- Strength: {strength}")
+    for gap in result.get("gaps", []):
+        lines.append(f"- Gap: {gap}")
+    if result.get("recommendation"):
+        lines.append(f"\n**Recommendation:** {result['recommendation']}")
+
+    sources = [f"CareerProfile#{profile.pk}", f"Job#{job.uuid}"]
+    return "\n".join(lines) + format_evidence_trailer(sources)
 
 
 def get_bedrock_model(model_alias: str = "sonnet") -> str:
@@ -222,33 +385,7 @@ def _register_rashid_tools(agent: Agent[PlatformDeps, str]) -> None:
         """Get the user's career profile summary including skills, experience, and talent score."""
         if not ctx.deps.user_id:
             return "User not authenticated."
-
-        from apps.career.models import CareerProfile, TalentScore
-
-        try:
-            profile = CareerProfile.objects.get(user_id=ctx.deps.user_id)
-        except CareerProfile.DoesNotExist:
-            return "No career profile found. Please complete your profile first."
-
-        lines = [f"**Career Profile for {ctx.deps.user_name}:**"]
-
-        if profile.cv_parsed_data:
-            data = profile.cv_parsed_data
-            if data.get("skills"):
-                lines.append(f"- Skills: {', '.join(data['skills'][:10])}")
-            if data.get("experience"):
-                lines.append(f"- Experience entries: {len(data['experience'])}")
-            if data.get("education"):
-                lines.append(f"- Education entries: {len(data['education'])}")
-
-        try:
-            score = TalentScore.objects.filter(user_id=ctx.deps.user_id).latest("last_calculated_at")
-            # overall_score is stored 0-1; present as a percentage.
-            lines.append(f"- Talent Score: {round(score.overall_score * 100)}/100")
-        except TalentScore.DoesNotExist:
-            lines.append("- Talent Score: Not yet calculated")
-
-        return "\n".join(lines)
+        return format_career_profile(ctx.deps.user_id, ctx.deps.user_name)
 
     @agent.tool
     async def get_recommendations(ctx: RunContext[PlatformDeps], limit: int = 5) -> str:
@@ -324,43 +461,7 @@ Format as a clear numbered list."""
         location: str = "",
     ) -> str:
         """Get salary insights for a specific role and location."""
-        from apps.salary.models import SalaryData
-
-        # SalaryData links to Job (title lives on Job); it has no job_title of
-        # its own. Filter through the job relation.
-        qs = SalaryData.objects.filter(job__title__icontains=job_title)
-        if location:
-            qs = qs.filter(job__location__icontains=location)
-        data = list(qs.select_related("job")[:50])
-        if not data:
-            return f"No salary data available for {job_title}{f' in {location}' if location else ''}."
-
-        # Prefer explicit min/max; fall back to annualized fields when present.
-        lows, highs = [], []
-        currency = "USD"
-        for d in data:
-            lo = d.salary_min if d.salary_min is not None else d.annualized_salary_min
-            hi = d.salary_max if d.salary_max is not None else getattr(d, "annualized_salary_max", None)
-            if lo is not None:
-                lows.append(float(lo))
-            if hi is not None:
-                highs.append(float(hi))
-            if getattr(d, "salary_currency", None):
-                currency = d.salary_currency
-
-        if not lows and not highs:
-            return "Salary data exists but amounts are not available."
-
-        all_vals = lows + highs
-        avg = sum(all_vals) / len(all_vals)
-        min_sal = min(lows) if lows else min(all_vals)
-        max_sal = max(highs) if highs else max(all_vals)
-        return (
-            f"**Salary Insights for {job_title}:**\n"
-            f"- Average: {currency} {avg:,.0f}\n"
-            f"- Range: {currency} {min_sal:,.0f} - {currency} {max_sal:,.0f}\n"
-            f"- Based on {len(data)} data points"
-        )
+        return format_salary_insights(job_title, location)
 
     @agent.tool
     async def get_match_score(
@@ -370,38 +471,7 @@ Format as a clear numbered list."""
         """Get a detailed match score breakdown between the user's profile and a specific job."""
         if not ctx.deps.user_id:
             return "User not authenticated."
-
-        from apps.career.models import CareerProfile
-        from apps.jobs.models import Job
-        from apps.profiles.services import MatchingService
-
-        try:
-            profile = CareerProfile.objects.get(user_id=ctx.deps.user_id)
-        except CareerProfile.DoesNotExist:
-            return "No career profile found. Please complete your profile first."
-
-        try:
-            job = Job.objects.get(uuid=job_id)
-        except (Job.DoesNotExist, ValueError):
-            return f"Job with ID {job_id} not found."
-
-        service = MatchingService()
-        result = service.get_match_breakdown(profile, job)
-
-        lines = [f"**Match Score for '{job.title}':** {result.get('overall_score', 0):.0f}/100"]
-        breakdown = result.get("breakdown", {})
-        for factor, detail in breakdown.items():
-            score = detail.get("score", 0) if isinstance(detail, dict) else detail
-            reasoning = detail.get("reasoning", "") if isinstance(detail, dict) else ""
-            lines.append(f"- {factor.replace('_', ' ').title()}: {score:.0f}/100{f' — {reasoning}' if reasoning else ''}")
-
-        for strength in result.get("strengths", []):
-            lines.append(f"- Strength: {strength}")
-        for gap in result.get("gaps", []):
-            lines.append(f"- Gap: {gap}")
-        if result.get("recommendation"):
-            lines.append(f"\n**Recommendation:** {result['recommendation']}")
-        return "\n".join(lines)
+        return format_match_score(ctx.deps.user_id, job_id)
 
     @agent.tool
     async def tailor_resume(
