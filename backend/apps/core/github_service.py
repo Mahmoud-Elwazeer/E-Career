@@ -6,7 +6,7 @@ Handles GitHub OAuth flow, repository analysis, and contribution tracking.
 
 import structlog
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any
 from urllib.parse import urlparse
 
@@ -145,7 +145,9 @@ class GitHubService:
         # Activity (20%)
         updated_at = repo_info.get('updated_at')
         if updated_at:
-            days_since_update = (datetime.now() - datetime.fromisoformat(updated_at.replace('Z', '+00:00'))).days
+            days_since_update = (
+                datetime.now(timezone.utc) - datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+            ).days
             if days_since_update < 30:
                 score += 0.2
             elif days_since_update < 90:
@@ -193,7 +195,9 @@ class GitHubService:
             # Check if active (updated in last 90 days)
             updated_at = repo.get('updated_at')
             if updated_at:
-                days_since_update = (datetime.now() - datetime.fromisoformat(updated_at.replace('Z', '+00:00'))).days
+                days_since_update = (
+                    datetime.now(timezone.utc) - datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                ).days
                 if days_since_update < 90:
                     active_projects += 1
         
