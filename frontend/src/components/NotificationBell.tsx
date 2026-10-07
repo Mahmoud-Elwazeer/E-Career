@@ -20,7 +20,16 @@ export function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-9 w-9">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative h-9 w-9"
+          aria-label={
+            isAr
+              ? unreadCount > 0 ? `الإشعارات (${unreadCount} غير مقروءة)` : "الإشعارات"
+              : unreadCount > 0 ? `Notifications (${unreadCount} unread)` : "Notifications"
+          }
+        >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1">

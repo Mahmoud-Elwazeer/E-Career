@@ -240,14 +240,17 @@ export function AdminSourcesManager() {
                     onClick={() => handleControl(source, source.is_active ? "pause" : "start")}
                     disabled={!!controlBusy && controlBusy.startsWith(source.uuid)}
                     title={source.is_active ? (isAr ? "إيقاف مؤقت" : "Pause") : (isAr ? "استئناف" : "Resume")}
+                    aria-label={source.is_active ? (isAr ? "إيقاف مؤقت" : "Pause") : (isAr ? "استئناف" : "Resume")}
                   >
                     {source.is_active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(source)}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(source)}
+                    aria-label={isAr ? "تعديل" : "Edit"}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive"
-                    onClick={() => handleDelete(source.slug)}>
+                    onClick={() => handleDelete(source.slug)}
+                    aria-label={isAr ? "حذف" : "Delete"}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>

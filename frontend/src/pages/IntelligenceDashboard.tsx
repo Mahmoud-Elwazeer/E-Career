@@ -50,7 +50,9 @@ export default function IntelligenceDashboard() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link to="/admin">
-            <Button variant="ghost" size="icon"><ArrowLeft className="h-5 w-5" /></Button>
+            <Button variant="ghost" size="icon" aria-label="Back to admin">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
           </Link>
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">

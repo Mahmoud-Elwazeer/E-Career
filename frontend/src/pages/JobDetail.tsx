@@ -173,7 +173,12 @@ function SidebarCard({ job, expired, saved, isAr, onToggleSave, onApplyClick }: 
               {saved ? <BookmarkCheck className="h-4 w-4 me-1.5 text-primary" /> : <Bookmark className="h-4 w-4 me-1.5" />}
               {saved ? (isAr ? "تم الحفظ" : "Saved") : (isAr ? "حفظ" : "Save")}
             </Button>
-            <Button variant="outline" size="icon" className="rounded-xl press-feedback shrink-0">
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-xl press-feedback shrink-0"
+              aria-label={isAr ? "مشاركة" : "Share"}
+            >
               <Share2 className="h-4 w-4" />
             </Button>
           </div>

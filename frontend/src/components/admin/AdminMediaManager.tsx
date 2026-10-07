@@ -103,10 +103,12 @@ export function AdminMediaManager() {
                 )}
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
                   <Button size="icon" variant="secondary" className="h-7 w-7"
+                    aria-label={isAr ? "نسخ الرابط" : "Copy URL"}
                     onClick={() => copyUrl(item.url, item.uuid)}>
                     {copiedId === item.uuid ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   </Button>
                   <Button size="icon" variant="destructive" className="h-7 w-7"
+                    aria-label={isAr ? "حذف" : "Delete"}
                     onClick={() => handleDelete(item.uuid)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
