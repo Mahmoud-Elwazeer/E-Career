@@ -85,6 +85,12 @@ Relevant divisions: `sales` (sales-engineer for employer-side features),
    this platform's stated moat/policy — this is a product-correctness bug,
    not just a nice-to-have.
 
+When reporting progress on a multi-step fix before it's finished, use the
+completion-status vocabulary in `.claude/agents/qa-verifier.md` (CONTINUE /
+VERIFY / RETRY / RESEARCH / STEER / BLOCKED / NEEDS_HUMAN_DECISION /
+READY_TO_COMMIT / READY_TO_DEPLOY / DONE) rather than inventing ad hoc
+status words — it's the one place in this repo that formalizes it.
+
 ## Pitfalls specific to this repo
 
 - Don't assume README/roadmap docs reflect current code — this repo's
