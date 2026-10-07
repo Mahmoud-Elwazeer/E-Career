@@ -108,6 +108,16 @@ def job(db, company, source):
 
 @pytest.fixture
 def inactive_job(db, company, source):
+    """An archived job, shaped like the real archival path.
+
+    Job.objects.visible()/.active() gate on `quality_state`, NOT the legacy
+    `status` field (status is write-once and can go stale - see
+    apps/jobs/tests/test_quality_state.py::TestStaleStatusCannotExcludeValidJobs
+    for the documented, intentional reason). The real archival action
+    (JobDetailView.destroy()) sets BOTH status="archived" AND
+    quality_state="archived" together - this fixture must match that shape,
+    or it exercises a state that production code never actually produces.
+    """
     from apps.jobs.models import Job
     import datetime
     return Job.objects.create(
@@ -123,6 +133,7 @@ def inactive_job(db, company, source):
         source_url="https://testboard.example.com/jobs/2",
         posted_at=datetime.date.today(),
         status="archived",
+        quality_state="archived",
     )
 
 
