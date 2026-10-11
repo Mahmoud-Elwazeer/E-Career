@@ -245,14 +245,19 @@ Format your response as structured text with clear sections."""
     def _semantic_job_search(self, query: str) -> str:
         """Use VectorService for semantic job search when available."""
         try:
-            from apps.vectors.service import vector_service
+            from apps.vectors.service import get_vector_service, JOBS_COLLECTION
+            vector_service = get_vector_service()
             result = vector_service.semantic_search(
-                collection="jobs", query_text=query, limit=10, score_threshold=0.5,
+                collection=JOBS_COLLECTION, query_text=query, limit=10, score_threshold=0.5,
             )
             if result and result.results:
                 lines = []
                 for r in result.results:
-                    meta = r.metadata or {}
+                    # VectorSearchResult carries `payload`, not `metadata` -
+                    # a prior version of this call site assumed the wrong
+                    # field name and the resulting AttributeError was always
+                    # silently swallowed by the except below.
+                    meta = r.payload or {}
                     lines.append(f"- {meta.get('title', 'Unknown')} at {meta.get('company', 'Unknown')} (score: {r.score:.2f})")
                 return f"Semantically related jobs ({len(lines)}):\n" + "\n".join(lines)
         except Exception as e:
