@@ -6,7 +6,7 @@ import {
   Users, Eye, MousePointerClick, Loader2, Upload, PieChart,
   LayoutDashboard, Building2, Star, ShieldCheck, Database, Globe,
   GitCompare, Brain, Bot, Mic, Zap, Bell, Package, Lock, Activity,
-  MessageSquare, Send
+  MessageSquare, Send, Scale
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1652,6 +1652,7 @@ export default function AdminDashboard() {
   // that previously had no link anywhere in the admin UI.
   const externalAdminLinks = [
     { icon: TrendingUp, label: "Financial Control Center", to: "/admin/finance" },
+    { icon: Scale, label: "Legal Control Plane", to: "/admin/legal" },
   ];
 
   const allNavItems = navGroups.flatMap(g => g.items);
