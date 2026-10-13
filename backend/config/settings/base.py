@@ -83,6 +83,8 @@ INSTALLED_APPS = [
     "apps.resume",
     # Financial core — payments, ledger, billing
     "apps.payments",
+    # Legal, Privacy, Consent & Admin Legal Control Plane
+    "apps.legal",
     # Outreach domain scaffolding (Task #15) — DRY_RUN only, no real send path
     "apps.outreach",
     # Celery Beat
@@ -252,6 +254,34 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
+
+# ── Currency (directive: EGP is the platform default; NEVER silently convert) ─
+# Three independent currency concepts exist on this platform and must never be
+# conflated:
+#   PLATFORM_BASE_CURRENCY   — the platform's own default/display currency.
+#                              Egyptian Pound (EGP) per the Legal/Privacy/
+#                              Payments directive. Used wherever a currency
+#                              isn't otherwise specified by the object itself
+#                              (e.g. a new Package/Order/wallet with no
+#                              explicit currency).
+#   JOB_SALARY_CURRENCY       — NOT a single global value. Each job posting
+#                              carries its OWN `salary_currency` field
+#                              (apps.jobs.models.Job.salary_currency,
+#                              apps.employers.models.<JobPosting>.salary_currency)
+#                              reflecting what the employer actually offers.
+#                              This setting is intentionally NOT defined here —
+#                              do not add one that would imply a single global
+#                              salary currency. See audit/
+#                              LEGAL_PRIVACY_COMPLIANCE_MASTER.md for the
+#                              known Job model USD-default vs employer
+#                              job-posting model EGP-default inconsistency,
+#                              flagged for a business/legal decision rather
+#                              than silently changed by this directive.
+#   PAYMENT_TRANSACTION_CURRENCY — set per Order/Payment/Invoice/Refund row
+#                              (apps.payments.models.Currency), defaulting to
+#                              PLATFORM_BASE_CURRENCY but always stored
+#                              explicitly per transaction — never implied.
+PLATFORM_BASE_CURRENCY = config("PLATFORM_BASE_CURRENCY", default="EGP")
 
 # ── Email defaults (override per environment) ────────────────────────────────
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@usam.jobs")

@@ -56,6 +56,8 @@ urlpatterns = [
          path("intelligence/", include("apps.intelligence.urls")),
          # Financial core — payments, checkout, webhooks
          path("payments/", include("apps.payments.urls")),
+         # Legal, Privacy, Consent & Admin Legal Control Plane
+         path("legal/", include("apps.legal.urls")),
      ])),
 
     # Email tracking (Phase 2D)
