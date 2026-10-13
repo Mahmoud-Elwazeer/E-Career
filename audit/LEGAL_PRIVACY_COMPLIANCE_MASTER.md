@@ -1,6 +1,17 @@
 # USAM Career — Legal / Privacy / Payments / Consent Compliance Master
 
-**Status: authoritative, code-verified. Last updated 2026-09-21 (this directive's execution).**
+**Status: authoritative, code-verified. Last updated 2026-10-14 (production-hardening pass).**
+
+## Status taxonomy (used throughout this document)
+
+| Status | Meaning |
+|---|---|
+| **ENGINEERING READY** | Code is implemented, tested, and merged to `development`. Not yet deployed to production and/or not yet legally configured. |
+| **CONFIGURATION REQUIRED** | Code is ready; a specific admin-entered value (legal entity, contact email, refund window, etc.) is still blank and must be filled in before the feature is fully meaningful in production. |
+| **LEGAL REVIEW REQUIRED** | A legal fact (minors' age threshold, retention period, governing law, DPA status) cannot be confirmed from code or public sources and must come from qualified legal counsel. Marked `requires_legal_review=True` in the data itself. |
+| **PRODUCTION ACTIVE** | Deployed to `jobs.usamif.com`, verified live, and — where applicable — legally configured. **Nothing in this document is marked PRODUCTION ACTIVE yet** — see §10. |
+
+**This document does not claim full legal/regulatory compliance at any point.** It records what was built, what was verified, and what remains open.
 
 This is the single source of truth for the Legal/Privacy/Payments/Consent
 subsystem per the "USAM Master Ecosystem Legal/Privacy/Payments/Consent
@@ -482,59 +493,695 @@ code change:
 
 ## 8. Deployment commands
 
-Two increments were committed to `development` and pushed:
+Four increments are committed to `development` and pushed:
 
 - `d144cfb` — backend `apps.legal` domain (models, services, APIs, admin
   control plane, `PLATFORM_BASE_CURRENCY`, seed command, 26 tests).
 - `a6b9366` — frontend Legal Center/cookie banner/Privacy Center/signup
   consent/Admin Legal UI + the `views_gdpr` URL wiring fix + 13 frontend +
   4 backend tests.
-- *(this commit)* — Phase H payment/card-security audit tests (8 new
-  backend tests) + this master document + Admin Dashboard sidebar link.
+- `a3d6de7` — payment/card-security audit tests (8 tests) + this master
+  document + Admin Dashboard sidebar link.
+- `49eddd6` — production-hardening pass: Talent Pool privacy fix (incl. a
+  critical pre-existing 500-error bug fix), webhook amount/currency
+  verification, policy-acceptance race-condition hardening, retention
+  enforcement engine, processor register seed, Markdown XSS hardening,
+  safe `npm audit fix`. See §9 for full detail.
 
-Production deployment (run once per environment; `seed_legal` is required
-or `/legal/*` will correctly — but unhelpfully — show "no active version
-yet"):
+### A. Pre-deploy checks
+
+The repo contains **multiple deploy scripts from different eras with
+conflicting assumptions** about where the Python virtualenv lives
+(`deploy-to-server.sh`/`deploy.sh` use `backend/venv/bin`; `deploy/
+gunicorn.service` uses `/var/www/usam/venv/bin` — one level up). Run these
+checks on the actual server FIRST so the deploy commands in §B use the
+venv path that is actually correct for this box, not a guess:
+
+```bash
+cd /var/www/usam
+git status                      # confirm no uncommitted local changes you'd lose
+git log --oneline -3             # confirm current HEAD before pulling
+git rev-parse HEAD
+
+# Which venv actually exists?
+ls -la backend/venv/bin/python 2>/dev/null && echo "venv is at backend/venv"
+ls -la venv/bin/python 2>/dev/null && echo "venv is at /var/www/usam/venv"
+
+# Which services actually run this app? (names vary across the repo's own
+# scripts: usam.service / gunicorn-usam.service / ecareer-backend — confirm
+# before restarting the wrong one, or a nonexistent one)
+systemctl list-units --type=service --all | grep -Ei "usam|ecareer|gunicorn|celery"
+
+# Confirm the database/queues you must NOT disturb are healthy BEFORE you
+# touch anything — compare against this same output again after deploy.
+sudo -u postgres psql -c "\l" 2>/dev/null | grep -i usam   # Postgres DB present
+docker ps 2>/dev/null | grep -i typesense                  # Typesense container running
+docker volume ls 2>/dev/null | grep usam_typesense_data     # the real data volume exists
+curl -s -o /dev/null -w "typesense:%{http_code}\n" http://127.0.0.1:8108/health
+redis-cli ping 2>/dev/null || echo "redis not reachable on default port"
+
+# Confirm no destructive flags are anywhere in what you're about to run —
+# this deploy does NOT drop/recreate the DB, does NOT touch Typesense data,
+# does NOT run collectstatic --clear (one of the repo's OLDER scripts does
+# use --clear; do not use that variant here).
+```
+
+**Do not proceed to §B until you know which `venv` path and which service
+name(s) are real on this box.** Below, `<VENV>` stands for whichever path
+you confirmed (`backend/venv/bin` or `venv/bin`), and `<SERVICE>` for the
+confirmed Gunicorn/Daphne service name.
+
+### B. Exact deployment commands
 
 ```bash
 cd /var/www/usam
 git pull origin development
 
-# Backend
-source backend/venv/bin/activate
-pip install -r backend/requirements/production.txt
+# Backend — install deps, migrate (additive-only, see §9.1), seed legal data,
+# collect static. No --clear, no destructive flags.
+<VENV>/pip install -r backend/requirements/production.txt
 cd backend
-python manage.py migrate
-python manage.py seed_legal
-python manage.py collectstatic --noinput
+../<VENV>/python manage.py migrate --noinput
+../<VENV>/python manage.py seed_legal
+../<VENV>/python manage.py collectstatic --noinput
 cd ..
 
-# Frontend
+# Frontend — rebuild only; nginx serves the existing frontend/dist until this
+# completes, so there is no window where the site serves nothing.
 cd frontend
 npm ci
 npm run build
 cd ..
 
-# Restart services
-sudo systemctl restart usam.service celery-usam.service celery-beat-usam.service
-sudo nginx -s reload
+# Restart ONLY the services confirmed in §A. Do not restart postgresql,
+# redis, or the Typesense container — none of this deploy touches their data
+# and restarting them is unnecessary risk, not required by this change.
+sudo systemctl restart <SERVICE>
+sudo systemctl restart celery-usam.service celery-beat-usam.service   # if these are the confirmed names from §A
+sudo nginx -t && sudo nginx -s reload   # -t validates config before reload — never reload a broken config
 ```
 
-Verification after deploy:
-- `GET https://jobs.usamif.com/api/v1/legal/policies/` returns 7 documents,
-  each with a non-null `live_version`.
-- `https://jobs.usamif.com/legal` renders all 7 tiles; each links to real
-  content.
-- Visiting the site logged-out shows the cookie banner with all three
-  buttons; accepting/rejecting does not require login.
-- `/app/privacy-center` (as a logged-in user) successfully requests a data
-  export and shows a `pending`/`processing`/`completed` status.
-- `/admin/legal` (as an admin) lists the 7 policy versions in `ACTIVE`
-  status and the two seeded jurisdiction profiles.
+**New in this increment, run once if not already present (idempotent,
+dry-run by default, no destructive action):**
+```bash
+cd backend && ../<VENV>/python manage.py enforce_retention
+# Expect: SKIP lines for every category (all currently requires_legal_review
+# or unconfigured) except interview_transcripts/cv_documents, which report
+# "found=N ... affected=0" in dry-run. Do NOT pass --execute in production
+# until legal has confirmed retention periods — see §9.4.
+```
+
+### C. Post-deploy verification
+
+```bash
+# Code/migration state
+git rev-parse HEAD   # expect 49eddd6 (or later)
+cd backend && ../<VENV>/python manage.py showmigrations legal
+../<VENV>/python manage.py check
+
+# Legal API + pages (expect 200 for all of these)
+for p in /legal/ /legal/terms /legal/privacy /legal/cookies /legal/refunds /legal/payment-security /legal/security /legal/ai-disclosure; do
+  printf "%s -> " "$p"; curl -s -o /dev/null -w "%{http_code}\n" "https://jobs.usamif.com$p"
+done
+curl -s https://jobs.usamif.com/api/v1/legal/policies/ | python3 -m json.tool | head -40
+
+# Services untouched by this deploy are still healthy
+curl -s -o /dev/null -w "typesense:%{http_code}\n" http://127.0.0.1:8108/health
+sudo systemctl is-active postgresql redis-server 2>/dev/null
+sudo systemctl status <SERVICE> celery-usam.service celery-beat-usam.service --no-pager -l | head -40
+sudo journalctl -u <SERVICE> -n 100 --no-pager | grep -Ei "error|traceback" || echo "no errors in recent log"
+
+# Payments unaffected (sanity — no live charge, just confirm the endpoint responds)
+curl -s -o /dev/null -w "packages:%{http_code}\n" https://jobs.usamif.com/api/v1/payments/packages/
+```
+
+Full browser/UI checklist (manual, see §39 of the original directive and
+§10 below for the complete live-verification list): cookie banner on a
+fresh/incognito browser shows all three buttons and does not require
+login; Login.tsx signup shows the required Terms checkbox and the two
+independent opt-ins; `/app/privacy-center` requires auth; `/admin/legal`
+requires admin; footer legal links resolve; existing Login/Jobs/Billing
+pages still work.
+
+### D. Rollback commands
+
+This deploy made no destructive schema changes (§9.1 — purely additive
+migration), so rollback is a plain code revert, not a data-recovery
+operation:
+
+```bash
+cd /var/www/usam
+git log --oneline -5          # confirm the commit to roll back to
+git checkout <previous-commit-hash>
+<VENV>/pip install -r backend/requirements/production.txt
+cd backend && ../<VENV>/python manage.py migrate --noinput   # no-op: nothing to unapply, additive-only
+cd ../frontend && npm ci && npm run build
+cd ..
+sudo systemctl restart <SERVICE> celery-usam.service celery-beat-usam.service
+sudo nginx -t && sudo nginx -s reload
+```
+
+Rolling back does **not** require dropping the new `legal_*` tables —
+leaving them in place with no code referencing them is harmless (standard
+additive-migration rollback practice). Only drop them manually if you have
+an explicit reason to; that would be a separate, deliberate decision, not
+part of this rollback.
 
 ---
 
-## 9. Final Acceptance checklist (A–Z areas)
+## 9. Production-hardening pass (commit `49eddd6`)
+
+This section documents the hardening pass performed after the initial
+implementation was accepted as code-complete, before production launch.
+
+### 9.1 Migration safety review
+
+`apps/legal/migrations/0001_initial.py` reviewed line-by-line: contains
+**only** `CreateModel`/`AddConstraint`/`AddIndex` operations — zero
+`AlterField`, `RemoveField`, `RunSQL`, or `RunPython`. `sqlmigrate`
+confirmed every operation is a plain `CREATE TABLE`/`CREATE INDEX` (SQLite
+shown in dev; PostgreSQL will emit the equivalent `CREATE TABLE`/`CREATE
+INDEX CONCURRENTLY`-eligible statements — none of these lock existing
+tables since none existed before this migration). `makemigrations --check
+--dry-run` reports **"No changes detected"** both before and after this
+hardening pass's model changes (`TalentPool.active_candidates()` is a
+plain Python method, not a field — no migration required). **Verdict:
+safe for production — purely additive, no destructive operation, no
+long-lock risk against existing tables.**
+
+### 9.2 Seed vs. publish — the launch flow
+
+`seed_legal` creates `PolicyVersion` rows and immediately calls
+`services.activate_version()` on each — so after running it, all 7
+documents ARE live/public at `/legal/*` with the seed's draft text. This
+is intentional for a staging/dev environment but **for production, the
+directive requires a controlled launch**, not an immediate blanket
+auto-publish of unreviewed text. The actual recommended production launch
+flow:
+
+1. **Seed to DRAFT only** (do not let `seed_legal` activate automatically
+   in production — a follow-up flag was not added to the command this
+   pass; until it is, the safe path is to run `seed_legal` on a staging
+   DB first, let legal review the rendered `/legal/*` pages there, THEN
+   run it on production immediately before go-live). This is a process
+   control, not a code gap — tracked as a `CONFIGURATION REQUIRED` item.
+2. **Review**: an admin/legal reviewer reads each of the 7 documents at
+   `/legal/<slug>` on staging.
+3. **Approve + Activate**: via the Admin Legal Control Plane
+   (`/admin/legal` → Policy versions tab → "Send to review" → "Approve" →
+   "Activate"), or directly via API: `POST /api/v1/legal/admin/versions/
+   <uuid>/transition/` with `{"status": "approved"}` then `{"status":
+   "active"}`. The management-command equivalent (for a scripted launch)
+   is to call `apps.legal.services.activate_version(version=version,
+   approver=admin_user)` from a one-off `manage.py shell` command — no
+   dedicated CLI flag exists for this yet (flagged as a nice-to-have, not
+   a blocker, since the admin UI already does this safely).
+4. **Public verification**: confirm `/legal/<slug>` returns the approved
+   text and the version badge shows the expected `version_label`.
+
+**If no active version exists**, `/legal/<slug>` returns the honest "No
+active version yet" page (never fabricated text) — confirmed by
+`PolicyPage.test.tsx`'s dedicated test for this state. **The production
+Legal Center will NOT end up with empty/broken pages after deployment**
+as long as `seed_legal` is run during the deploy (§8.B) — it both creates
+AND activates in one step today. The gap is narrower than "pages will be
+empty" — it's "the FIRST live text will be the seed's own draft wording
+until someone with legal authority reviews and, if needed, supersedes it
+with a new version" (which the versioning system fully supports — see
+§9.3's version-update test).
+
+### 9.3 Signup/policy-acceptance race condition — closed
+
+`policy_accept` (`apps/legal/views.py`) now runs inside an explicit
+`@db_transaction.atomic` block and — as it already did — resolves "the
+currently ACTIVE version" fresh at the moment of the API call via
+`services.get_active_version()`, never trusting a version id supplied by
+the frontend. New test `test_policy_accept_binds_to_whichever_version_
+is_active_at_submit_time_not_a_stale_one` proves the exact scenario: a
+user who loaded signup while v1 was active, then an admin activates v2
+before the user's request lands, is correctly bound to v2. A second new
+test (`test_policy_version_update_preserves_old_acceptance_and_tracks_
+new_separately`) proves v1's acceptance row survives v2's activation
+unmutated, `needs_reacceptance()` correctly flips to `True`, and accepting
+v2 creates a wholly separate row.
+
+### 9.4 Production legal configuration checklist
+
+| Setting | Current state | Required for launch? | Value source | Blocks policy activation? | Legal review required? |
+|---|---|---|---|---|---|
+| `LEGAL_ENTITY_NAME` | Blank (`LegalEntityConfig.legal_entity_name=""`) | Yes — shown in Terms/footer/invoices | Business registration documents | No (policies can activate with a `REQUIRES LEGAL REVIEW / CONFIGURATION` placeholder) | Yes |
+| `LEGAL_ADDRESS` | Blank | Yes | Business registration documents | No | Yes |
+| `LEGAL_CONTACT_EMAIL` / `PRIVACY_CONTACT_EMAIL` | Blank | Yes — Privacy Center/footer reference it | A real, monitored mailbox the company owns | No | No (operational, not legal) |
+| `SUPPORT_EMAIL` | Blank in `LegalEntityConfig`; `Contact.tsx` hardcodes `support@usamif.com` (pre-existing, unrelated to this pass) | Yes | A real, monitored mailbox | No | No |
+| `GOVERNING_LAW` | Marked `REQUIRES LEGAL REVIEW / CONFIGURATION` in Terms §9 text | Yes, before any dispute could arise | Legal counsel | No | Yes |
+| `PLATFORM_BASE_CURRENCY` | `EGP` (configured, code-verified) | **Done** | N/A | N/A | No |
+| Minimum age / account eligibility | Not enforced anywhere; `minor_age_threshold=NULL` for both jurisdictions | Should be set before any marketing targeting minors | Legal counsel (Egypt treats all children's data as "sensitive" regardless of a stated age; no single number found in Saudi sources either) | No | **Yes — critical** |
+| Refund window | `LegalEntityConfig.default_refund_window_days=NULL`; Refund Policy text says "no window confirmed yet" | Yes, before any real refund dispute | Business/legal decision | No | Yes |
+| Cancellation rules (immediate vs. period-end) | Not modeled — flat `status` field only, no `cancel_at_period_end` | Should be decided before marketing promises either behavior | Business/product decision | No | No (product decision, not legal) |
+| Retention periods (CV, interview transcripts, payment records) | `requires_legal_review=True`, `retention_period_days=NULL` for all three | Yes, before `enforce_retention --execute` is ever run | Legal counsel + business records-retention policy | No (policy text says "pending review") | **Yes — critical** |
+| Jurisdiction enablement (EG/SA) | Both seeded with real DSR-SLA/breach-notice figures from official sources; `minor_age_threshold` unset | Partially done | Legal counsel for any additional jurisdiction | No | Yes (for remaining fields) |
+| Cookie categories | Fully seeded (necessary/functional/analytics/marketing) — no trackers exist yet to gate | **Done** | N/A | N/A | No |
+| Processor list | Seeded with 4 code-confirmed vendors (AWS, Stripe, Typesense, Sentry); `dpa_signed=NULL` for all | Partially done | Legal/procurement to confirm DPA status per vendor | No | Yes (DPA confirmation only) |
+| AI/model-provider disclosure | 4 AI touchpoints disclosed (Rasheed, matching, interview practice, CV parsing); `makes_final_decision` hard-blocked at `True` | **Done** | N/A | N/A | No |
+| Payment provider disclosure | Stripe (hosted checkout) and AlexBank (scaffold, explicitly marked not-live) both disclosed accurately in Payment & Card Security policy text | **Done** | N/A | N/A | No |
+
+No secret values (API keys, passwords, tokens) are included in this table
+or anywhere in this document, per the directive's own instruction.
+
+### 9.5 EGP currency audit — completed
+
+Full repo-wide audit performed (backend + frontend + seed data + emails +
+Admin Finance). Findings, classified per the directive's taxonomy:
+
+- **PLATFORM_PRICE** (platform billing/ledger): `apps.payments.Currency`
+  choices, all `Package`/`Order`/`Payment`/`Invoice`/`Refund`/
+  `AdjustmentRequest`/`LedgerAccount`/`LedgerEntry` default `EGP` —
+  consistent, correct, matches `PLATFORM_BASE_CURRENCY`. `seed_packages.py`
+  hardcodes `EGP` for all 6 real packages — correct.
+- **JOB_SALARY**: confirmed, not touched (per directive's own instruction
+  not to blindly force EGP onto job-salary data). `apps.jobs.models.Job.
+  salary_currency` defaults `USD`; the employer-posted job-posting model in
+  `apps.employers.models` defaults `EGP` — this is the known, previously-
+  flagged inconsistency, addressed in §9.6 below. Seven ATS scraper
+  connectors (`greenhouse`-style adapters) fall back to a blanket `"USD"`
+  when a source doesn't specify a currency — a plausible-but-unverified
+  assumption (most of those ATSes are USD-denominated), not location-aware;
+  flagged as a data-quality note, not changed (changing scraper defaults
+  without a product decision risks silently mislabeling real job data).
+  `apps.jobs.serializers.py`'s *display* fallback (`'EGP'`) independently
+  disagrees with the *model* default (`'USD'`) when a value is empty — a
+  separate, smaller inconsistency noted for future cleanup, not fixed in
+  this pass (display-only, doesn't change stored data).
+- **PAYMENT_TRANSACTION**: confirmed per-row, never silently overridden —
+  Stripe adapter passes through whatever currency the `Order`/`Payment`
+  carries; no hardcoded transaction currency anywhere.
+- **HISTORICAL_DATA**: a previously-removed stale `salary_currency_new`
+  field (migration `0007_remove_stale_salary_fields.py`) — dead migration
+  artifact, not a live concern.
+- **TEST_FIXTURE**: `seed_jobs.py`'s location-aware demo currency
+  (`EGP`/`AED`/`SAR` by location string match) and all pytest fixtures
+  using `USD`/`EUR` — cosmetic, zero production risk.
+- **EXTERNAL_PROVIDER_VALUE**: Stripe's `currency.lower()` pass-through —
+  correctly non-hardcoded.
+- **Live-DB impact note**: changing `Job.salary_currency`'s Python default
+  does NOT retroactively change existing rows (Django model defaults only
+  apply at creation time) — any default change is a forward-only effect;
+  determining how many existing rows are "genuinely USD" vs.
+  "silently-defaulted USD" requires a live query this pass did not run
+  (read-only audit), and there is no stored flag distinguishing the two.
+
+### 9.6 Job salary-currency default inconsistency — decision deferred, not resolved unilaterally
+
+Per the directive's own instruction ("Determine the correct domain
+behavior... do not silently rewrite historical salary currencies"), this
+pass did **not** change either model's default. Reasoning: `Job` and the
+employer `JobPosting` model are two different tables feeding into the same
+public job listing surface via `apps.employers.admin.py`'s approval flow
+(`salary_currency=job_post.salary_currency` copied verbatim, no
+normalization) — changing one default without the other, or without
+knowing which one the business considers authoritative, risks either (a)
+silently mislabeling scraped non-Egyptian jobs as EGP, or (b) silently
+mislabeling Egypt-market employer postings as USD. **This requires a
+product/business decision** (which this pass is not positioned to make
+unilaterally) on one of: (1) make `Job.salary_currency` nullable with no
+default, requiring every ingestion path to explicitly set it from
+verified source data (most correct, most invasive); (2) leave both
+defaults as-is but add a `salary_currency_confirmed: bool` flag so
+downstream code/UI can distinguish real values from defaults (additive,
+non-breaking); or (3) align both to one shared default (loses information
+either way). **Recommendation**: option (2) — it's additive, doesn't
+touch existing data, and immediately gives the business visibility into
+how much of the job data is actually currency-verified vs. guessed.
+Flagged for a follow-up decision, not implemented in this pass.
+
+### 9.7 Cookie tracker gating — nothing to gate yet (confirmed, not a gap)
+
+Exhaustive search confirmed **zero** analytics/tracking SDKs exist
+anywhere in the frontend (no GA/GTM/Meta Pixel/Hotjar/PostHog/Mixpanel/
+Amplitude/Clarity/Segment/browser-Sentry). The `CookieConsentBanner`
+correctly records granular preferences server-side, but there is
+currently no runtime code path that reads those preferences back to
+conditionally load a script — because no such script exists to load. This
+is accurately a non-issue today: **when** a tracker is eventually added,
+it must be wired to check the recorded consent before initializing;
+until then, there is nothing non-essential running regardless of consent
+choice, so "Reject Non-Essential" and "Accept All" are behaviorally
+identical in terms of actual third-party calls (both: zero).
+
+### 9.8 Anonymous → authenticated consent synchronization
+
+`CookieConsent` rows are keyed by `session_key` for anonymous visitors and
+by `user` once authenticated — the two are never merged or carried
+forward automatically on login (confirmed: `cookie_consent_record`/
+`cookie_consent_me` branch strictly on `request.user.is_authenticated` and
+never query by both keys together). **This means a user's anonymous
+cookie choice does not automatically transfer to their authenticated
+session** — they would see the banner again post-login. This is privacy-
+safe (never silently broadens consent — the opposite of the directive's
+concern) but is a UX rough edge, not a privacy violation. Not changed in
+this pass; flagged for a future UX improvement (e.g., on login, copy the
+most recent anonymous session's consent into a new authenticated-user
+`CookieConsent` row with `method` noting it was carried over) — a
+feature add, not a hardening fix, so deferred.
+
+### 9.9 Talent Pool privacy — real gap found and fixed
+
+Confirmed via direct code trace of the actual employer-facing query path
+(not just the toggle's own response): `TalentPoolCandidate.
+was_discoverable_at_creation` was write-only — no read path consulted it,
+meaning a candidate who opted out of Talent Pool discovery AFTER being
+added to an employer's saved pool remained visible to that employer
+indefinitely. **Fixed**: `TalentPool.active_candidates()` now re-checks
+live `CareerProfile.is_discoverable` on every read; `TalentPoolDetail
+Serializer` and the `rank_pool` action both use it. The audit-trail row
+itself is retained (never deleted) — only employer-facing visibility
+changes. Separately, fixing this surfaced and fixed a **critical
+pre-existing bug**: the Talent Pool API's `get_queryset()` annotation
+collided with a model `@property` of the same name, causing an
+`AttributeError` (HTTP 500) on every single Talent Pool endpoint call —
+the entire feature was non-functional in production with zero test
+coverage. Both fixes are covered by 5 new end-to-end tests. The
+`rank_all=True` bypass in `CandidateRankingViewSet` (ranking a job's own
+applicants regardless of `is_discoverable`, on the rationale that applying
+to a specific job implies consent for that job's ranking) remains
+unchanged — this is a documented design decision from the original
+implementation, not something this pass judged to be a bug.
+
+### 9.10 Privacy Center — real operations confirmed
+
+Verified via direct code trace: `generate_data_export` scopes every
+section (applications, saved jobs, interview sessions, cover letters,
+notifications) through Django's reverse-relation manager off the specific
+`user` instance — correctly scoped, no cross-user leakage possible by
+construction. `process_account_deletion` anonymizes the `User` row in
+place and never calls `.delete()`; combined with `payments.Order.user`
+being `on_delete=models.PROTECT`, there is no code path in this repository
+that could cascade-delete a user's financial ledger history. Consent
+withdrawal and Talent Pool preference changes take effect immediately
+(append-only `ConsentRecord`/live `CareerProfile.is_discoverable` check).
+**Gap found, not fixed this pass**: `MarketingPreference.
+email_marketing_opt_in` is recorded and user-editable but is not checked
+by any code in `apps/emails/` or `apps/notifications/` before sending —
+the preference is currently non-enforcing in practice (there is also no
+marketing-type email send path in this codebase today to enforce it
+against — all `EmailTemplate.TEMPLATE_TYPES` are transactional). Flagged
+for when a marketing-send path is built.
+
+### 9.11 GDPR/legal-domain consolidation — confirmed disconnected, convergence plan recorded (not implemented)
+
+Confirmed via cross-import grep: `accounts.models_gdpr`/`views_gdpr`/
+`tasks_gdpr` and `legal.PrivacyRequest`/`DataExportJob`/`DeletionJob` are
+**100% independent** — no FK, no shared Celery dispatch, no cross-import
+in either direction. A user who files a DSR through the Privacy Center UI
+(`legal.PrivacyRequest`) gets a tracked, SLA-timed ticket but no export/
+deletion is automatically generated unless they separately call the
+`accounts` app's dedicated endpoints. **Additional gap found**: `accounts.
+tasks_gdpr.process_account_deletion` has no confirmed trigger —
+`request_account_deletion` creates the `AccountDeletionRequest` row with a
+30-day `scheduled_for` but never calls `.delay()`, and no Celery Beat
+periodic task was found that polls for due deletion requests. **This
+means the 30-day grace-period deletion may never actually execute today**
+— flagged as a priority follow-up, not fixed in this pass (fixing it
+safely requires deciding exactly what a scheduled, irreversible account
+anonymization task's safety rails should be, which is a bigger design
+question than this hardening pass's scope).
+
+**Recommended convergence plan** (not implemented this pass): treat
+`accounts.DataExportRequest`/`AccountDeletionRequest` as the EXECUTION
+backend (they already have real Celery tasks and file-generation logic)
+and `legal.PrivacyRequest` as the CANONICAL governance/audit record a user
+and admin interact with. Concretely: add a nullable FK from
+`DataExportRequest`/`AccountDeletionRequest` to `legal.PrivacyRequest`,
+and have `legal.services.open_privacy_request()` — when
+`request_type in ("export", "delete")` — create the corresponding
+`accounts` execution-request row and trigger its task, instead of leaving
+the DSR as a standalone ticket. This is additive (new nullable FK, no
+data loss) and does not require deleting either system. Not implemented
+this pass because it changes DSR-opening behavior and should be reviewed
+before shipping, consistent with "do not implement destructive/behavior-
+changing consolidation without review."
+
+### 9.12 Payment runtime trace — raw card data confirmed never reachable
+
+Full trace from `Billing.tsx`/`EmployerBilling.tsx` → `services/
+billing.ts` → `CheckoutView` → `StripeProvider.create_payment` →
+Stripe-hosted Checkout → webhook → `mark_order_paid` → ledger. Confirmed:
+zero `CardElement`/`@stripe/*`/`elements.create` usage anywhere in the
+frontend; the only request body USAM's own API ever receives for checkout
+is `{package, provider}`; no Celery tasks exist in `apps.payments` at all;
+no `logging.*`/`print()` calls exist anywhere in the payments app that
+could log a request body. Card data has no code path into React state,
+Django request bodies, Celery args, logs, or the database — it never
+leaves the customer's browser/Stripe's hosted page. This is a structural
+guarantee (Stripe Checkout is fully hosted-redirect), not a filtering
+rule, which is the stronger property.
+
+### 9.13 Webhook amount/currency verification — gap found and fixed
+
+Confirmed the pre-hardening `WebhookView` trusted a validly-signed webhook
+event's `status` field alone to call `mark_order_paid` — it never compared
+the event's reported amount/currency against the stored `Payment.amount`/
+`Payment.currency`. **Fixed**: `StripeProvider.parse_webhook` now surfaces
+`amount`/`currency` from the Stripe event object; `WebhookView` rejects
+(HTTP 409, logged on the `WebhookEvent.error` field) any webhook whose
+amount or currency disagrees with the stored Payment row, before ever
+calling `mark_order_paid`. Backward-compatible: an adapter that doesn't
+report these fields (older/other providers) is not penalized — absence is
+not treated as a mismatch. 3 new tests cover amount mismatch, currency
+mismatch, and the legitimate matching-case sanity check. **Still not
+checked** (not found anywhere, not added this pass): an explicit Stripe
+account/merchant-id comparison beyond the webhook-secret signature itself
+— the signature check does bind the event to the configured webhook
+endpoint in practice, but there's no additional `event["account"]`
+assertion. Flagged as a residual, lower-priority gap.
+
+### 9.14 Payment provider truth table (verified from code)
+
+| Provider | Status | Hosted/tokenized | Raw card touches USAM? | 3DS | Webhook sig verification | Replay protection | Idempotency | Refunds | EGP | Prod creds configured? | Remaining blocker |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **stripe** | LIVE-capable (code complete; actual production liveness depends on deployed `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET` values — not verified in this read-only pass) | Hosted (Stripe Checkout) | No | Provider-managed via Checkout; no USAM-side 3DS code | Yes (`stripe.Webhook.construct_event`) | Yes (DB-unique `provider_event_id` + already-processed short-circuit) | Yes (`post_transaction` idempotency key + `mark_order_paid` early-return) | Yes (`stripe.Refund.create`) | Yes | **Unverified this pass** (secret values not inspected) | Confirm live secrets are set in production `.env` |
+| **alexbank** | SCAFFOLD — every money operation raises `AlexBankNotImplemented` by design | N/A (never executes) | No (can't — never runs) | Not built (deliberately, per the adapter's own docstring) | Not implemented (raises before any check) | N/A | N/A | Not implemented | N/A | N/A | Full bank API spec not yet available (business/partner dependency, not a code gap) |
+| **alexbank_mock** | DISABLED in production (`_guard()` requires `DEBUG=True` or an explicit `ALEXBANK_ALLOW_MOCK` secret) | N/A (fake) | No | N/A | Signature NOT verified (mock, test-only) | Relies on the same DB-unique constraint once routed through `WebhookView` | Same ledger path as any provider | Mock always returns success | N/A | N/A | By design — never intended to run in production |
+| **paymob / fawry / paytabs / Banque Misr** | PLANNED, not built — `get_provider()` raises `ProviderError` for any of these names | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | No implementation exists; would be new work |
+
+### 9.15 Refund system classification: **PARTIAL**
+
+Core mechanics genuinely work: eligibility floor check (`status ==
+SUCCEEDED`, amount bounds), real provider API call (`stripe.Refund.
+create`), atomic reversing double-entry ledger posting (never mutates the
+original sale), `FinancialAuditLog` entry. **Missing**: (a) no approval/
+maker-checker workflow before money moves back out — unlike the parallel
+`AdjustmentRequest` dual-control pattern for manual ledger adjustments, a
+single admin can request-and-execute a refund in one call; (b) no wait for
+asynchronous provider confirmation — the synchronous API response is
+trusted directly, which is standard for card refunds but is not webhook-
+verified the way the forward payment path is; (c) a refunded customer's
+granted `CompanySubscription`/`UserSubscription` entitlement is **not**
+automatically revoked — `refund_payment` never touches subscription
+status, so a refunded customer keeps paid-feature access unless an admin
+separately intervenes. None of (a)-(c) were fixed this pass (each is a
+deliberate design decision requiring product/business sign-off on the
+desired behavior, not a drop-in bug fix) — flagged for a follow-up
+decision.
+
+### 9.16 Subscription cancellation — manual-admin-only, no period-end semantics
+
+Confirmed: the only code path that sets `CompanySubscription`/
+`UserSubscription.status` to `cancelled` is the admin-only `admin_views.
+subscriptions` endpoint (and the equivalent `core` admin API view) — no
+self-service cancellation UI exists. No `cancel_at_period_end`/
+`current_period_end` field exists on either model — cancellation is
+immediate-only in the data model, with no "at period end" option to
+expose even if a self-service UI were built. No Celery Beat task for
+renewal or failed-renewal/dunning logic exists anywhere (`apps.payments`
+has no `tasks.py` file at all). This matches the admin-managed launch
+model already documented in the code's own comments — not a regression,
+but confirmed as the current real behavior rather than assumed.
+
+### 9.17 npm dependency audit — safe fixes applied, remainder documented
+
+`npm audit` (initial): 28 vulnerabilities (1 low, 9 moderate, 16 high, 2
+critical). `npm audit fix` (non-force): resolved 12, leaving 16 (8
+moderate, 6 high, 2 critical) — ALL remaining issues require `npm audit
+fix --force`, which would force major version bumps: `vitest` 3→5,
+`tailwindcss` 3→4, `vite` 5→8, `react-router-dom` 6→7.18,
+`@tailwindcss/typography` 0.5.16→0.5.4 (a downgrade signal from npm's
+resolver — needs manual verification, not blindly applied). **None of
+these forced upgrades were applied** — per the directive's explicit
+instruction not to blindly force-fix, since every one is a breaking major
+version change requiring its own regression-testing pass. All but one
+(`@react-three/drei`'s transitive `uuid`) are **dev-dependency-only** or
+build-tool-only (`vite`, `vitest`, `tailwindcss`, `typescript-eslint`,
+`lovable-tagger`) — not shipped to end users in the production bundle,
+meaningfully lowering real-world exploitability despite the "critical"
+severity label (e.g. the `tinypool`/`vitest` RCE requires an attacker to
+control test-runner worker options, not reachable from the deployed app).
+`react-markdown@10.1.0`/`remark-gfm@4.0.1` (added for policy rendering)
+were confirmed via `package-lock.json` to introduce only standard,
+actively-maintained `unifiedjs`/`remark`/`mdast`/`hast` ecosystem
+transitive dependencies — no new vulnerability was introduced by adding
+them. **Documented, not fixed**: the 16 remaining issues all require a
+dedicated major-version-upgrade pass (separate from this hardening work)
+with its own test/regression cycle for `vite`/`vitest`/`tailwindcss`/
+`react-router-dom`.
+
+### 9.18 Markdown rendering XSS — hardened
+
+Confirmed `PolicyMarkdown.tsx` had no `rehype-raw`/`dangerouslySetInnerHTML`
+— react-markdown's default pipeline already rendered embedded raw HTML
+(`<script>`, `<img onerror=...>`) as inert text, not executable DOM. One
+real gap found: the `a` component override did not restrict URL schemes,
+so a `javascript:`/`data:` URL in markdown source would fall through to a
+real `<a href>`. **Fixed**: added an explicit scheme allowlist (http(s),
+mailto, tel, relative, anchor) for both link and image `src`/`href`
+attributes — anything else is neutralized to `#` (links) or not rendered
+at all (images). 10 new tests, including explicit proof that embedded
+`<script>`/`onerror` payloads never execute and that `javascript:`/`data:`
+URLs are neutralized while legitimate `https:`/`mailto:`/internal `/legal/
+...` links continue to work correctly.
+
+### 9.19 Security headers — reviewed, not changed this pass
+
+Confirmed present (nginx): HSTS, X-Frame-Options, X-Content-Type-Options,
+X-XSS-Protection, Referrer-Policy, Permissions-Policy. Confirmed present
+(Django production settings): `SECURE_HSTS_*`, `SESSION_COOKIE_SECURE`,
+`CSRF_COOKIE_SECURE`, `SECURE_CONTENT_TYPE_NOSNIFF`, `X_FRAME_OPTIONS`.
+Confirmed **absent** at both layers: `Content-Security-Policy` (no
+`django-csp` dependency either). `SESSION_COOKIE_SAMESITE`/
+`CSRF_COOKIE_SAMESITE`/`CSRF_COOKIE_HTTPONLY` rely on Django 4.2's
+framework defaults (`Lax`/`Lax`/`False` respectively) rather than being
+explicitly hardened — `CSRF_COOKIE_HTTPONLY=False` is actually correct/
+required for this SPA architecture (the frontend must read the CSRF
+cookie to echo it in a header) and is not a misconfiguration.
+**Not changed this pass**: adding a CSP requires auditing every actual
+script/asset source in production first (the Rasheed 3D assets, any CDN
+fonts, etc.) to avoid breaking functionality — the directive itself asks
+for a Report-Only CSP as the first step, which is new work beyond a
+"hardening pass" scope and is recommended as a dedicated follow-up task.
+
+### 9.20 Admin Legal RBAC — single flat role confirmed, not changed
+
+Confirmed: `IsAdminRole` is a single flat `request.user.role == "admin"`
+check, applied identically across the entire codebase (payments, legal,
+every other admin-gated endpoint) — not just this feature. Confirmed via
+repo-wide grep: Django's built-in `Permission`/`Group` system
+(`has_perm`, `Permission.objects`, `Group.objects`,
+`@permission_required`) is used **nowhere** in this repository. There is
+no existing granular-permission convention for this work to extend — a
+granular RBAC system (separate "can activate policy" vs. "can process
+DSR" permissions) would be a brand-new architectural pattern introduced
+solely for this feature while every other admin-gated domain
+(payments, jobs, users) stays on the flat role check. **Not implemented
+this pass** — introducing an inconsistent permission model for one domain
+only was judged a worse outcome than the current uniform-but-coarse
+model; a platform-wide RBAC upgrade (if desired) should be a deliberate,
+separately-scoped decision covering all admin domains, not just legal.
+
+### 9.21 Policy/DSR audit logging — confirmed sufficient for DSRs, a real gap for policy versions
+
+`admin_privacy_request_transition` → `services.transition_privacy_request`
+writes a genuine append-only `PrivacyRequestEvent` row for every DSR
+status change — confirmed sufficient. `policy_version_transition` →
+`services.activate_version`, however, only mutates the `PolicyVersion`
+row's own `status`/`approved_by`/`retired_at` fields in place — there is
+**no append-only history table** for policy-version status transitions
+specifically (unlike `ConsentRecord`/`PolicyAcceptance`, which genuinely
+are append-only). The repo's own `apps.core.models.ActivityLog` model
+exists but has zero call sites anywhere in the codebase (confirmed via
+repo-wide grep) — it is permanently-empty dead code, not an available
+audit mechanism today. **Not fixed this pass** (adding a dedicated
+`PolicyVersionEvent` table mirroring `PrivacyRequestEvent` is a clean,
+low-risk addition, but was deprioritized behind higher-impact fixes in
+this pass — flagged as a near-term follow-up, not a blocker, since
+`PolicyVersion.updated_at` plus the one-ACTIVE-version-at-a-time invariant
+still gives a verifiable, if less granular, history).
+
+### 9.22 Retention enforcement — built this pass (was previously database-only)
+
+`RetentionPolicy` previously had zero code acting on it. **Built**:
+`apps.legal.retention_service.run_retention_enforcement()` +
+`manage.py enforce_retention` — DRY_RUN by default, only enforces a
+category with BOTH a legally-confirmed `retention_period_days` (not NULL,
+`requires_legal_review=False`) AND an explicitly-registered handler
+(`interview_transcripts`, `cv_documents` today — `gdpr_export_files`/
+`account_deletion_grace` are deliberately excluded since they already have
+real enforcement elsewhere, to avoid two systems racing on the same
+rows). Any user under an active `LegalHold` is excluded from every
+category. 8 new tests. **Not wired into Celery Beat** — deliberate,
+per the directive's instruction to default to DRY_RUN until retention
+periods are legally confirmed; scheduling is a separate go-live step for
+whoever operates the recurring job once legal signs off on actual periods.
+
+### 9.23 Processor register — seeded from real integrations this pass
+
+Was previously an empty table despite the model existing. Seeded with
+exactly 4 vendors, each confirmed by actual code: AWS (S3 for CVs/media/
+interview audio, Bedrock for AI inference, Transcribe/Polly for voice,
+Secrets Manager for credentials), Stripe (hosted checkout), Typesense
+(search index), Sentry (backend error tracking — server-side only, not a
+browser tracker). `dpa_signed` left `NULL` (unconfirmed) for all four —
+never assumed signed or unsigned. Added a "Processors" tab to the Admin
+Legal Control Plane UI to view this register. 7 new tests, including an
+explicit assertion that `dpa_signed` is never defaulted to a boolean.
+
+### 9.24 AI processing disclosures — reviewed, consistent with real behavior
+
+The 4 seeded disclosures (Rasheed, job matching, interview practice, CV
+parsing) were cross-checked against this pass's own code audits of
+`apps/interviews/voice_service.py` and the broader AI touchpoints — the
+descriptions remain accurate. The `makes_final_decision` field has a
+hard server-side validator (`AIProcessingDisclosureSerializer.
+validate_makes_final_decision`) rejecting `True` for any entry — confirmed
+still enforced, re-tested this pass (`test_seed_legal_ai_disclosures_
+never_claim_final_decision`).
+
+### 9.25 Voice/interview privacy — one correction to the prior audit, two gaps confirmed still open
+
+**Correction**: the original master doc's claim that raw audio deletion
+"runs unconditionally after transcription" is **not accurate** — re-
+reading `voice_service.py`'s `speech_to_text()` shows the `s3_client.
+delete_object()` call only executes on the SUCCESS path (after a
+completed transcription job and a successful transcript fetch/parse). Any
+timeout, failed transcription job, or exception during fetch/parse returns
+early WITHOUT deleting the raw audio — meaning failed/timed-out voice
+sessions leave orphaned raw audio in S3 with no cleanup job. **Not fixed
+this pass** (would need either a `finally`-based cleanup or a separate
+scheduled sweep for orphaned S3 objects matching the audio key pattern —
+flagged as a follow-up). **Still confirmed open** (unchanged from the
+original audit): no retention/TTL field on `InterviewSession.transcript`
+or `InterviewQuestion.answer_text` — stored indefinitely; this pass's new
+`enforce_retention` command CAN clear `InterviewSession.transcript` once
+`RetentionPolicy("interview_transcripts")` is legally confirmed and
+switched off `requires_legal_review`, closing this gap operationally the
+moment legal provides a number. Employers confirmed to have zero code-
+level access to interview transcripts (clean separation, unchanged).
+
+### 9.26 CV/document security — malware scanning is real, with a packaging caveat
+
+**Correction to an earlier assumption**: ClamAV malware scanning is NOT
+merely absent — `apps.core.upload_security.scan_stream_for_malware()` is
+real code, genuinely called from `apps.profiles.serializers.
+CVUploadSerializer.validate_cv_file()`, with `CLAMAV_FAIL_CLOSED=True` by
+default (settings). **However**: `pyclamd` (the Python ClamAV client this
+code imports) is absent from every `requirements/*.txt` file — if not
+manually installed in the deployed environment, `_get_clamd_connection()`
+returns `None` and, combined with fail-closed, **every CV upload would be
+rejected outright** rather than silently skipping the scan. This is a
+packaging gap, not a scanning-logic gap. **Not fixed this pass** (adding
+`pyclamd` to requirements is a one-line change but requires confirming a
+real `clamd` daemon is actually provisioned on the production host first
+— otherwise fail-closed would newly start rejecting all CV uploads the
+moment the dependency is added, which is a deploy-coordination step
+beyond this pass's scope). MIME/extension/magic-byte/size validation and
+path-traversal protection all confirmed real and already enforced
+(`UploadValidator`). No automated CV retention/deletion job exists beyond
+on-demand user-triggered delete — same gap as interview transcripts,
+closable via `enforce_retention` once `cv_documents`' retention period is
+legally confirmed.
+
+---
+
+## 10. Final Acceptance checklist (A–Z areas)
 
 | Area | Done |
 |---|---|
@@ -562,5 +1209,27 @@ Verification after deploy:
 | V. Minors/children policy — not invented | ✅ §7 item 3 |
 | W. CV/document security gap — disclosed, not silently left unmentioned | ✅ Security Overview policy page |
 | X. Interview transcript retention — disclosed as unconfigured | ✅ §7 item 4 |
-| Y. Currency consistency gap (Job vs employer-posting model) — flagged | ✅ §3, §7 item 9 |
-| Z. CSP / cancellation-timing / processor-register gaps — flagged, not fabricated | ✅ §7 items 10–11, 5–6 |
+| Y. Currency consistency gap (Job vs employer-posting model) — flagged | ✅ §3, §7 item 9, decision deferred §9.6 |
+| Z. CSP / cancellation-timing / processor-register gaps — flagged, not fabricated | ✅ §7 items 10–11, §9.19/§9.16/§9.23 |
+
+---
+
+## 11. Overall project status (per directive §38/§40 — do not claim "fully compliant")
+
+| Component | Status |
+|---|---|
+| `apps.legal` backend domain (models/APIs/admin control plane) | **ENGINEERING READY** |
+| Legal Center public pages, cookie consent, Privacy Center, signup consent UI | **ENGINEERING READY** |
+| Payment/card-security guarantees (no raw card data, webhook verification incl. amount/currency, idempotency) | **ENGINEERING READY** |
+| Talent Pool privacy enforcement (incl. the critical 500-error fix) | **ENGINEERING READY** |
+| Retention enforcement engine | **ENGINEERING READY** (DRY_RUN only — execution requires §9.4's legal sign-off) |
+| Processor register, AI disclosures | **ENGINEERING READY**; DPA confirmation = **LEGAL REVIEW REQUIRED** |
+| Legal entity identity, refund window, governing law | **CONFIGURATION REQUIRED** (§9.4) |
+| Minors' age threshold, retention periods, DPA statuses | **LEGAL REVIEW REQUIRED** (§9.4) — explicitly not invented anywhere |
+| Everything in this document | **NOT YET PRODUCTION ACTIVE** — awaiting the user's execution of §8's deployment commands and the live-verification pass in §39 of the original directive, which this agent will perform once the user provides the actual command output |
+
+**This is engineering-complete and production-deployable code. It is not a
+claim of legal compliance, PCI compliance, GDPR compliance, or any other
+regulatory certification — those require qualified legal/compliance review
+of the items in §9.4, which this document deliberately does not attempt
+to resolve on its own.**
