@@ -246,6 +246,23 @@ export default function Settings() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <Link
+                to="/app/privacy-center"
+                className="surface-card-interactive flex items-center justify-between p-4 group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary-muted p-2">
+                    <Shield className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-body font-medium">{isAr ? "مركز الخصوصية" : "Privacy Center"}</p>
+                    <p className="text-caption text-muted-foreground">
+                      {isAr ? "تصدير البيانات، الموافقات، وطلبات الخصوصية" : "Data export, consent, and privacy requests"}
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors rtl:rotate-180" />
+              </Link>
               <div className="space-y-2">
                 <Label>{isAr ? "تغيير كلمة المرور" : "Change Password"}</Label>
                 {!showPwForm ? (

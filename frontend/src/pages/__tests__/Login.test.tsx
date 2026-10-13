@@ -39,6 +39,15 @@ vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({ toast: hooks.toast }),
 }));
 
+const legalMocks = vi.hoisted(() => ({
+  acceptPolicy: vi.fn().mockResolvedValue(undefined),
+  setConsent: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/services/legal", () => ({
+  acceptPolicy: legalMocks.acceptPolicy,
+  setConsent: legalMocks.setConsent,
+}));
+
 const renderLogin = (initialEntry = "/login") =>
   render(
     <MemoryRouter initialEntries={[initialEntry]}>
@@ -112,6 +121,67 @@ describe("Login Page", () => {
     fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
     expect(screen.getByLabelText(/First name/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Last name/i)).toBeInTheDocument();
+  });
+
+  describe("signup consent (Terms/Privacy required, marketing/Talent Pool optional)", () => {
+    it("disables submit until Terms + Privacy is accepted and never pre-checks optional consents", () => {
+      renderLogin();
+      fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+
+      const submit = screen.getByRole("button", { name: /Create account/i });
+      expect(submit).toBeDisabled();
+
+      const termsCheckbox = screen.getByLabelText(/Terms of Service/i);
+      const talentPoolCheckbox = screen.getByLabelText(/discover my profile/i);
+      const marketingCheckbox = screen.getByLabelText(/marketing emails/i);
+      expect(termsCheckbox).not.toBeChecked();
+      expect(talentPoolCheckbox).not.toBeChecked();
+      expect(marketingCheckbox).not.toBeChecked();
+
+      fireEvent.click(termsCheckbox);
+      expect(submit).not.toBeDisabled();
+    });
+
+    it("records Terms/Privacy acceptance but NOT marketing/Talent Pool consent when those boxes are left unchecked", async () => {
+      hooks.signUp.mockResolvedValue({ role: "jobseeker" });
+      renderLogin();
+      fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+
+      fireEvent.change(screen.getByLabelText(/First name/i), { target: { value: "Jane" } });
+      fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: "Doe" } });
+      fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: "jane@example.com" } });
+      fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: "password123" } });
+      fireEvent.click(screen.getByLabelText(/Terms of Service/i));
+      fireEvent.click(screen.getByRole("button", { name: /Create account/i }));
+
+      await waitFor(() => expect(hooks.signUp).toHaveBeenCalled());
+      await waitFor(() => {
+        expect(legalMocks.acceptPolicy).toHaveBeenCalledWith("terms", "signup");
+        expect(legalMocks.acceptPolicy).toHaveBeenCalledWith("privacy", "signup");
+      });
+      expect(legalMocks.setConsent).not.toHaveBeenCalled();
+    });
+
+    it("records independent opt-in consents only when explicitly checked", async () => {
+      hooks.signUp.mockResolvedValue({ role: "jobseeker" });
+      renderLogin();
+      fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+
+      fireEvent.change(screen.getByLabelText(/First name/i), { target: { value: "Jane" } });
+      fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: "Doe" } });
+      fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: "jane@example.com" } });
+      fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: "password123" } });
+      fireEvent.click(screen.getByLabelText(/Terms of Service/i));
+      fireEvent.click(screen.getByLabelText(/discover my profile/i));
+      fireEvent.click(screen.getByLabelText(/marketing emails/i));
+      fireEvent.click(screen.getByRole("button", { name: /Create account/i }));
+
+      await waitFor(() => expect(hooks.signUp).toHaveBeenCalled());
+      await waitFor(() => {
+        expect(legalMocks.setConsent).toHaveBeenCalledWith("talent_pool", true, "signup");
+        expect(legalMocks.setConsent).toHaveBeenCalledWith("marketing_emails", true, "signup");
+      });
+    });
   });
 
   describe("deep-link return destination (USAM Master integration)", () => {

@@ -4,6 +4,7 @@ import { Bookmark, Bell, FileText, ExternalLink, Shield, Lock, DollarSign, Eye, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Logo } from "@/components/Logo";
 import { RasheedAvatar } from "@/components/rashid/RasheedAvatar";
 import { useAuth } from "@/hooks/use-auth";
@@ -13,6 +14,7 @@ import { MOTION } from "@/lib/motion-tokens";
 import { useToast } from "@/hooks/use-toast";
 import { postAuthDestination } from "@/lib/role-routing";
 import { readNextParam } from "@/lib/return-url";
+import { acceptPolicy, setConsent } from "@/services/legal";
 
 const BENEFITS = [
   { icon: FileText, en: "Full job details & salary ranges", ar: "تفاصيل الوظائف الكاملة ونطاق الراتب" },
@@ -53,6 +55,12 @@ export default function Login() {
   const [lastName, setLastName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  // Signup consent — deliberately separate from each other: accepting Terms+
+  // Privacy is required to create an account; marketing and Talent Pool are
+  // independent OPT-IN toggles, never pre-checked, never bundled with Terms.
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [talentPoolOptIn, setTalentPoolOptIn] = useState(false);
 
   // Already-authenticated visitors (e.g. hitting /login directly) go to the
   // destination that matches their role, not a one-size-fits-all dashboard.
@@ -62,12 +70,35 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === "register" && !acceptedTerms) {
+      toast({
+        title: isAr ? "مطلوب" : "Required",
+        description: isAr
+          ? "يجب الموافقة على الشروط وسياسة الخصوصية لإنشاء حساب."
+          : "You must accept the Terms and Privacy Policy to create an account.",
+        variant: "destructive",
+      });
+      return;
+    }
     setLoading(true);
     try {
       const authedUser =
         mode === "login"
           ? await signIn(email, password)
           : await signUp(email, password, firstName, lastName, accountType);
+
+      if (mode === "register") {
+        // Record Terms + Privacy acceptance (required) and the two
+        // independent OPT-IN consents, if the user chose them. Each call is
+        // best-effort — a failure here must not block account creation that
+        // already succeeded; the user can always revisit these in the
+        // Privacy Center / Settings.
+        void acceptPolicy("terms", "signup").catch(() => {});
+        void acceptPolicy("privacy", "signup").catch(() => {});
+        if (marketingOptIn) void setConsent("marketing_emails", true, "signup").catch(() => {});
+        if (talentPoolOptIn) void setConsent("talent_pool", true, "signup").catch(() => {});
+      }
+
       // A brand-new COMPANY signup is already role=employer (set at creation),
       // but has no company/org yet — send it into employer onboarding to attach
       // the company. (Login of an existing employer skips this and goes to the
@@ -265,7 +296,65 @@ export default function Login() {
               )}
             </div>
 
-            <Button type="submit" size="xl" className="w-full rounded-xl" loading={loading}>
+            {mode === "register" && (
+              <div className="space-y-2.5 rounded-xl border border-border p-3.5">
+                <div className="flex items-start gap-2.5">
+                  <Checkbox
+                    id="accept-terms"
+                    checked={acceptedTerms}
+                    onCheckedChange={(v) => setAcceptedTerms(v === true)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="accept-terms" className="text-xs leading-snug font-normal text-foreground cursor-pointer">
+                    {isAr ? "أوافق على " : "I agree to the "}
+                    <Link to="/legal/terms" target="_blank" className="text-primary link-underline">
+                      {isAr ? "شروط الخدمة" : "Terms of Service"}
+                    </Link>
+                    {isAr ? " و" : " and "}
+                    <Link to="/legal/privacy" target="_blank" className="text-primary link-underline">
+                      {isAr ? "سياسة الخصوصية" : "Privacy Policy"}
+                    </Link>
+                    {isAr ? "." : "."}
+                  </Label>
+                </div>
+
+                {/* Independent, OPT-IN consents — never pre-checked, never
+                    bundled with Terms acceptance above. */}
+                {accountType === "individual" && (
+                  <div className="flex items-start gap-2.5">
+                    <Checkbox
+                      id="talent-pool-opt-in"
+                      checked={talentPoolOptIn}
+                      onCheckedChange={(v) => setTalentPoolOptIn(v === true)}
+                      className="mt-0.5"
+                    />
+                    <Label htmlFor="talent-pool-opt-in" className="text-xs leading-snug font-normal text-muted-foreground cursor-pointer">
+                      {isAr
+                        ? "اسمح لأصحاب العمل الموثقين باكتشاف ملفي (اختياري، يمكن تغييره لاحقاً)"
+                        : "Let verified employers discover my profile (optional, changeable anytime)"}
+                    </Label>
+                  </div>
+                )}
+                <div className="flex items-start gap-2.5">
+                  <Checkbox
+                    id="marketing-opt-in"
+                    checked={marketingOptIn}
+                    onCheckedChange={(v) => setMarketingOptIn(v === true)}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="marketing-opt-in" className="text-xs leading-snug font-normal text-muted-foreground cursor-pointer">
+                    {isAr
+                      ? "أرسل لي رسائل تسويقية (اختياري)"
+                      : "Send me marketing emails (optional)"}
+                  </Label>
+                </div>
+              </div>
+            )}
+
+            <Button
+              type="submit" size="xl" className="w-full rounded-xl" loading={loading}
+              disabled={mode === "register" && !acceptedTerms}
+            >
               {mode === "login"
                 ? (isAr ? "تسجيل الدخول" : "Sign in")
                 : accountType === "company"

@@ -168,6 +168,22 @@ export default function EmployerBilling() {
           <div className="p-6 border-b">
             <h2 className="section-heading mb-0">{isAr ? "الباقات المتاحة" : "Available plans"}</h2>
           </div>
+          <div className="px-6 pt-4 text-caption text-muted-foreground">
+            {isAr ? (
+              <>
+                الأسعار بالجنيه المصري (EGP) ما لم يُذكر غيره. الباقات تتجدد تلقائياً حتى الإلغاء — راجع{" "}
+                <a href="/legal/refunds" target="_blank" className="text-primary link-underline">سياسة الاسترداد والإلغاء</a>
+                {" "}قبل الاشتراك.
+              </>
+            ) : (
+              <>
+                Prices are in Egyptian Pound (EGP) unless stated otherwise. Plans renew automatically until
+                cancelled — review the{" "}
+                <a href="/legal/refunds" target="_blank" className="text-primary link-underline">Refund &amp; Cancellation Policy</a>
+                {" "}before subscribing.
+              </>
+            )}
+          </div>
           <div className="p-6">
             {packagesQ.isLoading ? (
               <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>

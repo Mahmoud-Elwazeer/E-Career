@@ -18,6 +18,14 @@ from apps.accounts.views import (
     ExtensionTokenRevokeView,
     ExtensionProfileView,
 )
+from apps.accounts.views_gdpr import (
+    request_data_export,
+    check_export_status,
+    list_export_requests,
+    request_account_deletion,
+    cancel_account_deletion,
+    deletion_status,
+)
 
 app_name = "accounts"
 
@@ -52,4 +60,18 @@ urlpatterns = [
     path("extension-tokens/", ExtensionTokenListCreateView.as_view(), name="extension-token-list"),
     path("extension-tokens/<int:token_id>/revoke/", ExtensionTokenRevokeView.as_view(), name="extension-token-revoke"),
     path("extension/profile/", ExtensionProfileView.as_view(), name="extension-profile"),
+
+    # Self-service GDPR data export / account deletion (Privacy Center).
+    # These views already existed (apps.accounts.views_gdpr) but were never
+    # wired into a URLconf — connecting them here is required for the real
+    # Privacy Center UI to work end-to-end rather than calling dead endpoints.
+    path("data-export/", request_data_export, name="gdpr-data-export-request"),
+    # DataExportRequest.id is a BigAutoField pk (UUIDModel adds a separate
+    # `uuid` display field but views_gdpr.py queries by `id`), so this must
+    # be an int path converter, not uuid.
+    path("data-export/<int:request_id>/", check_export_status, name="gdpr-data-export-status"),
+    path("data-exports/", list_export_requests, name="gdpr-data-export-list"),
+    path("account/deletion-request/", request_account_deletion, name="gdpr-account-deletion-request"),
+    path("account/cancel-deletion/", cancel_account_deletion, name="gdpr-account-deletion-cancel"),
+    path("account/deletion-status/", deletion_status, name="gdpr-account-deletion-status"),
 ]

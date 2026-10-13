@@ -200,6 +200,7 @@ export default {
   plugins: [
     require("tailwindcss-rtl") as any,
     require("tailwindcss-animate") as any,
+    require("@tailwindcss/typography") as any,
     // Enable `night:` utility variant driven by the `.night` root class.
     function nightVariant({ addVariant }: { addVariant: (name: string, def: string) => void }) {
       addVariant("night", ".night &");

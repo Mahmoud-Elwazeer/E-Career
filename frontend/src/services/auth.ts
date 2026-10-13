@@ -111,3 +111,50 @@ export async function changePassword(
 export async function deleteAccount() {
   return apiRequest("/users/me/", { method: "DELETE" });
 }
+
+// ── GDPR self-service (Privacy Center) ───────────────────────────────────────
+// Scoped data export + grace-period account deletion, distinct from the
+// immediate `deleteAccount()` above (which hard-deletes via /users/me/).
+// These give a 30-day cancellable grace period and a downloadable export.
+
+export interface DataExportRequestStatus {
+  request_id: string;
+  status: "pending" | "processing" | "completed" | "failed" | "expired";
+  requested_at: string;
+  completed_at?: string | null;
+  expires_at?: string | null;
+  download_url?: string;
+  file_size?: number;
+  error?: string;
+}
+
+export async function requestDataExport(): Promise<{ request_id: string; status?: string; estimated_time?: string }> {
+  return apiRequest("/auth/data-export/", { method: "POST" });
+}
+
+export async function getDataExportStatus(requestId: string): Promise<DataExportRequestStatus> {
+  return apiRequest(`/auth/data-export/${requestId}/`);
+}
+
+export async function listDataExports(): Promise<{ exports: DataExportRequestStatus[] }> {
+  return apiRequest("/auth/data-exports/");
+}
+
+export interface DeletionStatus {
+  pending: boolean;
+  scheduled_for?: string;
+  request_id?: string;
+  days_remaining?: number;
+}
+
+export async function requestAccountDeletionGrace(reason?: string): Promise<{ request_id: string; scheduled_for: string; grace_period_days: number }> {
+  return apiRequest("/auth/account/deletion-request/", { method: "DELETE", body: reason ? { reason } : undefined });
+}
+
+export async function cancelAccountDeletionGrace(): Promise<void> {
+  await apiRequest("/auth/account/cancel-deletion/", { method: "POST" });
+}
+
+export async function getAccountDeletionStatus(): Promise<DeletionStatus> {
+  return apiRequest("/auth/account/deletion-status/");
+}

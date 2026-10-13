@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
 import { Logo } from "@/components/Logo";
+import { openCookiePreferences } from "@/components/legal/CookieConsentBanner";
 
 /**
  * Footer — grouped, complete navigation surface.
@@ -38,6 +39,13 @@ export function Footer() {
     { to: "/contact", en: "Contact", ar: "تواصل معنا", gated: false },
     { to: "/api-docs", en: "API Docs", ar: "وثائق الواجهة", gated: false },
   ];
+  const legal = [
+    { to: "/legal/terms", en: "Terms of Service", ar: "شروط الخدمة" },
+    { to: "/legal/privacy", en: "Privacy Policy", ar: "سياسة الخصوصية" },
+    { to: "/legal/cookies", en: "Cookie Policy", ar: "سياسة ملفات تعريف الارتباط" },
+    { to: "/legal/refunds", en: "Refund & Cancellation", ar: "الاسترداد والإلغاء" },
+    { to: "/legal/payment-security", en: "Payment Security", ar: "أمان الدفع" },
+  ];
 
   const linkCls = "text-body opacity-75 hover:opacity-100 transition-opacity link-underline w-fit";
 
@@ -49,7 +57,7 @@ export function Footer() {
       <div className="container relative z-10 py-16">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-12">
           {/* Brand */}
-          <div className="md:col-span-4 max-w-sm">
+          <div className="md:col-span-3 max-w-sm">
             <Logo variant="onDark" className="h-9 mb-4" />
             <p className="text-body opacity-75 leading-relaxed">
               {isAr
@@ -59,7 +67,7 @@ export function Footer() {
           </div>
 
           {/* For Individuals */}
-          <div className="md:col-span-3">
+          <div className="md:col-span-2">
             <h4 className="font-medium mb-3">{isAr ? "للأفراد" : "For Individuals"}</h4>
             <nav className="flex flex-col gap-2">
               {individuals.map((l) => (
@@ -71,7 +79,7 @@ export function Footer() {
           </div>
 
           {/* For Employers */}
-          <div className="md:col-span-3">
+          <div className="md:col-span-2">
             <h4 className="font-medium mb-3">{isAr ? "لأصحاب العمل" : "For Employers"}</h4>
             <nav className="flex flex-col gap-2">
               {employers.map((l) => (
@@ -91,6 +99,24 @@ export function Footer() {
                   {isAr ? l.ar : l.en}
                 </Link>
               ))}
+            </nav>
+          </div>
+
+          {/* Legal — real, working routes only; no `#` placeholders. */}
+          <div className="md:col-span-3">
+            <h4 className="font-medium mb-3">{isAr ? "القانونية" : "Legal"}</h4>
+            <nav className="flex flex-col gap-2">
+              {legal.map((l) => (
+                <Link key={l.to} to={l.to} className={linkCls}>
+                  {isAr ? l.ar : l.en}
+                </Link>
+              ))}
+              <Link to="/legal" className={linkCls}>
+                {isAr ? "عرض الكل" : "View all"}
+              </Link>
+              <button type="button" onClick={openCookiePreferences} className={`${linkCls} text-start`}>
+                {isAr ? "إعدادات ملفات تعريف الارتباط" : "Cookie settings"}
+              </button>
             </nav>
           </div>
         </div>

@@ -66,12 +66,17 @@ const Contact = lazy(() => import("./pages/Contact"));
 const Billing = lazy(() => import("./pages/Billing"));
 const ForYou = lazy(() => import("./pages/ForYou"));
 const AdminFinance = lazy(() => import("./pages/AdminFinance"));
+const LegalCenter = lazy(() => import("./pages/legal/LegalCenter"));
+const PolicyPage = lazy(() => import("./pages/legal/PolicyPage"));
+const PrivacyCenter = lazy(() => import("./pages/PrivacyCenter"));
+const AdminLegal = lazy(() => import("./pages/AdminLegal"));
 // Dev/QA-only: Rasheed 3D asset validation overlay (?rasheedCheck=1).
 const RasheedGlbCheck = lazy(() =>
   import("@/components/rashid/RasheedGlbCheck").then((m) => ({ default: m.RasheedGlbCheck })),
 );
 
 import { RasheedCompanion } from "./components/rashid/RasheedCompanion";
+import { CookieConsentBanner } from "./components/legal/CookieConsentBanner";
 import { OnboardingTour } from "./components/OnboardingTour";
 import { OnboardingFlow } from "./components/landing/OnboardingFlow";
 import { useI18nSync } from "@/hooks/use-i18n";
@@ -112,6 +117,10 @@ function AnimatedRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
+        {/* Legal Center — public, SEO-indexable, stable routes */}
+        <Route path="/legal" element={<LegalCenter />} />
+        <Route path="/legal/:slug" element={<PolicyPage />} />
+
         {/* Auth-protected app routes */}
         <Route path="/app/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
         <Route path="/app/for-you" element={<RequireAuth><ForYou /></RequireAuth>} />
@@ -139,6 +148,8 @@ function AnimatedRoutes() {
         <Route path="/admin" element={<RequireAdmin><AdminDashboard /></RequireAdmin>} />
         <Route path="/admin/intelligence" element={<RequireAdmin><IntelligenceDashboard /></RequireAdmin>} />
         <Route path="/admin/finance" element={<RequireAdmin><AdminFinance /></RequireAdmin>} />
+        <Route path="/admin/legal" element={<RequireAdmin><AdminLegal /></RequireAdmin>} />
+        <Route path="/app/privacy-center" element={<RequireAuth><PrivacyCenter /></RequireAuth>} />
         <Route path="/api-docs" element={<ApiDocs />} />
         
         {/* Employer routes */}
@@ -232,6 +243,9 @@ function AppContent() {
             <ErrorBoundary fallback={null}><RasheedCompanion /></ErrorBoundary>
             <ErrorBoundary fallback={null}><OnboardingWrapper /></ErrorBoundary>
             <ErrorBoundary fallback={null}><OnboardingTour /></ErrorBoundary>
+            {/* Cookie consent must never block login/auth — isolated so a
+                failure here can't take down the rest of the app either. */}
+            <ErrorBoundary fallback={null}><CookieConsentBanner /></ErrorBoundary>
           </BrowserRouter>
           {showRasheedCheck && (
             <Suspense fallback={null}>

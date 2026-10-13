@@ -94,6 +94,30 @@ export default function Billing() {
         </div>
       )}
 
+      {/* Legal disclosure — shown before any purchase, per directive: recurring
+          billing/cancellation/refund terms must be disclosed before checkout. */}
+      <div className="mb-6 rounded-xl border border-border bg-muted/30 p-4 text-caption text-muted-foreground">
+        {isAr ? (
+          <>
+            الأسعار بالجنيه المصري (EGP) ما لم يُذكر غيره. الباقات الشهرية/السنوية تتجدد تلقائياً حتى الإلغاء.
+            راجع{" "}
+            <a href="/legal/refunds" target="_blank" className="text-primary link-underline">سياسة الاسترداد والإلغاء</a>
+            {" "}و{" "}
+            <a href="/legal/payment-security" target="_blank" className="text-primary link-underline">سياسة أمان الدفع</a>
+            {" "}قبل الشراء.
+          </>
+        ) : (
+          <>
+            Prices are in Egyptian Pound (EGP) unless stated otherwise. Monthly/yearly plans renew automatically
+            until cancelled. Review the{" "}
+            <a href="/legal/refunds" target="_blank" className="text-primary link-underline">Refund &amp; Cancellation Policy</a>
+            {" "}and{" "}
+            <a href="/legal/payment-security" target="_blank" className="text-primary link-underline">Payment &amp; Card Security Policy</a>
+            {" "}before purchasing.
+          </>
+        )}
+      </div>
+
       {/* Packages */}
       {pkgQuery.isLoading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
