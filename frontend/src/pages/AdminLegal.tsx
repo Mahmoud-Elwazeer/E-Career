@@ -6,7 +6,7 @@
  * no separate audit UI needed, mirroring the Financial Control Center.
  */
 import { useEffect, useState } from "react";
-import { Loader2, FileText, Clock, Globe2, Cookie, Inbox, Building2, RefreshCw } from "lucide-react";
+import { Loader2, FileText, Clock, Globe2, Cookie, Inbox, Building2, RefreshCw, Server } from "lucide-react";
 import { AppShell } from "@/components/shells/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,9 +21,10 @@ import {
   adminListRetention, adminUpdateRetention,
   adminListJurisdictions, adminListCookieCategories,
   adminListDsrQueue, adminTransitionDsr,
-  adminGetLegalEntity, adminUpdateLegalEntity,
+  adminGetLegalEntity, adminUpdateLegalEntity, adminListProcessors,
   type PolicyVersion, type RetentionPolicyRow, type JurisdictionProfile,
   type CookieCategoryDef, type PrivacyRequest, type LegalEntityPublic,
+  type ProcessorRecordRow,
 } from "@/services/legal";
 
 function StatusBadge({ status }: { status: string }) {
@@ -233,6 +234,41 @@ function DsrQueuePanel() {
   );
 }
 
+function ProcessorsPanel() {
+  const [rows, setRows] = useState<ProcessorRecordRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    adminListProcessors().then(setRows).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-caption text-muted-foreground">
+        Sub-processors confirmed by actual code/infrastructure only — never added on assumption.
+        DPA status shows "unconfirmed" until legal verifies it; it is never defaulted to signed or unsigned.
+      </p>
+      {rows.map((p) => (
+        <Card key={p.uuid}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <p className="font-medium">{p.name}</p>
+              <Badge variant={p.dpa_signed === true ? "success" : p.dpa_signed === false ? "destructive" : "warning"}>
+                DPA: {p.dpa_signed === true ? "signed" : p.dpa_signed === false ? "not signed" : "unconfirmed"}
+              </Badge>
+            </div>
+            <p className="text-caption text-muted-foreground mt-1">{p.purpose}</p>
+            <p className="text-caption text-muted-foreground mt-1">Data: {p.data_categories}</p>
+            {p.country && <p className="text-caption text-muted-foreground">Location: {p.country}</p>}
+          </CardContent>
+        </Card>
+      ))}
+      {rows.length === 0 && <p className="text-body text-muted-foreground">No processors seeded yet. Run the seed_legal command.</p>}
+    </div>
+  );
+}
+
 function LegalEntityPanel() {
   const [entity, setEntity] = useState<LegalEntityPublic | null>(null);
   const [saving, setSaving] = useState(false);
@@ -310,6 +346,7 @@ export default function AdminLegal() {
           <TabsTrigger value="jurisdictions" className="gap-1.5"><Globe2 className="h-3.5 w-3.5" />Jurisdictions</TabsTrigger>
           <TabsTrigger value="cookies" className="gap-1.5"><Cookie className="h-3.5 w-3.5" />Cookie categories</TabsTrigger>
           <TabsTrigger value="dsr" className="gap-1.5"><Inbox className="h-3.5 w-3.5" />DSR queue</TabsTrigger>
+          <TabsTrigger value="processors" className="gap-1.5"><Server className="h-3.5 w-3.5" />Processors</TabsTrigger>
           <TabsTrigger value="entity" className="gap-1.5"><Building2 className="h-3.5 w-3.5" />Legal entity</TabsTrigger>
         </TabsList>
         <TabsContent value="versions"><VersionsPanel /></TabsContent>
@@ -317,6 +354,7 @@ export default function AdminLegal() {
         <TabsContent value="jurisdictions"><JurisdictionsPanel /></TabsContent>
         <TabsContent value="cookies"><CookieCategoriesPanel /></TabsContent>
         <TabsContent value="dsr"><DsrQueuePanel /></TabsContent>
+        <TabsContent value="processors"><ProcessorsPanel /></TabsContent>
         <TabsContent value="entity"><LegalEntityPanel /></TabsContent>
       </Tabs>
     </AppShell>

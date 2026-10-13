@@ -133,6 +133,101 @@ def test_webhook_with_invalid_signature_is_rejected(monkeypatch):
     assert not WebhookEvent.objects.filter(provider="stripe").exists()
 
 
+# ── Webhook amount/currency cross-check (hardening pass) ─────────────────────
+
+def test_webhook_amount_mismatch_is_rejected_and_order_not_marked_paid(monkeypatch):
+    """A validly-signed webhook referencing the right provider_reference but
+    reporting a DIFFERENT amount than the stored Payment must not be trusted
+    — this closes the gap where signature verification alone was treated as
+    sufficient proof of what was actually charged."""
+    user = User.objects.create_user(email="mismatch1@test.com", password="pw12345x")
+    pkg = Package.objects.create(name="Pro", slug="pro-mismatch1", price_amount=5000, currency="EGP")
+    order = services.create_order(user=user, package=pkg)
+    payment = Payment.objects.create(
+        order=order, amount=order.total, currency="EGP",
+        provider="stripe", provider_reference="pi_mismatch1", status=Payment.Status.PROCESSING,
+    )
+
+    class MismatchedAmountAdapter:
+        def parse_webhook(self, *, body, headers):
+            return {
+                "event_id": "evt_amt_mismatch", "event_type": "checkout.session.completed",
+                "provider_reference": "pi_mismatch1", "status": "paid",
+                "amount": order.total + 100000,  # way more than was actually charged
+                "currency": "EGP", "signature_valid": True, "raw": {},
+            }
+
+    import apps.payments.views as views_module
+    monkeypatch.setattr(views_module, "get_provider", lambda name: MismatchedAmountAdapter())
+
+    resp = APIClient().post("/api/v1/payments/webhooks/stripe/", {}, format="json")
+    assert resp.status_code == 409
+
+    order.refresh_from_db()
+    assert order.status != Order.Status.PAID
+    event = WebhookEvent.objects.get(provider_event_id="evt_amt_mismatch")
+    assert event.status == WebhookEvent.Status.FAILED
+    assert "amount mismatch" in event.error
+
+
+def test_webhook_currency_mismatch_is_rejected_and_order_not_marked_paid(monkeypatch):
+    user = User.objects.create_user(email="mismatch2@test.com", password="pw12345x")
+    pkg = Package.objects.create(name="Pro", slug="pro-mismatch2", price_amount=5000, currency="EGP")
+    order = services.create_order(user=user, package=pkg)
+    Payment.objects.create(
+        order=order, amount=order.total, currency="EGP",
+        provider="stripe", provider_reference="pi_mismatch2", status=Payment.Status.PROCESSING,
+    )
+
+    class MismatchedCurrencyAdapter:
+        def parse_webhook(self, *, body, headers):
+            return {
+                "event_id": "evt_cur_mismatch", "event_type": "checkout.session.completed",
+                "provider_reference": "pi_mismatch2", "status": "paid",
+                "amount": order.total, "currency": "USD",  # payment was EGP
+                "signature_valid": True, "raw": {},
+            }
+
+    import apps.payments.views as views_module
+    monkeypatch.setattr(views_module, "get_provider", lambda name: MismatchedCurrencyAdapter())
+
+    resp = APIClient().post("/api/v1/payments/webhooks/stripe/", {}, format="json")
+    assert resp.status_code == 409
+    order.refresh_from_db()
+    assert order.status != Order.Status.PAID
+    event = WebhookEvent.objects.get(provider_event_id="evt_cur_mismatch")
+    assert "currency mismatch" in event.error
+
+
+def test_webhook_matching_amount_and_currency_marks_order_paid(monkeypatch):
+    """Sanity check: the new cross-check doesn't break the legitimate path —
+    a webhook that genuinely matches the stored Payment still succeeds."""
+    user = User.objects.create_user(email="matched@test.com", password="pw12345x")
+    pkg = Package.objects.create(name="Pro", slug="pro-matched", price_amount=5000, currency="EGP")
+    order = services.create_order(user=user, package=pkg)
+    Payment.objects.create(
+        order=order, amount=order.total, currency="EGP",
+        provider="stripe", provider_reference="pi_matched", status=Payment.Status.PROCESSING,
+    )
+
+    class MatchingAdapter:
+        def parse_webhook(self, *, body, headers):
+            return {
+                "event_id": "evt_matched", "event_type": "checkout.session.completed",
+                "provider_reference": "pi_matched", "status": "paid",
+                "amount": order.total, "currency": "EGP",
+                "signature_valid": True, "raw": {},
+            }
+
+    import apps.payments.views as views_module
+    monkeypatch.setattr(views_module, "get_provider", lambda name: MatchingAdapter())
+
+    resp = APIClient().post("/api/v1/payments/webhooks/stripe/", {}, format="json")
+    assert resp.status_code == 200
+    order.refresh_from_db()
+    assert order.status == Order.Status.PAID
+
+
 # ── Failed payment never grants entitlement ──────────────────────────────────
 
 def test_failed_payment_never_marks_order_paid_or_grants_entitlement():

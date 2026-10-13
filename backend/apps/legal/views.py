@@ -19,6 +19,7 @@ Endpoints:
 """
 from __future__ import annotations
 
+from django.db import transaction as db_transaction
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -71,7 +72,21 @@ def policy_detail(request, slug):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@db_transaction.atomic
 def policy_accept(request, slug):
+    """Record acceptance of a policy document.
+
+    The frontend never supplies (and this view never trusts) a specific
+    policy_version id — it always re-resolves "the currently ACTIVE version"
+    fresh, inside this request's own transaction, at the moment of
+    submission. This closes the race window the directive calls out
+    explicitly: a user who loaded the signup page while v1 was active, then
+    submitted after an admin activated v2, gets their acceptance correctly
+    bound to v2 (whatever is truly active right now), never to a stale
+    version the frontend merely rendered earlier. Backend remains
+    authoritative; the frontend checkbox is only a UI gate for the submit
+    button, not a source of truth for which version was accepted.
+    """
     locale = request.data.get("locale", "en")
     version = services.get_active_version(slug, locale=locale)
     if not version:

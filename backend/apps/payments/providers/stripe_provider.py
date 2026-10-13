@@ -82,11 +82,18 @@ class StripeProvider(PaymentProvider):
         except Exception as e:
             raise ProviderError(f"Invalid Stripe signature: {e}") from e
         obj = event["data"]["object"]
+        # Surface amount/currency so the caller (WebhookView) can cross-check
+        # them against the stored Payment row before trusting a "paid" status
+        # — a validly-signed event is necessary but not sufficient; it must
+        # also actually confirm the SAME amount/currency USAM expects for
+        # this payment, not just any amount for the right provider_reference.
         return {
             "event_id": event["id"],
             "event_type": event["type"],
             "provider_reference": obj.get("id", ""),
             "status": obj.get("payment_status") or obj.get("status", ""),
+            "amount": obj.get("amount_total") if obj.get("amount_total") is not None else obj.get("amount"),
+            "currency": (obj.get("currency") or "").upper() or None,
             "signature_valid": True,
             "raw": event,
         }

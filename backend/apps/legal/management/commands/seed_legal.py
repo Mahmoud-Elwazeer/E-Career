@@ -22,7 +22,7 @@ from django.utils import timezone
 from apps.legal.models import (
     PolicyDocument, PolicyVersion, ConsentPurpose, CookieCategory,
     JurisdictionPolicyProfile, LegalEntityConfig, AIProcessingDisclosure,
-    RetentionPolicy,
+    RetentionPolicy, ProcessorRecord,
 )
 from apps.legal import services
 
@@ -339,6 +339,7 @@ class Command(BaseCommand):
         self._seed_jurisdictions()
         self._seed_ai_disclosures()
         self._seed_retention_matrix()
+        self._seed_processors()
         LegalEntityConfig.load()  # ensure the singleton row exists, unconfigured
         self.stdout.write(self.style.SUCCESS("Legal domain seed complete."))
 
@@ -513,4 +514,57 @@ class Command(BaseCommand):
                     "requires_legal_review": requires_review, "legal_basis": note,
                 },
             )
+
+    def _seed_processors(self):
+        """Seed ONLY vendors confirmed by actual code/infra in this
+        repository — never a company merely because a client library is
+        installed, and never a vendor assumed from a product category. Each
+        entry's `data_categories`/`purpose` describes the REAL integration
+        point found in code. `contract_reference`/`dpa_signed` are left
+        blank/NULL (DPA status not confirmable from code — legal must
+        confirm and fill these in) rather than assumed signed.
+        """
+        processors = [
+            dict(
+                name="Amazon Web Services (AWS)",
+                purpose="Cloud infrastructure: S3 (CV/media/interview-audio storage), "
+                        "Bedrock (AI model inference for Rasheed/matching/CV parsing), "
+                        "Transcribe + Polly (voice interview speech-to-text/text-to-speech), "
+                        "Secrets Manager (credential storage).",
+                data_categories="CV/resume files, interview audio (deleted post-transcription), "
+                                "AI prompt/response content, encrypted secrets",
+                country="Varies by configured AWS region",
+            ),
+            dict(
+                name="Stripe, Inc.",
+                purpose="Payment processing via Stripe-hosted Checkout. Card data is "
+                        "entered directly on Stripe's hosted page and never transits USAM's "
+                        "servers.",
+                data_categories="Order/payment metadata (amount, currency, reference) — "
+                                "no card/PAN/CVV data",
+                country="United States (Stripe's registered jurisdiction)",
+            ),
+            dict(
+                name="Typesense",
+                purpose="Full-text/faceted job search index (self-hosted or Typesense Cloud, "
+                        "per deployment configuration).",
+                data_categories="Job listing content (titles, descriptions, company names) — "
+                                "not personal/candidate data",
+                country="Depends on deployment (self-hosted vs. Typesense Cloud region)",
+            ),
+            dict(
+                name="Sentry",
+                purpose="Backend error tracking and performance monitoring "
+                        "(sentry-sdk, server-side only — not a browser-loaded tracker).",
+                data_categories="Error stack traces, request metadata; PII scrubbing "
+                                "behavior depends on Sentry project configuration",
+                country="Depends on configured Sentry region/plan",
+            ),
+        ]
+        for data in processors:
+            ProcessorRecord.objects.get_or_create(name=data["name"], defaults=data)
+        self.stdout.write(
+            "Processor register seeded (AWS, Stripe, Typesense, Sentry — confirmed by code). "
+            "contract_reference/dpa_signed left unset for legal to confirm."
+        )
         self.stdout.write("Retention matrix seeded.")

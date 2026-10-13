@@ -124,6 +124,62 @@ def test_needs_reacceptance_true_before_accept_false_after(terms_doc, user):
     assert services.needs_reacceptance(user, "terms") is False
 
 
+def test_policy_accept_binds_to_whichever_version_is_active_at_submit_time_not_a_stale_one(
+    terms_doc, auth_client, user,
+):
+    """Race-condition guard: the backend must resolve 'the active version' at
+    the moment /policies/<slug>/accept/ is called, never trust a version id
+    supplied by (or rendered earlier on) the frontend. Simulates a user who
+    loaded the signup page while v1 was active, then an admin activates v2
+    before the user actually submits — the acceptance must bind to v2."""
+    v1 = _approved_version(terms_doc, "2026.1")
+    services.activate_version(version=v1)
+
+    # User "loads the page" seeing v1 as active (not actually calling accept yet).
+    assert services.get_active_version("terms").version_label == "2026.1"
+
+    # Admin activates a new version before the user's accept request lands.
+    v2 = _approved_version(terms_doc, "2026.2")
+    services.activate_version(version=v2)
+
+    # The user's (delayed) accept request now resolves to whatever is ACTUALLY
+    # active server-side — v2, never the stale v1 the page originally showed.
+    resp = auth_client.post("/api/v1/legal/policies/terms/accept/", {"method": "signup"}, format="json")
+    assert resp.status_code == 201
+    assert resp.json()["data"]["policy_version"] == v2.pk
+    assert not user.legal_acceptances.filter(policy_version=v1).exists()
+    assert user.legal_acceptances.filter(policy_version=v2).exists()
+
+
+def test_policy_version_update_preserves_old_acceptance_and_tracks_new_separately(terms_doc, user):
+    """v1 active + accepted -> v2 activates -> v1's acceptance record remains
+    historically intact (never overwritten/deleted) -> needs_reacceptance
+    becomes True for v2 -> accepting v2 creates a SEPARATE acceptance row,
+    v1's row is untouched."""
+    v1 = _approved_version(terms_doc, "2026.1")
+    services.activate_version(version=v1)
+    v1_acceptance = services.record_acceptance(user=user, policy_version=v1, method="signup")
+    assert services.needs_reacceptance(user, "terms") is False
+
+    v2 = _approved_version(terms_doc, "2026.2", material_change=True)
+    services.activate_version(version=v2)
+
+    # Old acceptance untouched.
+    v1_acceptance.refresh_from_db()
+    assert v1_acceptance.policy_version_id == v1.id
+    assert user.legal_acceptances.filter(policy_version=v1).count() == 1
+
+    # System can determine re-acknowledgement is now required.
+    assert services.needs_reacceptance(user, "terms") is True
+
+    # Accepting v2 creates a NEW, separate row — v1's row is never mutated.
+    v2_acceptance = services.record_acceptance(user=user, policy_version=v2, method="reacceptance_prompt")
+    assert v2_acceptance.pk != v1_acceptance.pk
+    assert user.legal_acceptances.filter(policy_version=v1).count() == 1
+    assert user.legal_acceptances.filter(policy_version=v2).count() == 1
+    assert services.needs_reacceptance(user, "terms") is False
+
+
 # ── Admin version editing rules ───────────────────────────────────────────────
 
 def test_non_draft_version_content_is_frozen(terms_doc, admin_client):

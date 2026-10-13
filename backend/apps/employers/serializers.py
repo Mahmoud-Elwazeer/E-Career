@@ -428,6 +428,9 @@ class TalentPoolCandidateSerializer(serializers.ModelSerializer):
 
 
 class TalentPoolSerializer(serializers.ModelSerializer):
+    # Reads the model's `candidate_count` @property directly (raw member
+    # count, not discoverability-filtered — see TalentPool.candidate_count
+    # vs TalentPool.active_candidates()). No queryset annotation needed/used.
     candidate_count = serializers.IntegerField(read_only=True)
 
     class Meta:
@@ -440,8 +443,13 @@ class TalentPoolSerializer(serializers.ModelSerializer):
 
 
 class TalentPoolDetailSerializer(serializers.ModelSerializer):
-    candidates = TalentPoolCandidateSerializer(many=True, read_only=True)
-    candidate_count = serializers.IntegerField(read_only=True)
+    # Privacy: only candidates who are STILL opted in to Talent Pool
+    # discovery right now are exposed to the employer here — a candidate who
+    # withdrew consent after being added must stop appearing, even though
+    # the underlying TalentPoolCandidate row (audit record) is retained.
+    # See TalentPool.active_candidates().
+    candidates = serializers.SerializerMethodField()
+    candidate_count = serializers.SerializerMethodField()
 
     class Meta:
         model = TalentPool
@@ -450,6 +458,12 @@ class TalentPoolDetailSerializer(serializers.ModelSerializer):
             'candidate_count', 'candidates', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'candidate_count', 'created_at', 'updated_at']
+
+    def get_candidates(self, obj):
+        return TalentPoolCandidateSerializer(obj.active_candidates(), many=True).data
+
+    def get_candidate_count(self, obj):
+        return obj.active_candidates().count()
 
 
 class AddCandidateSerializer(serializers.Serializer):

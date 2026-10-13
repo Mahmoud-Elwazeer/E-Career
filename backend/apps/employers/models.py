@@ -489,6 +489,29 @@ class TalentPool(UUIDModel):
     def candidate_count(self):
         return self.candidates.count()
 
+    def active_candidates(self):
+        """Candidates in this pool who are STILL opted in to Talent Pool
+        discovery right now (`CareerProfile.is_discoverable=True`).
+
+        Privacy requirement: a candidate's withdrawal must stop FUTURE
+        employer discovery, even for pools that already added them —
+        `was_discoverable_at_creation` is only a point-in-time snapshot for
+        audit purposes and must never be treated as still-current consent.
+        This is the one place employer-facing pool membership is read, so
+        filtering here closes the gap where a saved pool kept showing a
+        candidate indefinitely after they opted out.
+
+        The underlying `TalentPoolCandidate` row itself is NOT deleted when
+        a candidate withdraws — it remains as the audit record of when/how
+        they were added — only the employer-facing "currently visible"
+        result set excludes them.
+        """
+        from apps.career.models import CareerProfile
+        discoverable_user_ids = CareerProfile.objects.filter(
+            is_discoverable=True
+        ).values_list('user_id', flat=True)
+        return self.candidates.filter(user_id__in=discoverable_user_ids)
+
 
 class TalentPoolCandidate(models.Model):
     """A candidate in a talent pool with notes and tags."""

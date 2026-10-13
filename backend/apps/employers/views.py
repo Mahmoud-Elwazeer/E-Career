@@ -955,9 +955,19 @@ class TalentPoolViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsVerifiedEmployer]
 
     def get_queryset(self):
+        # NOTE: previously this annotated candidate_count=Count('candidates'),
+        # which collides with the TalentPool.candidate_count model @property
+        # (no setter) — Django's ORM tries to setattr the annotated value onto
+        # that property on every row, raising AttributeError on ANY call that
+        # touches this queryset (list/retrieve/add_candidate/remove_candidate/
+        # update_candidate/rank_pool all go through get_object()->get_queryset()).
+        # This was a severe pre-existing bug (the whole Talent Pool feature was
+        # unreachable) with no test coverage to catch it. Fixed by dropping the
+        # annotation; TalentPoolSerializer now reads candidate_count via the
+        # model property instead (see serializers.py).
         return TalentPool.objects.filter(
             employer=self.request.user.employer_profile
-        ).annotate(candidate_count=Count('candidates'))
+        )
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
@@ -1048,9 +1058,10 @@ class TalentPoolViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Privacy: only rank candidates who are STILL opted in right now —
+        # a withdrawn candidate must not be served up for ranking either.
         candidate_ids = list(
-            TalentPoolCandidate.objects.filter(pool=pool)
-            .values_list('user_id', flat=True)
+            pool.active_candidates().values_list('user_id', flat=True)
         )
         if not candidate_ids:
             return Response({'rankings': [], 'candidates_ranked': 0})

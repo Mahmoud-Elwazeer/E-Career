@@ -244,6 +244,24 @@ export async function adminListCookieCategories(): Promise<CookieCategoryDef[]> 
   return unwrapList(res);
 }
 
+export interface ProcessorRecordRow {
+  uuid: string;
+  name: string;
+  purpose: string;
+  data_categories: string;
+  country: string;
+  contract_reference: string;
+  dpa_signed: boolean | null;
+  is_active: boolean;
+  notes: string;
+  updated_at: string;
+}
+
+export async function adminListProcessors(): Promise<ProcessorRecordRow[]> {
+  const res = await apiRequest<{ results?: ProcessorRecordRow[] } | ProcessorRecordRow[]>("/legal/admin/processors/");
+  return unwrapList(res);
+}
+
 export async function adminListDsrQueue(statusFilter?: string): Promise<PrivacyRequest[]> {
   const res = await apiRequest<{ results?: PrivacyRequest[] } | PrivacyRequest[]>(
     "/legal/admin/privacy-requests/", { params: statusFilter ? { status: statusFilter } : undefined },

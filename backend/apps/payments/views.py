@@ -156,11 +156,28 @@ class WebhookView(APIView):
             # Already processed — acknowledge without re-processing.
             return Response({"success": True, "message": "duplicate ignored"})
 
-        # Resolve the payment by provider reference and finalize if paid.
+        # Resolve the payment by provider reference and finalize if paid —
+        # but ONLY after the webhook's own reported amount+currency are
+        # cross-checked against the Payment row we already created at
+        # checkout time. A valid signature only proves the event came from
+        # the provider; it does not prove the event is CONFIRMING what we
+        # actually expect to be charged for this specific payment. Without
+        # this check, a validly-signed webhook referencing the right
+        # provider_reference but a different amount/currency (e.g. a stale
+        # or mismatched event) could incorrectly mark an order paid.
         try:
             ref = event.get("provider_reference", "")
             payment = Payment.objects.filter(provider_reference=ref).select_related("order").first()
             if payment and event.get("status") in ("paid", "succeeded"):
+                mismatch = _webhook_amount_mismatch(event, payment)
+                if mismatch:
+                    obj.status = WebhookEvent.Status.FAILED
+                    obj.error = mismatch
+                    obj.save(update_fields=["status", "error"])
+                    return Response(
+                        {"success": False, "message": "amount/currency mismatch — not processed"},
+                        status=status.HTTP_409_CONFLICT,
+                    )
                 services.mark_order_paid(order=payment.order, payment=payment)
             obj.status = WebhookEvent.Status.PROCESSED
             obj.processed_at = timezone.now()
@@ -173,3 +190,18 @@ class WebhookView(APIView):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         return Response({"success": True})
+
+
+def _webhook_amount_mismatch(event: dict, payment: Payment) -> str:
+    """Return a non-empty error string if the webhook's reported amount or
+    currency disagrees with the stored Payment row; empty string if they
+    match or the provider adapter didn't surface amount/currency (older/
+    other adapters) — absence is not treated as a mismatch so this stays
+    backward-compatible with adapters that don't report these fields."""
+    event_amount = event.get("amount")
+    event_currency = event.get("currency")
+    if event_amount is not None and int(event_amount) != int(payment.amount):
+        return f"amount mismatch: webhook={event_amount} payment={payment.amount}"
+    if event_currency and event_currency.upper() != (payment.currency or "").upper():
+        return f"currency mismatch: webhook={event_currency} payment={payment.currency}"
+    return ""
