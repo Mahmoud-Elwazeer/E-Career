@@ -1,4 +1,5 @@
 import type { AppUser } from "@/services/auth";
+import { sanitizeReturnTo } from "@/lib/return-url";
 
 /**
  * Single source of truth for "where does this role belong by default".
@@ -24,10 +25,17 @@ export function roleHome(role: AppRole | undefined | null): string {
 
 /**
  * Resolve the post-auth destination. A deep-link the user was gated from
- * (`state.from`) wins, so long as it isn't the generic dashboard default —
- * otherwise we honor the role's real home.
+ * (`state.from`, or an external `?next=` param) wins, so long as it isn't
+ * the generic dashboard default — otherwise we honor the role's real home.
+ *
+ * `from` is untrusted (it may originate from a `?next=` query param set by
+ * an external caller like the USAM Master Ecosystem site) and is always
+ * re-validated here via `sanitizeReturnTo`, even if a caller already
+ * validated it once — this function must never return an attacker-supplied
+ * external URL.
  */
 export function postAuthDestination(role: AppRole | undefined | null, from?: string | null): string {
-  if (from && from !== "/app/dashboard") return from;
+  const safeFrom = sanitizeReturnTo(from);
+  if (safeFrom && safeFrom !== "/app/dashboard") return safeFrom;
   return roleHome(role);
 }

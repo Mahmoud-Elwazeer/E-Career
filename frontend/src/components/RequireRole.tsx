@@ -17,7 +17,8 @@ export function RequireRole({ children, allowed }: RequireRoleProps) {
   if (isLoading) return null;
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    const from = `${location.pathname}${location.search}`;
+    return <Navigate to="/login" state={{ from }} replace />;
   }
 
   if (!user || !allowed.includes(user.role)) {
