@@ -1,0 +1,1034 @@
+{
+  "$schema": "https://jobs.usamif.com/schemas/usam-master-feature-links.v1.json",
+  "generatedAt": "2026-10-13T16:02:31.541Z",
+  "productionBaseUrl": "https://jobs.usamif.com",
+  "platformName": "E-Career (USAM Jobs / USAM Career Compass)",
+  "note": "verification.status reflects CODE-LEVEL verification only (route exists in App.tsx and the page component was read during this audit) — it is NOT a live HTTP/browser check. See verification.method on each entry.",
+  "features": [
+    {
+      "id": "job-search",
+      "platform": "E-Career",
+      "nameEn": "Find Jobs",
+      "nameAr": "ابحث عن وظائف",
+      "descriptionEn": "Search verified, direct-employer roles aggregated across MENA.",
+      "descriptionAr": "ابحث في وظائف موثقة من أصحاب العمل مباشرة عبر المنطقة.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "discover",
+      "publicOverviewUrl": "https://jobs.usamif.com/for-individuals",
+      "directApplicationUrl": "https://jobs.usamif.com/app/jobs",
+      "relativePath": "/app/jobs",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "job-matches",
+        "saved-jobs",
+        "job-alerts"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fjobs`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "job-matches",
+      "platform": "E-Career",
+      "nameEn": "For You Matches",
+      "nameAr": "توصيات لك",
+      "descriptionEn": "Jobs ranked against your profile, with the reasons behind each match.",
+      "descriptionAr": "وظائف مرتّبة حسب ملفك مع أسباب كل مطابقة.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "discover",
+      "publicOverviewUrl": "https://jobs.usamif.com/for-individuals",
+      "directApplicationUrl": "https://jobs.usamif.com/app/recommendations",
+      "relativePath": "/app/recommendations",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "job-search",
+        "talent-score"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Frecommendations`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "saved-jobs",
+      "platform": "E-Career",
+      "nameEn": "Saved Jobs",
+      "nameAr": "الوظائف المحفوظة",
+      "descriptionEn": "Everything you bookmarked, in one place.",
+      "descriptionAr": "كل ما حفظته في مكان واحد.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "discover",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/saved",
+      "relativePath": "/app/saved",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "job-search",
+        "applications"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fsaved`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "job-alerts",
+      "platform": "E-Career",
+      "nameEn": "Job Alerts",
+      "nameAr": "تنبيهات الوظائف",
+      "descriptionEn": "Get notified the moment a matching verified role is posted.",
+      "descriptionAr": "احصل على تنبيه فور نشر وظيفة موثقة مطابقة.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "discover",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/alerts",
+      "relativePath": "/app/alerts",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "job-search",
+        "job-matches"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Falerts`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "applications",
+      "platform": "E-Career",
+      "nameEn": "Applications",
+      "nameAr": "طلباتي",
+      "descriptionEn": "Track the status of every job you've applied to.",
+      "descriptionAr": "تابع حالة كل طلب تقدّمت له.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "discover",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/applications",
+      "relativePath": "/app/applications",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "job-search",
+        "saved-jobs"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fapplications`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "companies",
+      "platform": "E-Career",
+      "nameEn": "Companies",
+      "nameAr": "الشركات",
+      "descriptionEn": "Browse employers hiring now, with real open-role counts.",
+      "descriptionAr": "تصفّح الشركات التي توظّف الآن مع عدد وظائفها الحقيقي.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "discover",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/companies",
+      "relativePath": "/app/companies",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "job-search"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fcompanies`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "resume-builder",
+      "platform": "E-Career",
+      "nameEn": "Resume Builder",
+      "nameAr": "منشئ السيرة الذاتية",
+      "descriptionEn": "Build and export an ATS-ready CV that passes applicant tracking systems.",
+      "descriptionAr": "أنشئ وصدّر سيرة ذاتية متوافقة مع أنظمة تتبّع المتقدمين.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "career-tools",
+      "publicOverviewUrl": "https://jobs.usamif.com/for-individuals",
+      "directApplicationUrl": "https://jobs.usamif.com/app/resume",
+      "relativePath": "/app/resume",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "cover-letters",
+        "talent-score",
+        "rashid-coach"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fresume`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "cover-letters",
+      "platform": "E-Career",
+      "nameEn": "Cover Letters",
+      "nameAr": "خطابات التغطية",
+      "descriptionEn": "Generate cover letters tailored to a specific job.",
+      "descriptionAr": "أنشئ رسائل تقديم مخصصة لوظيفة معينة.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "career-tools",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/cover-letters",
+      "relativePath": "/app/cover-letters",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "resume-builder",
+        "job-search"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fcover-letters`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "talent-score",
+      "platform": "E-Career",
+      "nameEn": "Talent Score",
+      "nameAr": "نقاط الموهبة",
+      "descriptionEn": "Measure your employability and see exactly how to grow it.",
+      "descriptionAr": "قِس جاهزيتك المهنية واعرف كيف تطوّرها بالضبط.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "career-tools",
+      "publicOverviewUrl": "https://jobs.usamif.com/for-individuals",
+      "directApplicationUrl": "https://jobs.usamif.com/app/talent-score",
+      "relativePath": "/app/talent-score",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "career-graph",
+        "job-matches",
+        "assessments"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Ftalent-score`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "career-graph",
+      "platform": "E-Career",
+      "nameEn": "Career Graph",
+      "nameAr": "خريطة المسار المهني",
+      "descriptionEn": "See your skills, gaps, and the growth paths available to you.",
+      "descriptionAr": "اطّلع على مهاراتك وفجواتك ومسارات نمو متاحة لك.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "career-tools",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/career-graph",
+      "relativePath": "/app/career-graph",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "talent-score",
+        "skills-explorer"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fcareer-graph`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "skills-explorer",
+      "platform": "E-Career",
+      "nameEn": "Skills Explorer",
+      "nameAr": "مستكشف المهارات",
+      "descriptionEn": "Browse the platform's full skills taxonomy and how skills relate.",
+      "descriptionAr": "تصفّح تصنيف المهارات الكامل وعلاقتها ببعضها.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "career-tools",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/skills",
+      "relativePath": "/app/skills",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "career-graph"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fskills`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "rashid-coach",
+      "platform": "E-Career",
+      "nameEn": "Rasheed — AI Career Coach",
+      "nameAr": "رشيد — المساعد المهني الذكي",
+      "descriptionEn": "Chat 24/7 for CV feedback, job matches, cover letters, and interview prep — grounded in your real profile.",
+      "descriptionAr": "دردش على مدار الساعة لمراجعة سيرتك ووظائف مطابقة ورسائل تقديم وتحضير للمقابلات.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "ai-coaching",
+      "publicOverviewUrl": "https://jobs.usamif.com/for-individuals",
+      "directApplicationUrl": "https://jobs.usamif.com/app/rashid",
+      "relativePath": "/app/rashid",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "resume-builder",
+        "interview-practice",
+        "cover-letters"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Frashid`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "interview-practice",
+      "platform": "E-Career",
+      "nameEn": "Interview Practice",
+      "nameAr": "تدريب المقابلات",
+      "descriptionEn": "Rehearse real questions with an AI voice coach and get feedback.",
+      "descriptionAr": "تدرّب على أسئلة حقيقية مع مدرب صوتي ذكي واحصل على ملاحظات.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "ai-coaching",
+      "publicOverviewUrl": "https://jobs.usamif.com/for-individuals",
+      "directApplicationUrl": "https://jobs.usamif.com/app/interviews",
+      "relativePath": "/app/interviews",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "rashid-coach",
+        "coding-practice"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Finterviews`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "coding-practice",
+      "platform": "E-Career",
+      "nameEn": "Coding Practice",
+      "nameAr": "تدريب على البرمجة",
+      "descriptionEn": "AI-evaluated coding interview practice with real code execution.",
+      "descriptionAr": "تدرّب على مقابلات البرمجة بتنفيذ وتقييم فعلي للكود بالذكاء الاصطناعي.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "ai-coaching",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/coding-practice",
+      "relativePath": "/app/coding-practice",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "interview-practice"
+      ],
+      "limitations": "Not in main navigation (migrating toward USAM Education) but the route is live.",
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fcoding-practice`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "assessments",
+      "platform": "E-Career",
+      "nameEn": "Assessments",
+      "nameAr": "التقييمات",
+      "descriptionEn": "Prove your skills with timed, scored assessments and badges.",
+      "descriptionAr": "أثبت مهاراتك بتقييمات مُقيَّمة ومحدودة بوقت وشارات.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "ai-coaching",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/assessments",
+      "relativePath": "/app/assessments",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "talent-score"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fassessments`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "salary-insights",
+      "platform": "E-Career",
+      "nameEn": "Salary Insights",
+      "nameAr": "رؤى الرواتب",
+      "descriptionEn": "Benchmark your market value before you apply or negotiate.",
+      "descriptionAr": "قارن قيمتك السوقية قبل التقديم أو التفاوض.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "insights",
+      "publicOverviewUrl": "https://jobs.usamif.com/for-individuals",
+      "directApplicationUrl": "https://jobs.usamif.com/app/salary",
+      "relativePath": "/app/salary",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "job-search",
+        "talent-score"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fsalary`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "profile",
+      "platform": "E-Career",
+      "nameEn": "Profile",
+      "nameAr": "الملف الشخصي",
+      "descriptionEn": "Your personal profile — the source of truth for matches and Talent Score.",
+      "descriptionAr": "ملفك الشخصي — المصدر الأساسي للتوصيات ونقاط الموهبة.",
+      "audience": "Individuals / job seekers",
+      "navigationCategory": "account",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/profile",
+      "relativePath": "/app/profile",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "talent-score",
+        "resume-builder"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fprofile`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "notifications",
+      "platform": "E-Career",
+      "nameEn": "Notifications",
+      "nameAr": "الإشعارات",
+      "descriptionEn": "All your platform notifications in one place.",
+      "descriptionAr": "كل إشعاراتك في مكان واحد.",
+      "audience": "Everyone (any signed-in account)",
+      "navigationCategory": "account",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/notifications",
+      "relativePath": "/app/notifications",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fnotifications`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "settings",
+      "platform": "E-Career",
+      "nameEn": "Settings",
+      "nameAr": "الإعدادات",
+      "descriptionEn": "Manage your account, notification preferences, and privacy.",
+      "descriptionAr": "تحكّم في حسابك وتفضيلات الإشعارات والخصوصية.",
+      "audience": "Everyone (any signed-in account)",
+      "navigationCategory": "account",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/settings",
+      "relativePath": "/app/settings",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fsettings`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "billing",
+      "platform": "E-Career",
+      "nameEn": "Billing & Plans",
+      "nameAr": "الفوترة والباقات",
+      "descriptionEn": "Manage your subscription and view transaction history.",
+      "descriptionAr": "تحكّم في اشتراكك واطّلع على سجل العمليات المالية.",
+      "audience": "Everyone (any signed-in account)",
+      "navigationCategory": "account",
+      "publicOverviewUrl": "https://jobs.usamif.com/pricing",
+      "directApplicationUrl": "https://jobs.usamif.com/app/billing",
+      "relativePath": "/app/billing",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Fbilling`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "employer-onboarding",
+      "platform": "E-Career",
+      "nameEn": "Become an Employer",
+      "nameAr": "سجّل كصاحب عمل",
+      "descriptionEn": "Create and verify your company account to start hiring.",
+      "descriptionAr": "أنشئ ووثّق حساب شركتك لتبدأ التوظيف.",
+      "audience": "Employers / companies",
+      "navigationCategory": "hiring",
+      "publicOverviewUrl": "https://jobs.usamif.com/for-businesses",
+      "directApplicationUrl": "https://jobs.usamif.com/app/employer/register",
+      "relativePath": "/app/employer/register",
+      "access": {
+        "level": "auth",
+        "requirement": "Requires sign-in (any account type)"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "post-job"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Femployer%2Fregister`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "employer-dashboard",
+      "platform": "E-Career",
+      "nameEn": "Employer Dashboard",
+      "nameAr": "لوحة تحكم صاحب العمل",
+      "descriptionEn": "Your hiring control center — job postings, applicants, and stats.",
+      "descriptionAr": "مركز تحكّم التوظيف — الوظائف المنشورة والمتقدمون والإحصائيات.",
+      "audience": "Employers / companies",
+      "navigationCategory": "hiring",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/employer/dashboard",
+      "relativePath": "/app/employer/dashboard",
+      "access": {
+        "level": "employer",
+        "requirement": "Requires sign-in with an Employer (or Admin) account"
+      },
+      "status": "live",
+      "relatedFeatures": [],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Femployer%2Fdashboard`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "post-job",
+      "platform": "E-Career",
+      "nameEn": "Post a Job",
+      "nameAr": "انشر وظيفة",
+      "descriptionEn": "Publish a domain-verified role with screening questions.",
+      "descriptionAr": "انشر وظيفة موثقة بالنطاق مع أسئلة فرز.",
+      "audience": "Employers / companies",
+      "navigationCategory": "hiring",
+      "publicOverviewUrl": "https://jobs.usamif.com/for-businesses",
+      "directApplicationUrl": "https://jobs.usamif.com/app/employer/post-job",
+      "relativePath": "/app/employer/post-job",
+      "access": {
+        "level": "employer",
+        "requirement": "Requires sign-in with an Employer (or Admin) account"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "employer-dashboard",
+        "applicants"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Femployer%2Fpost-job`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "applicants",
+      "platform": "E-Career",
+      "nameEn": "Applicants",
+      "nameAr": "المتقدمون",
+      "descriptionEn": "Review and manage applicants across all your job postings.",
+      "descriptionAr": "راجع وأدِر المتقدمين على كل وظائفك المنشورة.",
+      "audience": "Employers / companies",
+      "navigationCategory": "hiring",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/employer/applicants",
+      "relativePath": "/app/employer/applicants",
+      "access": {
+        "level": "employer",
+        "requirement": "Requires sign-in with an Employer (or Admin) account"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "post-job",
+        "talent-search"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Femployer%2Fapplicants`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "talent-search",
+      "platform": "E-Career",
+      "nameEn": "Search Talent",
+      "nameAr": "البحث عن مواهب",
+      "descriptionEn": "Browse and rank the candidate pool by skill, experience, and fit.",
+      "descriptionAr": "تصفّح ورتّب قاعدة المرشحين بالمهارة والخبرة والملاءمة.",
+      "audience": "Employers / companies",
+      "navigationCategory": "hiring",
+      "publicOverviewUrl": "https://jobs.usamif.com/for-businesses",
+      "directApplicationUrl": "https://jobs.usamif.com/app/employer/talent-search",
+      "relativePath": "/app/employer/talent-search",
+      "access": {
+        "level": "employer",
+        "requirement": "Requires sign-in with an Employer (or Admin) account"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "talent-pools",
+        "applicants"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Femployer%2Ftalent-search`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "talent-pools",
+      "platform": "E-Career",
+      "nameEn": "Talent Pools",
+      "nameAr": "قوائم المواهب",
+      "descriptionEn": "Build and reuse candidate pools across all your open roles.",
+      "descriptionAr": "أنشئ وأعد استخدام قوائم مرشحين عبر كل وظائفك المفتوحة.",
+      "audience": "Employers / companies",
+      "navigationCategory": "hiring",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/employer/talent-pools",
+      "relativePath": "/app/employer/talent-pools",
+      "access": {
+        "level": "employer",
+        "requirement": "Requires sign-in with an Employer (or Admin) account"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "talent-search"
+      ],
+      "limitations": "Requires the talent_pool entitlement; renders a locked state otherwise.",
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Femployer%2Ftalent-pools`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "employer-analytics",
+      "platform": "E-Career",
+      "nameEn": "Hiring Analytics",
+      "nameAr": "تحليلات التوظيف",
+      "descriptionEn": "Real metrics on views, applications, and conversion for your roles.",
+      "descriptionAr": "مقاييس حقيقية للمشاهدات والطلبات ومعدل التحويل لوظائفك.",
+      "audience": "Employers / companies",
+      "navigationCategory": "hiring",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/employer/analytics",
+      "relativePath": "/app/employer/analytics",
+      "access": {
+        "level": "employer",
+        "requirement": "Requires sign-in with an Employer (or Admin) account"
+      },
+      "status": "live",
+      "relatedFeatures": [],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Femployer%2Fanalytics`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "company-profile-settings",
+      "platform": "E-Career",
+      "nameEn": "Company Profile",
+      "nameAr": "ملف الشركة",
+      "descriptionEn": "Manage your company's public profile and branding.",
+      "descriptionAr": "أدِر الملف العام لشركتك وهويتها البصرية.",
+      "audience": "Employers / companies",
+      "navigationCategory": "hiring",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/employer/company",
+      "relativePath": "/app/employer/company",
+      "access": {
+        "level": "employer",
+        "requirement": "Requires sign-in with an Employer (or Admin) account"
+      },
+      "status": "live",
+      "relatedFeatures": [],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Femployer%2Fcompany`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "employer-team",
+      "platform": "E-Career",
+      "nameEn": "Team",
+      "nameAr": "الفريق",
+      "descriptionEn": "Invite and manage your company's hiring team members.",
+      "descriptionAr": "ادعُ وأدِر أعضاء فريق التوظيف في شركتك.",
+      "audience": "Employers / companies",
+      "navigationCategory": "hiring",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/app/employer/team",
+      "relativePath": "/app/employer/team",
+      "access": {
+        "level": "employer",
+        "requirement": "Requires sign-in with an Employer (or Admin) account"
+      },
+      "status": "live",
+      "relatedFeatures": [],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Femployer%2Fteam`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "employer-billing",
+      "platform": "E-Career",
+      "nameEn": "Employer Billing & Plans",
+      "nameAr": "فوترة وباقات أصحاب العمل",
+      "descriptionEn": "Manage your company's subscription and hiring plan.",
+      "descriptionAr": "أدِر اشتراك شركتك وباقة التوظيف.",
+      "audience": "Employers / companies",
+      "navigationCategory": "hiring",
+      "publicOverviewUrl": "https://jobs.usamif.com/pricing",
+      "directApplicationUrl": "https://jobs.usamif.com/app/employer/billing",
+      "relativePath": "/app/employer/billing",
+      "access": {
+        "level": "employer",
+        "requirement": "Requires sign-in with an Employer (or Admin) account"
+      },
+      "status": "live",
+      "relatedFeatures": [],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fapp%2Femployer%2Fbilling`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "admin-console",
+      "platform": "E-Career",
+      "nameEn": "Admin Console",
+      "nameAr": "لوحة الإدارة",
+      "descriptionEn": "Platform-wide operations: users, companies, jobs, verification, AI, analytics.",
+      "descriptionAr": "عمليات شاملة للمنصة: المستخدمون والشركات والوظائف والتحقق والذكاء الاصطناعي والتحليلات.",
+      "audience": "Platform administrators",
+      "navigationCategory": "platform",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/admin",
+      "relativePath": "/admin",
+      "access": {
+        "level": "admin",
+        "requirement": "Requires sign-in with an Admin account"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "admin-finance"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fadmin`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "admin-finance",
+      "platform": "E-Career",
+      "nameEn": "Financial Control Center",
+      "nameAr": "مركز التحكّم المالي",
+      "descriptionEn": "Revenue, transactions, and reconciliation exceptions from the real ledger.",
+      "descriptionAr": "الإيرادات والمعاملات وحالات التسوية من السجل المالي الحقيقي.",
+      "audience": "Platform administrators",
+      "navigationCategory": "platform",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/admin/finance",
+      "relativePath": "/admin/finance",
+      "access": {
+        "level": "admin",
+        "requirement": "Requires sign-in with an Admin account"
+      },
+      "status": "live",
+      "relatedFeatures": [
+        "admin-console"
+      ],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "login-next-param",
+        "instructions": "Link to `https://jobs.usamif.com/login?next=%2Fadmin%2Ffinance`. There is no shared sign-in between USAM Master and this platform today — the visitor authenticates on THIS platform's /login, which then redirects to the real destination. The `next` value is validated server-side (internal relative paths only; absolute/external URLs are rejected) to prevent open-redirect abuse."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    },
+    {
+      "id": "api-docs",
+      "platform": "E-Career",
+      "nameEn": "API Documentation",
+      "nameAr": "وثائق الواجهة البرمجية",
+      "descriptionEn": "Interactive OpenAPI 3.0 reference for the USAM Careers API.",
+      "descriptionAr": "مرجع تفاعلي بمعيار OpenAPI 3.0 لواجهة USAM البرمجية.",
+      "audience": "Everyone (any signed-in account)",
+      "navigationCategory": "platform",
+      "publicOverviewUrl": null,
+      "directApplicationUrl": "https://jobs.usamif.com/api-docs",
+      "relativePath": "/api-docs",
+      "access": {
+        "level": "public",
+        "requirement": "None — publicly accessible"
+      },
+      "status": "live",
+      "relatedFeatures": [],
+      "limitations": null,
+      "masterIntegration": {
+        "linkingMethod": "direct",
+        "instructions": "Link directly — no authentication required."
+      },
+      "verification": {
+        "status": "code-verified",
+        "method": "Route confirmed present in frontend/src/App.tsx and the target page component was read directly during this audit. NOT a live HTTP or browser check.",
+        "lastVerifiedAt": "2026-10-13T16:02:31.541Z"
+      }
+    }
+  ]
+}

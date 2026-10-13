@@ -55,4 +55,15 @@ describe("postAuthDestination — where to go after auth", () => {
       "/app/employer/dashboard",
     );
   });
+
+  it("rejects an external URL passed as 'from' and falls back to role home", () => {
+    // Guards the open-redirect path: a malicious or malformed ?next= must
+    // never be honored, even indirectly through postAuthDestination.
+    expect(postAuthDestination("jobseeker", "https://evil.example.com")).toBe(
+      "/app/dashboard",
+    );
+    expect(postAuthDestination("employer", "//evil.example.com")).toBe(
+      "/app/employer/dashboard",
+    );
+  });
 });

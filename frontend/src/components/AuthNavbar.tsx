@@ -4,7 +4,7 @@ import {
   MessageCircle, FileText, Mic, Sparkles,
   ClipboardList, Bookmark, Target, Bell,
   Settings as SettingsIcon, PlusCircle, Search,
-  LayoutDashboard, DollarSign, Award, Building2, Network, BarChart3,
+  LayoutDashboard, DollarSign, Award, Building2, Network, BarChart3, Compass,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Logo, LogoLockup } from "@/components/Logo";
@@ -48,6 +48,7 @@ const appPrimaryNav: NavItem[] = [
 
 const appSecondaryNav: NavItem[] = [
   { to: "/app/dashboard", label: "Dashboard", labelAr: "لوحة التحكم", icon: LayoutDashboard },
+  { to: "/features", label: "Explore features", labelAr: "استكشف الميزات", icon: Compass },
   { to: "/app/applications", label: "Applications", labelAr: "طلباتي", icon: ClipboardList },
   { to: "/app/cover-letters", label: "Cover Letters", labelAr: "خطابات التغطية", icon: FileText },
   { to: "/app/saved", label: "Saved Jobs", labelAr: "المحفوظات", icon: Bookmark },
@@ -88,6 +89,7 @@ const employerPrimaryNav: NavItem[] = [
 // /app/employer/register; billing + settings are the shared account pages;
 // Browse Jobs (candidate board) is available here rather than in primary nav.
 const employerSecondaryNav: NavItem[] = [
+  { to: "/features", label: "Explore features", labelAr: "استكشف الميزات", icon: Compass },
   { to: "/app/employer/company", label: "Company Profile", labelAr: "ملف الشركة", icon: Building2 },
   { to: "/app/employer/team", label: "Team", labelAr: "الفريق", icon: Users },
   { to: "/app/jobs", label: "Browse Jobs", labelAr: "تصفح الوظائف", icon: Briefcase },
@@ -333,6 +335,14 @@ export function AuthNavbar() {
                         ))}
                       </div>
                     ))}
+                    <Link
+                      to="/features"
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 rounded-lg text-body font-medium text-foreground/70 hover:text-foreground hover:bg-accent transition-all duration-fast"
+                    >
+                      <Compass className="h-4 w-4 text-primary" />
+                      {isAr ? "استكشف المنصة" : "Explore the platform"}
+                    </Link>
                     <Link
                       to="/about"
                       onClick={() => setOpen(false)}

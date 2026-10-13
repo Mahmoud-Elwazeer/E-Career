@@ -1,0 +1,325 @@
+[
+  {
+    "id": "job-search",
+    "nameEn": "Find Jobs", "nameAr": "ابحث عن وظائف",
+    "shortDescEn": "Search verified, direct-employer roles aggregated across MENA.",
+    "shortDescAr": "ابحث في وظائف موثقة من أصحاب العمل مباشرة عبر المنطقة.",
+    "audience": "individual", "category": "discover", "icon": "Search",
+    "to": "/app/jobs", "overviewTo": "/for-individuals",
+    "access": "auth", "status": "live",
+    "related": ["job-matches", "saved-jobs", "job-alerts"]
+  },
+  {
+    "id": "job-matches",
+    "nameEn": "For You Matches", "nameAr": "توصيات لك",
+    "shortDescEn": "Jobs ranked against your profile, with the reasons behind each match.",
+    "shortDescAr": "وظائف مرتّبة حسب ملفك مع أسباب كل مطابقة.",
+    "audience": "individual", "category": "discover", "icon": "Sparkles",
+    "to": "/app/recommendations", "overviewTo": "/for-individuals",
+    "access": "auth", "status": "live",
+    "related": ["job-search", "talent-score"]
+  },
+  {
+    "id": "saved-jobs",
+    "nameEn": "Saved Jobs", "nameAr": "الوظائف المحفوظة",
+    "shortDescEn": "Everything you bookmarked, in one place.",
+    "shortDescAr": "كل ما حفظته في مكان واحد.",
+    "audience": "individual", "category": "discover", "icon": "Bookmark",
+    "to": "/app/saved",
+    "access": "auth", "status": "live",
+    "related": ["job-search", "applications"]
+  },
+  {
+    "id": "job-alerts",
+    "nameEn": "Job Alerts", "nameAr": "تنبيهات الوظائف",
+    "shortDescEn": "Get notified the moment a matching verified role is posted.",
+    "shortDescAr": "احصل على تنبيه فور نشر وظيفة موثقة مطابقة.",
+    "audience": "individual", "category": "discover", "icon": "Bell",
+    "to": "/app/alerts",
+    "access": "auth", "status": "live",
+    "related": ["job-search", "job-matches"]
+  },
+  {
+    "id": "applications",
+    "nameEn": "Applications", "nameAr": "طلباتي",
+    "shortDescEn": "Track the status of every job you've applied to.",
+    "shortDescAr": "تابع حالة كل طلب تقدّمت له.",
+    "audience": "individual", "category": "discover", "icon": "ClipboardList",
+    "to": "/app/applications",
+    "access": "auth", "status": "live",
+    "related": ["job-search", "saved-jobs"]
+  },
+  {
+    "id": "companies",
+    "nameEn": "Companies", "nameAr": "الشركات",
+    "shortDescEn": "Browse employers hiring now, with real open-role counts.",
+    "shortDescAr": "تصفّح الشركات التي توظّف الآن مع عدد وظائفها الحقيقي.",
+    "audience": "individual", "category": "discover", "icon": "Building2",
+    "to": "/app/companies",
+    "access": "auth", "status": "live",
+    "related": ["job-search"]
+  },
+  {
+    "id": "resume-builder",
+    "nameEn": "Resume Builder", "nameAr": "منشئ السيرة الذاتية",
+    "shortDescEn": "Build and export an ATS-ready CV that passes applicant tracking systems.",
+    "shortDescAr": "أنشئ وصدّر سيرة ذاتية متوافقة مع أنظمة تتبّع المتقدمين.",
+    "audience": "individual", "category": "career-tools", "icon": "FileText",
+    "to": "/app/resume", "overviewTo": "/for-individuals",
+    "access": "auth", "status": "live",
+    "related": ["cover-letters", "talent-score", "rashid-coach"]
+  },
+  {
+    "id": "cover-letters",
+    "nameEn": "Cover Letters", "nameAr": "خطابات التغطية",
+    "shortDescEn": "Generate cover letters tailored to a specific job.",
+    "shortDescAr": "أنشئ رسائل تقديم مخصصة لوظيفة معينة.",
+    "audience": "individual", "category": "career-tools", "icon": "FileText",
+    "to": "/app/cover-letters",
+    "access": "auth", "status": "live",
+    "related": ["resume-builder", "job-search"]
+  },
+  {
+    "id": "talent-score",
+    "nameEn": "Talent Score", "nameAr": "نقاط الموهبة",
+    "shortDescEn": "Measure your employability and see exactly how to grow it.",
+    "shortDescAr": "قِس جاهزيتك المهنية واعرف كيف تطوّرها بالضبط.",
+    "audience": "individual", "category": "career-tools", "icon": "Target",
+    "to": "/app/talent-score", "overviewTo": "/for-individuals",
+    "access": "auth", "status": "live",
+    "related": ["career-graph", "job-matches", "assessments"]
+  },
+  {
+    "id": "career-graph",
+    "nameEn": "Career Graph", "nameAr": "خريطة المسار المهني",
+    "shortDescEn": "See your skills, gaps, and the growth paths available to you.",
+    "shortDescAr": "اطّلع على مهاراتك وفجواتك ومسارات نمو متاحة لك.",
+    "audience": "individual", "category": "career-tools", "icon": "Network",
+    "to": "/app/career-graph",
+    "access": "auth", "status": "live",
+    "related": ["talent-score", "skills-explorer"]
+  },
+  {
+    "id": "skills-explorer",
+    "nameEn": "Skills Explorer", "nameAr": "مستكشف المهارات",
+    "shortDescEn": "Browse the platform's full skills taxonomy and how skills relate.",
+    "shortDescAr": "تصفّح تصنيف المهارات الكامل وعلاقتها ببعضها.",
+    "audience": "individual", "category": "career-tools", "icon": "Sparkles",
+    "to": "/app/skills",
+    "access": "auth", "status": "live",
+    "related": ["career-graph"]
+  },
+  {
+    "id": "rashid-coach",
+    "nameEn": "Rasheed — AI Career Coach", "nameAr": "رشيد — المساعد المهني الذكي",
+    "shortDescEn": "Chat 24/7 for CV feedback, job matches, cover letters, and interview prep — grounded in your real profile.",
+    "shortDescAr": "دردش على مدار الساعة لمراجعة سيرتك ووظائف مطابقة ورسائل تقديم وتحضير للمقابلات.",
+    "audience": "individual", "category": "ai-coaching", "icon": "MessageCircle",
+    "to": "/app/rashid", "overviewTo": "/for-individuals",
+    "access": "auth", "status": "live",
+    "related": ["resume-builder", "interview-practice", "cover-letters"]
+  },
+  {
+    "id": "interview-practice",
+    "nameEn": "Interview Practice", "nameAr": "تدريب المقابلات",
+    "shortDescEn": "Rehearse real questions with an AI voice coach and get feedback.",
+    "shortDescAr": "تدرّب على أسئلة حقيقية مع مدرب صوتي ذكي واحصل على ملاحظات.",
+    "audience": "individual", "category": "ai-coaching", "icon": "Mic",
+    "to": "/app/interviews", "overviewTo": "/for-individuals",
+    "access": "auth", "status": "live",
+    "related": ["rashid-coach", "coding-practice"]
+  },
+  {
+    "id": "coding-practice",
+    "nameEn": "Coding Practice", "nameAr": "تدريب على البرمجة",
+    "shortDescEn": "AI-evaluated coding interview practice with real code execution.",
+    "shortDescAr": "تدرّب على مقابلات البرمجة بتنفيذ وتقييم فعلي للكود بالذكاء الاصطناعي.",
+    "audience": "individual", "category": "ai-coaching", "icon": "Code2",
+    "to": "/app/coding-practice",
+    "access": "auth", "status": "live",
+    "related": ["interview-practice"],
+    "note": "Not in main navigation (migrating toward USAM Education) but the route is live."
+  },
+  {
+    "id": "assessments",
+    "nameEn": "Assessments", "nameAr": "التقييمات",
+    "shortDescEn": "Prove your skills with timed, scored assessments and badges.",
+    "shortDescAr": "أثبت مهاراتك بتقييمات مُقيَّمة ومحدودة بوقت وشارات.",
+    "audience": "individual", "category": "ai-coaching", "icon": "Award",
+    "to": "/app/assessments",
+    "access": "auth", "status": "live",
+    "related": ["talent-score"]
+  },
+  {
+    "id": "salary-insights",
+    "nameEn": "Salary Insights", "nameAr": "رؤى الرواتب",
+    "shortDescEn": "Benchmark your market value before you apply or negotiate.",
+    "shortDescAr": "قارن قيمتك السوقية قبل التقديم أو التفاوض.",
+    "audience": "individual", "category": "insights", "icon": "DollarSign",
+    "to": "/app/salary", "overviewTo": "/for-individuals",
+    "access": "auth", "status": "live",
+    "related": ["job-search", "talent-score"]
+  },
+  {
+    "id": "profile",
+    "nameEn": "Profile", "nameAr": "الملف الشخصي",
+    "shortDescEn": "Your personal profile — the source of truth for matches and Talent Score.",
+    "shortDescAr": "ملفك الشخصي — المصدر الأساسي للتوصيات ونقاط الموهبة.",
+    "audience": "individual", "category": "account", "icon": "User",
+    "to": "/app/profile",
+    "access": "auth", "status": "live",
+    "related": ["talent-score", "resume-builder"]
+  },
+  {
+    "id": "notifications",
+    "nameEn": "Notifications", "nameAr": "الإشعارات",
+    "shortDescEn": "All your platform notifications in one place.",
+    "shortDescAr": "كل إشعاراتك في مكان واحد.",
+    "audience": "everyone", "category": "account", "icon": "Bell",
+    "to": "/app/notifications",
+    "access": "auth", "status": "live"
+  },
+  {
+    "id": "settings",
+    "nameEn": "Settings", "nameAr": "الإعدادات",
+    "shortDescEn": "Manage your account, notification preferences, and privacy.",
+    "shortDescAr": "تحكّم في حسابك وتفضيلات الإشعارات والخصوصية.",
+    "audience": "everyone", "category": "account", "icon": "Settings",
+    "to": "/app/settings",
+    "access": "auth", "status": "live"
+  },
+  {
+    "id": "billing",
+    "nameEn": "Billing & Plans", "nameAr": "الفوترة والباقات",
+    "shortDescEn": "Manage your subscription and view transaction history.",
+    "shortDescAr": "تحكّم في اشتراكك واطّلع على سجل العمليات المالية.",
+    "audience": "everyone", "category": "account", "icon": "CreditCard",
+    "to": "/app/billing", "overviewTo": "/pricing",
+    "access": "auth", "status": "live"
+  },
+  {
+    "id": "employer-onboarding",
+    "nameEn": "Become an Employer", "nameAr": "سجّل كصاحب عمل",
+    "shortDescEn": "Create and verify your company account to start hiring.",
+    "shortDescAr": "أنشئ ووثّق حساب شركتك لتبدأ التوظيف.",
+    "audience": "employer", "category": "hiring", "icon": "BadgeCheck",
+    "to": "/app/employer/register", "overviewTo": "/for-businesses",
+    "access": "auth", "status": "live",
+    "related": ["post-job"]
+  },
+  {
+    "id": "employer-dashboard",
+    "nameEn": "Employer Dashboard", "nameAr": "لوحة تحكم صاحب العمل",
+    "shortDescEn": "Your hiring control center — job postings, applicants, and stats.",
+    "shortDescAr": "مركز تحكّم التوظيف — الوظائف المنشورة والمتقدمون والإحصائيات.",
+    "audience": "employer", "category": "hiring", "icon": "LayoutDashboard",
+    "to": "/app/employer/dashboard",
+    "access": "employer", "status": "live"
+  },
+  {
+    "id": "post-job",
+    "nameEn": "Post a Job", "nameAr": "انشر وظيفة",
+    "shortDescEn": "Publish a domain-verified role with screening questions.",
+    "shortDescAr": "انشر وظيفة موثقة بالنطاق مع أسئلة فرز.",
+    "audience": "employer", "category": "hiring", "icon": "PlusCircle",
+    "to": "/app/employer/post-job", "overviewTo": "/for-businesses",
+    "access": "employer", "status": "live",
+    "related": ["employer-dashboard", "applicants"]
+  },
+  {
+    "id": "applicants",
+    "nameEn": "Applicants", "nameAr": "المتقدمون",
+    "shortDescEn": "Review and manage applicants across all your job postings.",
+    "shortDescAr": "راجع وأدِر المتقدمين على كل وظائفك المنشورة.",
+    "audience": "employer", "category": "hiring", "icon": "ClipboardList",
+    "to": "/app/employer/applicants",
+    "access": "employer", "status": "live",
+    "related": ["post-job", "talent-search"]
+  },
+  {
+    "id": "talent-search",
+    "nameEn": "Search Talent", "nameAr": "البحث عن مواهب",
+    "shortDescEn": "Browse and rank the candidate pool by skill, experience, and fit.",
+    "shortDescAr": "تصفّح ورتّب قاعدة المرشحين بالمهارة والخبرة والملاءمة.",
+    "audience": "employer", "category": "hiring", "icon": "Users",
+    "to": "/app/employer/talent-search", "overviewTo": "/for-businesses",
+    "access": "employer", "status": "live",
+    "related": ["talent-pools", "applicants"]
+  },
+  {
+    "id": "talent-pools",
+    "nameEn": "Talent Pools", "nameAr": "قوائم المواهب",
+    "shortDescEn": "Build and reuse candidate pools across all your open roles.",
+    "shortDescAr": "أنشئ وأعد استخدام قوائم مرشحين عبر كل وظائفك المفتوحة.",
+    "audience": "employer", "category": "hiring", "icon": "Bookmark",
+    "to": "/app/employer/talent-pools",
+    "access": "employer", "status": "live",
+    "related": ["talent-search"],
+    "note": "Requires the talent_pool entitlement; renders a locked state otherwise."
+  },
+  {
+    "id": "employer-analytics",
+    "nameEn": "Hiring Analytics", "nameAr": "تحليلات التوظيف",
+    "shortDescEn": "Real metrics on views, applications, and conversion for your roles.",
+    "shortDescAr": "مقاييس حقيقية للمشاهدات والطلبات ومعدل التحويل لوظائفك.",
+    "audience": "employer", "category": "hiring", "icon": "BarChart3",
+    "to": "/app/employer/analytics",
+    "access": "employer", "status": "live"
+  },
+  {
+    "id": "company-profile-settings",
+    "nameEn": "Company Profile", "nameAr": "ملف الشركة",
+    "shortDescEn": "Manage your company's public profile and branding.",
+    "shortDescAr": "أدِر الملف العام لشركتك وهويتها البصرية.",
+    "audience": "employer", "category": "hiring", "icon": "Building2",
+    "to": "/app/employer/company",
+    "access": "employer", "status": "live"
+  },
+  {
+    "id": "employer-team",
+    "nameEn": "Team", "nameAr": "الفريق",
+    "shortDescEn": "Invite and manage your company's hiring team members.",
+    "shortDescAr": "ادعُ وأدِر أعضاء فريق التوظيف في شركتك.",
+    "audience": "employer", "category": "hiring", "icon": "Users",
+    "to": "/app/employer/team",
+    "access": "employer", "status": "live"
+  },
+  {
+    "id": "employer-billing",
+    "nameEn": "Employer Billing & Plans", "nameAr": "فوترة وباقات أصحاب العمل",
+    "shortDescEn": "Manage your company's subscription and hiring plan.",
+    "shortDescAr": "أدِر اشتراك شركتك وباقة التوظيف.",
+    "audience": "employer", "category": "hiring", "icon": "DollarSign",
+    "to": "/app/employer/billing", "overviewTo": "/pricing",
+    "access": "employer", "status": "live"
+  },
+  {
+    "id": "admin-console",
+    "nameEn": "Admin Console", "nameAr": "لوحة الإدارة",
+    "shortDescEn": "Platform-wide operations: users, companies, jobs, verification, AI, analytics.",
+    "shortDescAr": "عمليات شاملة للمنصة: المستخدمون والشركات والوظائف والتحقق والذكاء الاصطناعي والتحليلات.",
+    "audience": "admin", "category": "platform", "icon": "LayoutDashboard",
+    "to": "/admin",
+    "access": "admin", "status": "live",
+    "related": ["admin-finance"]
+  },
+  {
+    "id": "admin-finance",
+    "nameEn": "Financial Control Center", "nameAr": "مركز التحكّم المالي",
+    "shortDescEn": "Revenue, transactions, and reconciliation exceptions from the real ledger.",
+    "shortDescAr": "الإيرادات والمعاملات وحالات التسوية من السجل المالي الحقيقي.",
+    "audience": "admin", "category": "platform", "icon": "TrendingUp",
+    "to": "/admin/finance",
+    "access": "admin", "status": "live",
+    "related": ["admin-console"]
+  },
+  {
+    "id": "api-docs",
+    "nameEn": "API Documentation", "nameAr": "وثائق الواجهة البرمجية",
+    "shortDescEn": "Interactive OpenAPI 3.0 reference for the USAM Careers API.",
+    "shortDescAr": "مرجع تفاعلي بمعيار OpenAPI 3.0 لواجهة USAM البرمجية.",
+    "audience": "everyone", "category": "platform", "icon": "FileText",
+    "to": "/api-docs",
+    "access": "public", "status": "live"
+  }
+]

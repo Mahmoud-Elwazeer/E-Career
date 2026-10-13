@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import {
   Search, MessageCircle, FileText, Mic, Sparkles, Target, DollarSign,
   Award, Building2, PlusCircle, Users, BadgeCheck, Info, Bell, Network, Mail,
-  UserRound, Briefcase,
+  UserRound, Briefcase, Compass,
 } from "lucide-react";
 import {
   NavigationMenu,
@@ -199,6 +199,17 @@ export function PublicNavMenu() {
             >
               <MessageCircle className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-0.5 motion-safe:group-hover:animate-[wiggle_0.5s_ease-in-out]" />
               {isAr ? "رشيد" : "Rasheed"}
+            </Link>
+          </NavigationMenuLink>
+        </NavigationMenuItem>
+        <NavigationMenuItem>
+          <NavigationMenuLink asChild>
+            <Link
+              to="/features"
+              className="group inline-flex h-9 items-center gap-1.5 rounded-full px-3 text-body font-medium text-foreground/70 transition-colors hover:text-foreground hover:bg-accent"
+            >
+              <Compass className="h-3.5 w-3.5 transition-transform duration-200 group-hover:scale-110 group-hover:-translate-y-0.5" />
+              {isAr ? "استكشف" : "Explore"}
             </Link>
           </NavigationMenuLink>
         </NavigationMenuItem>

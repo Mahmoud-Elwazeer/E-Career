@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { MOTION } from "@/lib/motion-tokens";
 import { useToast } from "@/hooks/use-toast";
 import { postAuthDestination } from "@/lib/role-routing";
+import { readNextParam } from "@/lib/return-url";
 
 const BENEFITS = [
   { icon: FileText, en: "Full job details & salary ranges", ar: "تفاصيل الوظائف الكاملة ونطاق الراتب" },
@@ -35,7 +36,14 @@ export default function Login() {
   const isAr = lang === "ar";
   const reduced = useReducedMotion();
   const { toast } = useToast();
-  const from = (location.state as any)?.from as string | undefined;
+  // Two independent sources for "where to go after signing in":
+  //  - in-app guards set `location.state.from` (RequireAuth/RequireRole)
+  //  - an EXTERNAL caller (e.g. the USAM Master Ecosystem site) can't set
+  //    router state across a plain <a href="/login?next=/app/jobs">, so it
+  //    uses a `?next=` query param instead. Both are untrusted and get
+  //    re-validated inside postAuthDestination/sanitizeReturnTo before ever
+  //    being used as a navigation target.
+  const from = ((location.state as any)?.from as string | undefined) ?? readNextParam(location.search) ?? undefined;
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [accountType, setAccountType] = useState<AccountType>("individual");

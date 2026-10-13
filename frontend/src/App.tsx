@@ -59,6 +59,7 @@ const Pricing = lazy(() => import("./pages/Pricing"));
 const Companies = lazy(() => import("./pages/Companies"));
 const CareerGraph = lazy(() => import("./pages/CareerGraph"));
 const SkillsExplorer = lazy(() => import("./pages/SkillsExplorer"));
+const Features = lazy(() => import("./pages/Features"));
 const ForIndividuals = lazy(() => import("./pages/AudiencePage"));
 const ForBusinesses = lazy(() => import("./pages/AudiencePage").then((m) => ({ default: m.ForBusinessesPage })));
 const Contact = lazy(() => import("./pages/Contact"));
@@ -102,6 +103,7 @@ function AnimatedRoutes() {
       <Routes location={location}>
         {/* Public routes */}
         <Route path="/" element={<Index />} />
+        <Route path="/features" element={<Features />} />
         <Route path="/for-individuals" element={<ForIndividuals />} />
         <Route path="/for-businesses" element={<ForBusinesses />} />
         <Route path="/about" element={<About />} />

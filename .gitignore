@@ -15,7 +15,12 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Scoped to the Python venv's own lib/ dir, not frontend/src/lib/ — the
+# unscoped "lib/" pattern below used to match ANY lib/ directory anywhere in
+# the repo (including frontend/src/lib/), silently blocking new files added
+# there from ever being `git add`-able without -f. Found while adding
+# frontend/src/lib/return-url.ts.
+backend/venv/**/lib/
 lib64/
 parts/
 sdist/

@@ -151,6 +151,19 @@ export default function Index() {
       {/* ═══ PLATFORM FEATURE SHOWCASE ═══ */}
       <FeatureShowcase />
 
+      {/* ═══ EXPLORE ALL FEATURES ═══ */}
+      <section className="pb-4">
+        <div className="container flex justify-center">
+          <Link
+            to="/features"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border px-5 py-2 text-body font-medium text-foreground/80 hover:text-primary hover:border-primary/40 transition-colors"
+          >
+            {isAr ? "استكشف كل الميزات" : "Explore all features"}
+            <Arrow className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </section>
+
       {/* ═══ CAREER TRACKS ═══ */}
       <CareerTracks />
 

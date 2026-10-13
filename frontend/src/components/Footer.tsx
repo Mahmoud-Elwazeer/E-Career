@@ -32,6 +32,7 @@ export function Footer() {
     { to: "/app/employer/talent-search", en: "Search Talent", ar: "ابحث عن مواهب" },
   ];
   const company = [
+    { to: "/features", en: "Explore all features", ar: "استكشف كل الميزات", gated: false },
     { to: "/pricing", en: "Pricing", ar: "الأسعار", gated: false },
     { to: "/about", en: "About USAM", ar: "عن USAM", gated: false },
     { to: "/contact", en: "Contact", ar: "تواصل معنا", gated: false },

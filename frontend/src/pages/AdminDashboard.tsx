@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   BarChart3, Briefcase, Search, Link2, ArrowLeft, ImageIcon, Settings, ScrollText,
   TrendingUp, TrendingDown, Minus, Clock, RefreshCw, AlertTriangle,
@@ -35,6 +35,20 @@ type AdminTab =
   | 'automations' | 'notifications' | 'analytics'
   | 'packages' | 'security' | 'search-admin' | 'system-health' | 'settings'
   | 'copilot';
+
+/** Every valid tab id — used to validate the `?tab=` deep-link param so an
+ * unknown/stale value falls back to "overview" instead of rendering blank. */
+const ADMIN_TABS: AdminTab[] = [
+  'overview', 'users', 'companies', 'talent',
+  'jobs', 'verification', 'sources', 'scraping',
+  'matching', 'ai-center', 'rashid', 'interviews',
+  'automations', 'notifications', 'analytics',
+  'packages', 'security', 'search-admin', 'system-health', 'settings',
+  'copilot',
+];
+function isAdminTab(value: string | null): value is AdminTab {
+  return !!value && (ADMIN_TABS as string[]).includes(value);
+}
 
 function AnalyticsTab() {
   const { toast } = useToast();
@@ -1545,7 +1559,19 @@ export default function AdminDashboard() {
   const { lang } = useTheme();
   const { toast } = useToast();
   const isAr = lang === "ar";
-  const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+  // The active section is driven by `?tab=` so every admin screen has a
+  // stable, bookmarkable, refreshable, directly-shareable URL (e.g.
+  // /admin?tab=rashid) instead of resetting to "overview" on every reload.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rawTab = searchParams.get("tab");
+  const activeTab: AdminTab = isAdminTab(rawTab) ? rawTab : "overview";
+  const setActiveTab = (tab: AdminTab) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", tab);
+      return next;
+    });
+  };
   const [tableSearch, setTableSearch] = useState("");
 
   const { stats, charts, isLoading: statsLoading, reload: reloadStats } = useAdminStats();
@@ -1621,6 +1647,13 @@ export default function AdminDashboard() {
     },
   ];
 
+  // Separate real ROUTES (not tabs within this page) that belong in the same
+  // sidebar for discoverability — e.g. /admin/finance is a fully built page
+  // that previously had no link anywhere in the admin UI.
+  const externalAdminLinks = [
+    { icon: TrendingUp, label: "Financial Control Center", to: "/admin/finance" },
+  ];
+
   const allNavItems = navGroups.flatMap(g => g.items);
   const activeNavItem = allNavItems.find(item => item.tab === activeTab);
 
@@ -1663,6 +1696,21 @@ export default function AdminDashboard() {
               ))}
             </div>
           ))}
+          <div>
+            <p className="px-3 pt-4 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+              Finance
+            </p>
+            {externalAdminLinks.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-caption font-medium text-foreground/70 hover:bg-accent hover:text-foreground transition-colors"
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </nav>
         <div className="p-3 border-t">
           <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-caption" asChild>
