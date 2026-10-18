@@ -41,6 +41,38 @@ class ActivationBlocked(ValueError):
     without changes."""
 
 
+# Locales this platform actually has a rendering/translation-review workflow
+# for. Kept as an explicit allowlist (not inferred from whatever strings
+# happen to exist) so a typo'd or unexpected locale value can never reach
+# ACTIVE and be served to the public — directive item 12: "do not rely only
+# on one literal phrase if structured review state exists."
+SUPPORTED_LOCALES = ("en", "ar")
+
+
+def _validate_version_for_activation(version: PolicyVersion, *, allow_unresolved_markers: bool) -> None:
+    """Structured pre-activation checks, independent of (and in addition to)
+    the unresolved-marker text scan. Each check targets a different failure
+    mode a marker-only check cannot catch: a typo'd locale, an empty
+    document, or a version nobody with reviewer authority ever approved.
+
+    This does not replace the marker scan — it runs alongside it. Both must
+    pass before `activate_version` proceeds.
+    """
+    if version.locale not in SUPPORTED_LOCALES:
+        raise ActivationBlocked(
+            f"Cannot activate {version.document.slug} v{version.version_label}: "
+            f"locale '{version.locale}' is not in this platform's supported-"
+            f"locale list {SUPPORTED_LOCALES} — this usually indicates a data "
+            f"entry mistake, not a real new locale ready for review."
+        )
+
+    if not (version.content_markdown or "").strip():
+        raise ActivationBlocked(
+            f"Cannot activate {version.document.slug} v{version.version_label} "
+            f"({version.locale}): content_markdown is empty."
+        )
+
+
 # ── Policy lifecycle ─────────────────────────────────────────────────────────
 
 @db_transaction.atomic
@@ -72,6 +104,8 @@ def activate_version(*, version: PolicyVersion, approver=None,
     """
     if version.status not in (PolicyVersion.Status.APPROVED, PolicyVersion.Status.SCHEDULED):
         raise ValueError("Only an APPROVED or SCHEDULED version can be activated.")
+
+    _validate_version_for_activation(version, allow_unresolved_markers=allow_unresolved_markers)
 
     content = version.content_markdown or ""
     found_marker = next((m for m in _UNRESOLVED_MARKERS if m in content), None)

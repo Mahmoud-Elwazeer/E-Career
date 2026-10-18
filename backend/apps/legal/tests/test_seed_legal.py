@@ -7,6 +7,8 @@ depend on, including the processor register (previously unseeded).
 """
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.test import override_settings
 
 from apps.legal.models import (
     PolicyDocument, PolicyVersion, ConsentPurpose, CookieCategory,
@@ -49,9 +51,16 @@ def test_seed_legal_default_behavior_creates_drafts_never_auto_publishes():
         assert ar_version.status == PolicyVersion.Status.DRAFT
 
 
+@override_settings(DEBUG=True)
 def test_seed_legal_activate_drafts_flag_publishes_for_staging_convenience():
     """The --activate-drafts flag exists ONLY for test/staging convenience
-    and must be explicitly passed — never the default."""
+    and must be explicitly passed — never the default. `DEBUG=True` here
+    simulates that convenience context (pytest-django forces DEBUG=False
+    by default for every test, same as this platform's real production
+    settings — the override makes this test explicitly opt into the
+    'non-production environment' state the flag itself requires, same
+    convention as `test_alexbank_provider.py`'s mock-provider guard
+    tests)."""
     call_command("seed_legal", "--activate-drafts")
     docs = PolicyDocument.objects.filter(is_active=True)
     assert docs.count() == 13
@@ -59,6 +68,28 @@ def test_seed_legal_activate_drafts_flag_publishes_for_staging_convenience():
         assert doc.live_version is not None
 
 
+def test_seed_legal_activate_drafts_refused_outside_debug_or_explicit_override():
+    """Directive item 13: a command capable of auto-activating unreviewed
+    legal drafts must refuse to run in what looks like a production
+    environment (DEBUG=False, no explicit override) — this is the real
+    regression guard for that refusal, not just a docstring promise."""
+    with pytest.raises(CommandError, match="--activate-drafts is refused"):
+        call_command("seed_legal", "--activate-drafts")
+    # Refusal must happen before anything is created — not a partial seed.
+    assert PolicyDocument.objects.count() == 0
+
+
+@override_settings(DEBUG=False)
+def test_seed_legal_activate_drafts_allowed_via_explicit_env_override(monkeypatch):
+    """The LEGAL_SEED_ALLOW_ACTIVATE_DRAFTS escape hatch works even with
+    DEBUG=False, for a deliberately-configured staging box."""
+    monkeypatch.setenv("LEGAL_SEED_ALLOW_ACTIVATE_DRAFTS", "1")
+    call_command("seed_legal", "--activate-drafts")
+    docs = PolicyDocument.objects.filter(is_active=True)
+    assert docs.count() == 13
+
+
+@override_settings(DEBUG=True)
 def test_seed_legal_never_touches_an_existing_active_version_on_rerun():
     """Re-running seed_legal must NEVER replace/retire an already-ACTIVE
     production policy — the real non-negotiable this gap-fix protects."""

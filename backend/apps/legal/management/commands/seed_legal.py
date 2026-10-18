@@ -985,12 +985,17 @@ class Command(BaseCommand):
                 "the seeded draft versions so /legal/<slug> is populated "
                 "without a manual review step. Never use this in a "
                 "production deploy; the default (omitting this flag) is the "
-                "safe, directive-mandated behavior."
+                "safe, directive-mandated behavior. Refused outright unless "
+                "settings.DEBUG=True or LEGAL_SEED_ALLOW_ACTIVATE_DRAFTS is "
+                "explicitly set — see the same guard pattern already used "
+                "by AlexBankMockProvider."
             ),
         )
 
     def handle(self, *args, **options):
         activate = options["activate_drafts"]
+        if activate:
+            self._guard_activate_drafts_not_production()
         self._seed_documents(activate=activate)
         self._seed_consent_purposes()
         self._seed_cookie_categories()
@@ -1011,6 +1016,45 @@ class Command(BaseCommand):
                 "Control Plane before launch. Run `manage.py legal_readiness` "
                 "to check overall launch readiness."
             ))
+
+    def _guard_activate_drafts_not_production(self):
+        """Refuse `--activate-drafts` unless this is clearly a non-production
+        environment. Mirrors the existing `AlexBankMockProvider._guard()`
+        pattern (apps.payments.providers.alexbank_provider) rather than
+        inventing a new convention: a command that can auto-publish
+        machine-translated/unreviewed legal text is exactly as dangerous as
+        a payment provider that can fake a live charge, and this platform
+        already has one correct answer for that shape of risk.
+
+        Allowed when EITHER:
+          - settings.DEBUG is True (the standard dev/test signal this repo
+            already uses everywhere, e.g. config/settings/test.py,
+            development.py), OR
+          - LEGAL_SEED_ALLOW_ACTIVATE_DRAFTS is explicitly set in the
+            environment (an escape hatch for a deliberately-configured
+            staging box that runs with DEBUG=False but still wants this
+            convenience — requires an explicit opt-in, never a default).
+
+        Raises CommandError (not a silent no-op) so a CI/deploy script that
+        accidentally includes this flag fails loudly instead of partially
+        succeeding.
+        """
+        from django.conf import settings
+        from django.core.management.base import CommandError
+        from decouple import config as _config
+
+        allow = bool(getattr(settings, "DEBUG", False)) or _config(
+            "LEGAL_SEED_ALLOW_ACTIVATE_DRAFTS", default=False, cast=bool,
+        )
+        if not allow:
+            raise CommandError(
+                "--activate-drafts is refused: settings.DEBUG is False and "
+                "LEGAL_SEED_ALLOW_ACTIVATE_DRAFTS is not set. This flag "
+                "auto-publishes machine-translated/unreviewed legal text "
+                "and must never run against a production database. If this "
+                "really is a deliberately-configured staging environment, "
+                "set LEGAL_SEED_ALLOW_ACTIVATE_DRAFTS=1 explicitly."
+            )
 
     def _seed_documents(self, activate: bool = False):
         """Create PolicyDocuments + an initial v2026.1 version for each.

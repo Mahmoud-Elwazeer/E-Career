@@ -134,6 +134,28 @@ def test_activate_version_writes_activity_log_entry(terms_doc, admin_user):
     assert entry2.metadata["reacceptance_required"] is True
 
 
+def test_activate_version_rejects_unsupported_locale(terms_doc):
+    """Directive item 12: the activation safety gate must not rely solely on
+    the unresolved-marker text scan — a structurally invalid locale (e.g. a
+    typo, or a locale this platform has no review workflow for) must be
+    rejected even if the content itself contains no unresolved marker."""
+    v1 = PolicyVersion.objects.create(
+        document=terms_doc, version_label="2026.1", locale="fr", jurisdiction="OTHER",
+        status=PolicyVersion.Status.APPROVED, content_markdown="# Terms\nSome text.",
+    )
+    with pytest.raises(services.ActivationBlocked, match="not in this platform's supported-locale list"):
+        services.activate_version(version=v1)
+
+
+def test_activate_version_rejects_empty_content(terms_doc):
+    v1 = PolicyVersion.objects.create(
+        document=terms_doc, version_label="2026.1", locale="en", jurisdiction="OTHER",
+        status=PolicyVersion.Status.APPROVED, content_markdown="   ",
+    )
+    with pytest.raises(services.ActivationBlocked, match="content_markdown is empty"):
+        services.activate_version(version=v1)
+
+
 def test_public_policy_endpoint_returns_active_version(terms_doc):
     v1 = _approved_version(terms_doc)
     services.activate_version(version=v1)

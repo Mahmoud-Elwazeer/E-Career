@@ -38,8 +38,10 @@ from dataclasses import dataclass, field
 
 from django.conf import settings
 
+import re
+
 from .models import (
-    PolicyDocument, CookieCategory, LegalEntityConfig, ProcessorRecord,
+    PolicyDocument, PolicyVersion, CookieCategory, LegalEntityConfig, ProcessorRecord,
     JurisdictionPolicyProfile, RetentionPolicy,
 )
 from .services import UNRESOLVED_MARKER, UNRESOLVED_MARKER_AR  # single source of truth for the literals
@@ -48,6 +50,73 @@ from .services import UNRESOLVED_MARKER, UNRESOLVED_MARKER_AR  # single source o
 CORE_DOC_SLUGS = ["terms", "privacy", "cookies", "refunds", "payment-security"]
 
 STATE_ORDER = ["READY", "LEGAL_REVIEW_REQUIRED", "CONFIGURATION_REQUIRED", "BLOCKED"]
+
+
+# ── Placeholder scan (acceptance-pass item 14) ───────────────────────────────
+# Patterns a genuinely-final, publicly-live policy version must never
+# contain. Each entry is (name, compiled regex) — kept as plain, auditable
+# patterns rather than a generic "lint" dependency, since this check only
+# ever needs to run against this app's own PolicyVersion.content_markdown.
+_PLACEHOLDER_PATTERNS = [
+    # Deliberately specific template-placeholder phrasing (e.g. "[Insert
+    # Company Name]", "[Your Company Name Here]", "[TODO: ...]") — NOT a
+    # bare "your"/"company"/"site" word match, since real markdown link
+    # text in this app's own policies legitimately contains brackets
+    # (e.g. "[Your Data Rights](/legal/data-rights)" is a real cross-link,
+    # not a placeholder) and a looser pattern would false-positive on it.
+    ("bracket_placeholder", re.compile(
+        r"\[(?:insert\b|TODO\b|TBD\b|placeholder\b|your (?:company|site) name|company name here|site name here)[^\]]*\]",
+        re.IGNORECASE,
+    )),
+    ("todo_fixme", re.compile(r"\b(?:TODO|FIXME|XXX)\b")),
+    ("lorem_ipsum", re.compile(r"\blorem ipsum\b", re.IGNORECASE)),
+    ("example_email", re.compile(r"[\w.+-]+@(?:example\.(?:com|org|net)|test\.com|yourcompany\.(?:com|org))", re.IGNORECASE)),
+    ("example_domain_url", re.compile(r"https?://[\w.-]*example\.(?:com|org|net)", re.IGNORECASE)),
+    ("template_placeholder_ar", re.compile(r"\[(?:أدخل اسم|اسم الشركة هنا|اسم موقعك هنا)[^\]]*\]")),
+]
+
+
+def scan_version_for_placeholders(version: PolicyVersion) -> list[str]:
+    """Return a list of human-readable findings for one PolicyVersion's
+    content (both the unresolved-marker literals AND the broader
+    placeholder-pattern scan below). Never mutates anything — read-only.
+    """
+    content = version.content_markdown or ""
+    findings = []
+    if UNRESOLVED_MARKER in content:
+        findings.append(f"unresolved marker: '{UNRESOLVED_MARKER}'")
+    if UNRESOLVED_MARKER_AR in content:
+        findings.append(f"unresolved marker (ar): '{UNRESOLVED_MARKER_AR}'")
+    for name, pattern in _PLACEHOLDER_PATTERNS:
+        match = pattern.search(content)
+        if match:
+            findings.append(f"{name}: '{match.group(0)}'")
+    return findings
+
+
+def scan_active_versions_for_placeholders() -> dict[str, list[str]]:
+    """Scan every currently-ACTIVE PolicyVersion (every locale) for
+    unresolved markers/placeholder text. Returns {("slug", "locale"):
+    [findings]} for any version with at least one finding — an empty dict
+    means every ACTIVE version is clean. This is the one check in this
+    module that matters most: DRAFT content is EXPECTED to contain
+    placeholders (that's what DRAFT means); an ACTIVE, publicly-served
+    version must never contain one. `activate_version()` already blocks
+    the known unresolved-marker literals at activation time (services.py),
+    but this function is the independent, after-the-fact verification
+    sweep the directive separately asks for — it would also catch a
+    placeholder pattern that isn't the literal marker string (e.g. a
+    leftover '[TODO]' an editor typed directly into an already-ACTIVE
+    version via a content edit, bypassing the activation chokepoint
+    entirely since editing an ACTIVE version's content is a separate
+    admin action from activating it).
+    """
+    results: dict[str, list[str]] = {}
+    for version in PolicyVersion.objects.filter(status=PolicyVersion.Status.ACTIVE).select_related("document"):
+        findings = scan_version_for_placeholders(version)
+        if findings:
+            results[f"{version.document.slug} ({version.locale})"] = findings
+    return results
 
 
 @dataclass
@@ -181,6 +250,17 @@ def _check_retention(report: ReadinessReport) -> None:
     report.add("retention", "READY", f"All {total} retention categories have a confirmed period.")
 
 
+def _check_placeholder_scan(report: ReadinessReport) -> None:
+    findings = scan_active_versions_for_placeholders()
+    if findings:
+        report.add("placeholder_scan", "BLOCKED",
+                   f"{len(findings)} ACTIVE policy version(s) contain unresolved "
+                   f"placeholder text: {findings}. This must never be publicly "
+                   f"live — see scan_active_versions_for_placeholders().")
+        return
+    report.add("placeholder_scan", "READY", "No ACTIVE policy version contains unresolved placeholder text.")
+
+
 def _check_platform_currency(report: ReadinessReport) -> None:
     currency = getattr(settings, "PLATFORM_BASE_CURRENCY", None)
     if not currency:
@@ -202,4 +282,5 @@ def check_legal_readiness() -> ReadinessReport:
     _check_cookie_categories(report)
     _check_retention(report)
     _check_platform_currency(report)
+    _check_placeholder_scan(report)
     return report
