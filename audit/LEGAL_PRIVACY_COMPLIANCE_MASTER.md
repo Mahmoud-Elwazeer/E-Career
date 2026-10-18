@@ -1,6 +1,6 @@
 # USAM Career — Legal / Privacy / Payments / Consent Compliance Master
 
-**Status: authoritative, code-verified. Last updated 2026-10-14 (production-hardening pass).**
+**Status: authoritative, code-verified. Last updated 2026-09-21 (continuation hardening pass — see §9A for this pass's changes; §§1-11 below are the prior pass, corrected in-place where a prior "not fixed" claim has since been superseded).**
 
 ## Status taxonomy (used throughout this document)
 
@@ -367,10 +367,20 @@ correctly show "no active version yet" rather than fabricating content.
   refunds/payment-security + "View all" + "Cookie settings") — no `#`
   placeholders.
 - **Checkout disclosures**: `Billing.tsx` and `EmployerBilling.tsx` now
-  show an EGP-currency + auto-renewal + refund/payment-security-policy
-  disclosure before any purchase, with no pre-checked marketing consent
-  anywhere in the checkout flow (there never was one — payment flows don't
-  collect marketing consent).
+  show an EGP-currency + refund/payment-security-policy disclosure before
+  any purchase, with no pre-checked marketing consent anywhere in the
+  checkout flow (there never was one — payment flows don't collect
+  marketing consent). **Correction (directive item 14, this pass):** the
+  disclosure previously said "renew automatically until cancelled" —
+  false. There is no recurring billing, auto-charge, or subscription-
+  renewal mechanism anywhere in `apps.payments` (confirmed: `CheckoutView`
+  only ever makes one single charge per purchase; no Stripe subscription
+  mode is used; `admin_views.subscriptions` only flips a status flag
+  manually). The disclosure now correctly states each purchase is a
+  single one-time charge with no auto-renewal, and the seeded Refund &
+  Cancellation Policy's "Subscriptions" section was corrected to match
+  (it previously implied a self-service "cancel to stop future billing"
+  flow that does not exist — there is no future charge to cancel).
 
 ---
 
@@ -392,7 +402,7 @@ correctly show "no active version yet" rather than fabricating content.
 | PCI DSS scope | **Not assessed/certified.** Hosted-checkout-only architecture reduces exposure versus a platform that collects card fields directly, but this document makes no PCI compliance claim | Payment & Card Security policy page states this explicitly |
 | Fake security badges | None exist anywhere in the frontend | Grep for badge/certification imagery in Billing/Pricing pages — none found |
 | Subscription cancellation semantics | `CompanySubscription`/`UserSubscription` have a flat `status` (trial/active/suspended/cancelled) with no "immediate vs period-end" field; admin changes status manually via `admin_views.subscriptions` | `apps/core/models.py`; flagged as a gap — not resolved in this directive (would require new plan-level cancellation-timing fields, out of the scope the directive asked for) |
-| Recurring billing disclosure | Added to `Billing.tsx`/`EmployerBilling.tsx` before checkout | This directive's frontend work (§4) |
+| Recurring billing disclosure | **Corrected (item 14)**: no recurring billing exists — `Billing.tsx`/`EmployerBilling.tsx` and the seeded Refund Policy now correctly state every purchase is one-time, no auto-renewal | This pass; see §9.16/§9.14-item-14 |
 
 **Security headers / CSRF / CORS** (read, not modified): `production.py`
 already sets `SECURE_HSTS_*`, `SESSION_COOKIE_SECURE`,
@@ -679,12 +689,16 @@ directive requires a controlled launch**, not an immediate blanket
 auto-publish of unreviewed text. The actual recommended production launch
 flow:
 
-1. **Seed to DRAFT only** (do not let `seed_legal` activate automatically
-   in production — a follow-up flag was not added to the command this
-   pass; until it is, the safe path is to run `seed_legal` on a staging
-   DB first, let legal review the rendered `/legal/*` pages there, THEN
-   run it on production immediately before go-live). This is a process
-   control, not a code gap — tracked as a `CONFIGURATION REQUIRED` item.
+1. **Seed to DRAFT only.** **Update (continuation pass, 2026-09-21 — see
+   §9A.1):** `seed_legal` now defaults to creating every policy as
+   `DRAFT` and never auto-activates. An explicit `--activate-drafts` flag
+   (intended for test/staging only) is required to reproduce the old
+   auto-publish behavior, and that flag itself is gated behind
+   `activate_version(..., allow_unresolved_markers=True)` so draft text
+   still containing `"REQUIRES LEGAL REVIEW"` markers cannot be activated
+   by accident even with the flag set. This closes the "immediate
+   blanket auto-publish of unreviewed text" risk described below at the
+   code level, not just the process level.
 2. **Review**: an admin/legal reviewer reads each of the 7 documents at
    `/legal/<slug>` on staging.
 3. **Approve + Activate**: via the Admin Legal Control Plane
@@ -814,6 +828,24 @@ touch existing data, and immediately gives the business visibility into
 how much of the job data is actually currency-verified vs. guessed.
 Flagged for a follow-up decision, not implemented in this pass.
 
+**Update (continuation pass, 2026-09-21 — see §9A.2):** the follow-up
+decision was made. `Job.salary_currency` is now nullable with **no**
+default (option 1's intent, applied only to `Job`, not to the
+employer-posted `JobPosting` model, which keeps its real EGP default
+since that field is human-entered by an employer, not scraped/guessed).
+A new `Job.salary_currency_raw` field preserves the original source text
+when a scraper cannot confidently resolve a currency. All 7 ATS scraper
+connectors (`personio`, `recruitee`, `smartrecruiters`, `teamtailor`,
+`workable`, plus the shared `base`/`normalizer`/`contract`/`orchestrator`/
+`tasks` pipeline code) were fixed to stop fabricating `'USD'` as a
+fallback — they now pass through `None` and the raw text when the
+currency genuinely cannot be determined from the source. This does not
+retroactively correct historical rows (per the directive's own
+instruction not to silently rewrite historical data) but stops new bad
+data from being created going forward. Migration:
+`apps/jobs/migrations/0016_job_salary_currency_raw_alter_job_salary_currency.py`.
+7 new tests.
+
 ### 9.7 Cookie tracker gating — nothing to gate yet (confirmed, not a gap)
 
 Exhaustive search confirmed **zero** analytics/tracking SDKs exist
@@ -838,11 +870,17 @@ never query by both keys together). **This means a user's anonymous
 cookie choice does not automatically transfer to their authenticated
 session** — they would see the banner again post-login. This is privacy-
 safe (never silently broadens consent — the opposite of the directive's
-concern) but is a UX rough edge, not a privacy violation. Not changed in
-this pass; flagged for a future UX improvement (e.g., on login, copy the
-most recent anonymous session's consent into a new authenticated-user
-`CookieConsent` row with `method` noting it was carried over) — a
-feature add, not a hardening fix, so deferred.
+concern) but is a UX rough edge, not a privacy violation.
+
+**Update (continuation pass, 2026-09-21 — see §9A.3):** implemented.
+`services.sync_anonymous_cookie_consent_to_user()` runs on login
+(`LoginView`) and copies the most recent anonymous session's
+`CookieConsent` into a new authenticated-user row, with `method` noting
+it was carried over (new `CookieConsent.carried_over_from_session_key`
+field). It never broadens consent — it only ever copies the user's own
+prior anonymous choice forward, and never runs if the user already has a
+`CookieConsent` row. 5 new tests + migration
+`0002_cookieconsent_carried_over_from_session_key.py`.
 
 ### 9.9 Talent Pool privacy — real gap found and fixed
 
@@ -887,6 +925,14 @@ marketing-type email send path in this codebase today to enforce it
 against — all `EmailTemplate.TEMPLATE_TYPES` are transactional). Flagged
 for when a marketing-send path is built.
 
+**Update (continuation pass, 2026-09-21 — see §9A.4):** a marketing-send
+path was found to already exist (`apps.emails.tasks.
+send_re_engagement_emails` and `send_weekly_career_digest`, both
+genuinely marketing in nature, both previously unwired to any consent
+check). New `apps.legal.services.can_send_marketing(user)` is now called
+at the top of both tasks and skips the send when the user has not opted
+in. 7 new tests across both task files.
+
 ### 9.11 GDPR/legal-domain consolidation — confirmed disconnected, convergence plan recorded (not implemented)
 
 Confirmed via cross-import grep: `accounts.models_gdpr`/`views_gdpr`/
@@ -920,6 +966,28 @@ data loss) and does not require deleting either system. Not implemented
 this pass because it changes DSR-opening behavior and should be reviewed
 before shipping, consistent with "do not implement destructive/behavior-
 changing consolidation without review."
+
+**Update (continuation pass, 2026-09-21 — see §9A.5/§9A.6):** both gaps
+closed, exactly per the recommended plan above. (1) `legal.PrivacyRequest`
+is now the canonical governance record: a new nullable
+`privacy_request` FK was added to both `accounts.DataExportRequest` and
+`AccountDeletionRequest` (migration
+`0005_accountdeletionrequest_privacy_request_and_more.py`), and
+`legal.services.open_privacy_request()` now branches on
+`request_type in ("export", "delete")` to create the corresponding
+`accounts` execution row and trigger its existing Celery task via two new
+private helpers (`_trigger_legacy_export`/`_trigger_legacy_deletion`),
+rather than leaving the DSR as a standalone ticket. (2) The missing
+scheduling gap is fixed: a new `accounts.tasks_gdpr.
+execute_due_account_deletions` periodic task polls for
+`AccountDeletionRequest` rows past their `scheduled_for` date and now runs
+on Celery Beat (new `config/celery.py` beat entry
+`execute-due-account-deletions`). As defense-in-depth, `process_account_
+deletion` itself now re-checks for an active `LegalHold` on the user
+immediately before anonymizing, even though the request shouldn't have
+been schedulable under a hold in the first place — belt-and-suspenders
+against a hold being placed after scheduling but before execution. 10 new
+tests across two test files.
 
 ### 9.12 Payment runtime trace — raw card data confirmed never reachable
 
@@ -984,6 +1052,26 @@ deliberate design decision requiring product/business sign-off on the
 desired behavior, not a drop-in bug fix) — flagged for a follow-up
 decision.
 
+**Update (continuation pass, 2026-09-21 — see §9A.7/§9A.8):** (a) and (c)
+fixed; (b) remains open (still flagged, not silently dropped). New
+`services._revoke_entitlement()` is called whenever a refund's amount
+equals the original payment's full amount, flipping the relevant
+subscription's status to `'cancelled'` (reusing the existing status
+vocabulary rather than inventing a new one) — a **partial** refund never
+touches entitlement at all, by explicit policy, since this platform has
+flat plan entitlements, not metered/proportional credits, so there is no
+correct partial-downgrade to compute. A new `RefundRequest` model mirrors
+the existing `AdjustmentRequest` dual-control pattern exactly: `services.
+request_refund()` creates a pending request, and `approve_refund_request()`/
+`reject_refund_request()` (new admin endpoints,
+`admin_views.refund_requests`/`refund_request_decide`) enforce that the
+approver cannot be the same user as the requester before money actually
+moves. This is additive alongside the pre-existing single-admin
+`issue_refund` endpoint, which still exists and is not being removed in
+this pass. Migration `apps/payments/migrations/0003_refundrequest.py`.
+20 new tests across two test files (13 on refund authorization/
+entitlement, plus updates to the existing reconciliation suite).
+
 ### 9.16 Subscription cancellation — manual-admin-only, no period-end semantics
 
 Confirmed: the only code path that sets `CompanySubscription`/
@@ -997,6 +1085,17 @@ renewal or failed-renewal/dunning logic exists anywhere (`apps.payments`
 has no `tasks.py` file at all). This matches the admin-managed launch
 model already documented in the code's own comments — not a regression,
 but confirmed as the current real behavior rather than assumed.
+
+**Correction (continuation pass, 2026-09-21 — see §9A.9):** this section's
+framing was accurate about the code, but the frontend's own checkout
+disclosure text (`Billing.tsx`/`EmployerBilling.tsx`) and the seeded
+Refund & Cancellation Policy text (`seed_legal.py`) were both found, on
+re-reading, to still describe purchases as "renewing automatically until
+cancelled" in places — a false claim given there is no recurring billing
+mechanism anywhere in `apps.payments` (confirmed again this pass: still
+no `tasks.py`, still no `cancel_at_period_end` field). Both were
+corrected to state plainly that each purchase is a single one-time charge
+with no auto-renewal and nothing to "cancel" in the billing sense.
 
 ### 9.17 npm dependency audit — safe fixes applied, remainder documented
 
@@ -1024,6 +1123,21 @@ them. **Documented, not fixed**: the 16 remaining issues all require a
 dedicated major-version-upgrade pass (separate from this hardening work)
 with its own test/regression cycle for `vite`/`vitest`/`tailwindcss`/
 `react-router-dom`.
+
+**Update (continuation pass, 2026-09-21 — see §9A.10):** `react-router-dom`
+was upgraded directly, 6.30.1→7.18.4 (v7's "library mode" is documented as
+backward-compatible with v6 usage patterns) — verified via a full
+`tsc --noEmit` (zero new errors vs. the pre-upgrade baseline, confirmed by
+diffing against a `git stash`'d run) and full `vitest run` (93/93 passing)
+after the bump. A combined `vite` 5→7.1.5 + `vitest` 3→5.0.5 upgrade was
+also attempted but broke 7 real tests (a `ResizeObserver`/Radix UI
+incompatibility surfaced by the new `vitest` environment) and was rolled
+back per the "verify after each change, one dependency family at a time"
+rule rather than shipped broken. `tailwindcss` 3→4 was not attempted this
+pass either — it is a complete config-format rewrite, not a drop-in
+version bump, and judged too risky to combine with everything else in
+this pass. **Final state**: 14 vulnerabilities remain (down from 16),
+all still devDependencies-only, never shipped to the production bundle.
 
 ### 9.18 Markdown rendering XSS — hardened
 
@@ -1058,6 +1172,17 @@ script/asset source in production first (the Rasheed 3D assets, any CDN
 fonts, etc.) to avoid breaking functionality — the directive itself asks
 for a Report-Only CSP as the first step, which is new work beyond a
 "hardening pass" scope and is recommended as a dedicated follow-up task.
+
+**Update (continuation pass, 2026-09-21 — see §9A.12):** built, shipped
+as **Report-Only only** (never enforcing) since this platform never had a
+CSP before and an enforcing header risks breaking the app on day one. New
+`apps.core.csp_middleware` adds `Content-Security-Policy-Report-Only`
+against a verified real origin inventory (`fonts.googleapis.com`,
+`checkout.stripe.com`, `accounts.google.com`, plus same-origin
+WebSocket), registered in `MIDDLEWARE`. 4 new tests confirm the header is
+present, report-only (not enforcing), and lists exactly the verified
+origins. Promoting this to an enforcing header is a follow-up step once
+report data from real traffic has been reviewed — not done this pass.
 
 ### 9.20 Admin Legal RBAC — single flat role confirmed, not changed
 
@@ -1096,6 +1221,21 @@ this pass — flagged as a near-term follow-up, not a blocker, since
 `PolicyVersion.updated_at` plus the one-ACTIVE-version-at-a-time invariant
 still gives a verifiable, if less granular, history).
 
+**Update (continuation pass, 2026-09-21 — see §9A.1):** rather than add a
+new dedicated table, `services.activate_version()` now writes a real
+`apps.core.models.ActivityLog` entry on every activation — giving the
+dead-code `ActivityLog` model its first genuine call site in the repo,
+and giving policy-version transitions an actual append-only audit trail
+without introducing a parallel schema. The same change also hard-blocks
+activating any version whose content still contains the literal marker
+text `"REQUIRES LEGAL REVIEW"` (new `UNRESOLVED_MARKER` constant +
+`ActivationBlocked` exception) unless explicitly bypassed via
+`allow_unresolved_markers=True` — closing the "unreviewed text could be
+accidentally activated" risk at the one real code chokepoint, not just
+documenting it. A new admin `policy_version_preview` action/route lets a
+reviewer read a DRAFT version's rendered content before deciding to
+activate it, without requiring it to go live first to be readable.
+
 ### 9.22 Retention enforcement — built this pass (was previously database-only)
 
 `RetentionPolicy` previously had zero code acting on it. **Built**:
@@ -1111,6 +1251,17 @@ category. 8 new tests. **Not wired into Celery Beat** — deliberate,
 per the directive's instruction to default to DRY_RUN until retention
 periods are legally confirmed; scheduling is a separate go-live step for
 whoever operates the recurring job once legal signs off on actual periods.
+
+**Update (continuation pass, 2026-09-21 — see §9A.1):** `enforce_retention`
+itself was hardened, independent of the Beat-scheduling decision above
+(which still stands — it remains deliberately NOT scheduled, since
+retention periods are still legally unconfirmed). Each category is now
+processed inside its own `try`/`except` so one category's failure (e.g. a
+storage error deleting one user's CV) cannot silently abort the other
+categories in the same run; the command's output now reports a
+`failed`/`total_failed` count per category via a new
+`CategoryResult.failed`/`error` field, so a partial failure is visible in
+the command's own output rather than only in logs. 2 new tests.
 
 ### 9.23 Processor register — seeded from real integrations this pass
 
@@ -1144,17 +1295,33 @@ delete_object()` call only executes on the SUCCESS path (after a
 completed transcription job and a successful transcript fetch/parse). Any
 timeout, failed transcription job, or exception during fetch/parse returns
 early WITHOUT deleting the raw audio — meaning failed/timed-out voice
-sessions leave orphaned raw audio in S3 with no cleanup job. **Not fixed
-this pass** (would need either a `finally`-based cleanup or a separate
-scheduled sweep for orphaned S3 objects matching the audio key pattern —
-flagged as a follow-up). **Still confirmed open** (unchanged from the
-original audit): no retention/TTL field on `InterviewSession.transcript`
-or `InterviewQuestion.answer_text` — stored indefinitely; this pass's new
-`enforce_retention` command CAN clear `InterviewSession.transcript` once
+sessions leave orphaned raw audio in S3 with no cleanup job.
+
+**Update (continuation pass, 2026-09-21 — see §9A.17): FIXED.**
+`speech_to_text()` was rewritten so the S3 delete and local temp-file
+cleanup both happen in a `finally` block, guaranteeing cleanup on every
+exit path — success, transcription timeout, failed job, or any exception
+during fetch/parse — not just the success path. Two new Celery tasks
+close the remaining edge cases that a `finally` block inside a single
+request/task can't reach on its own: `mark_stale_interview_sessions_
+abandoned` (catches sessions where the process itself died or was killed
+mid-call, before `finally` could even run) and `cleanup_orphaned_voice_
+interview_audio` (a sweep for any S3 object matching the audio key
+pattern that has no corresponding live session row at all — defense
+against any cleanup path this pass didn't anticipate). Both are now
+scheduled on Celery Beat. 9 new tests. **Still confirmed open**
+(unchanged from the original audit, not addressed this pass either): no
+retention/TTL field on `InterviewSession.transcript` or
+`InterviewQuestion.answer_text` — stored indefinitely; `enforce_retention`
+CAN clear `InterviewSession.transcript` once
 `RetentionPolicy("interview_transcripts")` is legally confirmed and
 switched off `requires_legal_review`, closing this gap operationally the
 moment legal provides a number. Employers confirmed to have zero code-
-level access to interview transcripts (clean separation, unchanged).
+level access to interview transcripts (clean separation, unchanged). Also
+noted but NOT fixed this pass: a pre-existing model-fragmentation issue
+where `apps.interviews` and `apps.career` each have their own, separate
+`InterviewSession`-shaped model — flagged as a follow-up architectural
+question, out of scope for a cleanup-focused fix.
 
 ### 9.26 CV/document security — malware scanning is real, with a packaging caveat
 
@@ -1179,6 +1346,151 @@ on-demand user-triggered delete — same gap as interview transcripts,
 closable via `enforce_retention` once `cv_documents`' retention period is
 legally confirmed.
 
+**Update (continuation pass, 2026-09-21 — see §9A.15/§9A.16):** the
+packaging/visibility gap is now surfaced operationally rather than left
+silent: `SystemHealthView` (admin-facing system health endpoint) now
+reports whether the ClamAV connection is actually reachable, so an
+operator can see at a glance whether CV uploads are silently
+fail-closed-rejecting due to a missing daemon connection, instead of only
+discovering it when users start reporting rejected uploads.
+`docker-compose.yml` was fixed to set `CLAMAV_HOST`/`CLAMAV_PORT`
+environment defaults and add a real `clamav` service healthcheck
+dependency, so a fresh `docker-compose up` actually provisions a working
+scanner rather than silently omitting it. `requirements.txt` now carries
+an explicit comment that `pyclamd` is pinned but **confirmed NOT
+installed in this dev sandbox** (verified directly this pass via `import
+pyclamd` → `ModuleNotFoundError`) — flagging that production installation
+still needs independent confirmation, not assumed from the requirements
+file alone. Separately, this pass also fixed two real upload-path bugs
+found while reviewing this area: `JobSubmitApplicationView` was bypassing
+`upload_security` validation entirely for CV uploads submitted with a job
+application (now validated+scanned like every other CV upload path), and
+`CompanyClaimCreateSerializer` was accepting ownership-proof documents
+with no `validate_document` check at all (now added). A new authenticated
+`download_cv` endpoint was added on `JobApplicationViewSet`, reusing the
+existing employer-ownership `get_queryset` filter, closing the previously
+disclosed "CV URL is a bare, guessable media URL" gap for applications
+viewed through that endpoint specifically — `apps.career.cv_parser_views.
+cv_delete`'s storage-path bug (deleting by `.path` instead of `.name`,
+which could silently no-op or raise on some storage backends) was also
+fixed. 22 new tests across upload-security, CV-access-control, and
+system-health coverage. **Still open, not addressed this pass**: the
+broader architectural gap — CVs served from local disk + nginx rather
+than short-lived signed URLs — remains; closing it fully would need an
+S3 migration for CV storage, which is out of scope for this pass.
+
+---
+
+## 9A. Continuation hardening pass (2026-09-21) — summary of this session's work
+
+This section indexes everything fixed in the continuation pass referenced
+by the "**Update (continuation pass, 2026-09-21 ...)**" notes inserted
+throughout §9 above, plus items that didn't map onto an existing §9.x
+subsection. Every item below is additive/corrective to the prior pass's
+findings — nothing in §§1-9.26 above was deleted; superseded claims were
+corrected in place with an explicit "Update" note so the document's
+history stays legible.
+
+1. **`seed_legal` DRAFT-by-default** (closes §9.2's launch-flow gap): new
+   `--activate-drafts` flag required to auto-activate (test/staging use
+   only); gated behind `activate_version(allow_unresolved_markers=True)`.
+   9 tests.
+2. **`legal_readiness` management command** (new, no prior §9.x entry):
+   `apps.legal.readiness_service.check_legal_readiness()` + `manage.py
+   legal_readiness` gives a single scriptable command an operator can run
+   before go-live to see every `CONFIGURATION REQUIRED`/`LEGAL REVIEW
+   REQUIRED` item from §9.4 in one pass, rather than reading this document
+   by hand. 8 tests.
+3. **Policy-activation audit trail + unresolved-marker gate** — see §9.21
+   update above.
+4. **Draft policy preview** — new `policy_version_preview` admin
+   action/route lets a reviewer read a DRAFT's rendered content before
+   activating it — see §9.21 update above.
+5. **Salary-currency follow-up decision implemented** — see §9.6 update
+   above.
+6. **Anonymous→authenticated cookie-consent carryover** — see §9.8 update
+   above.
+7. **GDPR/legal-domain consolidation implemented** — see §9.11 update
+   above.
+8. **Account-deletion Celery scheduling** — see §9.11 update above
+   (`execute_due_account_deletions` Beat task).
+9. **Legal-hold defense-in-depth** — see §9.11 update above (re-check in
+   `process_account_deletion` itself, not just at scheduling time).
+10. **`enforce_retention` per-category failure isolation/reporting** —
+    see §9.22 update above.
+11. **`can_send_marketing` eligibility service wired in** — see §9.10
+    update above.
+12. **Refund→entitlement reconciliation** — see §9.15 update above
+    (`_revoke_entitlement`, full-refund-only policy).
+13. **Refund maker-checker (`RefundRequest`)** — see §9.15 update above.
+14. **Subscription-cancellation/auto-renewal honesty correction** — see
+    §9.16 update above (frontend + seeded policy text both corrected).
+15. **ClamAV operational visibility** — see §9.26 update above
+    (`SystemHealthView` check, `docker-compose.yml` fix).
+16. **CV/document upload-security end-to-end** — see §9.26 update above
+    (`JobSubmitApplicationView`, `CompanyClaimCreateSerializer`,
+    `download_cv` endpoint, `cv_delete` storage-path fix).
+17. **Voice/interview audio cleanup** — see §9.25 update above
+    (`finally`-based cleanup + two new sweep tasks).
+18. **CSP (Report-Only)** — see §9.19 update above.
+19. **npm dependency remediation** — see §9.17 update above
+    (`react-router-dom` upgraded; `vite`/`vitest` attempted and rolled
+    back; 14 vulnerabilities remain, documented as dev-only).
+20. **Audit-event identifiability** — addressed as part of item 3 above:
+    the new `ActivityLog` entries written by `activate_version()` record
+    the acting admin user, giving policy-activation events a real,
+    attributable actor rather than only a timestamp.
+21. **Processor-register corrections** — `seed_legal`'s processor seed
+    data was reorganized with explicit `processor_type` tags
+    (`cloud_infrastructure`, `model_path_via_infrastructure`,
+    `external_processor`, `self_hosted_infrastructure`) so AWS, Stripe,
+    and Typesense are no longer flattened into one undifferentiated list.
+    Anthropic was added as a model-path note (Bedrock mediates; there is
+    no direct Anthropic API contract/account), not listed as a direct
+    processor — avoiding the mistake of claiming a vendor relationship
+    that doesn't exist in the current architecture. 1 new test.
+22. **Public-marker safety** — covered by item 3/§9.21's
+    `UNRESOLVED_MARKER` activation gate: a policy page can never go live
+    while still containing literal `"REQUIRES LEGAL REVIEW"` text, unless
+    a reviewer explicitly bypasses the gate (test/staging only).
+23. **First-launch legal flow test** (new, no prior §9.x entry): one
+    comprehensive end-to-end test (`test_first_launch_flow.py`) exercises
+    the entire pipeline — fresh DRAFT seed → admin review/preview →
+    activation → signup → policy acceptance — in a single pass, as a
+    regression guard against any future change silently breaking the
+    launch sequence documented in §9.2.
+24. **Frontend fail-closed on missing/incomplete legal config**: `Login.
+    tsx` now gates the signup submit button behind a `legalReady` check
+    (both Terms and Privacy must have a live `ACTIVE` version via
+    `listPolicies()`) rather than assuming they exist — a user can no
+    longer accidentally sign up without a real, current policy to accept
+    just because a policy failed to load. `PolicyPage.tsx`'s single
+    `notFound: boolean` was replaced with a three-state `unavailable:
+    'not_found' | 'error' | null`, so a genuine fetch/network error is no
+    longer rendered identically to "this policy legitimately has no
+    active version" — both are now visible, honest, distinct states,
+    never a blank page. 10 new tests (8 Login, 2 PolicyPage); full
+    frontend suite now 93/93.
+25. **Full verification pass**: 889 backend tests passed (up from the
+    prior pass's 149, reflecting all work above plus pre-existing
+    suites), 93 frontend tests passed (up from 75), `tsc --noEmit` clean
+    (zero new errors vs. pre-pass baseline), production `vite build`
+    succeeded, `manage.py makemigrations --check --dry-run` reported no
+    missing migrations.
+
+**Not implemented this pass** (carried forward, still open, still
+honestly flagged rather than silently dropped): the retention-period
+numbers themselves (still `LEGAL REVIEW REQUIRED`, §9.4), Celery Beat
+scheduling of `enforce_retention` itself (still deliberately unscheduled
+pending those numbers), `tailwindcss` 3→4 and `vite`/`vitest` major
+upgrades (attempted/deferred, §9.17), CSP promotion from Report-Only to
+enforcing, dedicated `PolicyVersionEvent` table (superseded by the
+`ActivityLog` approach instead — judged sufficient, not revisited), CV
+storage migration to signed URLs (§9.26), `InterviewSession` model
+fragmentation between `apps.interviews` and `apps.career` (§9.25), and
+the asynchronous-provider-confirmation gap for refunds (§9.15 item (b),
+still open).
+
 ---
 
 ## 10. Final Acceptance checklist (A–Z areas)
@@ -1197,20 +1509,20 @@ legally confirmed.
 | J. Payment & card security audit | ✅ §5 |
 | K. Admin Legal Control Plane | ✅ §4 |
 | L. Footer legal nav + checkout disclosures | ✅ §4 |
-| M. Tests (backend + frontend) | ✅ §6 — 149 backend + 75 frontend passing |
-| N. This master document | ✅ |
-| O. Commit + push to `development` | ✅ `d144cfb`, `a6b9366`, and this commit |
-| P. Deployment commands per increment | ✅ §8 |
-| Q. REQUIRES LEGAL REVIEW items explicitly tracked, not invented | ✅ §7 |
-| R. No fake compliance/security claims anywhere | ✅ verified by reading every new policy page's text |
-| S. AI disclosure (assists, doesn't decide) enforced at the data layer | ✅ `AIProcessingDisclosure.makes_final_decision` validator |
-| T. Talent Pool explicit opt-in (not automatic exposure) | ✅ pre-existing `is_discoverable=False` default, now surfaced in 3 places |
-| U. Direct Apply redirect disclosure | ✅ Terms of Service §3 |
-| V. Minors/children policy — not invented | ✅ §7 item 3 |
-| W. CV/document security gap — disclosed, not silently left unmentioned | ✅ Security Overview policy page |
-| X. Interview transcript retention — disclosed as unconfigured | ✅ §7 item 4 |
-| Y. Currency consistency gap (Job vs employer-posting model) — flagged | ✅ §3, §7 item 9, decision deferred §9.6 |
-| Z. CSP / cancellation-timing / processor-register gaps — flagged, not fabricated | ✅ §7 items 10–11, §9.19/§9.16/§9.23 |
+| M. Tests (backend + frontend) | ✅ §6/§9A.25 — **889 backend + 93 frontend passing** (as of the 2026-09-21 continuation pass; was 149+75 at the prior pass) |
+| N. This master document | ✅ updated 2026-09-21, §9A |
+| O. Commit + push to `development` | ⏳ **pending this session** — see §9A note below; prior work already pushed as `d144cfb`, `a6b9366`, `a3d6de7`, `49eddd6`, `cbbd048` |
+| P. Deployment commands per increment | ✅ §8 (unchanged structurally; still requires real server discovery output before a final command set can be given for this pass's changes — new migrations exist, see §9A items 5/6/13) |
+| Q. REQUIRES LEGAL REVIEW items explicitly tracked, not invented | ✅ §7, re-confirmed unchanged by §9A — no legal fact was invented this pass either |
+| R. No fake compliance/security claims anywhere | ✅ verified by reading every new/changed policy page's text; one prior false claim (auto-renewal) was found and corrected, §9.16/§9A.14 |
+| S. AI disclosure (assists, doesn't decide) enforced at the data layer | ✅ `AIProcessingDisclosure.makes_final_decision` validator, re-verified this pass |
+| T. Talent Pool explicit opt-in (not automatic exposure) | ✅ pre-existing `is_discoverable=False` default, surfaced in 3 places, unchanged this pass |
+| U. Direct Apply redirect disclosure | ✅ Terms of Service §3, unchanged this pass |
+| V. Minors/children policy — not invented | ✅ §7 item 3, unchanged — still correctly blank |
+| W. CV/document security gap — disclosed, not silently left unmentioned | ✅ Security Overview policy page; underlying gap narrowed this pass, §9.26/§9A.15-16 (upload path hardened, operational visibility added) — storage-architecture gap still disclosed, not closed |
+| X. Interview transcript retention — disclosed as unconfigured | ✅ §7 item 4, unchanged — orphaned-audio cleanup fixed (§9.25/§9A.17), retention period itself still legally unconfirmed |
+| Y. Currency consistency gap (Job vs employer-posting model) — flagged | ✅ §3, §7 item 9 — **decision implemented this pass**, §9.6/§9A.5 (`Job.salary_currency` now nullable, no default; `JobPosting` unchanged by design) |
+| Z. CSP / cancellation-timing / processor-register gaps — flagged, not fabricated | ✅ §7 items 10–11 — CSP now shipped Report-Only (§9.19/§9A.18), processor register corrected with type distinctions (§9.23/§9A.21), cancellation-timing semantics still unmodeled (unchanged, still flagged) |
 
 ---
 
@@ -1218,15 +1530,20 @@ legally confirmed.
 
 | Component | Status |
 |---|---|
-| `apps.legal` backend domain (models/APIs/admin control plane) | **ENGINEERING READY** |
-| Legal Center public pages, cookie consent, Privacy Center, signup consent UI | **ENGINEERING READY** |
+| `apps.legal` backend domain (models/APIs/admin control plane) | **ENGINEERING READY** — now includes draft-safe seeding, activation audit trail, unresolved-marker gate, and a scriptable `legal_readiness` check |
+| Legal Center public pages, cookie consent, Privacy Center, signup consent UI | **ENGINEERING READY** — frontend now fails closed (not open) on missing/incomplete policy data |
 | Payment/card-security guarantees (no raw card data, webhook verification incl. amount/currency, idempotency) | **ENGINEERING READY** |
+| Refund authorization + entitlement reconciliation | **ENGINEERING READY** — maker-checker added, full-refund entitlement revocation added; async provider-confirmation gap still open (§9.15) |
 | Talent Pool privacy enforcement (incl. the critical 500-error fix) | **ENGINEERING READY** |
-| Retention enforcement engine | **ENGINEERING READY** (DRY_RUN only — execution requires §9.4's legal sign-off) |
+| GDPR/DSR consolidation (PrivacyRequest ⇄ accounts execution backend) | **ENGINEERING READY** — previously disconnected systems now linked; 30-day deletion grace period now actually scheduled on Celery Beat |
+| Retention enforcement engine | **ENGINEERING READY** (DRY_RUN only — execution requires §9.4's legal sign-off; per-category failure isolation added this pass) |
+| Voice/interview audio cleanup | **ENGINEERING READY** — guaranteed cleanup on every exit path + two sweep tasks on Celery Beat |
+| CV/document upload security | **ENGINEERING READY** — end-to-end validation+scanning now consistent across all upload paths; ClamAV daemon provisioning in production is **CONFIGURATION REQUIRED** (confirmed `pyclamd` not installed in this dev sandbox; production status unverified by this agent) |
+| CSP (Report-Only) | **ENGINEERING READY** — not yet promoted to enforcing |
 | Processor register, AI disclosures | **ENGINEERING READY**; DPA confirmation = **LEGAL REVIEW REQUIRED** |
 | Legal entity identity, refund window, governing law | **CONFIGURATION REQUIRED** (§9.4) |
-| Minors' age threshold, retention periods, DPA statuses | **LEGAL REVIEW REQUIRED** (§9.4) — explicitly not invented anywhere |
-| Everything in this document | **NOT YET PRODUCTION ACTIVE** — awaiting the user's execution of §8's deployment commands and the live-verification pass in §39 of the original directive, which this agent will perform once the user provides the actual command output |
+| Minors' age threshold, retention periods, DPA statuses | **LEGAL REVIEW REQUIRED** (§9.4) — explicitly not invented anywhere, unchanged this pass |
+| Everything in this document | **NOT YET PRODUCTION ACTIVE** — this pass's changes are not yet committed or pushed as of this writing (see §9A note above); awaiting commit/push to `development`, then real server-discovery output from the user before any final deployment commands for this pass's changes (new migrations in `legal`, `accounts`, `jobs`, `payments`) can be given, then the live-verification pass once deployed |
 
 **This is engineering-complete and production-deployable code. It is not a
 claim of legal compliance, PCI compliance, GDPR compliance, or any other
