@@ -193,11 +193,17 @@ class JobApplicationSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'applied_at', 'cv_snapshot', 'custom_form_responses']
     
     def get_cv_url(self, obj):
-        """Get CV URL if available"""
+        """Authenticated, authorization-checked download URL (directive
+        item 16) — points at JobApplicationViewSet.download_cv rather than
+        the bare, predictable, unauthenticated media path
+        (obj.cv_snapshot.url). The old value would let anyone who obtained
+        the URL (shared, cached, logged) fetch the file with zero auth
+        check, forever; this endpoint re-checks that the requester is the
+        owning employer on every single request."""
         if obj.cv_snapshot:
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.cv_snapshot.url)
+                return request.build_absolute_uri(f"/api/v1/employer/applications/{obj.id}/cv/")
         return None
 
 

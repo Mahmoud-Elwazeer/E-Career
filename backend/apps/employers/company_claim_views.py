@@ -67,6 +67,26 @@ class CompanyClaimCreateSerializer(serializers.Serializer):
         except Company.DoesNotExist:
             raise serializers.ValidationError("Invalid or inactive company.")
 
+    def validate_document(self, value):
+        """Directive item 16: this upload previously bypassed
+        apps.core.upload_security entirely — no extension/size/magic-byte
+        check, no malware scan — even though it's an arbitrary file an
+        unauthenticated-until-now claimant uploads as "proof" of company
+        ownership. Route it through the same validation + ClamAV scan
+        used by every other document upload on the platform."""
+        if value is None:
+            return value
+        from apps.core.upload_security import upload_validator, scan_stream_for_malware
+
+        is_valid, error_msg = upload_validator.validate(value)
+        if not is_valid:
+            raise serializers.ValidationError(error_msg)
+        scan_result = scan_stream_for_malware(value)
+        if not scan_result.clean:
+            detail = scan_result.threat or scan_result.error or "scan failed"
+            raise serializers.ValidationError(f"File rejected by malware scanner: {detail}")
+        return value
+
     def validate(self, attrs):
         if attrs["evidence_type"] == CompanyClaim.EVIDENCE_DOCUMENT and not attrs.get("document"):
             raise serializers.ValidationError({"document": "A document is required for this evidence type."})

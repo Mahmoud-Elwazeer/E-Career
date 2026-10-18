@@ -55,15 +55,24 @@ def cv_delete(request):
     """
     try:
         career_profile = CareerProfile.objects.get(user=request.user)
-        
+
         if career_profile.cv_file:
-            # Delete the file
-            default_storage.delete(career_profile.cv_file.path)
-            career_profile.cv_file = None
-            career_profile.cv_parse_status = 'pending'
-            career_profile.cv_parsed_data = {}
-            career_profile.save()
-        
+            # Directive item 16 fix: use .name (storage-relative) instead of
+            # .path (filesystem-only — raises NotImplementedError on a
+            # non-local storage backend such as S3), and check existence
+            # first in a try/finally so the DB field is always cleared even
+            # if the underlying file is already missing — matches the
+            # safer pattern already used by the retention engine's
+            # _enforce_cv_documents handler (apps/legal/retention_service.py).
+            try:
+                if default_storage.exists(career_profile.cv_file.name):
+                    default_storage.delete(career_profile.cv_file.name)
+            finally:
+                career_profile.cv_file = None
+                career_profile.cv_parse_status = 'pending'
+                career_profile.cv_parsed_data = {}
+                career_profile.save()
+
         return Response({
             'success': True,
             'message': 'CV file deleted',

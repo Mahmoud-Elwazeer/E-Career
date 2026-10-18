@@ -67,12 +67,24 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     env_file:
       - ./backend/.env
+    environment:
+      # Directive-mandated fix (item 15): without this, the backend
+      # defaults to a Unix-socket clamd connection that can never reach
+      # the networked `clamav` sidecar container defined below — CV
+      # uploads would silently fail-closed (reject everything) under
+      # docker-compose even though a ClamAV daemon IS actually running.
+      # ${CLAMAV_HOST:-clamav} lets a real .env override this if needed,
+      # but defaults correctly for this compose topology.
+      - CLAMAV_HOST=${CLAMAV_HOST:-clamav}
+      - CLAMAV_PORT=${CLAMAV_PORT:-3310}
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
       typesense:
+        condition: service_healthy
+      clamav:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/"]

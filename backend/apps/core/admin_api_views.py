@@ -126,6 +126,40 @@ class SystemHealthView(APIView):
                 "message": "Email system not configured",
             })
 
+        # Malware scanner (ClamAV) check — directive item 15. Previously
+        # completely unmonitored: a broken/missing pyclamd install or an
+        # unreachable clamd daemon degraded silently (CV uploads either
+        # all-reject or all-accept-unscanned depending on
+        # CLAMAV_FAIL_CLOSED, with nothing surfaced to ops).
+        try:
+            from apps.core.upload_security import _get_clamd_connection
+            from django.conf import settings
+
+            cd, err = _get_clamd_connection()
+            fail_closed = getattr(settings, "CLAMAV_FAIL_CLOSED", True)
+            if cd is not None:
+                checks.append({
+                    "name": "Malware Scanner (ClamAV)",
+                    "status": "healthy",
+                    "message": "clamd reachable and responding to ping",
+                })
+            else:
+                # Unreachable scanner is only an outage ("error") if uploads
+                # are configured to fail-closed on it — otherwise uploads
+                # are still accepted (unscanned), which is a "warning", not
+                # a hard outage of the upload feature itself.
+                checks.append({
+                    "name": "Malware Scanner (ClamAV)",
+                    "status": "error" if fail_closed else "warning",
+                    "message": err or "clamd unreachable",
+                })
+        except Exception as e:
+            checks.append({
+                "name": "Malware Scanner (ClamAV)",
+                "status": "error",
+                "message": str(e),
+            })
+
         has_error = any(c["status"] == "error" for c in checks)
         has_warning = any(c["status"] == "warning" for c in checks)
         overall_status = "error" if has_error else ("warning" if has_warning else "healthy")
@@ -2266,6 +2300,12 @@ class AdminCsvImportView(APIView):
                 except ValueError:
                     pass
 
+                # Never invent a currency the CSV row didn't actually supply —
+                # leave salary_currency NULL (unconfirmed) rather than
+                # defaulting to EGP; the raw cell value is preserved either way.
+                from apps.scraper.pipeline.normalizer import resolve_salary_currency
+                _resolved_currency, _raw_currency = resolve_salary_currency(row.get("currency"))
+
                 job = Job.objects.create(
                     title=title,
                     company=company,
@@ -2275,7 +2315,8 @@ class AdminCsvImportView(APIView):
                     experience_level=(row.get("seniority") or "").strip() or None,
                     salary_min=salary_min,
                     salary_max=salary_max,
-                    salary_currency=(row.get("currency") or "EGP").strip(),
+                    salary_currency=_resolved_currency,
+                    salary_currency_raw=_raw_currency,
                     apply_url=(row.get("apply_url") or "").strip(),
                     source_type="employer_posted",
                     status="review",

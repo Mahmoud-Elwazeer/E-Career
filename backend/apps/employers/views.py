@@ -677,7 +677,7 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         status_filter = self.request.query_params.get('status')
         if status_filter:
             queryset = queryset.filter(status=status_filter)
-        
+
         # Filter by job
         job_id = self.request.query_params.get('job_id')
         if job_id:
@@ -689,6 +689,30 @@ class JobApplicationViewSet(viewsets.ModelViewSet):
         if self.action == 'retrieve':
             return JobApplicationDetailSerializer
         return JobApplicationSerializer
+
+    @action(detail=True, methods=['get'], url_path='cv')
+    def download_cv(self, request, pk=None):
+        """Stream the applicant's CV, authorization-checked PER REQUEST
+        (directive item 16) — this is the fix for the previously-disclosed
+        gap where cv_url handed out a bare, predictable, unauthenticated
+        media URL (apps.legal SECURITY_MD's own "Known gap" disclosure).
+        `get_object()` reuses this ViewSet's `get_queryset` (employer-owned
+        applications only) so the same 404-for-other-employers' applicants
+        guarantee that already protects the JSON detail view now also
+        protects the actual file bytes — not just the metadata record.
+        """
+        from django.http import FileResponse, Http404
+        application = self.get_object()
+        if not application.cv_snapshot:
+            raise Http404("No CV on this application.")
+        try:
+            return FileResponse(
+                application.cv_snapshot.open("rb"),
+                as_attachment=True,
+                filename=application.cv_snapshot.name.rsplit("/", 1)[-1],
+            )
+        except FileNotFoundError:
+            raise Http404("CV file is no longer available.")
     
     def update(self, request, *args, **kwargs):
         """Update application status"""

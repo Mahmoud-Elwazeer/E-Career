@@ -81,7 +81,17 @@ numpy>=1.24.0
 # Change Detection Client (Phase 2)
 # changedetection.io is self-hosted Docker, no pip package needed
 
-# Malware Scanning
+# Malware Scanning — REQUIRED for CV/document upload scanning to actually
+# run (apps/core/upload_security.py). A ClamAV daemon must also be reachable
+# (see CLAMAV_HOST/CLAMAV_PORT/CLAMAV_SOCKET in .env — docker-compose.yml
+# provisions a `clamav` sidecar on port 3310). If this package is missing OR
+# the daemon is unreachable, CLAMAV_FAIL_CLOSED (default True) makes EVERY
+# upload reject rather than silently skip scanning — verify this installs
+# successfully in your deployment target before going live; confirmed in
+# this pass that it is NOT currently installed in this dev sandbox despite
+# being pinned here (`import pyclamd` raises ModuleNotFoundError), which is
+# exactly the silent-degradation risk this comment flags. Check via
+# `manage.py` admin-api system-health endpoint, which now reports this.
 pyclamd==0.4.0
 
 # Admin Dashboard
