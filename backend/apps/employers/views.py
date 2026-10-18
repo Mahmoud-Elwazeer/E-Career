@@ -112,7 +112,28 @@ class EmployerProfileViewSet(viewsets.ModelViewSet):
     POST /api/v1/employer/profile/request_verification/ - Request verification
     """
     permission_classes = [IsAuthenticated, IsEmployer]
-    
+
+    def get_permissions(self):
+        # Real bug found during the 2026-09-21 browser-E2E acceptance
+        # pass: a brand-new employer-role user who has signed up but not
+        # yet completed onboarding has no EmployerProfile AND no team
+        # membership, so IsEmployer.has_permission() returns False and
+        # DRF short-circuits with a 403 BEFORE list()'s own "no profile
+        # yet -> 404" handling ever runs. The frontend only knows how to
+        # treat a 404 as "redirect to /app/employer/register" (confirmed
+        # in EmployerDashboard.tsx/CompanySettings.tsx/etc.), so this 403
+        # was an opaque "couldn't load your dashboard" error for every
+        # first-time employer instead of the intended onboarding redirect.
+        # Fix: `list` (the "read my own profile" action the frontend
+        # actually calls) only requires IsAuthenticated here; it still
+        # correctly scopes to request.user and returns a real 404 when no
+        # profile exists — IsEmployer continues gating every other action
+        # (create/update/request_verification etc.), which do need a real
+        # employer role/profile already in place.
+        if self.action == "list":
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsEmployer()]
+
     def get_queryset(self):
         return EmployerProfile.objects.filter(user=self.request.user)
     
