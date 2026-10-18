@@ -1,6 +1,6 @@
 # USAM Career — Legal Policy Coverage Matrix
 
-**Generated: 2026-09-21 (continuation hardening pass), code-verified against commit range starting at `52984cb`.**
+**Generated: 2026-09-21 (continuation hardening pass), code-verified against commit range starting at `52984cb`. Updated 2026-09-21 (third continuation pass) — see the "Real browser E2E update" note below the matrix: the `E2E_TEST`/`RTL_STATUS`/`MOBILE_STATUS` columns below were written before that pass and are now partially superseded.**
 
 This matrix exists to answer one question per legal document, honestly: *is
 this actually wired up end-to-end, in this exact codebase, right now?* It is
@@ -115,6 +115,46 @@ per document, per the structure the supplemental legal specs in
 | Public transfer register (API) | `GET /api/v1/legal/transfers/` | n/a — backend-only | `DataTransferRecord` (empty by default) | n/a | `test_public_registers.py` (5 tests) | LEGAL_REVIEW_REQUIRED (register is empty/unconfirmed by design) |
 
 ---
+
+## Real browser E2E update (2026-09-21, third continuation pass)
+
+The rest of this matrix (generated during the second continuation pass)
+predates real-browser E2E coverage and states `E2E_TEST: NOT_DONE` and
+`RTL_STATUS`/`MOBILE_STATUS: CODE_PRESENT_NOT_VISUALLY_VERIFIED` for every
+row. **That gap is now closed** — see `audit/LEGAL_PRIVACY_COMPLIANCE_
+MASTER.md` §9C for the full account. In summary, using Playwright against
+system-installed Chrome (devDependency only, never installed in
+production):
+
+- All 13 `/legal/<slug>` routes were confirmed in `legal-public-pages.spec.ts`
+  to render real activated content (not a "no active version" 404 state) —
+  effectively upgrading every row's `E2E_TEST` from `NOT_DONE` to
+  **DONE (content-render check)**.
+- `mobile-and-rtl.spec.ts` independently verified, in a real browser: the
+  Legal Center hub mirrors RTL layout, a long policy page has no horizontal
+  overflow on a mobile viewport (Pixel 7), and Arabic content actually
+  renders (via live `GET .../policies/<slug>/?locale=ar` calls) for 7 of
+  the 13 documents (`terms`, `privacy`, `cookies`, `refunds`,
+  `payment-security`, `candidate-privacy`, `business-terms`) — upgrading
+  those 7 rows' `RTL_STATUS`/`MOBILE_STATUS` from
+  `CODE_PRESENT_NOT_VISUALLY_VERIFIED` to **VISUALLY_VERIFIED**. The
+  remaining 6 documents (`security`, `ai-disclosure`, `acceptable-use`,
+  `data-rights`, `subprocessors`, `international-transfers`) share the
+  exact same `PolicyPage.tsx`/`PolicyMarkdown.tsx` rendering path as the 7
+  verified ones and the same app-wide `useTheme().dir` RTL infrastructure,
+  so there is no code-level reason to expect different behavior — but
+  they were not individually clicked through in this pass, so their rows
+  below are left as `CODE_PRESENT_NOT_VISUALLY_VERIFIED` rather than
+  silently upgraded without a direct check.
+- The cookie consent banner was confirmed fully localized to Arabic in a
+  real browser — title, body, and all three buttons (Accept All / Reject
+  Non-Essential / Manage Preferences) — a cross-cutting UI element, not
+  tied to any single policy row.
+- **This upgrade is engineering-only.** No row's `EN_STATUS`/`AR_STATUS`/
+  `FINAL_STATUS` changes as a result of this update — every document is
+  still a `DRAFT` `PolicyVersion`, and every Arabic version is still
+  `is_machine_translated=True`, unreviewed. RTL/mobile now rendering
+  correctly in a real browser does not make the underlying text approved.
 
 ## What this matrix does NOT claim
 

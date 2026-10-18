@@ -1646,6 +1646,140 @@ exhaustive cross-reference crawl beyond what the existing automated
 
 ---
 
+## 9C. Final acceptance pass — real browser E2E verification (2026-09-21, third continuation)
+
+The gap §9B explicitly carried forward — "a real browser-based End-to-End
+test pass... coverage remains `pytest`/`vitest` (jsdom) only, never a real
+browser" — is now closed. This section records what was actually run in a
+real browser (system-installed Google Chrome, driven via Playwright's
+`channel: "chrome"` — this sandbox has no outbound access to the Chromium
+CDN; CI/other machines can use the normal `npx playwright install chromium`
+instead; **Playwright itself is a devDependency, never installed or
+invoked in the production runtime**) against the live frontend (Vite dev
+server) + a dedicated SQLite settings module (`config.settings.e2e`,
+Celery eager, pointed at the existing dev Redis container — the shared dev
+Postgres container was deliberately left untouched).
+
+**Playwright was not the starting point — real bugs were found and fixed
+first**, per the directive's explicit instruction to fix genuine bugs
+rather than write tests around them:
+
+1. **The Arabic language toggle was completely non-functional.** Real
+   browser testing revealed clicking the toggle did nothing at all.
+   Reading `ThemeToggle.tsx` found the toggle's actual `<Button>` had been
+   commented out inside its `TooltipTrigger` since the component's
+   creation commit — not a regression, but never a working feature either.
+   The underlying state (`useTheme()`'s `lang`/`dir`/`toggleLang`,
+   localStorage-persisted, syncing `<html lang>`/`<html dir>`) was already
+   correct and already the single authoritative locale source — confirmed
+   by grepping hundreds of `isAr ? ... : ...` call sites across the whole
+   app, proving Arabic is a real, extensively-built platform feature, not
+   something scoped to legal pages. **Fixed** by uncommenting the button —
+   no new locale system was built, because none was needed.
+2. **A second, genuine mobile-only RTL bug** was found via the same E2E
+   pass: `AuthNavbar.tsx`'s hamburger `Sheet` sets
+   `side={isAr ? "left" : "right"}` — tying the Sheet's slide-in side
+   directly to the live language. Toggling language while the Sheet is
+   open flips `side` mid-animation, detaching/repositioning the Sheet's
+   own DOM nodes — a real UX bug for an Arabic-speaking user switching
+   language from the mobile menu, not a test-only artifact (confirmed by
+   reproducing it three different ways across three Playwright retries
+   before tracing it to this root cause, rather than patching the test
+   with timeouts/force-clicks). **Fixed** by giving `LangToggle` an
+   `onToggled` callback and having the mobile Sheet instance close itself
+   as part of the same click, so the side-flip never happens while the
+   Sheet is still open.
+3. **Public legal pages were failing to load entirely under normal
+   browsing traffic.** `/legal/privacy` and `/legal/security` (among
+   others) rendered "This document couldn't be loaded" during ordinary
+   E2E navigation. The Django server log showed `429 Too Many Requests`
+   on `GET /api/v1/legal/policies/security/` — the shared 30/min anonymous
+   DRF throttle (pooled across *all* anonymous traffic on a page, not just
+   legal reads) was being exhausted by normal browsing. **Fixed** via a
+   dedicated `legal_public` throttle scope (120/min), applied only to 9
+   read-only, genuinely public legal endpoints (policy list/detail,
+   consent purposes, cookie categories/consent-me, legal entity, AI
+   disclosure, processor/data-transfer registers) — never to any endpoint
+   that mutates state (cookie-consent POST, policy accept, DSR creation,
+   auth), which keep the normal anon/auth budgets.
+4. **A pre-existing employer-onboarding bug**, found the same way: a
+   brand-new employer-role signup got an opaque 403 instead of the
+   intended 404-then-redirect-to-onboarding, because
+   `EmployerProfileViewSet`'s class-wide `IsEmployer` permission requires
+   an `employer_profile` a first-time employer doesn't have yet — DRF
+   rejected the request before the view's own "no profile → 404" logic
+   ever ran. **Fixed** via a scoped `get_permissions()` override: only the
+   `list` action (the one the frontend's own onboarding-redirect logic
+   calls) uses `IsAuthenticated` alone, still correctly scoped to
+   `request.user`, still returning a real 404 when no profile exists;
+   every other action keeps the full `IsAuthenticated`+`IsEmployer` gate.
+
+**Playwright suites added** (`frontend/e2e/`, devDependency only):
+
+| Suite | Tests | Result |
+|---|---|---|
+| `legal-public-pages.spec.ts` | 19 | **19 passed** — Legal Center hub, all 13 policy slugs render real activated content (not a "no active version" state), unknown-slug honest empty state, footer nav, cookie consent banner first-visit flows (Accept All / Reject Non-Essential / Manage Preferences dialog) |
+| `signup-consent.spec.ts` | 2 | **2 passed** — Terms/Privacy checkbox gates signup against the real active version; optional Talent Pool/marketing checkboxes confirmed never pre-checked |
+| `authenticated-journeys.spec.ts` | 3 | **3 passed** — Privacy Center DSR controls reachable for a fresh account; billing legal disclosure (EGP/refund/payment-security, no false auto-renewal wording) shown before purchase for both candidate and employer billing |
+| `mobile-and-rtl.spec.ts` | 10 | **10 passed** — mobile-viewport layout (no horizontal overflow, tappable hit targets, cookie banner doesn't block the viewport) plus real Arabic/RTL: `lang`/`dir` actually flip, Arabic policy content renders for 7 representative documents (not silently falling back to English), the Legal Center hub mirrors RTL layout, the cookie banner is fully localized (title/body/all 3 buttons), switching back to English correctly reverses everything, and locale persists across navigation + a full reload |
+
+**Total: 34/34 real-browser E2E tests passing**, run against system Chrome,
+at both desktop and mobile (`devices["Pixel 7"]`) viewports.
+
+**This closes the §9B-identified gap but does not change the legal
+status of any content.** Per the directive's explicit instruction, RTL
+now *working* is an engineering fact, not a legal one: every Arabic
+`PolicyVersion` remains `DRAFT` and `is_machine_translated=True`,
+unreviewed by a certified translator or legal counsel — this pass did not
+touch, re-word, or promote any policy content, and `legal_readiness`
+(rerun against the e2e DB) still correctly reports `OVERALL: BLOCKED`
+because the seeded placeholder/unresolved-review markers are still
+present by design. The activation safety gate from §9A (which rejects
+activating a version containing an unresolved-review marker in either
+English or Arabic) was re-confirmed still functioning during this rerun —
+unaffected by, and independently exercised by, this pass's changes.
+
+**Full verification for this pass**: `npx playwright test` (4 suites,
+system Chrome) → **34 passed, 0 failed**. `npx tsc --noEmit -p
+tsconfig.app.json` → **0 errors** (no baseline exception — this pass holds
+to a strict zero, not "same as before"). `npx vitest run` → **94 passed**
+(unchanged from §9B, confirming the `ThemeToggle`/`AuthNavbar` fix
+introduced no regression). `npm run build` → succeeded. Backend:
+`pytest apps/legal apps/accounts apps/payments apps/jobs apps/employers
+apps/career apps/interviews apps/core apps/emails apps/scraper/ats
+apps/scraper/pipeline apps/scraper/tests --no-cov -q` → **916 passed**
+(894 prior-pass baseline + 22 new: 3 employer-onboarding regression tests,
+4 throttle-isolation regression tests, plus pre-existing suite growth).
+`manage.py makemigrations --check --dry-run` → "No changes detected" (this
+pass added no new migrations). `manage.py legal_link_audit` → 0 issues,
+unchanged. `manage.py legal_readiness` (against the e2e DB) → `OVERALL:
+BLOCKED`, exactly as expected given the intentionally-unreviewed seed
+content — confirming the readiness gate still works, not a regression.
+
+**Product-surface inventory** (per directive request to confirm no
+undocumented vertical lacks legal coverage): Education, Freelancing,
+Kids/minors-targeted features, Government/B2G, and Corporate/Enterprise
+tiers were each checked against the actual backend apps and frontend
+routes. **None exist as a distinct, wired product surface** — "education"
+and "government" are only industry/org-type tag values on the same shared
+`Company`/`EmployerProfile` model every other employer uses (not a
+separate app, model set, or page tree); "freelance" is only one
+`employment_type` value on the same `Job` model as any other posting; no
+minors-specific flow exists beyond the already-tracked
+`JurisdictionPolicyProfile.minor_age_threshold` (§7 item 3); no
+enterprise-tier SSO/ATS-integration/bulk-seat product exists beyond the
+standard multi-seat `EmployerTeamMember` every employer account already
+has. This confirms the legal coverage matrix's 13-document scope is not
+missing a hidden vertical that would need its own policy surface.
+
+**Commits this pass** (pushed to `development`): `fix(employers): let
+fresh employers reach onboarding instead of 403`, `fix(legal): isolate
+public legal read throttling from shared anon budget`, `fix(i18n): restore
+the Arabic language toggle and fix mobile Sheet RTL race`, `test(e2e): add
+Playwright coverage for legal/privacy/auth/mobile/RTL`.
+
+---
+
 ## 10. Final Acceptance checklist (A–Z areas)
 
 | Area | Done |
@@ -1662,9 +1796,9 @@ exhaustive cross-reference crawl beyond what the existing automated
 | J. Payment & card security audit | ✅ §5 |
 | K. Admin Legal Control Plane | ✅ §4 |
 | L. Footer legal nav + checkout disclosures | ✅ §4 |
-| M. Tests (backend + frontend) | ✅ §6/§9A.25/§9B — **894 backend + 94 frontend passing** (as of the second 2026-09-21 continuation pass; was 149+75 two passes ago, 889+93 one pass ago) |
-| N. This master document | ✅ updated 2026-09-21, §9A + §9B |
-| O. Commit + push to `development` | ⏳ **pending this session** — see §9B; prior work already pushed as `d144cfb`, `a6b9366`, `a3d6de7`, `49eddd6`, `cbbd048`, `52984cb` |
+| M. Tests (backend + frontend + real-browser E2E) | ✅ §6/§9A.25/§9B/§9C — **916 backend + 94 frontend + 34 real-browser E2E passing** (as of the third 2026-09-21 continuation pass; was 894+94+0 one pass ago) |
+| N. This master document | ✅ updated 2026-09-21, §9A + §9B + §9C |
+| O. Commit + push to `development` | ✅ pushed as `118c32b`, `67e8c1e`, `91968e6`, `1800e8a` (§9C); prior work already pushed as `d144cfb`, `a6b9366`, `a3d6de7`, `49eddd6`, `cbbd048`, `52984cb`, `1aedb30`, `6171054` |
 | P. Deployment commands per increment | ✅ §8 (unchanged structurally; still requires real server discovery output before a final command set can be given for this pass's changes — new migrations exist, see §9A items 5/6/13 and §9B item 3, `0003_alter_policydocument_doc_type.py`) |
 | Q. REQUIRES LEGAL REVIEW items explicitly tracked, not invented | ✅ §7, re-confirmed unchanged by §9A/§9B — no legal fact was invented in either pass |
 | R. No fake compliance/security claims anywhere | ✅ verified by reading every new/changed policy page's text; one prior false claim (auto-renewal) was found and corrected, §9.16/§9A.14 |
@@ -1698,8 +1832,13 @@ exhaustive cross-reference crawl beyond what the existing automated
 | Minors' age threshold, retention periods, DPA statuses | **LEGAL REVIEW REQUIRED** (§9.4) — explicitly not invented anywhere, unchanged across both passes |
 | 6 new policy documents (acceptable-use, data-rights, subprocessors, international-transfers, candidate-privacy, business-terms) + Arabic locale for all 13 documents | **ENGINEERING READY** (code/content exist) — every single one, English and Arabic alike, is still a `DRAFT` `PolicyVersion`; Arabic content is additionally **LEGAL/TRANSLATION REVIEW REQUIRED** (`is_machine_translated=True`, unreviewed) before either locale can be activated |
 | Public processor/transfer register endpoints (`/legal/processors/`, `/legal/transfers/`) | **ENGINEERING READY** |
-| Legal Policy Coverage Matrix (`audit/LEGAL_POLICY_COVERAGE_MATRIX.md`) | **ENGINEERING READY** as a verification artifact — itself documents what it does not verify (no browser E2E, no visual RTL/mobile check) |
-| Everything in this document | **NOT YET PRODUCTION ACTIVE** — this pass's changes are not yet committed or pushed as of this writing (see §9B note above); awaiting commit/push to `development`, then real server-discovery output from the user before any final deployment commands for this pass's changes (new migrations in `legal`, `accounts`, `jobs`, `payments`) can be given, then the live-verification pass once deployed |
+| Legal Policy Coverage Matrix (`audit/LEGAL_POLICY_COVERAGE_MATRIX.md`) | **ENGINEERING READY** as a verification artifact — the browser-E2E/RTL/mobile gap it previously flagged as unverified is now closed per §9C (34/34 real-browser tests passing); matrix's `E2E_TEST` column should be read alongside §9C rather than the matrix's own `NOT_DONE` legend text, which predates this pass |
+| Arabic/RTL engineering correctness (language toggle, mobile Sheet, cookie banner localization, Legal Center RTL mirroring) | **ENGINEERING READY** — verified in a real browser per §9C; this is an engineering fact only, not a legal one — see next row |
+| Arabic legal content accuracy/translation quality | **LEGAL REVIEW REQUIRED** — unchanged by §9C; every Arabic `PolicyVersion` remains `DRAFT` + `is_machine_translated=True`, unreviewed by a certified translator or legal counsel. RTL now working correctly does not make the underlying Arabic text approved. |
+| Employer onboarding (new employer 403→404 fix) | **ENGINEERING READY** — verified via real browser E2E + 3 regression tests, §9C |
+| Public legal page availability under normal traffic (throttle isolation) | **ENGINEERING READY** — verified via real browser E2E + 4 regression tests, §9C |
+| Education / Freelancing / Kids / Government / Corporate-Enterprise verticals | **NOT_APPLICABLE** — confirmed via code inventory (§9C) that none exists as a distinct product surface; no separate legal coverage is owed beyond what the 13-document matrix already covers |
+| Everything in this document | **NOT YET PRODUCTION ACTIVE** — this pass's changes are committed and pushed to `development` (§9C); real server-discovery output from the user is still required before any final deployment commands (new migrations in `legal`, `accounts`, `jobs`, `payments` from prior passes; this pass added no new migrations) can be given, then a live-verification pass once actually deployed |
 
 **This is engineering-complete and production-deployable code. It is not a
 claim of legal compliance, PCI compliance, GDPR compliance, or any other

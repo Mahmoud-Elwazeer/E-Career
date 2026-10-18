@@ -15,6 +15,21 @@ None — every real `PolicyDocument.slug` is reachable from the Legal Center hub
 ## Out-of-scope checks (reported honestly, not fabricated)
 
 - Redirect-loop check: N/A — no redirect middleware exists for /legal/* routes in this codebase (confirmed by reading App.tsx's route table); nothing to loop.
-- Runtime 404 check: NOT PERFORMED — this is a static source scan, not a live HTTP crawl. A separate browser-based E2E pass is required to catch a genuine server-level 404 this scan cannot see.
+- Runtime 404 check: NOT PERFORMED **by this command** — this is a static source scan, not a live HTTP crawl.
+
+## Real browser runtime check (2026-09-21, third continuation pass)
+
+The "a separate browser-based E2E pass is required" gap noted above has
+since been closed by `frontend/e2e/legal-public-pages.spec.ts`, run
+against system-installed Chrome via Playwright. All 13 routes (`/legal`
+plus all 13 `/legal/<slug>` pages) were loaded in a real browser and
+confirmed to render actual policy content, not a 404 or "couldn't be
+loaded" state. A real 404-class bug — the shared anonymous-throttle
+exhaustion causing `/legal/privacy` and `/legal/security` to intermittently
+fail to load under normal browsing traffic — **was found this way** (a
+static scan like this command cannot see a rate-limit response) and fixed
+via a dedicated `legal_public` throttle scope; see
+`audit/LEGAL_PRIVACY_COMPLIANCE_MASTER.md` §9C for the full account. This
+command's own static-scan scope and limitations are otherwise unchanged.
 
 ## Total issues: 0
