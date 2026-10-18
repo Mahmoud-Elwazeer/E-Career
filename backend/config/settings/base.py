@@ -104,6 +104,10 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    # Content-Security-Policy-Report-Only (directive item 18) — additive,
+    # never blocks anything; see apps/core/csp_middleware.py for the full
+    # origin inventory and rollout rationale.
+    "apps.core.csp_middleware.ContentSecurityPolicyReportOnlyMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
