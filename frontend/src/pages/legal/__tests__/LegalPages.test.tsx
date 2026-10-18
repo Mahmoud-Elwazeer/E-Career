@@ -110,4 +110,31 @@ describe("PolicyPage", () => {
     );
     expect(await screen.findByText(/No active version yet/i)).toBeInTheDocument();
   });
+
+  it("fails closed with a visible error state (never a blank page) on a non-404 failure (directive item 24)", async () => {
+    const { ApiError } = await import("@/services/client");
+    legalMocks.getPolicy.mockRejectedValue(new (ApiError as any)("Server error", 500));
+    render(
+      <MemoryRouter initialEntries={["/legal/terms"]}>
+        <TooltipProvider>
+          <Routes><Route path="/legal/:slug" element={<PolicyPage />} /></Routes>
+        </TooltipProvider>
+      </MemoryRouter>,
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/couldn't be loaded/i);
+  });
+
+  it("fails closed on a network error with no status code at all", async () => {
+    legalMocks.getPolicy.mockRejectedValue(new TypeError("Failed to fetch"));
+    render(
+      <MemoryRouter initialEntries={["/legal/terms"]}>
+        <TooltipProvider>
+          <Routes><Route path="/legal/:slug" element={<PolicyPage />} /></Routes>
+        </TooltipProvider>
+      </MemoryRouter>,
+    );
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(/couldn't be loaded/i);
+  });
 });

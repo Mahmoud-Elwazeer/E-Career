@@ -34,7 +34,12 @@ export default function PolicyPage() {
 
   const [version, setVersion] = useState<PolicyVersion | null>(null);
   const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
+  // Fail-closed (directive item 24): ANY failure to load a policy — no
+  // active version yet (404) OR a network/server error — must render an
+  // honest "unavailable" state, never a blank page. `unavailable` covers
+  // both cases; `reason` only changes the copy, not whether something
+  // visible is shown.
+  const [unavailable, setUnavailable] = useState<"not_found" | "error" | null>(null);
 
   usePageMeta(
     titleInfo ? (isAr ? titleInfo.ar : titleInfo.en) : "Legal",
@@ -44,13 +49,14 @@ export default function PolicyPage() {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    setNotFound(false);
+    setUnavailable(null);
+    setVersion(null);
     getPolicy(slug, isAr ? "ar" : "en")
       .then((v) => { if (active) setVersion(v); })
       .catch((e) => {
         if (!active) return;
-        if (e instanceof ApiError && e.status === 404) setNotFound(true);
         setVersion(null);
+        setUnavailable(e instanceof ApiError && e.status === 404 ? "not_found" : "error");
       })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -74,7 +80,7 @@ export default function PolicyPage() {
             </div>
           )}
 
-          {!loading && notFound && (
+          {!loading && unavailable === "not_found" && (
             <div className="card-premium flex items-start gap-3 p-6">
               <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
               <div>
@@ -85,6 +91,22 @@ export default function PolicyPage() {
                   {isAr
                     ? "هذه الوثيقة قيد الإعداد ولم تُنشر نسخة فعّالة منها بعد."
                     : "This document is being prepared and no active version has been published yet."}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!loading && unavailable === "error" && (
+            <div className="card-premium flex items-start gap-3 p-6" role="alert">
+              <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
+              <div>
+                <h2 className="text-heading-3 font-semibold mb-1">
+                  {isAr ? "تعذّر تحميل هذه الوثيقة" : "This document couldn't be loaded"}
+                </h2>
+                <p className="text-body text-muted-foreground">
+                  {isAr
+                    ? "حدث خطأ أثناء تحميل هذه الوثيقة القانونية. حاول تحديث الصفحة أو العودة لاحقاً."
+                    : "Something went wrong loading this legal document. Try refreshing the page or come back shortly."}
                 </p>
               </div>
             </div>

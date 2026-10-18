@@ -42,10 +42,15 @@ vi.mock("@/hooks/use-toast", () => ({
 const legalMocks = vi.hoisted(() => ({
   acceptPolicy: vi.fn().mockResolvedValue(undefined),
   setConsent: vi.fn().mockResolvedValue(undefined),
+  listPolicies: vi.fn().mockResolvedValue([
+    { slug: "terms", live_version: { uuid: "t1" } },
+    { slug: "privacy", live_version: { uuid: "p1" } },
+  ]),
 }));
 vi.mock("@/services/legal", () => ({
   acceptPolicy: legalMocks.acceptPolicy,
   setConsent: legalMocks.setConsent,
+  listPolicies: legalMocks.listPolicies,
 }));
 
 const renderLogin = (initialEntry = "/login") =>
@@ -60,6 +65,10 @@ describe("Login Page", () => {
     vi.clearAllMocks();
     hooks.isAuthenticated = false;
     hooks.user = undefined;
+    legalMocks.listPolicies.mockResolvedValue([
+      { slug: "terms", live_version: { uuid: "t1" } },
+      { slug: "privacy", live_version: { uuid: "p1" } },
+    ]);
   });
 
   it("renders login form", () => {
@@ -124,9 +133,10 @@ describe("Login Page", () => {
   });
 
   describe("signup consent (Terms/Privacy required, marketing/Talent Pool optional)", () => {
-    it("disables submit until Terms + Privacy is accepted and never pre-checks optional consents", () => {
+    it("disables submit until Terms + Privacy is accepted and never pre-checks optional consents", async () => {
       renderLogin();
       fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+      await waitFor(() => expect(legalMocks.listPolicies).toHaveBeenCalled());
 
       const submit = screen.getByRole("button", { name: /Create account/i });
       expect(submit).toBeDisabled();
@@ -139,13 +149,14 @@ describe("Login Page", () => {
       expect(marketingCheckbox).not.toBeChecked();
 
       fireEvent.click(termsCheckbox);
-      expect(submit).not.toBeDisabled();
+      await waitFor(() => expect(submit).not.toBeDisabled());
     });
 
     it("records Terms/Privacy acceptance but NOT marketing/Talent Pool consent when those boxes are left unchecked", async () => {
       hooks.signUp.mockResolvedValue({ role: "jobseeker" });
       renderLogin();
       fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+      await waitFor(() => expect(legalMocks.listPolicies).toHaveBeenCalled());
 
       fireEvent.change(screen.getByLabelText(/First name/i), { target: { value: "Jane" } });
       fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: "Doe" } });
@@ -166,6 +177,7 @@ describe("Login Page", () => {
       hooks.signUp.mockResolvedValue({ role: "jobseeker" });
       renderLogin();
       fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+      await waitFor(() => expect(legalMocks.listPolicies).toHaveBeenCalled());
 
       fireEvent.change(screen.getByLabelText(/First name/i), { target: { value: "Jane" } });
       fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: "Doe" } });
@@ -181,6 +193,95 @@ describe("Login Page", () => {
         expect(legalMocks.setConsent).toHaveBeenCalledWith("talent_pool", true, "signup");
         expect(legalMocks.setConsent).toHaveBeenCalledWith("marketing_emails", true, "signup");
       });
+    });
+  });
+
+  describe("fail-closed signup when Terms/Privacy aren't both live (directive item 24)", () => {
+    it("keeps Create account disabled even after checking Terms if Terms has no active version", async () => {
+      legalMocks.listPolicies.mockResolvedValue([
+        { slug: "terms", live_version: null },
+        { slug: "privacy", live_version: { uuid: "p1" } },
+      ]);
+      renderLogin();
+      fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+
+      await waitFor(() => expect(legalMocks.listPolicies).toHaveBeenCalled());
+      fireEvent.click(screen.getByLabelText(/Terms of Service/i));
+
+      const submit = screen.getByRole("button", { name: /Create account/i });
+      await waitFor(() => expect(submit).toBeDisabled());
+    });
+
+    it("keeps Create account disabled if Privacy has no active version", async () => {
+      legalMocks.listPolicies.mockResolvedValue([
+        { slug: "terms", live_version: { uuid: "t1" } },
+        { slug: "privacy", live_version: null },
+      ]);
+      renderLogin();
+      fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+
+      await waitFor(() => expect(legalMocks.listPolicies).toHaveBeenCalled());
+      fireEvent.click(screen.getByLabelText(/Terms of Service/i));
+
+      const submit = screen.getByRole("button", { name: /Create account/i });
+      await waitFor(() => expect(submit).toBeDisabled());
+    });
+
+    it("shows a visible unavailable banner instead of a blank/crashed form", async () => {
+      legalMocks.listPolicies.mockResolvedValue([
+        { slug: "terms", live_version: null },
+        { slug: "privacy", live_version: null },
+      ]);
+      renderLogin();
+      fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toHaveTextContent(/can't be created right now/i);
+      });
+    });
+
+    it("treats a failed policy-list fetch the same as not-ready (never assumes it's fine)", async () => {
+      legalMocks.listPolicies.mockRejectedValue(new Error("network error"));
+      renderLogin();
+      fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+      fireEvent.click(screen.getByLabelText(/Terms of Service/i));
+
+      const submit = screen.getByRole("button", { name: /Create account/i });
+      await waitFor(() => expect(submit).toBeDisabled());
+    });
+
+    it("never blocks LOGIN (only new-account creation) when legal isn't ready", async () => {
+      legalMocks.listPolicies.mockResolvedValue([
+        { slug: "terms", live_version: null },
+        { slug: "privacy", live_version: null },
+      ]);
+      hooks.signIn.mockResolvedValue({ role: "jobseeker" });
+      renderLogin();
+
+      fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: "test@example.com" } });
+      fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: "password123" } });
+      fireEvent.click(screen.getByRole("button", { name: /^Sign in$/i }));
+
+      await waitFor(() => expect(hooks.signIn).toHaveBeenCalled());
+    });
+
+    it("allows signup once Terms+Privacy are both confirmed live", async () => {
+      hooks.signUp.mockResolvedValue({ role: "jobseeker" });
+      renderLogin();
+      fireEvent.click(screen.getByRole("button", { name: /Sign up/i }));
+      await waitFor(() => expect(legalMocks.listPolicies).toHaveBeenCalled());
+
+      fireEvent.change(screen.getByLabelText(/First name/i), { target: { value: "Jane" } });
+      fireEvent.change(screen.getByLabelText(/Last name/i), { target: { value: "Doe" } });
+      fireEvent.change(screen.getByLabelText(/^Email$/i), { target: { value: "jane@example.com" } });
+      fireEvent.change(screen.getByLabelText(/^Password$/i), { target: { value: "password123" } });
+      fireEvent.click(screen.getByLabelText(/Terms of Service/i));
+
+      const submit = screen.getByRole("button", { name: /Create account/i });
+      await waitFor(() => expect(submit).not.toBeDisabled());
+      fireEvent.click(submit);
+
+      await waitFor(() => expect(hooks.signUp).toHaveBeenCalled());
     });
   });
 

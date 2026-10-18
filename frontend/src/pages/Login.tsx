@@ -14,7 +14,7 @@ import { MOTION } from "@/lib/motion-tokens";
 import { useToast } from "@/hooks/use-toast";
 import { postAuthDestination } from "@/lib/role-routing";
 import { readNextParam } from "@/lib/return-url";
-import { acceptPolicy, setConsent } from "@/services/legal";
+import { acceptPolicy, setConsent, listPolicies } from "@/services/legal";
 
 const BENEFITS = [
   { icon: FileText, en: "Full job details & salary ranges", ar: "تفاصيل الوظائف الكاملة ونطاق الراتب" },
@@ -62,6 +62,28 @@ export default function Login() {
   const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [talentPoolOptIn, setTalentPoolOptIn] = useState(false);
 
+  // Fail-closed signup gate (directive item 24): account creation must
+  // never proceed if Terms and/or Privacy have no ACTIVE version to bind
+  // the user's acceptance to — binding to nothing would be a silent no-op
+  // consent record, not a real acceptance. Default state is "not ready"
+  // (null) until the backend explicitly confirms both are live; a failed
+  // fetch is treated the SAME as "not ready", never as "assume it's fine".
+  // Login is never affected — only new-account creation is gated.
+  const [legalReady, setLegalReady] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    listPolicies()
+      .then((docs) => {
+        if (!active) return;
+        const terms = docs.find((d) => d.slug === "terms");
+        const privacy = docs.find((d) => d.slug === "privacy");
+        setLegalReady(Boolean(terms?.live_version) && Boolean(privacy?.live_version));
+      })
+      .catch(() => { if (active) setLegalReady(false); });
+    return () => { active = false; };
+  }, []);
+
   // Already-authenticated visitors (e.g. hitting /login directly) go to the
   // destination that matches their role, not a one-size-fits-all dashboard.
   useEffect(() => {
@@ -76,6 +98,19 @@ export default function Login() {
         description: isAr
           ? "يجب الموافقة على الشروط وسياسة الخصوصية لإنشاء حساب."
           : "You must accept the Terms and Privacy Policy to create an account.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Fail-closed: never create an account if Terms/Privacy aren't both
+    // genuinely live yet — this is a hard stop, not just a disabled-button
+    // hint, since legalReady could still be stale if the page sat open.
+    if (mode === "register" && legalReady !== true) {
+      toast({
+        title: isAr ? "غير متاح مؤقتاً" : "Temporarily unavailable",
+        description: isAr
+          ? "لا يمكن إنشاء حساب جديد الآن لأن الشروط أو سياسة الخصوصية غير متاحة بعد. حاول مرة أخرى بعد قليل."
+          : "New accounts can't be created right now because the Terms or Privacy Policy aren't published yet. Please try again shortly.",
         variant: "destructive",
       });
       return;
@@ -351,9 +386,20 @@ export default function Login() {
               </div>
             )}
 
+            {mode === "register" && legalReady === false && (
+              <div
+                role="alert"
+                className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive"
+              >
+                {isAr
+                  ? "تعذّر إنشاء حسابات جديدة حالياً لأن الشروط أو سياسة الخصوصية غير متاحة بعد. حاول مرة أخرى بعد قليل."
+                  : "New accounts can't be created right now because the Terms or Privacy Policy aren't published yet. Please try again shortly."}
+              </div>
+            )}
+
             <Button
               type="submit" size="xl" className="w-full rounded-xl" loading={loading}
-              disabled={mode === "register" && !acceptedTerms}
+              disabled={mode === "register" && (!acceptedTerms || legalReady !== true)}
             >
               {mode === "login"
                 ? (isAr ? "تسجيل الدخول" : "Sign in")
