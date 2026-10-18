@@ -49,12 +49,13 @@ class Command(BaseCommand):
                 "started_at": report.started_at.isoformat(),
                 "total_candidates": report.total_candidates,
                 "total_affected": report.total_affected,
+                "total_failed": report.total_failed,
                 "categories": [
                     {
                         "category": r.category, "enforceable": r.enforceable,
                         "reason": r.reason, "candidates_found": r.candidates_found,
                         "excluded_by_legal_hold": r.excluded_by_legal_hold,
-                        "affected": r.affected,
+                        "affected": r.affected, "failed": r.failed, "error": r.error,
                     }
                     for r in report.results
                 ],
@@ -66,6 +67,9 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING(f"Retention enforcement — {mode}"))
         self.stdout.write("")
         for r in report.results:
+            if r.failed:
+                self.stdout.write(self.style.ERROR(f"  FAIL  {r.category:28} — {r.error}"))
+                continue
             if not r.enforceable:
                 self.stdout.write(f"  SKIP  {r.category:28} — {r.reason}")
                 continue
@@ -75,8 +79,10 @@ class Command(BaseCommand):
                 f"found={r.candidates_found} excluded_by_hold={r.excluded_by_legal_hold} {verb}={r.affected}"
             )
         self.stdout.write("")
-        self.stdout.write(self.style.SUCCESS(
-            f"Totals: {report.total_candidates} candidates, {report.total_affected} affected."
+        summary_style = self.style.ERROR if report.total_failed else self.style.SUCCESS
+        self.stdout.write(summary_style(
+            f"Totals: {report.total_candidates} candidates, {report.total_affected} affected, "
+            f"{report.total_failed} category failure(s)."
         ))
         if dry_run and report.total_candidates:
             self.stdout.write(self.style.WARNING(

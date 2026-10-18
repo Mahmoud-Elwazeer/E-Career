@@ -155,6 +155,58 @@ def test_management_command_defaults_to_dry_run():
     assert old_session.transcript == "old content"  # command alone (no --execute) wrote nothing
 
 
+def test_a_handler_failure_is_reported_as_failed_not_silently_dropped_or_fatal():
+    """Directive item 10: better result summary/failure counts. If one
+    category's handler raises mid-run, it must show up as a distinct
+    failed-category entry (with the error message) rather than crashing
+    the whole run or silently vanishing from the report."""
+    RetentionPolicy.objects.create(
+        data_category="interview_transcripts", retention_period_days=30,
+        requires_legal_review=False,
+    )
+    RetentionPolicy.objects.create(
+        data_category="cv_documents", retention_period_days=30,
+        requires_legal_review=False,
+    )
+
+    import apps.legal.retention_service as rs
+
+    original_handler = rs._HANDLERS["interview_transcripts"]
+
+    def _boom(*args, **kwargs):
+        raise RuntimeError("simulated handler failure")
+
+    rs._HANDLERS["interview_transcripts"] = _boom
+    try:
+        report = run_retention_enforcement(dry_run=True)
+    finally:
+        rs._HANDLERS["interview_transcripts"] = original_handler
+
+    failed_result = next(r for r in report.results if r.category == "interview_transcripts")
+    assert failed_result.failed is True
+    assert "simulated handler failure" in failed_result.error
+    assert report.total_failed == 1
+
+    # The OTHER category must still have been processed normally — one
+    # category's failure doesn't abort the whole run.
+    other_result = next(r for r in report.results if r.category == "cv_documents")
+    assert other_result.failed is False
+    assert other_result.enforceable is True
+
+
+def test_json_report_includes_total_failed_count():
+    RetentionPolicy.objects.create(
+        data_category="interview_transcripts", retention_period_days=30,
+        requires_legal_review=False,
+    )
+    out = StringIO()
+    call_command("enforce_retention", "--json", stdout=out)
+    import json
+    payload = json.loads(out.getvalue())
+    assert "total_failed" in payload
+    assert payload["total_failed"] == 0  # nothing failed in this normal run
+
+
 def test_management_command_execute_flag_actually_enforces():
     RetentionPolicy.objects.create(
         data_category="interview_transcripts", retention_period_days=30,

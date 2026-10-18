@@ -55,6 +55,19 @@ class DataExportRequest(UUIDModel):
         blank=True,
         help_text="IP address of requester (for audit)"
     )
+    # Consolidation (directive item 7): apps.legal.PrivacyRequest is the
+    # CANONICAL governance record for every data-subject request — this
+    # legacy model is kept as-is (not deleted, not renamed) because its
+    # Celery task (`tasks_gdpr.generate_data_export`) is the real, working
+    # executor, but it is now linked back to the PrivacyRequest ticket that
+    # triggered it so the Privacy Center has ONE place to show status
+    # across every export flow, instead of two disconnected systems. Null
+    # for exports created before this linkage existed, or created outside
+    # the PrivacyRequest flow (e.g. a future direct self-service action).
+    privacy_request = models.ForeignKey(
+        "legal.PrivacyRequest", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="legacy_export_requests",
+    )
 
     class Meta:
         db_table = 'accounts_data_export_request'
@@ -102,6 +115,14 @@ class AccountDeletionRequest(UUIDModel):
     completed_at = models.DateTimeField(null=True, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     error_message = models.TextField(blank=True)
+    # See DataExportRequest.privacy_request docstring above — same
+    # consolidation rationale. Null for deletion requests created outside
+    # the PrivacyRequest flow (e.g. self-service account deletion before
+    # this linkage existed).
+    privacy_request = models.ForeignKey(
+        "legal.PrivacyRequest", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="legacy_deletion_requests",
+    )
 
     class Meta:
         db_table = 'accounts_deletion_request'

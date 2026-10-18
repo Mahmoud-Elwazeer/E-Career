@@ -48,6 +48,8 @@ class CategoryResult:
     candidates_found: int = 0
     excluded_by_legal_hold: int = 0
     affected: int = 0  # rows actually deleted/anonymized (0 in dry-run)
+    failed: bool = False  # True if the handler itself raised mid-run
+    error: str = ""
 
 
 @dataclass
@@ -63,6 +65,10 @@ class RetentionRunReport:
     @property
     def total_affected(self) -> int:
         return sum(r.affected for r in self.results)
+
+    @property
+    def total_failed(self) -> int:
+        return sum(1 for r in self.results if r.failed)
 
 
 def _held_user_ids() -> set:
@@ -172,10 +178,18 @@ def run_retention_enforcement(*, dry_run: bool = True, batch_size: int = 500) ->
             continue
 
         cutoff = timezone.now() - timedelta(days=policy.retention_period_days)
-        found, excluded, affected = handler(cutoff, held_user_ids, dry_run, batch_size)
-        report.results.append(CategoryResult(
-            category=policy.data_category, enforceable=True,
-            candidates_found=found, excluded_by_legal_hold=excluded, affected=affected,
-        ))
+        try:
+            found, excluded, affected = handler(cutoff, held_user_ids, dry_run, batch_size)
+            report.results.append(CategoryResult(
+                category=policy.data_category, enforceable=True,
+                candidates_found=found, excluded_by_legal_hold=excluded, affected=affected,
+            ))
+        except Exception as e:  # noqa: BLE001 — one category's failure must
+            # never abort the whole run or silently swallow the problem; it
+            # must show up in the report as a distinct failed-category count.
+            report.results.append(CategoryResult(
+                category=policy.data_category, enforceable=True, failed=True,
+                error=f"{type(e).__name__}: {e}",
+            ))
 
     return report

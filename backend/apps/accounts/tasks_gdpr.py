@@ -169,6 +169,7 @@ def process_account_deletion(deletion_request_id):
     """
     from .models_gdpr import AccountDeletionRequest
     from django.contrib.auth import get_user_model
+    from apps.legal.models import LegalHold
 
     User = get_user_model()
 
@@ -177,6 +178,17 @@ def process_account_deletion(deletion_request_id):
 
         if deletion_request.status != 'pending':
             logger.warning(f"Deletion request {deletion_request_id} not pending, skipping")
+            return
+
+        # Defense in depth (directive item 9): re-check the legal hold at
+        # the actual executor, not just at the scheduler that dispatched
+        # this task — a hold placed AFTER dispatch but before this task
+        # runs must still block execution.
+        if LegalHold.objects.filter(user=deletion_request.user, released_at__isnull=True).exists():
+            logger.warning(
+                f"Account deletion blocked by active legal hold for user {deletion_request.user_id}, "
+                f"deletion request {deletion_request_id} left pending."
+            )
             return
 
         deletion_request.status = 'processing'
@@ -221,6 +233,53 @@ def process_account_deletion(deletion_request_id):
             deletion_request.save()
         except:
             pass
+
+
+@shared_task
+def execute_due_account_deletions():
+    """Scheduled sweep (Celery Beat) that finds AccountDeletionRequest rows
+    whose 30-day grace period has elapsed and actually executes them.
+
+    Directive-mandated gap fix (item 8): this task did not exist before —
+    `AccountDeletionRequest` rows were created with a `scheduled_for` date
+    but nothing ever checked that date and triggered `process_account_
+    deletion`. This is that missing scheduler.
+
+    Directive-mandated safety (item 9): a user under an active
+    `apps.legal.LegalHold` is NEVER deleted, no exceptions — checked here
+    before dispatching the real deletion task, not just at some innner
+    layer that might get bypassed.
+    """
+    from .models_gdpr import AccountDeletionRequest
+    from apps.legal.models import LegalHold
+
+    held_user_ids = set(
+        LegalHold.objects.filter(released_at__isnull=True, user__isnull=False)
+        .values_list("user_id", flat=True)
+    )
+
+    due = AccountDeletionRequest.objects.filter(
+        status="pending", scheduled_for__lte=timezone.now(),
+    )
+
+    dispatched = 0
+    skipped_held = 0
+    for deletion_request in due:
+        if deletion_request.user_id in held_user_ids:
+            skipped_held += 1
+            logger.warning(
+                "account_deletion_skipped_legal_hold",
+                extra={"deletion_request_id": deletion_request.id, "user_id": deletion_request.user_id},
+            )
+            continue
+        process_account_deletion.delay(str(deletion_request.id))
+        dispatched += 1
+
+    logger.info(
+        f"execute_due_account_deletions: dispatched={dispatched} skipped_held={skipped_held} "
+        f"total_due={due.count()}"
+    )
+    return {"dispatched": dispatched, "skipped_held": skipped_held}
 
 
 @shared_task

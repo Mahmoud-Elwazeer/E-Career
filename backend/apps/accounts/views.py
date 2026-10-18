@@ -108,6 +108,23 @@ class LoginView(APIView):
         serializer = LoginSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data["user"]
+
+        # Carry an anonymous visitor's cookie-consent choice forward onto
+        # their account (directive: never re-prompt a choice they already
+        # made, but never invent/broaden consent either). Best-effort and
+        # silent: only acts if the browser actually sent a Django session
+        # cookie matching an earlier anonymous CookieConsent row; this is a
+        # pure JWT auth flow with no Django session login, so there's no
+        # guarantee a session cookie is present on this request at all —
+        # that's fine, the user just sees the banner again in that case.
+        try:
+            from apps.legal.services import sync_anonymous_cookie_consent_to_user
+            sync_anonymous_cookie_consent_to_user(
+                user=user, session_key=request.session.session_key,
+            )
+        except Exception:
+            pass
+
         # Emit USER_LOGGED_IN event
         try:
             emit(

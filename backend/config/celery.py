@@ -72,6 +72,18 @@ app.conf.beat_schedule = {
         'task': 'apps.core.tasks.cleanup_old_gdpr_exports',
         'schedule': crontab(hour=4, minute=0),  # 4 AM daily
     },
+    # Directive-mandated gap fix: AccountDeletionRequest rows previously had
+    # a scheduled_for date that nothing ever checked. This sweep finds due
+    # requests and dispatches the real deletion executor, skipping any user
+    # under an active LegalHold.
+    'execute-due-account-deletions': {
+        'task': 'apps.accounts.tasks_gdpr.execute_due_account_deletions',
+        'schedule': crontab(hour=4, minute=30),  # 4:30 AM daily
+    },
+    'cleanup-expired-gdpr-data-exports': {
+        'task': 'apps.accounts.tasks_gdpr.cleanup_expired_exports',
+        'schedule': crontab(hour=4, minute=15),  # 4:15 AM daily
+    },
     # Intelligence Layer tasks
     'detect-skill-trends': {
         'task': 'intelligence.detect_skill_trends',
@@ -110,5 +122,19 @@ app.conf.beat_schedule = {
     'check-user-triggers': {
         'task': 'apps.rashid.tasks.check_all_user_triggers',
         'schedule': crontab(hour=11, minute=0),
+    },
+    # Interview session / voice-audio lifecycle cleanup (directive item 17).
+    # Previously: no mechanism ever marked a stale in_progress session as
+    # abandoned, and raw audio S3 objects could be orphaned on any
+    # transcription failure or exception (now fixed at the source in
+    # voice_service.speech_to_text's finally block — this sweep is
+    # defense-in-depth for anything that still slips through).
+    'mark-stale-interview-sessions-abandoned': {
+        'task': 'apps.interviews.tasks.mark_stale_interview_sessions_abandoned',
+        'schedule': crontab(hour=5, minute=0),  # 5 AM daily
+    },
+    'cleanup-orphaned-voice-interview-audio': {
+        'task': 'apps.interviews.tasks.cleanup_orphaned_voice_interview_audio',
+        'schedule': crontab(minute=0, hour='*/1'),  # hourly
     },
 }
