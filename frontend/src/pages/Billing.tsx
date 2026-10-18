@@ -84,7 +84,7 @@ export default function Billing() {
     <AppShell>
       <PageHeader
         title={isAr ? "الفوترة والباقات" : "Billing & Plans"}
-        description={isAr ? "اختر باقة وادفع بأمان. سجل معاملاتك بالأسفل." : "Choose a plan and pay securely. Your transaction history is below."}
+        subtitle={isAr ? "اختر باقة وادفع بأمان. سجل معاملاتك بالأسفل." : "Choose a plan and pay securely. Your transaction history is below."}
       />
 
       {banner && (

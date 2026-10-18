@@ -58,7 +58,7 @@ export default function ForYou() {
     <AppShell>
       <PageHeader
         title={name ? (isAr ? `مرحباً ${name}` : `For you, ${name}`) : (isAr ? "مخصص لك" : "For You")}
-        description={isAr ? "خدماتك المهنية منظّمة حسب سياقك." : "Your career services, organized by what you need next."}
+        subtitle={isAr ? "خدماتك المهنية منظّمة حسب سياقك." : "Your career services, organized by what you need next."}
       />
 
       <div className="space-y-10">

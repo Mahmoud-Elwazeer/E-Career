@@ -55,6 +55,15 @@ export interface JobPosting {
   apply_url?: string;
   apply_url_verified?: boolean;
   rejected_reason?: string;
+  // JSON schema of custom application-form fields (backend:
+  // apps.employers.models.JobPosting.custom_form_fields). Reuses the same
+  // CustomFormField shape the employer job-posting-builder UI already
+  // edits (defined below) — this platform's frontend does not implement a
+  // 'file' field type in either the builder UI or the applicant-facing
+  // renderer (DynamicFormFields.tsx), even though the backend's JSONField
+  // comment mentions one; keeping this union aligned with what's actually
+  // implemented rather than widening it to an unsupported value.
+  custom_form_fields?: CustomFormField[];
 }
 
 export interface JobApplication {

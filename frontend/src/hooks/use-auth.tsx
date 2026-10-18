@@ -12,12 +12,21 @@ import {
 } from "@/services/auth";
 import { getAccessToken, getRefreshToken, clearTokens } from "@/services/client";
 
+// The backend's AppUser shape has no `name`/`avatar` fields (it has
+// first_name/last_name/full_name and avatar_url instead) — but every
+// consumer of `useAuth().user` in this app (AuthNavbar, Dashboard, ForYou,
+// Settings) reads a convenience `.name` field computed from those parts.
+// `normalizeUser()` below has always computed this at runtime; this type
+// makes that real, existing behavior visible to the type checker instead
+// of silently widening `user` to `any`.
+export type NormalizedUser = AppUser & { name: string; avatar: string };
+
 interface AuthContextValue {
-  user: AppUser | null;
+  user: NormalizedUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<AppUser>;
-  signUp: (email: string, password: string, firstName: string, lastName: string, accountType?: "individual" | "company") => Promise<AppUser>;
+  signIn: (email: string, password: string) => Promise<NormalizedUser>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, accountType?: "individual" | "company") => Promise<NormalizedUser>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
@@ -27,12 +36,11 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AppUser | null>(null);
+  const [user, setUser] = useState<NormalizedUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const initialized = useRef(false);
 
-  // ✅ NORMALIZE USER HERE
-  const normalizeUser = (u: any): AppUser => {
+  const normalizeUser = (u: AppUser & Partial<{ name: string; avatar: string }>): NormalizedUser => {
     return {
       ...u,
       name:

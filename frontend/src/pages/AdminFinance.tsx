@@ -104,7 +104,7 @@ export default function AdminFinance() {
     <AppShell>
       <PageHeader
         title="Financial Control Center"
-        description="Live revenue, transactions and reconciliation across USAM products."
+        subtitle="Live revenue, transactions and reconciliation across USAM products."
       />
 
       {/* Platform filter — options come from the registry endpoint */}

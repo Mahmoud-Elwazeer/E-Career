@@ -297,7 +297,7 @@ export default function Jobs() {
                     <JobCard
                       job={job}
                       isSaved={isSaved(job.id)}
-                      onToggleSave={(id) => (isSaved(id) ? remove(id) : save(id))}
+                      onToggleSave={(id) => (isSaved(id) ? remove(id) : save(Number(id)))}
                     />
                   </JobCardMotion>
                 ))}

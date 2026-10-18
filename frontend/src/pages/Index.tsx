@@ -24,7 +24,7 @@ import { useLandingData } from "@/hooks/use-landing-data";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { usePageMeta } from "@/hooks/use-seo";
-// Industry type removed - use string literals
+import type { Industry } from "@/data/types";
 
 const categoryMeta: { label: string; labelAr: string; value: Industry; icon: React.ElementType }[] = [
   { label: "Technology", labelAr: "التكنولوجيا", value: "technology", icon: Laptop },
