@@ -77,32 +77,42 @@ class VoiceInterviewService:
     def speech_to_text(self, audio_bytes: bytes, language: str = 'en') -> Optional[str]:
         """
         Convert speech to text using AWS Transcribe.
-        
+
         Args:
             audio_bytes: Audio data in bytes
             language: Language code ('en' for English, 'ar' for Arabic)
-            
+
         Returns:
             Transcribed text or None if error
+
+        Directive item 17 fix: the raw S3 audio object is now cleaned up on
+        EVERY exit path — success, a transcription job that times out or
+        reports FAILED, and any exception — not just the happy path. The
+        local temp file is also always removed. Previously, any
+        non-COMPLETED job status or exception returned early WITHOUT
+        deleting the uploaded object, permanently orphaning it in S3 with
+        no persisted key anywhere to later reconcile it.
         """
+        import uuid
+        import tempfile
+        import os
+
+        s3_key = None
+        tmp_path = None
         try:
-            # Upload audio to S3 first (required for Transcribe)
-            import uuid
-            import tempfile
-            
             # Create temporary file
             with tempfile.NamedTemporaryFile(suffix='.mp3', delete=False) as tmp_file:
                 tmp_file.write(audio_bytes)
                 tmp_path = tmp_file.name
-            
+
             # Upload to S3
             s3_key = f"{self.aws_media_prefix}/audio_{uuid.uuid4().hex}.mp3"
             self.s3_client.upload_file(tmp_path, self.aws_bucket, s3_key)
-            
+
             # Start transcription job
             job_name = f"interview_{uuid.uuid4().hex[:8]}"
-            
-            response = self.transcribe_client.start_transcription_job(
+
+            self.transcribe_client.start_transcription_job(
                 TranscriptionJobName=job_name,
                 Media={'MediaFileUri': f"s3://{self.aws_bucket}/{s3_key}"},
                 MediaFormat='mp3',
@@ -110,7 +120,7 @@ class VoiceInterviewService:
                 OutputBucketName=self.aws_bucket,
                 OutputKey=f"{self.aws_media_prefix}/transcripts/"
             )
-            
+
             # Poll for job completion (max 30s, check every 2s)
             import time
             max_wait = 30
@@ -129,6 +139,9 @@ class VoiceInterviewService:
                     break
 
             if not job_response or job_response['TranscriptionJob']['TranscriptionJobStatus'] != 'COMPLETED':
+                # Terminal failure (timed out or AWS reported FAILED) — the
+                # finally block below still deletes the raw audio object;
+                # we just have no transcript to return.
                 logger.error(f"Transcription job {job_name} did not complete in time or failed")
                 return None
 
@@ -138,18 +151,30 @@ class VoiceInterviewService:
                 Bucket=self.aws_bucket,
                 Key=transcript_key
             )
-            
+
             import json
             transcript_data = json.loads(transcript_obj['Body'].read())
-            
-            # Clean up
-            self.s3_client.delete_object(Bucket=self.aws_bucket, Key=s3_key)
-            
+
             return transcript_data['results']['transcripts'][0]['transcript']
-            
+
         except Exception as e:
             logger.error(f"Speech-to-text error: {e}")
             return None
+        finally:
+            # Always attempt raw-audio cleanup, regardless of how the try
+            # block exited (success, terminal transcription failure, or an
+            # exception) — a cleanup failure here is logged but never masks
+            # whatever the real transcript/None result already determined.
+            if s3_key:
+                try:
+                    self.s3_client.delete_object(Bucket=self.aws_bucket, Key=s3_key)
+                except Exception as cleanup_err:
+                    logger.error(f"Failed to delete raw audio object {s3_key}: {cleanup_err}")
+            if tmp_path:
+                try:
+                    os.unlink(tmp_path)
+                except OSError:
+                    pass
     
     def process_voice_answer(self, session_id: str, audio_bytes: bytes) -> Dict[str, Any]:
         """
