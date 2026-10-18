@@ -171,16 +171,18 @@ export default function EmployerBilling() {
           <div className="px-6 pt-4 text-caption text-muted-foreground">
             {isAr ? (
               <>
-                الأسعار بالجنيه المصري (EGP) ما لم يُذكر غيره. الباقات تتجدد تلقائياً حتى الإلغاء — راجع{" "}
+                الأسعار بالجنيه المصري (EGP) ما لم يُذكر غيره. كل عملية شراء هي دفعة واحدة — لا يوجد تجديد تلقائي
+                أو خصم متكرر حالياً؛ لتمديد باقتك تحتاج لعملية شراء جديدة. راجع{" "}
                 <a href="/legal/refunds" target="_blank" className="text-primary link-underline">سياسة الاسترداد والإلغاء</a>
-                {" "}قبل الاشتراك.
+                {" "}قبل الشراء.
               </>
             ) : (
               <>
-                Prices are in Egyptian Pound (EGP) unless stated otherwise. Plans renew automatically until
-                cancelled — review the{" "}
+                Prices are in Egyptian Pound (EGP) unless stated otherwise. Each purchase is a single, one-time
+                charge — there is no automatic renewal or recurring charge today; extending a plan requires a
+                new purchase. Review the{" "}
                 <a href="/legal/refunds" target="_blank" className="text-primary link-underline">Refund &amp; Cancellation Policy</a>
-                {" "}before subscribing.
+                {" "}before purchasing.
               </>
             )}
           </div>
