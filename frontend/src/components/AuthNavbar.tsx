@@ -298,7 +298,10 @@ export function AuthNavbar() {
               <SheetTitle className="sr-only">Navigation</SheetTitle>
               <div className="flex items-center justify-between mt-2 mb-6">
                 <Logo className="h-7" />
-                <LangToggle />
+                {/* The Sheet's slide side flips with the language (left for
+                    RTL, right for LTR) — close the Sheet as part of the
+                    toggle itself instead of leaving it open mid-flip. */}
+                <LangToggle onToggled={() => setOpen(false)} />
               </div>
 
               {isAuthenticated && user && (
