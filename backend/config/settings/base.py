@@ -177,6 +177,18 @@ REST_FRAMEWORK = {
         "user": "100/minute",     # Authenticated: 100 requests per minute
         "burst": "10/second",     # Burst protection: 10 per second
         "auth": "10/minute",      # Auth endpoints: 10 per minute
+        # Public legal/privacy reads (policy text, cookie categories, AI
+        # disclosures, legal-entity facts, processor/transfer registers).
+        # Found during the 2026-09-21 browser-E2E pass: the shared 30/min
+        # anon budget above is consumed by ALL anonymous traffic on a page
+        # (job search calls, cookie-consent recording, etc.), so a visitor
+        # casually reading a handful of /legal/<slug> pages could exhaust
+        # it and see a public legal disclosure become "couldn't be loaded"
+        # — unacceptable for pages that must always be accessible. This
+        # scope is deliberately generous and applied only to genuinely
+        # public, read-mostly legal endpoints (never to anything that
+        # mutates state, which still shares the normal anon/auth budgets).
+        "legal_public": "120/minute",
     },
 }
 

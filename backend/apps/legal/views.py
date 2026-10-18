@@ -21,9 +21,10 @@ from __future__ import annotations
 
 from django.db import transaction as db_transaction
 from rest_framework import generics, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from .models import (
@@ -48,10 +49,26 @@ def _client_ip(request):
     return request.META.get("REMOTE_ADDR")
 
 
+class LegalPublicReadThrottle(ScopedRateThrottle):
+    """Dedicated, more generous throttle for genuinely public, read-only
+    legal/privacy endpoints — see DEFAULT_THROTTLE_RATES["legal_public"]
+    in config/settings/base.py for why this exists: the shared 30/min anon
+    budget is pooled across ALL anonymous traffic on a page (job search,
+    cookie-consent writes, etc.), so a visitor casually reading a few
+    /legal/<slug> pages could previously exhaust it and see a public legal
+    disclosure render as "couldn't be loaded" — found via real browser E2E
+    testing, not a theoretical concern. Applied ONLY to read endpoints that
+    never mutate state; writes (cookie-consent POST, policy accept, DSR
+    creation) intentionally keep using the normal, tighter anon/auth
+    budgets."""
+    scope = "legal_public"
+
+
 # ── Policies ─────────────────────────────────────────────────────────────────
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([LegalPublicReadThrottle])
 def policy_list(request):
     docs = PolicyDocument.objects.filter(is_active=True)
     data = PolicyDocumentSerializer(docs, many=True).data
@@ -60,6 +77,7 @@ def policy_list(request):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([LegalPublicReadThrottle])
 def policy_detail(request, slug):
     locale = request.query_params.get("locale", "en")
     jurisdiction = request.query_params.get("jurisdiction")
@@ -111,6 +129,7 @@ def policy_accept(request, slug):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([LegalPublicReadThrottle])
 def consent_purpose_list(request):
     purposes = ConsentPurpose.objects.filter(is_active=True)
     user = request.user if request.user.is_authenticated else None
@@ -166,6 +185,7 @@ class MarketingPreferenceView(APIView):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([LegalPublicReadThrottle])
 def cookie_category_list(request):
     cats = CookieCategory.objects.filter(is_active=True)
     return Response({"success": True, "data": CookieCategorySerializer(cats, many=True).data})
@@ -205,6 +225,7 @@ def cookie_consent_record(request):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([LegalPublicReadThrottle])
 def cookie_consent_me(request):
     if request.user.is_authenticated:
         consent = CookieConsent.objects.filter(user=request.user).order_by("-created_at").first()
@@ -256,6 +277,7 @@ class PrivacyRequestDetailView(generics.RetrieveAPIView):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([LegalPublicReadThrottle])
 def legal_entity_public(request):
     cfg = LegalEntityConfig.load()
     return Response({"success": True, "data": LegalEntityConfigSerializer(cfg).data})
@@ -263,6 +285,7 @@ def legal_entity_public(request):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([LegalPublicReadThrottle])
 def ai_disclosure_list(request):
     items = AIProcessingDisclosure.objects.filter(is_active=True)
     return Response({"success": True, "data": AIProcessingDisclosureSerializer(items, many=True).data})
@@ -278,6 +301,7 @@ def ai_disclosure_list(request):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([LegalPublicReadThrottle])
 def processor_register_public(request):
     items = ProcessorRecord.objects.filter(is_active=True).order_by("name")
     return Response({"success": True, "data": ProcessorRecordPublicSerializer(items, many=True).data})
@@ -285,6 +309,7 @@ def processor_register_public(request):
 
 @api_view(["GET"])
 @permission_classes([AllowAny])
+@throttle_classes([LegalPublicReadThrottle])
 def data_transfer_register_public(request):
     items = DataTransferRecord.objects.all().order_by("destination_country")
     return Response({"success": True, "data": DataTransferRecordPublicSerializer(items, many=True).data})
