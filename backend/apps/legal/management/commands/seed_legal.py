@@ -513,8 +513,8 @@ application data is a decision you should be able to see before you submit it.
 - If the listing uses **Direct Apply**, clicking it takes you to the employer's own site or Applicant
   Tracking System — USAM is not a party to that application and does not control what happens to your
   data once you're on the employer's own system; see [Acceptable Use Policy](/legal/acceptable-use)
-  for how we try to ensure these are genuine employer/ATS links, not third-party aggregator
-  intermediaries.
+  for how our ingestion pipeline enforces, at a code level, that these are genuine employer/ATS
+  links rather than third-party aggregator intermediaries.
 - If the listing uses USAM's own in-platform application form, your submission is stored as an
   application record tied to that job and that employer's account, with server-side authorization
   checks on every view (an employer can only see applicants to their own postings).
