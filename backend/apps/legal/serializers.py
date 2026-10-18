@@ -134,6 +134,33 @@ class ProcessorRecordSerializer(serializers.ModelSerializer):
         ]
 
 
+class ProcessorRecordPublicSerializer(serializers.ModelSerializer):
+    """Public-safe view of a processor record for the `/legal/subprocessors`
+    page. Deliberately excludes `contract_reference` and `notes` — those are
+    internal procurement/legal fields, not something a visiting data subject
+    needs to see. `dpa_signed` IS exposed (as NULL/unconfirmed where that's
+    the real state) since "has a DPA been confirmed" is exactly the honest
+    disclosure this page exists to make."""
+
+    class Meta:
+        model = ProcessorRecord
+        fields = ["uuid", "name", "purpose", "data_categories", "country", "dpa_signed"]
+
+
+class DataTransferRecordPublicSerializer(serializers.ModelSerializer):
+    """Public-safe view of a transfer record for `/legal/international-
+    transfers`. Excludes `authorization_reference`/`notes` (internal/legal
+    tracking fields) — exposes only what a data subject needs to assess the
+    transfer: destination, data categories, and the safeguard mechanism
+    (including the honest "not yet determined" state)."""
+
+    processor_name = serializers.CharField(source="processor.name", read_only=True, default="")
+
+    class Meta:
+        model = DataTransferRecord
+        fields = ["uuid", "processor_name", "destination_country", "data_categories", "mechanism"]
+
+
 class DataTransferRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = DataTransferRecord

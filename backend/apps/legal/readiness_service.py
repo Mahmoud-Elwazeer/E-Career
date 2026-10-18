@@ -42,7 +42,7 @@ from .models import (
     PolicyDocument, CookieCategory, LegalEntityConfig, ProcessorRecord,
     JurisdictionPolicyProfile, RetentionPolicy,
 )
-from .services import UNRESOLVED_MARKER  # single source of truth for the literal
+from .services import UNRESOLVED_MARKER, UNRESOLVED_MARKER_AR  # single source of truth for the literals
 
 # Core documents a launch cannot go live without an ACTIVE version of.
 CORE_DOC_SLUGS = ["terms", "privacy", "cookies", "refunds", "payment-security"]
@@ -85,12 +85,14 @@ def _check_core_documents_active(report: ReadinessReport) -> None:
                        f"'{slug}' has no ACTIVE version yet — review and activate a draft "
                        f"via the Admin Legal Control Plane.")
             continue
-        if UNRESOLVED_MARKER in (active.content_markdown or ""):
+        active_content = active.content_markdown or ""
+        if UNRESOLVED_MARKER in active_content or UNRESOLVED_MARKER_AR in active_content:
             report.add(f"document.{slug}", "BLOCKED",
-                       f"'{slug}' has an ACTIVE version (v{active.version_label}) that still "
-                       f"contains an unresolved '{UNRESOLVED_MARKER}' marker — this must never "
-                       f"be publicly live. This indicates a version was activated without "
-                       f"completing legal/configuration review.")
+                       f"'{slug}' has an ACTIVE version (v{active.version_label}, "
+                       f"locale={active.locale}) that still contains an unresolved "
+                       f"legal-review marker — this must never be publicly live. This "
+                       f"indicates a version was activated without completing "
+                       f"legal/configuration review.")
             continue
         report.add(f"document.{slug}", "READY", f"'{slug}' has a clean ACTIVE version.")
 

@@ -55,9 +55,21 @@ class PolicyDocument(UUIDModel):
         PAYMENT_SECURITY = "payment_security", "Payment & Card Security Policy"
         SECURITY = "security", "Security Overview"
         AI_DISCLOSURE = "ai_disclosure", "AI Use & Rasheed Disclosure"
+        # Added in the 2026-09-21 continuation pass to close real route/
+        # disclosure gaps identified against the supplemental legal specs
+        # (see audit/LEGAL_PRIVACY_COMPLIANCE_MASTER.md §9A, continuation
+        # entry). Each is a genuinely distinct disclosure, not a duplicate
+        # of an existing document — see the seed command's own docstring
+        # for why each one exists and what it does NOT repeat.
+        ACCEPTABLE_USE = "acceptable_use", "Acceptable Use Policy"
+        DATA_RIGHTS = "data_rights", "Your Data Rights"
+        SUBPROCESSORS = "subprocessors", "Sub-processor Disclosure"
+        INTERNATIONAL_TRANSFERS = "international_transfers", "International Data Transfers"
+        CANDIDATE_PRIVACY = "candidate_privacy", "Candidate Privacy Notice"
+        BUSINESS_TERMS = "business_terms", "Employer & Business Terms"
 
     slug = models.SlugField(max_length=60, unique=True)
-    doc_type = models.CharField(max_length=20, choices=DocType.choices, db_index=True)
+    doc_type = models.CharField(max_length=30, choices=DocType.choices, db_index=True)
     title = models.CharField(max_length=160)
     is_active = models.BooleanField(default=True)
 

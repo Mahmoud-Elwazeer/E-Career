@@ -29,12 +29,14 @@ from rest_framework.views import APIView
 from .models import (
     PolicyDocument, PolicyVersion, ConsentPurpose, CookieCategory, CookieConsent,
     MarketingPreference, PrivacyRequest, LegalEntityConfig, AIProcessingDisclosure,
+    ProcessorRecord, DataTransferRecord,
 )
 from .serializers import (
     PolicyDocumentSerializer, PolicyVersionPublicSerializer, PolicyAcceptanceSerializer,
     ConsentPurposeSerializer, MarketingPreferenceSerializer, CookieCategorySerializer,
     CookieConsentSerializer, PrivacyRequestSerializer, LegalEntityConfigSerializer,
-    AIProcessingDisclosureSerializer,
+    AIProcessingDisclosureSerializer, ProcessorRecordPublicSerializer,
+    DataTransferRecordPublicSerializer,
 )
 from . import services
 
@@ -264,3 +266,25 @@ def legal_entity_public(request):
 def ai_disclosure_list(request):
     items = AIProcessingDisclosure.objects.filter(is_active=True)
     return Response({"success": True, "data": AIProcessingDisclosureSerializer(items, many=True).data})
+
+
+# ── Public processor / transfer registers (continuation pass) ───────────────
+# Backs the new /legal/subprocessors and /legal/international-transfers
+# pages. These are READ-ONLY, public-safe views of the same
+# ProcessorRecord/DataTransferRecord data the Admin Legal Control Plane
+# already manages — no new data model, just a public-safe projection of it
+# (see ProcessorRecordPublicSerializer/DataTransferRecordPublicSerializer
+# for exactly which internal fields are excluded).
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def processor_register_public(request):
+    items = ProcessorRecord.objects.filter(is_active=True).order_by("name")
+    return Response({"success": True, "data": ProcessorRecordPublicSerializer(items, many=True).data})
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def data_transfer_register_public(request):
+    items = DataTransferRecord.objects.all().order_by("destination_country")
+    return Response({"success": True, "data": DataTransferRecordPublicSerializer(items, many=True).data})

@@ -30,6 +30,11 @@ urlpatterns = [
     path("entity/", views.legal_entity_public, name="legal-entity-public"),
     path("ai-disclosures/", views.ai_disclosure_list, name="ai-disclosures"),
 
+    # Public processor / transfer registers (continuation pass) — back the
+    # /legal/subprocessors and /legal/international-transfers pages.
+    path("processors/", views.processor_register_public, name="processors-public"),
+    path("transfers/", views.data_transfer_register_public, name="transfers-public"),
+
     # ── Admin Legal Control Plane (IsAdminRole) ─────────────────────────────
     path("admin/documents/", admin_views.AdminPolicyDocumentListView.as_view(), name="admin-documents"),
     path("admin/versions/", admin_views.AdminPolicyVersionListCreateView.as_view(), name="admin-versions"),

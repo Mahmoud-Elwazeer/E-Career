@@ -22,6 +22,17 @@ from .models import (
 # circular import; both modules intentionally use the identical literal.
 UNRESOLVED_MARKER = "REQUIRES LEGAL REVIEW"
 
+# Arabic equivalent of the same marker, used in the Arabic (locale="ar")
+# seeded content added in the 2026-09-21 continuation pass. Without this,
+# the activation safety gate below would only ever catch unresolved
+# placeholders in English content — an Arabic version containing the exact
+# same kind of unresolved placeholder would silently pass through. Both
+# markers are checked on every version regardless of its own locale (cheap,
+# and correctly catches a version that mixes scripts or was mis-tagged).
+UNRESOLVED_MARKER_AR = "تتطلب مراجعة قانونية"
+
+_UNRESOLVED_MARKERS = (UNRESOLVED_MARKER, UNRESOLVED_MARKER_AR)
+
 
 class ActivationBlocked(ValueError):
     """Raised when a version cannot be safely activated — e.g. it still
@@ -62,12 +73,15 @@ def activate_version(*, version: PolicyVersion, approver=None,
     if version.status not in (PolicyVersion.Status.APPROVED, PolicyVersion.Status.SCHEDULED):
         raise ValueError("Only an APPROVED or SCHEDULED version can be activated.")
 
-    if not allow_unresolved_markers and UNRESOLVED_MARKER in (version.content_markdown or ""):
+    content = version.content_markdown or ""
+    found_marker = next((m for m in _UNRESOLVED_MARKERS if m in content), None)
+    if not allow_unresolved_markers and found_marker:
         raise ActivationBlocked(
-            f"Cannot activate {version.document.slug} v{version.version_label}: "
-            f"its content still contains an unresolved '{UNRESOLVED_MARKER}' "
-            f"placeholder (missing legal entity/contact/other confirmed fact). "
-            f"Resolve the placeholder (or create a reviewed version) before activating."
+            f"Cannot activate {version.document.slug} v{version.version_label} "
+            f"({version.locale}): its content still contains an unresolved "
+            f"'{found_marker}' placeholder (missing legal entity/contact/other "
+            f"confirmed fact). Resolve the placeholder (or create a reviewed "
+            f"version) before activating."
         )
 
     siblings = PolicyVersion.objects.filter(

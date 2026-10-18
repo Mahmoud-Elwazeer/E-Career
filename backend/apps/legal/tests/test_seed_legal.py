@@ -29,15 +29,24 @@ def test_seed_legal_default_behavior_creates_drafts_never_auto_publishes():
     correctly reports nothing active yet."""
     call_command("seed_legal")
     docs = PolicyDocument.objects.filter(is_active=True)
-    assert docs.count() == 7  # terms, privacy, cookies, refunds, payment-security, security, ai-disclosure
+    # terms, privacy, cookies, refunds, payment-security, security,
+    # ai-disclosure, acceptable-use, data-rights, subprocessors,
+    # international-transfers, candidate-privacy, business-terms
+    assert docs.count() == 13
     for doc in docs:
         assert doc.live_version is None, (
             f"{doc.slug} has a live ACTIVE version right after seeding — "
             f"this means seed_legal silently published unreviewed text."
         )
-        version = doc.versions.first()
+        version = doc.versions.filter(locale="en").first()
         assert version is not None
         assert version.status == PolicyVersion.Status.DRAFT
+        # Every document must also get an Arabic draft seeded, flagged as
+        # an unreviewed machine translation (continuation pass).
+        ar_version = doc.versions.filter(locale="ar").first()
+        assert ar_version is not None, f"{doc.slug} has no Arabic (ar) draft seeded."
+        assert ar_version.is_machine_translated is True
+        assert ar_version.status == PolicyVersion.Status.DRAFT
 
 
 def test_seed_legal_activate_drafts_flag_publishes_for_staging_convenience():
@@ -45,7 +54,7 @@ def test_seed_legal_activate_drafts_flag_publishes_for_staging_convenience():
     and must be explicitly passed — never the default."""
     call_command("seed_legal", "--activate-drafts")
     docs = PolicyDocument.objects.filter(is_active=True)
-    assert docs.count() == 7
+    assert docs.count() == 13
     for doc in docs:
         assert doc.live_version is not None
 

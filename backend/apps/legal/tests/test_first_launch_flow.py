@@ -69,7 +69,13 @@ def test_first_launch_legal_flow_end_to_end():
     # ── 4. Admin reviews and resolves the draft's unresolved marker ──────
     # Real legal review replaces placeholder text — simulating that here by
     # editing the seeded draft's content before promoting it.
-    terms_draft = terms.versions.filter(status=PolicyVersion.Status.DRAFT).first()
+    # Continuation pass: seed_legal now also seeds an Arabic (locale="ar")
+    # draft for every document, so each document has TWO drafts. This test
+    # exercises the English locale's full lifecycle end-to-end (the Arabic
+    # locale's lifecycle is identical by construction — same services.
+    # activate_version code path — and is covered separately by
+    # test_legal_readiness.py / test_seed_legal.py).
+    terms_draft = terms.versions.filter(status=PolicyVersion.Status.DRAFT, locale="en").first()
     assert terms_draft is not None
     assert UNRESOLVED_MARKER in terms_draft.content_markdown  # confirms the seed is realistic
 
@@ -82,7 +88,7 @@ def test_first_launch_legal_flow_end_to_end():
     )
     assert edit_resp.status_code == 200
 
-    privacy_draft = privacy.versions.filter(status=PolicyVersion.Status.DRAFT).first()
+    privacy_draft = privacy.versions.filter(status=PolicyVersion.Status.DRAFT, locale="en").first()
     admin_client.patch(
         f"/api/v1/legal/admin/versions/{privacy_draft.uuid}/",
         {"content_markdown": privacy_draft.content_markdown.replace(

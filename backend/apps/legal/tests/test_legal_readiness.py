@@ -16,7 +16,7 @@ from apps.legal.models import (
     PolicyDocument, PolicyVersion, LegalEntityConfig, JurisdictionPolicyProfile,
     RetentionPolicy, ProcessorRecord,
 )
-from apps.legal.readiness_service import check_legal_readiness, UNRESOLVED_MARKER
+from apps.legal.readiness_service import check_legal_readiness, UNRESOLVED_MARKER, UNRESOLVED_MARKER_AR
 
 pytestmark = pytest.mark.django_db
 
@@ -41,10 +41,13 @@ def _activate_everything():
     RetentionPolicy.objects.update(requires_legal_review=False, retention_period_days=365)
     ProcessorRecord.objects.update(dpa_signed=True)
 
-    # Strip the unresolved marker from every ACTIVE version's content for
-    # this simulation (a real admin would publish reviewed, marker-free text).
+    # Strip the unresolved marker (English AND Arabic — continuation pass
+    # seeds both locales) from every ACTIVE version's content for this
+    # simulation (a real admin would publish reviewed, marker-free text).
     for version in PolicyVersion.objects.filter(status=PolicyVersion.Status.ACTIVE):
-        version.content_markdown = version.content_markdown.replace(UNRESOLVED_MARKER, "Reviewed")
+        content = version.content_markdown.replace(UNRESOLVED_MARKER, "Reviewed")
+        content = content.replace(UNRESOLVED_MARKER_AR, "تمت المراجعة")
+        version.content_markdown = content
         version.save(update_fields=["content_markdown"])
 
 
