@@ -280,6 +280,53 @@ class Refund(UUIDModel):
         super().save(*args, **kwargs)
 
 
+class RefundRequest(UUIDModel):
+    """Maker-checker authorization gate for a refund (directive item 13).
+
+    Mirrors `AdjustmentRequest`'s dual-control pattern deliberately, rather
+    than inventing a second authorization vocabulary: a refund is REQUESTED
+    by one admin with a reason, APPROVED/EXECUTED by a DIFFERENT admin (same
+    requester != approver rule as adjustments), and only on approval does
+    the real `services.refund_payment` get called. Points at the resulting
+    `Refund` row (which already carries `provider_reference` and
+    `ledger_transaction`) rather than duplicating those fields here — one
+    source of truth for the provider/ledger facts.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending approval"
+        APPROVED = "approved", "Approved (refund executed)"
+        REJECTED = "rejected", "Rejected"
+
+    reference = models.CharField(max_length=40, unique=True, db_index=True)
+    payment = models.ForeignKey(Payment, on_delete=models.PROTECT, related_name="refund_requests")
+    amount = models.BigIntegerField(help_text="Minor units; must not exceed payment.amount")
+    currency = models.CharField(max_length=3, choices=Currency.choices, default=Currency.EGP)
+    reason = models.TextField()
+    status = models.CharField(max_length=12, choices=Status.choices,
+                              default=Status.PENDING, db_index=True)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+                                     related_name="refund_requests_made")
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name="refund_requests_approved")
+    executed_refund = models.ForeignKey(Refund, null=True, blank=True, on_delete=models.SET_NULL,
+                                        related_name="authorization")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "payments_refund_request"
+        ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            self.reference = generate_reference(self.payment.platform_code, Category.REFUND)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.reference} [{self.status}]"
+
+
 class WebhookEvent(UUIDModel):
     """Every inbound provider webhook, deduplicated + processed idempotently."""
 

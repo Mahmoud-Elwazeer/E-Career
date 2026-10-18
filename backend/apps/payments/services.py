@@ -178,19 +178,117 @@ def refund_payment(*, payment: Payment, amount: int | None = None, reason: str =
     refund.save(update_fields=["provider_reference", "status", "ledger_transaction"])
 
     # Status transitions: full refund flips payment+order to refunded.
-    if refund_amount == payment.amount and payment.can_transition_to(Payment.Status.REFUNDED):
+    is_full_refund = refund_amount == payment.amount
+    if is_full_refund and payment.can_transition_to(Payment.Status.REFUNDED):
         payment.status = Payment.Status.REFUNDED
         payment.save(update_fields=["status", "updated_at"])
         order.status = Order.Status.REFUNDED
         order.save(update_fields=["status", "updated_at"])
 
+    # Entitlement reconciliation (directive item 12). Documented policy:
+    #   - A FULL refund (refund_amount == payment.amount) revokes whatever
+    #     entitlement that order's package granted — the subscription moves
+    #     to CANCELLED. This mirrors AdjustmentRequest/subscription-status
+    #     vocabulary (STATUS_CHOICES already includes "cancelled") rather
+    #     than inventing a new status.
+    #   - A PARTIAL refund (refund_amount < payment.amount) NEVER changes
+    #     entitlement status. There is no proportional/pro-rata downgrade —
+    #     this platform does not have per-unit entitlement granularity
+    #     (CompanySubscription/UserSubscription is a flat plan reference,
+    #     not a credit balance), so a partial refund is purely a financial
+    #     adjustment with no entitlement consequence until/unless a future
+    #     product decision adds metered entitlements.
+    #   - Revocation NEVER rewrites ledger history — it only changes the
+    #     SubscriptionPlan status row, a completely separate table from the
+    #     ledger, which this function has already finished posting to above.
+    if is_full_refund:
+        _revoke_entitlement(order)
+
     FinancialAuditLog.objects.create(
         actor=actor, action="refund.issued", entity_type="Refund",
         entity_ref=refund.reference,
-        after={"amount": refund_amount, "currency": currency, "status": refund.status},
+        after={"amount": refund_amount, "currency": currency, "status": refund.status,
+              "entitlement_revoked": is_full_refund},
         context={"payment": payment.reference, "order": order.reference, "reason": reason},
     )
     return refund
+
+
+def request_refund(*, requester, payment: Payment, amount: int | None = None, reason: str = ""):
+    """Create a PENDING RefundRequest — the maker step (directive item 13).
+
+    Does NOT touch the ledger, provider, or Payment/Order status at all —
+    that only happens in `approve_refund_request`, by a DIFFERENT admin.
+    """
+    from .models import RefundRequest
+
+    if not reason:
+        raise ValueError("A reason is required for a refund request")
+    if payment.status != Payment.Status.SUCCEEDED:
+        raise ValueError("Only a succeeded payment can be refunded")
+    refund_amount = int(amount) if amount is not None else int(payment.amount)
+    if refund_amount <= 0 or refund_amount > payment.amount:
+        raise ValueError("Invalid refund amount")
+
+    req = RefundRequest.objects.create(
+        payment=payment, amount=refund_amount, currency=payment.currency,
+        reason=reason, requested_by=requester,
+    )
+    FinancialAuditLog.objects.create(
+        actor=requester, action="refund_request.requested", entity_type="RefundRequest",
+        entity_ref=req.reference,
+        after={"amount": refund_amount, "currency": payment.currency},
+        context={"payment": payment.reference, "reason": reason},
+    )
+    return req
+
+
+@db_transaction.atomic
+def approve_refund_request(*, refund_request, approver):
+    """Approve a RefundRequest and EXECUTE the real refund — the checker
+    step. Requester != approver (dual control), same rule as adjustments.
+    """
+    from .models import RefundRequest
+
+    if refund_request.status != RefundRequest.Status.PENDING:
+        raise ValueError("Refund request is not pending")
+    if refund_request.requested_by_id == getattr(approver, "id", None):
+        raise ValueError("Approver must be different from the requester (dual control)")
+
+    refund = refund_payment(
+        payment=refund_request.payment, amount=refund_request.amount,
+        reason=refund_request.reason, actor=approver,
+    )
+
+    refund_request.status = RefundRequest.Status.APPROVED
+    refund_request.approved_by = approver
+    refund_request.executed_refund = refund
+    refund_request.resolved_at = timezone.now()
+    refund_request.save(update_fields=["status", "approved_by", "executed_refund", "resolved_at"])
+
+    FinancialAuditLog.objects.create(
+        actor=approver, action="refund_request.approved", entity_type="RefundRequest",
+        entity_ref=refund_request.reference,
+        before={"status": "pending"},
+        after={"status": "approved", "refund": refund.reference},
+    )
+    return refund_request
+
+
+def reject_refund_request(*, refund_request, approver, note: str = ""):
+    from .models import RefundRequest
+
+    if refund_request.status != RefundRequest.Status.PENDING:
+        raise ValueError("Refund request is not pending")
+    refund_request.status = RefundRequest.Status.REJECTED
+    refund_request.approved_by = approver
+    refund_request.resolved_at = timezone.now()
+    refund_request.save(update_fields=["status", "approved_by", "resolved_at"])
+    FinancialAuditLog.objects.create(
+        actor=approver, action="refund_request.rejected", entity_type="RefundRequest",
+        entity_ref=refund_request.reference, context={"note": note},
+    )
+    return refund_request
 
 
 def request_adjustment(*, requester, account_code, counter_account_code, amount,
@@ -265,6 +363,34 @@ def reject_adjustment(*, adjustment, approver, note=""):
         entity_ref=adjustment.reference, context={"note": note},
     )
     return adjustment
+
+
+def _revoke_entitlement(order: Order):
+    """Inverse of `_grant_entitlement`: on a FULL refund, cancel whatever
+    subscription that order's package activated. Resolves the same way
+    `_grant_entitlement` does (order.package.entitlement_plan +
+    order.company_id/order.user) since no stored link exists from the
+    subscription back to the order that granted it (see directive note:
+    this means two orders for the same plan+subject can't be individually
+    attributed — refunding one will cancel the shared subscription row
+    even if another order for the same plan is still legitimately paid;
+    this is a known limitation of the current one-row-per-(subject,plan)
+    entitlement model, not something this function can fix by itself).
+
+    Never touches the ledger — only PROTECT/CASCADE-safe status columns on
+    CompanySubscription/UserSubscription.
+    """
+    plan: SubscriptionPlan | None = order.package.entitlement_plan
+    if not plan:
+        return
+    if order.company_id:
+        CompanySubscription.objects.filter(
+            company=order.company, plan=plan,
+        ).exclude(status="cancelled").update(status="cancelled")
+    else:
+        UserSubscription.objects.filter(
+            user=order.user, plan=plan,
+        ).exclude(status="cancelled").update(status="cancelled")
 
 
 def _grant_entitlement(order: Order):

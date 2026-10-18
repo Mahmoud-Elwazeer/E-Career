@@ -25,6 +25,7 @@ from apps.payments.models import (
     Package, Order, Payment, Refund, LedgerAccount, LedgerTransaction,
 )
 from apps.payments import services, analytics
+from apps.core.models import SubscriptionPlan, CompanySubscription, UserSubscription
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
@@ -250,6 +251,91 @@ def test_reconcile_does_not_flag_order_ledger_as_orphan():
     result = analytics.reconcile()
     orphans = [e for e in result["exceptions"] if e["type"] == "orphan_ledger"]
     assert orphans == []
+
+
+# ============================================================================
+# Refund entitlement reconciliation (directive item 12)
+# ============================================================================
+
+def _paid_order_with_entitlement(email, amount=20000, company=None):
+    """Like _paid_order, but the package grants a real SubscriptionPlan."""
+    user = User.objects.create_user(email=email, password="x")
+    plan = SubscriptionPlan.objects.create(name=f"Plan-{email}", job_posting_limit=10)
+    pkg = Package.objects.create(
+        name=f"Pkg-{email}", slug=f"pkg-ent-{email}", price_amount=amount,
+        currency="EGP", audience="employer", entitlement_plan=plan,
+    )
+    order = services.create_order(user=user, package=pkg, company=company)
+    pay = Payment.objects.create(order=order, amount=order.total, currency="EGP",
+                                 provider="", status="pending")
+    services.mark_order_paid(order=order, payment=pay)
+    order.refresh_from_db(); pay.refresh_from_db()
+    return order, pay, plan, user
+
+
+def test_full_refund_revokes_user_entitlement():
+    order, pay, plan, user = _paid_order_with_entitlement("ent-full-user@test.com", amount=10000)
+    sub = UserSubscription.objects.get(user=user, plan=plan)
+    assert sub.status == "active"
+
+    services.refund_payment(payment=pay, reason="full refund revokes access")
+
+    sub.refresh_from_db()
+    assert sub.status == "cancelled"
+
+
+def test_full_refund_revokes_company_entitlement():
+    from apps.jobs.models import Company
+    company = Company.objects.create(name="Acme Refund Co", slug="acme-refund-co")
+    order, pay, plan, _user = _paid_order_with_entitlement(
+        "ent-full-company@test.com", amount=30000, company=company,
+    )
+    sub = CompanySubscription.objects.get(company=company, plan=plan)
+    assert sub.status == "active"
+
+    services.refund_payment(payment=pay, reason="full refund revokes company access")
+
+    sub.refresh_from_db()
+    assert sub.status == "cancelled"
+
+
+def test_partial_refund_never_touches_entitlement():
+    """Documented policy: a partial refund has NO entitlement consequence —
+    only a full refund (refund_amount == payment.amount) revokes access."""
+    order, pay, plan, user = _paid_order_with_entitlement("ent-partial@test.com", amount=10000)
+    sub = UserSubscription.objects.get(user=user, plan=plan)
+    assert sub.status == "active"
+
+    services.refund_payment(payment=pay, amount=4000, reason="partial goodwill refund")
+
+    sub.refresh_from_db()
+    assert sub.status == "active"  # untouched by the partial refund
+
+
+def test_refund_without_entitlement_plan_is_a_safe_noop():
+    """A package with no entitlement_plan (e.g. a one-off, non-subscription
+    purchase) must refund cleanly with no entitlement side effect at all."""
+    order, pay = _paid_order("ent-none@test.com", amount=5000)  # no entitlement_plan on this package
+    refund = services.refund_payment(payment=pay, reason="no entitlement to revoke")
+    assert refund.status == Refund.Status.SUCCEEDED
+    assert not UserSubscription.objects.filter(user=order.user).exists()
+
+
+def test_full_refund_entitlement_revocation_never_touches_ledger_entries():
+    """Entitlement revocation must be a completely separate write from the
+    ledger — confirm the already-posted LedgerEntry rows are untouched
+    (ledger immutability guarantee from this same file's other tests)."""
+    order, pay, plan, user = _paid_order_with_entitlement("ent-ledger-safe@test.com", amount=10000)
+    txn = pay.ledger_transaction
+    entries_before = sorted(txn.entries.values_list("pk", "amount"))
+
+    services.refund_payment(payment=pay, reason="full refund")
+
+    # Original sale-posting entries are still exactly as they were — the
+    # refund posted a NEW reversing transaction, never mutated these rows.
+    txn.refresh_from_db()
+    entries_after = sorted(txn.entries.values_list("pk", "amount"))
+    assert entries_after == entries_before
 
 
 def test_reconcile_does_not_flag_approved_adjustment_as_orphan():

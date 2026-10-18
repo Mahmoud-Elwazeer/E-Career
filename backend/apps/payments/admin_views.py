@@ -160,6 +160,76 @@ def issue_refund(request):
 
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminRole])
+def refund_requests(request):
+    """Maker-checker refund flow (directive item 13).
+
+    List pending/all RefundRequest rows, or create a new PENDING one.
+    This is additive alongside `issue_refund` (immediate single-admin
+    refund) — it does not replace it. Use this endpoint when a second
+    admin's sign-off is required before money moves.
+    """
+    from . import services
+    from .models import RefundRequest, Payment
+
+    if request.method == "POST":
+        ref = request.data.get("payment_reference")
+        payment = Payment.objects.filter(reference=ref).first()
+        if not payment:
+            return Response({"success": False, "message": "Unknown payment"}, status=404)
+        try:
+            req = services.request_refund(
+                requester=request.user, payment=payment,
+                amount=request.data.get("amount"),
+                reason=request.data.get("reason", ""),
+            )
+        except ValueError as e:
+            return Response({"success": False, "message": str(e)}, status=400)
+        return Response({"success": True, "data": {"reference": req.reference, "status": req.status}})
+
+    rows = [{
+        "reference": r.reference, "payment": r.payment.reference, "amount": r.amount,
+        "currency": r.currency, "reason": r.reason, "status": r.status,
+        "requested_by": getattr(r.requested_by, "email", None),
+        "approved_by": getattr(r.approved_by, "email", None),
+        "executed_refund": getattr(r.executed_refund, "reference", None),
+        "created_at": r.created_at, "resolved_at": r.resolved_at,
+    } for r in RefundRequest.objects.select_related(
+        "payment", "requested_by", "approved_by", "executed_refund",
+    ).order_by("-created_at")[:200]]
+    return Response({"success": True, "data": rows})
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminRole])
+def refund_request_decide(request, reference):
+    """Approve (executes the real refund) or reject a pending RefundRequest.
+    Approver must differ from requester."""
+    from . import services
+    from .models import RefundRequest
+
+    req = RefundRequest.objects.filter(reference=reference).first()
+    if not req:
+        return Response({"success": False, "message": "Unknown refund request"}, status=404)
+    decision = request.data.get("decision")
+    try:
+        if decision == "approve":
+            services.approve_refund_request(refund_request=req, approver=request.user)
+        elif decision == "reject":
+            services.reject_refund_request(
+                refund_request=req, approver=request.user, note=request.data.get("note", ""),
+            )
+        else:
+            return Response({"success": False, "message": "decision must be approve|reject"}, status=400)
+    except ValueError as e:
+        return Response({"success": False, "message": str(e)}, status=400)
+    except Exception as e:
+        return Response({"success": False, "message": f"Refund execution failed: {e}"}, status=502)
+    req.refresh_from_db()
+    return Response({"success": True, "data": {"reference": req.reference, "status": req.status}})
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAdminRole])
 def adjustments(request):
     """List pending/all adjustments, or create a new PENDING adjustment request."""
     from . import services
