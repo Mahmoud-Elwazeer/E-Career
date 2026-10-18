@@ -75,6 +75,24 @@ class AdminPolicyVersionDetailView(generics.RetrieveUpdateAPIView):
         return super().update(request, *args, **kwargs)
 
 
+@api_view(["GET"])
+@permission_classes([IsAdminRole])
+def policy_version_preview(request, uuid):
+    """Safe Draft Preview — lets an authorized admin read ANY version's
+    content (DRAFT/IN_REVIEW/APPROVED/SCHEDULED/ACTIVE/RETIRED), including
+    ones that are not yet (or no longer) public. This is the admin-only
+    counterpart to `views.policy_detail`, which only ever serves the
+    document's current ACTIVE version (via `services.get_active_version`)
+    to the public — that public code path is untouched and still cannot
+    be reached by a non-ACTIVE version, no matter what this view does.
+    """
+    try:
+        version = PolicyVersion.objects.select_related("document").get(uuid=uuid)
+    except PolicyVersion.DoesNotExist:
+        return Response({"success": False, "message": "Not found."}, status=404)
+    return Response({"success": True, "data": PolicyVersionAdminSerializer(version).data})
+
+
 @api_view(["POST"])
 @permission_classes([IsAdminRole])
 def policy_version_transition(request, uuid):

@@ -35,6 +35,7 @@ urlpatterns = [
     path("admin/versions/", admin_views.AdminPolicyVersionListCreateView.as_view(), name="admin-versions"),
     path("admin/versions/<uuid:uuid>/", admin_views.AdminPolicyVersionDetailView.as_view(), name="admin-version-detail"),
     path("admin/versions/<uuid:uuid>/transition/", admin_views.policy_version_transition, name="admin-version-transition"),
+    path("admin/versions/<uuid:uuid>/preview/", admin_views.policy_version_preview, name="admin-version-preview"),
 
     path("admin/cookie-categories/", admin_views.AdminCookieCategoryListView.as_view(), name="admin-cookie-categories"),
     path("admin/cookie-categories/<uuid:uuid>/", admin_views.AdminCookieCategoryDetailView.as_view(), name="admin-cookie-category-detail"),

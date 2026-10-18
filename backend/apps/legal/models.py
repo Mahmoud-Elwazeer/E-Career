@@ -311,6 +311,18 @@ class CookieConsent(UUIDModel):
     categories = models.JSONField(default=dict)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    # Provenance for anonymous->authenticated carryover (directive item 6):
+    # when a user logs in and we carry their most recent anonymous cookie
+    # choice forward into a new authenticated-user row (rather than making
+    # them re-choose), this records exactly which anonymous session_key the
+    # choice came from. Blank for every row created directly by a visitor's
+    # own banner interaction — only set on the synthetic carryover row.
+    carried_over_from_session_key = models.CharField(
+        max_length=64, blank=True,
+        help_text="If this row was carried over from an anonymous session at "
+                  "login (rather than chosen directly by this authenticated "
+                  "user), the originating session_key. Blank otherwise.",
+    )
 
     class Meta:
         db_table = "legal_cookie_consent"

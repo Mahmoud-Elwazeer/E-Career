@@ -91,8 +91,8 @@ class CookieCategorySerializer(serializers.ModelSerializer):
 class CookieConsentSerializer(serializers.ModelSerializer):
     class Meta:
         model = CookieConsent
-        fields = ["uuid", "action", "categories", "created_at"]
-        read_only_fields = ["uuid", "created_at"]
+        fields = ["uuid", "action", "categories", "created_at", "carried_over_from_session_key"]
+        read_only_fields = ["uuid", "created_at", "carried_over_from_session_key"]
 
 
 class PrivacyRequestEventSerializer(serializers.ModelSerializer):

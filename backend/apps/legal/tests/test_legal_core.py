@@ -19,6 +19,7 @@ from apps.legal.models import (
     CookieConsent, PrivacyRequest, AIProcessingDisclosure,
 )
 from apps.legal import services
+from django.utils import timezone
 
 User = get_user_model()
 pytestmark = pytest.mark.django_db
@@ -86,6 +87,51 @@ def test_activate_version_rejects_draft(terms_doc):
     )
     with pytest.raises(ValueError):
         services.activate_version(version=draft)
+
+
+def test_activate_version_blocks_unresolved_marker_by_default(terms_doc):
+    """Directive-critical safety gate: a version whose content still
+    contains the 'REQUIRES LEGAL REVIEW' placeholder can never be activated
+    through the normal path — this is the single real chokepoint enforcing
+    item 29/30 (public legal content must never show internal markers)."""
+    v1 = _approved_version(terms_doc)
+    v1.content_markdown = "# Terms\n**REQUIRES LEGAL REVIEW / CONFIGURATION**"
+    v1.save(update_fields=["content_markdown"])
+    with pytest.raises(services.ActivationBlocked):
+        services.activate_version(version=v1)
+    v1.refresh_from_db()
+    assert v1.status == PolicyVersion.Status.APPROVED  # never activated
+
+
+def test_activate_version_allows_unresolved_marker_only_with_explicit_bypass(terms_doc):
+    v1 = _approved_version(terms_doc)
+    v1.content_markdown = "# Terms\n**REQUIRES LEGAL REVIEW / CONFIGURATION**"
+    v1.save(update_fields=["content_markdown"])
+    services.activate_version(version=v1, allow_unresolved_markers=True)
+    v1.refresh_from_db()
+    assert v1.status == PolicyVersion.Status.ACTIVE
+
+
+def test_activate_version_writes_activity_log_entry(terms_doc, admin_user):
+    from apps.core.models import ActivityLog
+
+    v1 = _approved_version(terms_doc, "2026.1")
+    services.activate_version(version=v1, approver=admin_user)
+
+    entry = ActivityLog.objects.filter(action="legal.policy_activate").latest("created_at")
+    assert entry.user_id == admin_user.id
+    assert entry.target_type == "PolicyVersion"
+    assert entry.target_id == str(v1.uuid)
+    assert entry.metadata["document_slug"] == "terms"
+    assert entry.metadata["version_label"] == "2026.1"
+    assert entry.metadata["previous_active_version_label"] is None
+
+    v2 = _approved_version(terms_doc, "2026.2", material_change=True)
+    services.activate_version(version=v2, approver=admin_user)
+    entry2 = ActivityLog.objects.filter(action="legal.policy_activate").latest("created_at")
+    assert entry2.metadata["previous_active_version_label"] == "2026.1"
+    assert entry2.metadata["material_change"] is True
+    assert entry2.metadata["reacceptance_required"] is True
 
 
 def test_public_policy_endpoint_returns_active_version(terms_doc):
@@ -181,6 +227,32 @@ def test_policy_version_update_preserves_old_acceptance_and_tracks_new_separatel
 
 
 # ── Admin version editing rules ───────────────────────────────────────────────
+
+def test_admin_can_preview_a_draft_version_never_public(terms_doc, admin_client):
+    """Safe Draft Preview: an admin can read a DRAFT version's content via
+    the dedicated preview endpoint — this must never be reachable by the
+    public policy_detail endpoint, which only resolves ACTIVE versions."""
+    draft = PolicyVersion.objects.create(
+        document=terms_doc, version_label="2026.2", locale="en",
+        status=PolicyVersion.Status.DRAFT, content_markdown="unpublished draft text",
+    )
+    resp = admin_client.get(f"/api/v1/legal/admin/versions/{draft.uuid}/preview/")
+    assert resp.status_code == 200
+    assert resp.json()["data"]["content_markdown"] == "unpublished draft text"
+
+    # Public route must 404 — no ACTIVE version exists for this document.
+    public_resp = APIClient().get("/api/v1/legal/policies/terms/")
+    assert public_resp.status_code == 404
+
+
+def test_non_admin_cannot_preview_draft_version(terms_doc, auth_client):
+    draft = PolicyVersion.objects.create(
+        document=terms_doc, version_label="2026.2", locale="en",
+        status=PolicyVersion.Status.DRAFT, content_markdown="unpublished draft text",
+    )
+    resp = auth_client.get(f"/api/v1/legal/admin/versions/{draft.uuid}/preview/")
+    assert resp.status_code == 403
+
 
 def test_non_draft_version_content_is_frozen(terms_doc, admin_client):
     v1 = _approved_version(terms_doc)
@@ -280,6 +352,170 @@ def test_cookie_consent_accept_all(auth_client):
     )
     assert resp.status_code == 201
     assert resp.json()["data"]["action"] == "accept_all"
+
+
+def test_sync_anonymous_cookie_consent_carries_choice_forward_on_login(user):
+    """Directive item 6: a user's anonymous cookie choice should carry
+    forward to their account at login — but must never broaden it."""
+    anon = CookieConsent.objects.create(
+        session_key="anon-session-abc", action=CookieConsent.Action.REJECT_NON_ESSENTIAL,
+        categories={"necessary": True, "functional": False, "analytics": False, "marketing": False},
+    )
+    carried = services.sync_anonymous_cookie_consent_to_user(user=user, session_key="anon-session-abc")
+    assert carried is not None
+    assert carried.user_id == user.id
+    assert carried.action == CookieConsent.Action.REJECT_NON_ESSENTIAL
+    assert carried.categories == anon.categories  # copied verbatim, never broadened
+    assert carried.carried_over_from_session_key == "anon-session-abc"
+    assert carried.session_key == ""  # now owned by the user, not the anon session
+
+
+def test_sync_anonymous_cookie_consent_noop_without_session_key(user):
+    assert services.sync_anonymous_cookie_consent_to_user(user=user, session_key=None) is None
+    assert services.sync_anonymous_cookie_consent_to_user(user=user, session_key="") is None
+    assert not CookieConsent.objects.filter(user=user).exists()
+
+
+def test_sync_anonymous_cookie_consent_noop_when_no_matching_anonymous_row(user):
+    assert services.sync_anonymous_cookie_consent_to_user(
+        user=user, session_key="nonexistent-session",
+    ) is None
+    assert not CookieConsent.objects.filter(user=user).exists()
+
+
+def test_sync_anonymous_cookie_consent_never_overwrites_existing_user_choice(user):
+    """If the user already has their own authenticated-session consent
+    choice (e.g. from a previous login), carryover must never clobber it —
+    even if a DIFFERENT anonymous session_key is passed in later."""
+    existing = CookieConsent.objects.create(
+        user=user, action=CookieConsent.Action.ACCEPT_ALL,
+        categories={"necessary": True, "functional": True, "analytics": True, "marketing": True},
+    )
+    CookieConsent.objects.create(
+        session_key="other-anon-session", action=CookieConsent.Action.REJECT_NON_ESSENTIAL,
+        categories={"necessary": True, "functional": False, "analytics": False, "marketing": False},
+    )
+    result = services.sync_anonymous_cookie_consent_to_user(user=user, session_key="other-anon-session")
+    assert result is None
+    assert CookieConsent.objects.filter(user=user).count() == 1
+    assert CookieConsent.objects.get(user=user).pk == existing.pk
+
+
+def test_open_export_privacy_request_triggers_legacy_export(user):
+    """Directive item 7: apps.legal.PrivacyRequest is canonical governance —
+    opening an EXPORT request must trigger the REAL existing executor in
+    apps.accounts (not a second, parallel implementation), and the legacy
+    row must be linked back to this ticket."""
+    from apps.accounts.models_gdpr import DataExportRequest
+
+    req = services.open_privacy_request(user=user, request_type="export", jurisdiction="EG")
+    export_request = DataExportRequest.objects.get(user=user)
+    assert export_request.privacy_request_id == req.id
+    assert req.events.filter(event_type="export_triggered").exists()
+
+
+def test_open_export_privacy_request_reuses_in_flight_export(user):
+    from apps.accounts.models_gdpr import DataExportRequest
+
+    DataExportRequest.objects.create(user=user, status="processing")
+    req = services.open_privacy_request(user=user, request_type="export", jurisdiction="EG")
+    assert DataExportRequest.objects.filter(user=user).count() == 1
+    assert req.events.filter(event_type="export_reused_existing").exists()
+
+
+def test_open_delete_privacy_request_schedules_legacy_deletion(user):
+    """Opening a DELETE request must schedule the real 30-day-grace legacy
+    deletion flow, linked back to the PrivacyRequest ticket — never execute
+    immediately."""
+    from apps.accounts.models_gdpr import AccountDeletionRequest
+
+    req = services.open_privacy_request(user=user, request_type="delete", jurisdiction="EG")
+    deletion_request = AccountDeletionRequest.objects.get(user=user)
+    assert deletion_request.privacy_request_id == req.id
+    assert deletion_request.status == "pending"
+    assert deletion_request.scheduled_for > timezone.now()
+    assert req.events.filter(event_type="deletion_scheduled").exists()
+
+
+def test_open_delete_privacy_request_reuses_existing_pending_deletion(user):
+    from apps.accounts.models_gdpr import AccountDeletionRequest
+
+    existing = AccountDeletionRequest.objects.create(
+        user=user, scheduled_for=timezone.now() + timezone.timedelta(days=30),
+    )
+    req = services.open_privacy_request(user=user, request_type="delete", jurisdiction="EG")
+    assert AccountDeletionRequest.objects.filter(user=user).count() == 1
+    existing.refresh_from_db()
+    assert existing.privacy_request_id == req.id
+    assert req.events.filter(event_type="deletion_reused_existing").exists()
+
+
+def test_login_carries_forward_anonymous_cookie_consent():
+    """End-to-end: a visitor records a cookie choice anonymously, then logs
+    in — the choice should now be visible as THEIR consent via
+    GET /legal/cookie-consent/me/, without ever having to choose again."""
+    user = User.objects.create_user(email="cookie-carryover@test.com", password="pw12345x")
+    anon_client = APIClient()
+
+    # Visitor records a choice anonymously (forces a session to exist).
+    resp = anon_client.post(
+        "/api/v1/legal/cookie-consent/",
+        {"action": "reject_non_essential", "categories": {"functional": False, "analytics": False}},
+        format="json",
+    )
+    assert resp.status_code == 201
+    session_key = anon_client.session.session_key
+    assert session_key  # the cookie-consent endpoint force-saves a session
+
+    # Same browser (same session cookie) now logs in.
+    login_resp = anon_client.post(
+        "/api/v1/auth/login/", {"email": user.email, "password": "pw12345x"}, format="json",
+    )
+    assert login_resp.status_code == 200
+
+    carried = CookieConsent.objects.filter(user=user).first()
+    assert carried is not None
+    assert carried.action == "reject_non_essential"
+    assert carried.carried_over_from_session_key == session_key
+
+
+def test_can_send_marketing_false_with_no_preference_row(user):
+    """Directive item 11: default is opt-OUT, never opt-in-by-absence."""
+    assert services.can_send_marketing(user, "email") is False
+    assert services.can_send_marketing(user, "sms") is False
+
+
+def test_can_send_marketing_true_when_opted_in(user):
+    from apps.legal.models import MarketingPreference
+    MarketingPreference.objects.create(user=user, email_marketing_opt_in=True, sms_marketing_opt_in=False)
+    assert services.can_send_marketing(user, "email") is True
+    assert services.can_send_marketing(user, "sms") is False
+
+
+def test_can_send_marketing_false_when_unsubscribed_even_if_opted_in_flag_still_true(user):
+    """An explicit unsubscribe is an absolute stop on every channel, even
+    if a channel-specific boolean was somehow left True."""
+    from apps.legal.models import MarketingPreference
+    from django.utils import timezone as _tz
+    MarketingPreference.objects.create(
+        user=user, email_marketing_opt_in=True, sms_marketing_opt_in=True,
+        unsubscribed_at=_tz.now(),
+    )
+    assert services.can_send_marketing(user, "email") is False
+    assert services.can_send_marketing(user, "sms") is False
+
+
+def test_can_send_marketing_false_for_inactive_user(user):
+    from apps.legal.models import MarketingPreference
+    MarketingPreference.objects.create(user=user, email_marketing_opt_in=True)
+    user.is_active = False
+    user.save(update_fields=["is_active"])
+    assert services.can_send_marketing(user, "email") is False
+
+
+def test_can_send_marketing_rejects_unknown_channel(user):
+    with pytest.raises(ValueError):
+        services.can_send_marketing(user, "push")
 
 
 def test_cookie_categories_public_endpoint_lists_necessary_as_essential():

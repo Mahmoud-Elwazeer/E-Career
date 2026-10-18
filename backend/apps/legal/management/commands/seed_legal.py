@@ -197,9 +197,13 @@ REFUNDS_MD = """# Refund & Cancellation Policy
 
 ## Subscriptions
 
-You can cancel a paid plan at any time from Billing. Whether cancellation takes effect immediately or
-at the end of the current billing period depends on the specific plan's rules at the time of purchase
-— we do not apply a one-size-fits-all cancellation rule.
+Every purchase on this platform today is a **single, one-time charge** that activates a plan — there
+is no automatic recurring billing or auto-renewal. If you want to extend or renew a plan, you make a
+new purchase when you're ready; there is nothing to "cancel" to stop a future charge, because no
+future charge is ever scheduled by this platform. If a feature granted by a purchase needs to be
+adjusted (e.g. deactivated early), contact support through the Legal Center contact details (once
+configured) or your Privacy Center — this is currently an admin-assisted action, not a self-service
+toggle.
 
 ## Refund window
 
@@ -287,9 +291,18 @@ not use phrases like "military-grade encryption" because they aren't meaningful 
 
 ## File security
 
-- **Known gap (tracked for remediation):** CV and other uploaded documents are currently served from
-  a predictable media URL without a signed-URL or per-request authorization check. We disclose this
-  rather than claim a protection that isn't yet in place.
+- All CV, resume, and ownership-claim document uploads are checked for file type, size, and
+  content-type spoofing (magic-byte verification), and scanned for malware before being accepted or
+  processed — this applies to every upload path that accepts this kind of file, not just the primary
+  one.
+- When an employer views an applicant's CV through the employer dashboard, that request is
+  authorization-checked every time (confirmed: the employer must currently have a legitimate
+  relationship to that specific application) — an employer cannot view another employer's
+  applicants' files.
+- **Known gap (tracked for remediation):** the underlying file storage is not yet backed by
+  expiring, signed URLs. If a CV file's raw storage URL is ever directly obtained outside the
+  authorization-checked flow above, that URL itself does not expire or re-check identity on each
+  request. We disclose this rather than claim a protection that isn't yet in place.
 
 ## Payments
 
@@ -330,10 +343,30 @@ platform.** Any such outcome is made by the employer, a human.
 
 
 class Command(BaseCommand):
-    help = "Seed baseline Legal/Privacy domain data (policies, consent purposes, cookie categories, jurisdictions)."
+    help = (
+        "Seed baseline Legal/Privacy domain data (policy DOCUMENTS as DRAFT "
+        "versions, consent purposes, cookie categories, jurisdictions, "
+        "processors). Does NOT publish anything by default — policy "
+        "versions are created as DRAFT and must be explicitly reviewed, "
+        "approved, and activated via the Admin Legal Control Plane before "
+        "they appear on any public /legal/<slug> route."
+    )
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--activate-drafts", action="store_true",
+            help=(
+                "TEST/STAGING CONVENIENCE ONLY — immediately approve+activate "
+                "the seeded draft versions so /legal/<slug> is populated "
+                "without a manual review step. Never use this in a "
+                "production deploy; the default (omitting this flag) is the "
+                "safe, directive-mandated behavior."
+            ),
+        )
 
     def handle(self, *args, **options):
-        self._seed_documents()
+        activate = options["activate_drafts"]
+        self._seed_documents(activate=activate)
         self._seed_consent_purposes()
         self._seed_cookie_categories()
         self._seed_jurisdictions()
@@ -341,9 +374,37 @@ class Command(BaseCommand):
         self._seed_retention_matrix()
         self._seed_processors()
         LegalEntityConfig.load()  # ensure the singleton row exists, unconfigured
-        self.stdout.write(self.style.SUCCESS("Legal domain seed complete."))
+        if activate:
+            self.stdout.write(self.style.WARNING(
+                "Legal domain seed complete — drafts were AUTO-ACTIVATED "
+                "(--activate-drafts). Do not use this flag in production."
+            ))
+        else:
+            self.stdout.write(self.style.SUCCESS(
+                "Legal domain seed complete. Policy versions are DRAFT and "
+                "NOT yet public. Review and activate via the Admin Legal "
+                "Control Plane before launch. Run `manage.py legal_readiness` "
+                "to check overall launch readiness."
+            ))
 
-    def _seed_documents(self):
+    def _seed_documents(self, activate: bool = False):
+        """Create PolicyDocuments + an initial v2026.1 version for each.
+
+        Directive-mandated: seeding must NEVER silently publish unreviewed
+        legal text. The default behavior creates the version as DRAFT only —
+        it is NOT visible on any public `/legal/<slug>` route until an admin
+        explicitly runs it through DRAFT -> IN_REVIEW -> APPROVED -> ACTIVE
+        (via the Admin Legal Control Plane or `services.activate_version`).
+
+        `activate=True` exists ONLY for test/staging convenience (e.g. the
+        local dev environment, or a CI fixture) — it is never the default
+        and is gated behind an explicit `--activate-drafts` CLI flag so a
+        production deploy can never accidentally pass it by habit.
+
+        Re-running this command is always safe: if a document already has
+        ANY version (DRAFT or ACTIVE), nothing is touched — an existing
+        ACTIVE production policy is never replaced or retired by seeding.
+        """
         docs = [
             ("terms", PolicyDocument.DocType.TERMS, "Terms of Service", TERMS_MD),
             ("privacy", PolicyDocument.DocType.PRIVACY, "Privacy Policy", PRIVACY_MD),
@@ -358,16 +419,37 @@ class Command(BaseCommand):
                 slug=slug, defaults={"doc_type": doc_type, "title": title},
             )
             if doc.versions.exists():
+                # An ACTIVE (or even just DRAFT) version already exists —
+                # never silently replace/duplicate it. This is what makes
+                # re-running the command safe against a live production
+                # policy that an admin already reviewed and activated.
                 self.stdout.write(f"Skip (already versioned): {slug}")
                 continue
             version = PolicyVersion.objects.create(
                 document=doc, version_label="2026.1", locale="en",
-                jurisdiction="OTHER", status=PolicyVersion.Status.APPROVED,
+                jurisdiction="OTHER", status=PolicyVersion.Status.DRAFT,
                 content_markdown=content,
-                summary_of_changes="Initial draft published pending legal review.",
+                summary_of_changes="Initial draft seeded pending legal review.",
             )
-            services.activate_version(version=version)
-            self.stdout.write(f"Created + activated: {slug} v2026.1")
+            if activate:
+                # Test/staging convenience path ONLY — never the production
+                # default. Still goes through the real APPROVED gate inside
+                # activate_version (DRAFT cannot jump straight to ACTIVE).
+                version.status = PolicyVersion.Status.APPROVED
+                version.save(update_fields=["status"])
+                # This seeded placeholder content still contains unresolved
+                # "REQUIRES LEGAL REVIEW" markers (legal entity, refund
+                # window, etc. aren't configured yet) — allow_unresolved_markers
+                # is required here ONLY because --activate-drafts is an
+                # explicit test/staging convenience flag, never reachable
+                # from the Admin Legal Control Plane or any production path.
+                services.activate_version(version=version, allow_unresolved_markers=True)
+                self.stdout.write(f"Created + activated (--activate-drafts): {slug} v2026.1")
+            else:
+                self.stdout.write(
+                    f"Created DRAFT (not public yet): {slug} v2026.1 — "
+                    f"review and activate via Admin Legal Control Plane."
+                )
 
     def _seed_consent_purposes(self):
         purposes = [
@@ -523,17 +605,66 @@ class Command(BaseCommand):
         point found in code. `contract_reference`/`dpa_signed` are left
         blank/NULL (DPA status not confirmable from code — legal must
         confirm and fill these in) rather than assumed signed.
+
+        Directive item 21 correction: entries are now tagged with a
+        `processor_type` note distinguishing three DIFFERENT kinds of thing
+        this register was previously flattening together:
+          - "external_processor": a genuinely separate legal entity that
+            receives/processes personal data on USAM's behalf under its own
+            terms (Stripe, Sentry).
+          - "cloud_infrastructure": AWS itself, as the underlying compute/
+            storage substrate — a processor in the GDPR sense, but a single
+            infrastructure vendor, not many.
+          - "model_path_via_infrastructure": AI inference that runs ON AWS
+            Bedrock as a hosted model-serving path (confirmed in code:
+            apps/intelligence/bedrock_plugin.py calls Bedrock's
+            InvokeModel API against Anthropic Claude model IDs like
+            "us.anthropic.claude-...") — Anthropic is NOT a direct
+            processor here: USAM's data never leaves AWS's boundary to
+            reach Anthropic as a separate API counterparty. The register
+            previously had no way to express this distinction and risked
+            implying "Anthropic" should be listed as its own separate
+            processor, which would overstate the real data flow.
+        Typesense's deployment mode (self-hosted vs. Typesense Cloud) is a
+        genuine fork in whether it's even a processor at all — self-hosted
+        Typesense never receives data outside USAM's own infrastructure, so
+        it is only a true third-party processor when TYPESENSE_HOST points
+        at a Typesense Cloud instance rather than a self-managed container
+        (confirmed: docker-compose.yml provisions a self-hosted `typesense`
+        service by default for this platform).
         """
         processors = [
             dict(
                 name="Amazon Web Services (AWS)",
-                purpose="Cloud infrastructure: S3 (CV/media/interview-audio storage), "
-                        "Bedrock (AI model inference for Rasheed/matching/CV parsing), "
-                        "Transcribe + Polly (voice interview speech-to-text/text-to-speech), "
-                        "Secrets Manager (credential storage).",
+                purpose="Cloud infrastructure AND AI model-hosting substrate: S3 "
+                        "(CV/media/interview-audio storage), Bedrock (hosted AI model "
+                        "inference — see note below on what this actually means for "
+                        "Anthropic), Transcribe + Polly (voice interview speech-to-text/"
+                        "text-to-speech), Secrets Manager (credential storage).",
                 data_categories="CV/resume files, interview audio (deleted post-transcription), "
                                 "AI prompt/response content, encrypted secrets",
                 country="Varies by configured AWS region",
+                notes="processor_type=cloud_infrastructure. This is the ONE real "
+                      "infrastructure processor for all AWS-hosted services below — "
+                      "not a stand-in for every AI model accessible through Bedrock.",
+            ),
+            dict(
+                name="Anthropic (Claude models, via AWS Bedrock — NOT a direct API relationship)",
+                purpose="AI model path, not a separate processor: Rasheed/matching/CV-parsing "
+                        "features call AWS Bedrock's InvokeModel API against Anthropic Claude "
+                        "model IDs (confirmed in code: apps/intelligence/bedrock_plugin.py, "
+                        "model IDs such as 'us.anthropic.claude-sonnet-...'). Bedrock is a "
+                        "hosted model-serving layer run entirely within AWS's infrastructure — "
+                        "USAM has no direct API key, account, or contract with Anthropic, and "
+                        "prompt/response data does not leave AWS's boundary to reach Anthropic "
+                        "as an independent counterparty.",
+                data_categories="AI prompt/response content (same data AWS already processes "
+                                "as the hosting infrastructure — not an additional data flow)",
+                country="N/A — routed entirely through AWS Bedrock's infrastructure",
+                notes="processor_type=model_path_via_infrastructure. Listed here for "
+                      "transparency about WHICH underlying model family is used, not because "
+                      "Anthropic is a separate contracted processor. dpa_signed intentionally "
+                      "left NULL — there is no direct USAM-Anthropic DPA to confirm or deny.",
             ),
             dict(
                 name="Stripe, Inc.",
@@ -543,14 +674,23 @@ class Command(BaseCommand):
                 data_categories="Order/payment metadata (amount, currency, reference) — "
                                 "no card/PAN/CVV data",
                 country="United States (Stripe's registered jurisdiction)",
+                notes="processor_type=external_processor — a genuine separate legal entity "
+                      "receiving data under its own terms.",
             ),
             dict(
                 name="Typesense",
-                purpose="Full-text/faceted job search index (self-hosted or Typesense Cloud, "
-                        "per deployment configuration).",
+                purpose="Full-text/faceted job search index. Deployed self-hosted by default "
+                        "for this platform (docker-compose.yml provisions a self-managed "
+                        "Typesense container) — in that mode it runs entirely within USAM's "
+                        "own infrastructure and is NOT a third-party data processor. It only "
+                        "becomes a genuine external processor if a deployment is instead "
+                        "pointed at a Typesense Cloud-hosted instance.",
                 data_categories="Job listing content (titles, descriptions, company names) — "
                                 "not personal/candidate data",
                 country="Depends on deployment (self-hosted vs. Typesense Cloud region)",
+                notes="processor_type=self_hosted_infrastructure (default) OR "
+                      "external_processor (ONLY if configured against Typesense Cloud — "
+                      "confirm actual deployment mode before treating this as a third party).",
             ),
             dict(
                 name="Sentry",
@@ -559,6 +699,8 @@ class Command(BaseCommand):
                 data_categories="Error stack traces, request metadata; PII scrubbing "
                                 "behavior depends on Sentry project configuration",
                 country="Depends on configured Sentry region/plan",
+                notes="processor_type=external_processor — a genuine separate legal entity "
+                      "receiving data under its own terms.",
             ),
         ]
         for data in processors:
