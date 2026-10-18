@@ -773,7 +773,26 @@ class Job(UUIDModel):
     tags = models.ManyToManyField(Tag, through="JobTag", blank=True, related_name="jobs")
     salary_min = models.PositiveIntegerField(null=True, blank=True)
     salary_max = models.PositiveIntegerField(null=True, blank=True)
-    salary_currency = models.CharField(max_length=10, blank=True, default="USD")
+    # Directive-mandated fix: a currency this platform cannot actually confirm
+    # from the source must be stored as NULL/unknown, never invented as a
+    # default (this field previously defaulted to "USD" even when the source
+    # payload gave no currency information at all). `salary_currency` holds
+    # the NORMALIZED ISO-4217-ish code once one is confirmed (from an
+    # explicit source field or detected from `salary_currency_raw`);
+    # `salary_currency_raw` preserves exactly what the source said (a
+    # currency code, symbol, or free-text fragment) so no information is
+    # lost even when normalization can't resolve it to a confirmed code.
+    salary_currency = models.CharField(
+        max_length=10, blank=True, null=True, default=None,
+        help_text="Normalized currency code once confirmed from the source. "
+                  "NULL means unknown/unconfirmed — never guessed.",
+    )
+    salary_currency_raw = models.CharField(
+        max_length=40, blank=True, default="",
+        help_text="Exact currency text/symbol as given by the source "
+                  "(e.g. 'LE', '$', 'AED'), before normalization. Preserved "
+                  "even when it couldn't be mapped to a confirmed code.",
+    )
     source_url = models.URLField(max_length=500)
     source = models.ForeignKey(
         Source, on_delete=models.SET_NULL, null=True, blank=True,

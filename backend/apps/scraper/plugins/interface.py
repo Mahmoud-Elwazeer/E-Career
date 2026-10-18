@@ -92,7 +92,8 @@ class ScraperPlugin(ABC):
             'remote_type': raw_job.get('remote_type'),
             'salary_min': raw_job.get('salary_min'),
             'salary_max': raw_job.get('salary_max'),
-            'salary_currency': raw_job.get('salary_currency', 'USD'),
+            # Never invent a currency the source didn't actually supply.
+            'salary_currency': raw_job.get('salary_currency'),
             'ats_platform': self.get_platform_name(),
             'ats_job_id': str(raw_job.get('id', '')),
             'raw_data': raw_job,

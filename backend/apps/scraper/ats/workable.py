@@ -81,7 +81,8 @@ class WorkableScraper(BaseATSScraper):
                     'remote_type': self._get_remote_type(job),
                     'salary_min': salary_min,
                     'salary_max': salary_max,
-                    'salary_currency': job.get('salary', {}).get('currency', 'USD'),
+                    # Never invent a currency Workable didn't actually report.
+                    'salary_currency': job.get('salary', {}).get('currency'),
                 }
                 
                 jobs.append(self.normalize_job(normalized))

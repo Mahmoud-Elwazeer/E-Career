@@ -26,6 +26,7 @@ from .pipeline.normalizer import (
     normalize_remote_type,
     normalize_location,
     build_provenance,
+    resolve_salary_currency,
 )
 
 # Import verification engine
@@ -392,6 +393,10 @@ def process_and_store_jobs(jobs: List[Dict], source: Source) -> int:
             _work_arr = normalize_remote_type(job_data.get('remote_type')) or 'onsite'
             _loc_type = _work_arr if _work_arr in {'remote', 'hybrid', 'onsite'} else 'onsite'
             _industry = getattr(company, 'industry', '') or 'technology'
+            # Never invent a currency the source didn't actually supply.
+            _resolved_currency, _raw_currency = resolve_salary_currency(
+                job_data.get('salary_currency')
+            )
 
             try:
                 job = Job.objects.create(
@@ -410,7 +415,8 @@ def process_and_store_jobs(jobs: List[Dict], source: Source) -> int:
                     work_arrangement=_work_arr,
                     salary_min=job_data.get('salary_min'),
                     salary_max=job_data.get('salary_max'),
-                    salary_currency=job_data.get('salary_currency', 'USD'),
+                    salary_currency=_resolved_currency,
+                    salary_currency_raw=_raw_currency,
                     posted_at=date.today(),
                     scraped_at=timezone.now(),
                     expires_at=timezone.now() + timedelta(days=90),

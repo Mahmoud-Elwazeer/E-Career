@@ -115,7 +115,10 @@ class NormalizedJob:
 
     salary_min: Optional[int] = None
     salary_max: Optional[int] = None
-    currency: str = "USD"
+    # Never invented — None means the connector didn't actually report a
+    # currency. Resolved/normalized downstream via
+    # normalizer.resolve_salary_currency(), never defaulted to USD/EGP here.
+    currency: Optional[str] = None
     salary_period: str = ""               # year | month | hour
 
     description: str = ""
@@ -185,7 +188,7 @@ class NormalizedJob:
             seniority=get("seniority") or get("experience_level"),
             salary_min=get("salary_min"),
             salary_max=get("salary_max"),
-            currency=get("salary_currency") or get("currency") or "USD",
+            currency=get("salary_currency") or get("currency"),
             description=get("description") or "",
             requirements=get("requirements") or "",
             responsibilities=get("responsibilities") or "",

@@ -84,7 +84,8 @@ class TeamtailorScraper(BaseATSScraper):
         salary_info = attributes.get('salary', {})
         salary_min = salary_info.get('min') if isinstance(salary_info, dict) else None
         salary_max = salary_info.get('max') if isinstance(salary_info, dict) else None
-        salary_currency = salary_info.get('currency', 'USD') if isinstance(salary_info, dict) else 'USD'
+        # Never invent a currency Teamtailor didn't actually report.
+        salary_currency = salary_info.get('currency') if isinstance(salary_info, dict) else None
         
         # Get department
         department = attributes.get('department', {})

@@ -37,6 +37,7 @@ from .pipeline.normalizer import (
     normalize_location,
     normalize_seniority,
     build_provenance,
+    resolve_salary_currency,
 )
 from .pipeline.contract import NormalizedJob
 
@@ -521,6 +522,15 @@ class ScraperOrchestrator:
                 loc_type = work_arr if work_arr in {'remote', 'hybrid', 'onsite'} else 'onsite'
                 industry = (getattr(company, 'industry', '') or 'technology')
 
+                # Directive-mandated: never invent a currency the source
+                # didn't actually give us. resolve_salary_currency returns
+                # (None, "") when nothing was supplied — Job.salary_currency
+                # then correctly stays NULL (unconfirmed) instead of a
+                # fabricated "USD" default.
+                _resolved_currency, _raw_currency = resolve_salary_currency(
+                    job_data.get('salary_currency')
+                )
+
                 try:
                     job = Job.objects.create(
                         company=company,
@@ -542,7 +552,8 @@ class ScraperOrchestrator:
                         work_arrangement=work_arr,
                         salary_min=job_data.get('salary_min'),
                         salary_max=job_data.get('salary_max'),
-                        salary_currency=job_data.get('salary_currency', 'USD'),
+                        salary_currency=_resolved_currency,
+                        salary_currency_raw=_raw_currency,
                         posted_at=timezone.now().date(),
                         scraped_at=timezone.now(),
                         expires_at=timezone.now() + timedelta(days=90),

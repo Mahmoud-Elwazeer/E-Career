@@ -87,13 +87,18 @@ def parse_salary(salary_str: str) -> tuple:
     Examples:
     - "$50,000 - $70,000" → (50000, 70000, "USD")
     - "EGP 10,000" → (10000, 10000, "EGP")
+    - "50,000 - 70,000" (no currency marker) → (50000, 70000, None) — never
+      invents a currency when the source string gives no signal at all.
     """
     if not salary_str:
-        return None, None, 'USD'
-    
-    # Detect currency
-    currency = 'USD'
-    if 'EGP' in salary_str or 'LE' in salary_str:
+        return None, None, None
+
+    # Detect currency — None (unknown) unless an explicit marker is present.
+    # Never default to USD/EGP/any currency just because none was mentioned.
+    currency = None
+    if '$' in salary_str or 'USD' in salary_str:
+        currency = 'USD'
+    elif 'EGP' in salary_str or 'LE' in salary_str:
         currency = 'EGP'
     elif 'AED' in salary_str:
         currency = 'AED'
@@ -120,6 +125,54 @@ def parse_salary(salary_str: str) -> tuple:
         return salaries[0], salaries[0], currency
 
     return None, None, currency
+
+
+_KNOWN_CURRENCY_CODES = {
+    "USD", "EGP", "AED", "SAR", "GBP", "EUR", "JOD", "QAR", "KWD", "BHD",
+    "OMR", "LBP", "TRY",
+}
+
+# Free-text/symbol -> confirmed ISO-ish code, for raw currency strings a
+# connector gives us that aren't already a bare 3-letter code (e.g. "LE" is
+# the common colloquial abbreviation for Egyptian Pound, "$" for US Dollar).
+_CURRENCY_TEXT_MAP = {
+    "le": "EGP", "l.e": "EGP", "l.e.": "EGP", "egp": "EGP",
+    "$": "USD", "usd": "USD", "us$": "USD",
+    "£": "GBP", "gbp": "GBP",
+    "€": "EUR", "eur": "EUR",
+    "aed": "AED", "sar": "SAR", "jod": "JOD", "qar": "QAR",
+    "kwd": "KWD", "bhd": "BHD", "omr": "OMR",
+}
+
+
+def resolve_salary_currency(raw_value) -> tuple:
+    """Resolve a connector/employer-supplied currency value into
+    (normalized_code_or_None, raw_text).
+
+    Directive-mandated: NEVER invents a currency. If `raw_value` is blank/
+    None, returns (None, "") — the caller must leave the Job's
+    `salary_currency` NULL rather than defaulting to USD/EGP/anything else.
+    If `raw_value` is a recognizable code or common text/symbol, it's
+    normalized; otherwise the normalized slot stays None but the raw text is
+    preserved verbatim in `salary_currency_raw` so no information is lost.
+    """
+    if raw_value is None:
+        return None, ""
+    raw_text = str(raw_value).strip()
+    if not raw_text:
+        return None, ""
+
+    upper = raw_text.upper()
+    if upper in _KNOWN_CURRENCY_CODES:
+        return upper, raw_text
+
+    mapped = _CURRENCY_TEXT_MAP.get(raw_text.lower())
+    if mapped:
+        return mapped, raw_text
+
+    # Unrecognized text (e.g. a stray free-text fragment) — preserve raw,
+    # don't guess a normalized code.
+    return None, raw_text
 
 
 def calculate_expiry_date(posted_date: Optional[datetime], default_days: int = 90) -> datetime:

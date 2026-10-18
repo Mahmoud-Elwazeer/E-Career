@@ -8,6 +8,7 @@ from .normalizer import (
     normalize_remote_type,
     normalize_location,
     parse_salary,
+    resolve_salary_currency,
     calculate_expiry_date,
 )
 
@@ -40,6 +41,7 @@ __all__ = [
     'normalize_remote_type',
     'normalize_location',
     'parse_salary',
+    'resolve_salary_currency',
     'calculate_expiry_date',
     'is_blocked_domain',
     'skill_extractor',

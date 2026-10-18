@@ -83,7 +83,8 @@ class PersonioScraper(BaseATSScraper):
             description = "".join(description_parts)
 
             salary_min = salary_max = None
-            salary_currency = "USD"
+            # Never invent a currency Personio didn't actually report.
+            salary_currency = None
             salary_el = position.find("salaryInformation")
             if salary_el is not None:
                 try:
@@ -93,7 +94,7 @@ class PersonioScraper(BaseATSScraper):
                     salary_max = float(max_text) if max_text else None
                 except (TypeError, ValueError):
                     pass
-                salary_currency = salary_el.findtext("currencyCode") or "USD"
+                salary_currency = salary_el.findtext("currencyCode") or None
 
             apply_url = self.JOB_URL_PATTERN.format(
                 company_subdomain=self.company_slug, job_id=job_id,

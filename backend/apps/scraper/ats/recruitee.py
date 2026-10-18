@@ -72,7 +72,10 @@ class RecruiteeScraper(BaseATSScraper):
                 "remote_type": "remote" if offer.get("remote") else "onsite",
                 "salary_min": salary.get("min"),
                 "salary_max": salary.get("max"),
-                "salary_currency": salary.get("currency") or "USD",
+                # Never invent a currency — Recruitee's `salary` object is
+                # usually all-null anyway; preserve whatever (if anything)
+                # it actually reports instead of defaulting to USD.
+                "salary_currency": salary.get("currency"),
             }
             jobs.append(self.normalize_job(normalized))
 

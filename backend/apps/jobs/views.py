@@ -710,8 +710,31 @@ class JobSubmitApplicationView(APIView):
                     "knockout_value": str(knockout_value),
                 })
 
-        # Handle CV file upload
+        # Handle CV file upload — directive item 16: this upload path
+        # previously bypassed apps.core.upload_security entirely (no
+        # extension/size/magic-byte check, no malware scan) even though it
+        # accepts the same kind of file (a resume/CV) as the primary CV
+        # upload endpoint. Route it through the identical validation +
+        # ClamAV scan used by CVUploadSerializer so there is exactly one
+        # validation pipeline for every CV-like upload on the platform.
         cv_file = request.FILES.get("cv_file")
+        if cv_file:
+            from apps.core.upload_security import upload_validator, scan_stream_for_malware
+
+            is_valid, error_msg = upload_validator.validate(cv_file)
+            if not is_valid:
+                return Response(
+                    {"success": False, "data": None, "message": error_msg, "errors": None},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            scan_result = scan_stream_for_malware(cv_file)
+            if not scan_result.clean:
+                detail = scan_result.threat or scan_result.error or "scan failed"
+                return Response(
+                    {"success": False, "data": None,
+                     "message": f"File rejected by malware scanner: {detail}", "errors": None},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         # Create the application
         application = JobApplication.objects.create(

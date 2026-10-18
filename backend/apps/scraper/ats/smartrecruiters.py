@@ -112,7 +112,9 @@ class SmartRecruitersScraper(BaseATSScraper):
             'remote_type': self._get_remote_type(job),
             'salary_min': None,
             'salary_max': None,
-            'salary_currency': 'USD',
+            # Never invent a currency — the list endpoint carries no salary
+            # data at all here, so there's nothing to confirm a currency from.
+            'salary_currency': None,
         }
     
     def _get_remote_type(self, job: Dict) -> str:
