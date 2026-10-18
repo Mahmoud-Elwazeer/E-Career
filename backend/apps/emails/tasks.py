@@ -315,11 +315,21 @@ def send_re_engagement_emails():
     ).select_related('user')
     
     emails_sent = 0
+    skipped_not_eligible = 0
     
     for profile in profiles:
         try:
             user = profile.user
-            
+
+            # Re-engagement is a promotional/win-back send, not a
+            # transactional notification — gated by the canonical marketing
+            # eligibility check (directive item 11). Never sent to a user
+            # who hasn't opted into marketing email or who unsubscribed.
+            from apps.legal.services import can_send_marketing
+            if not can_send_marketing(user, "email"):
+                skipped_not_eligible += 1
+                continue
+
             # Check if re-engagement email sent recently
             last_re_engagement = EmailLog.objects.filter(
                 user=user,
@@ -346,7 +356,7 @@ def send_re_engagement_emails():
         except Exception as e:
             logger.error(f"Error sending re-engagement email: {e}")
     
-    logger.info(f"Re-engagement emails sent: {emails_sent}")
+    logger.info(f"Re-engagement emails sent: {emails_sent}, skipped (not marketing-eligible): {skipped_not_eligible}")
 
 @shared_task
 def send_weekly_career_digest():
@@ -363,6 +373,7 @@ def send_weekly_career_digest():
     ).select_related('career_profile')
     
     digests_sent = 0
+    skipped_not_eligible = 0
     week_start = timezone.now() - timedelta(days=7)
     
     for user in users:
@@ -370,7 +381,18 @@ def send_weekly_career_digest():
             # Skip if no career profile
             if not hasattr(user, 'career_profile'):
                 continue
-            
+
+            # Unlike send_job_alerts/send_weekly_digest (which only fire for
+            # a user who explicitly turned on UserProfile.email_alerts),
+            # this digest previously sent to EVERY active job seeker
+            # unconditionally — a broad promotional-style blast, not a
+            # feature the user opted into. Gated by the canonical marketing
+            # eligibility check (directive item 11).
+            from apps.legal.services import can_send_marketing
+            if not can_send_marketing(user, "email"):
+                skipped_not_eligible += 1
+                continue
+
             # Fetch new matching jobs this week
             from apps.vectors.matching_service import matching_service
             matching_jobs = matching_service.find_matching_jobs(user, limit=5)
@@ -413,5 +435,5 @@ def send_weekly_career_digest():
         except Exception as e:
             logger.error(f"Error sending career digest to {user.id}: {e}")
     
-    logger.info(f"Weekly career digests sent: {digests_sent}")
+    logger.info(f"Weekly career digests sent: {digests_sent}, skipped (not marketing-eligible): {skipped_not_eligible}")
     return digests_sent
