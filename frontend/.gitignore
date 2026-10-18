@@ -29,3 +29,11 @@ yarn-error.log*
 
 # Testing
 coverage/
+
+# Playwright (local E2E runs only — see e2e/README or AGENTS.md;
+# Chromium/browser binaries are never downloaded in production)
+test-results/
+playwright-report/
+playwright/.cache/
+e2e-results.json
+*.log
