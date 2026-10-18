@@ -61,13 +61,27 @@ describe("LegalCenter", () => {
 
   it("links to every public legal document with real, working routes (no # placeholders)", async () => {
     render(<MemoryRouter><TooltipProvider><LegalCenter /></TooltipProvider></MemoryRouter>);
-    const expected = ["/legal/terms", "/legal/privacy", "/legal/cookies", "/legal/refunds", "/legal/payment-security"];
+    const expected = [
+      "/legal/terms", "/legal/privacy", "/legal/cookies", "/legal/refunds", "/legal/payment-security",
+      // Added in the 2026-09-21 continuation pass:
+      "/legal/acceptable-use", "/legal/data-rights", "/legal/subprocessors",
+      "/legal/international-transfers", "/legal/candidate-privacy", "/legal/business-terms",
+      "/legal/security", "/legal/ai-disclosure",
+    ];
     const links = await screen.findAllByRole("link");
     expect(links.some((l) => l.getAttribute("href") === "#")).toBe(false);
     const hrefs = links.map((l) => l.getAttribute("href"));
     for (const href of expected) {
       expect(hrefs).toContain(href);
     }
+  });
+
+  it("groups documents into named categories rather than one flat list", async () => {
+    render(<MemoryRouter><TooltipProvider><LegalCenter /></TooltipProvider></MemoryRouter>);
+    expect(await screen.findByText("Platform")).toBeInTheDocument();
+    expect(screen.getByText("Payments & Commercial")).toBeInTheDocument();
+    expect(screen.getByText("Candidate & Employer")).toBeInTheDocument();
+    expect(screen.getByText("Data & Governance")).toBeInTheDocument();
   });
 
   it("shows the unconfigured legal-entity notice when the backend hasn't configured one", async () => {

@@ -539,6 +539,28 @@ export default function JobDetail() {
                     <p className="text-sm text-destructive">{applicationErrors._form}</p>
                   )}
 
+                  {/* Candidate privacy notice — surfaced at the point of
+                      application, not only inside the global Privacy Policy
+                      (continuation pass, closes a real disclosure gap). */}
+                  <p className="text-caption text-muted-foreground">
+                    {isAr ? (
+                      <>
+                        بتقديمك لهذا الطلب، تُشارَك بياناتك مع صاحب العمل لهذه الوظيفة فقط. راجع{" "}
+                        <a href="/legal/candidate-privacy" target="_blank" rel="noopener noreferrer" className="link-underline text-primary">
+                          إشعار خصوصية المتقدمين
+                        </a>.
+                      </>
+                    ) : (
+                      <>
+                        By submitting this application, your data is shared with this job's employer
+                        only. See our{" "}
+                        <a href="/legal/candidate-privacy" target="_blank" rel="noopener noreferrer" className="link-underline text-primary">
+                          Candidate Privacy Notice
+                        </a>.
+                      </>
+                    )}
+                  </p>
+
                   <div className="flex gap-3 pt-2">
                     <Button
                       variant="outline"

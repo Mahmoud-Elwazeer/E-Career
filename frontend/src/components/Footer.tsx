@@ -45,6 +45,11 @@ export function Footer() {
     { to: "/legal/cookies", en: "Cookie Policy", ar: "سياسة ملفات تعريف الارتباط" },
     { to: "/legal/refunds", en: "Refund & Cancellation", ar: "الاسترداد والإلغاء" },
     { to: "/legal/payment-security", en: "Payment Security", ar: "أمان الدفع" },
+    // Added in the 2026-09-21 continuation pass — closes a footer-coverage
+    // gap flagged by the supplemental legal specs (AI/Data-Use and
+    // Data-Rights links specifically called out as expected footer items).
+    { to: "/legal/ai-disclosure", en: "AI & Data Use", ar: "الذكاء الاصطناعي واستخدام البيانات" },
+    { to: "/legal/data-rights", en: "Data Rights", ar: "حقوق البيانات" },
   ];
 
   const linkCls = "text-body opacity-75 hover:opacity-100 transition-opacity link-underline w-fit";

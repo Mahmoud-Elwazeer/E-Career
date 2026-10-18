@@ -1,5 +1,8 @@
 import { Link } from "react-router-dom";
-import { FileText, ShieldCheck, Cookie, RotateCcw, CreditCard, Lock, Sparkles, ArrowRight, ArrowLeft, Mail } from "lucide-react";
+import {
+  FileText, ShieldCheck, Cookie, RotateCcw, CreditCard, Lock, Sparkles,
+  ArrowRight, ArrowLeft, Mail, Ban, UserCheck, Server, Globe2, Briefcase, UserCog,
+} from "lucide-react";
 import { Layout } from "@/components/Layout";
 import { useTheme } from "@/hooks/use-theme";
 import { usePageMeta } from "@/hooks/use-seo";
@@ -10,15 +13,56 @@ import { getLegalEntityPublic, type LegalEntityPublic } from "@/services/legal";
  * Legal Center hub — stable, SEO-indexable entry point for every public legal
  * document. Real links only (no `#` placeholders): every tile routes to a
  * document actually served by the backend's PolicyVersion API.
+ *
+ * Grouped into 4 categories (continuation pass) rather than one flat grid —
+ * mirrors the supplemental legal specs' "grouped, not flat" requirement.
+ * Every slug here must have a matching PolicyDocument row seeded by
+ * `seed_legal` and a matching entry in PolicyPage.tsx's TITLES map.
  */
-const DOCS = [
-  { slug: "terms", icon: FileText, en: "Terms of Service", ar: "شروط الخدمة" },
-  { slug: "privacy", icon: ShieldCheck, en: "Privacy Policy", ar: "سياسة الخصوصية" },
-  { slug: "cookies", icon: Cookie, en: "Cookie Policy", ar: "سياسة ملفات تعريف الارتباط" },
-  { slug: "refunds", icon: RotateCcw, en: "Refund & Cancellation Policy", ar: "سياسة الاسترداد والإلغاء" },
-  { slug: "payment-security", icon: CreditCard, en: "Payment & Card Security Policy", ar: "سياسة أمان الدفع والبطاقات" },
-  { slug: "security", icon: Lock, en: "Security Overview", ar: "نظرة عامة على الأمان" },
-  { slug: "ai-disclosure", icon: Sparkles, en: "AI Use & Rasheed Disclosure", ar: "استخدام الذكاء الاصطناعي وإفصاح رشيد" },
+type DocEntry = { slug: string; icon: typeof FileText; en: string; ar: string };
+
+const CATEGORIES: { key: string; en: string; ar: string; docs: DocEntry[] }[] = [
+  {
+    key: "platform",
+    en: "Platform",
+    ar: "المنصة",
+    docs: [
+      { slug: "terms", icon: FileText, en: "Terms of Service", ar: "شروط الخدمة" },
+      { slug: "acceptable-use", icon: Ban, en: "Acceptable Use Policy", ar: "سياسة الاستخدام المقبول" },
+      { slug: "security", icon: Lock, en: "Security Overview", ar: "نظرة عامة على الأمان" },
+      { slug: "ai-disclosure", icon: Sparkles, en: "AI Use & Rasheed Disclosure", ar: "استخدام الذكاء الاصطناعي وإفصاح رشيد" },
+    ],
+  },
+  {
+    key: "payments",
+    en: "Payments & Commercial",
+    ar: "الدفع والتجارة",
+    docs: [
+      { slug: "refunds", icon: RotateCcw, en: "Refund & Cancellation Policy", ar: "سياسة الاسترداد والإلغاء" },
+      { slug: "payment-security", icon: CreditCard, en: "Payment & Card Security Policy", ar: "سياسة أمان الدفع والبطاقات" },
+    ],
+  },
+  {
+    key: "roles",
+    en: "Candidate & Employer",
+    ar: "المتقدمون وأصحاب العمل",
+    docs: [
+      { slug: "candidate-privacy", icon: UserCheck, en: "Candidate Privacy Notice", ar: "إشعار خصوصية المتقدمين" },
+      { slug: "business-terms", icon: Briefcase, en: "Employer & Business Terms", ar: "شروط أصحاب العمل والشركات" },
+    ],
+  },
+  {
+    key: "data",
+    en: "Data & Governance",
+    ar: "البيانات والحوكمة",
+    docs: [
+      { slug: "privacy", icon: ShieldCheck, en: "Privacy Policy", ar: "سياسة الخصوصية" },
+      { slug: "cookies", icon: Cookie, en: "Cookie Policy", ar: "سياسة ملفات تعريف الارتباط" },
+      { slug: "data-rights", icon: UserCog, en: "Your Data Rights", ar: "حقوقك في البيانات" },
+      { slug: "subprocessors", icon: Server, en: "Sub-processor Disclosure", ar: "إفصاح معالجي البيانات الفرعيين" },
+      { slug: "international-transfers", icon: Globe2, en: "International Data Transfers", ar: "النقل الدولي للبيانات" },
+    ],
+  },
 ];
 
 export default function LegalCenter() {
@@ -59,23 +103,28 @@ export default function LegalCenter() {
 
       <section className="section-y">
         <div className="container">
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {DOCS.map((d) => (
-              <Link
-                key={d.slug}
-                to={`/legal/${d.slug}`}
-                className="card-premium group flex items-start gap-4 p-6 transition-transform hover:-translate-y-0.5"
-              >
-                <span className="icon-tile h-12 w-12 shrink-0"><d.icon className="h-6 w-6 text-primary" /></span>
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-heading-3 font-semibold mb-1">{isAr ? d.ar : d.en}</h3>
-                  <span className="inline-flex items-center gap-1 text-caption font-medium text-primary link-underline">
-                    {isAr ? "اقرأ المزيد" : "Read more"} <Arrow className="h-3.5 w-3.5" />
-                  </span>
-                </div>
-              </Link>
-            ))}
-          </div>
+          {CATEGORIES.map((cat) => (
+            <div key={cat.key} className="mb-10">
+              <h2 className="text-heading-2 font-semibold mb-4">{isAr ? cat.ar : cat.en}</h2>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {cat.docs.map((d) => (
+                  <Link
+                    key={d.slug}
+                    to={`/legal/${d.slug}`}
+                    className="card-premium group flex items-start gap-4 p-6 transition-transform hover:-translate-y-0.5"
+                  >
+                    <span className="icon-tile h-12 w-12 shrink-0"><d.icon className="h-6 w-6 text-primary" /></span>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-heading-3 font-semibold mb-1">{isAr ? d.ar : d.en}</h3>
+                      <span className="inline-flex items-center gap-1 text-caption font-medium text-primary link-underline">
+                        {isAr ? "اقرأ المزيد" : "Read more"} <Arrow className="h-3.5 w-3.5" />
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ))}
 
           <div className="card-premium mt-8 flex flex-col gap-3 p-6 md:flex-row md:items-center md:justify-between">
             <div>

@@ -17,6 +17,13 @@ const TITLES: Record<string, { en: string; ar: string }> = {
   "payment-security": { en: "Payment & Card Security Policy", ar: "سياسة أمان الدفع والبطاقات" },
   security: { en: "Security Overview", ar: "نظرة عامة على الأمان" },
   "ai-disclosure": { en: "AI Use & Rasheed Disclosure", ar: "استخدام الذكاء الاصطناعي وإفصاح رشيد" },
+  // Added in the 2026-09-21 continuation pass — see seed_legal.py for content.
+  "acceptable-use": { en: "Acceptable Use Policy", ar: "سياسة الاستخدام المقبول" },
+  "data-rights": { en: "Your Data Rights", ar: "حقوقك في البيانات" },
+  subprocessors: { en: "Sub-processor Disclosure", ar: "إفصاح معالجي البيانات الفرعيين" },
+  "international-transfers": { en: "International Data Transfers", ar: "النقل الدولي للبيانات" },
+  "candidate-privacy": { en: "Candidate Privacy Notice", ar: "إشعار خصوصية المتقدمين" },
+  "business-terms": { en: "Employer & Business Terms", ar: "شروط أصحاب العمل والشركات" },
 };
 
 /**

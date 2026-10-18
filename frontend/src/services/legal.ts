@@ -183,6 +183,31 @@ export async function listAIDisclosures(): Promise<AIProcessingDisclosure[]> {
   return apiRequest<AIProcessingDisclosure[]>("/legal/ai-disclosures/", { auth: false });
 }
 
+export interface ProcessorPublic {
+  uuid: string;
+  name: string;
+  purpose: string;
+  data_categories: string;
+  country: string;
+  dpa_signed: boolean | null;
+}
+
+export interface DataTransferPublic {
+  uuid: string;
+  processor_name: string;
+  destination_country: string;
+  data_categories: string;
+  mechanism: string;
+}
+
+export async function listProcessorsPublic(): Promise<ProcessorPublic[]> {
+  return apiRequest<ProcessorPublic[]>("/legal/processors/", { auth: false });
+}
+
+export async function listDataTransfersPublic(): Promise<DataTransferPublic[]> {
+  return apiRequest<DataTransferPublic[]>("/legal/transfers/", { auth: false });
+}
+
 // ── Admin Legal Control Plane ────────────────────────────────────────────────
 
 export interface RetentionPolicyRow {

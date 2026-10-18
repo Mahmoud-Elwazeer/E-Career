@@ -152,6 +152,27 @@ export function QuickApplyPanel({ jobId, jobTitle, atsPlatform, applyUrl, isAr }
                   {data.provider_info.note}
                 </p>
               )}
+
+              {/* Candidate privacy notice — surfaced here too since this
+                  flow sends data to the employer's own ATS, not USAM's
+                  in-platform application form (continuation pass). */}
+              <p className="text-caption text-muted-foreground">
+                {isAr ? (
+                  <>
+                    سيتم فتح موقع صاحب العمل الخاص لإكمال التقديم. راجع{" "}
+                    <a href="/legal/candidate-privacy" target="_blank" rel="noopener noreferrer" className="link-underline text-primary">
+                      إشعار خصوصية المتقدمين
+                    </a>.
+                  </>
+                ) : (
+                  <>
+                    This opens the employer's own site to finish applying. See our{" "}
+                    <a href="/legal/candidate-privacy" target="_blank" rel="noopener noreferrer" className="link-underline text-primary">
+                      Candidate Privacy Notice
+                    </a>.
+                  </>
+                )}
+              </p>
             </div>
           )}
 
