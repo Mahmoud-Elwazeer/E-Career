@@ -1,6 +1,6 @@
 # USAM Career — Legal / Privacy / Payments / Consent Compliance Master
 
-**Status: authoritative, code-verified. Last updated 2026-09-21 (continuation hardening pass — see §9A for this pass's changes; §§1-11 below are the prior pass, corrected in-place where a prior "not fixed" claim has since been superseded).**
+**Status: authoritative, code-verified. Last updated 2026-09-21 (two continuation hardening passes on the same day — see §9A for the first pass's changes and §9B for the second, gap-closure pass against supplemental legal specs; §§1-11 below carry the full history, corrected in-place where a prior "not fixed" claim has since been superseded).**
 
 ## Status taxonomy (used throughout this document)
 
@@ -1493,6 +1493,159 @@ still open).
 
 ---
 
+## 9B. Second continuation pass (2026-09-21, same day — gap-closure against
+supplemental legal specs)
+
+Four supplemental legal planning/prompt documents were provided by the user
+as ChatGPT-generated attachments (`USAM_LEGAL_POLICY_COMPLETION_MASTER.md`,
+`_EXECUTION_PROMPT.md`, `_FINAL_VERIFICATION_PROMPT.md`,
+`_COVERAGE_MATRIX.md`) along with a set of pre-existing planning documents
+in the user's local `Downloads` folder (`USAM_LEGAL_PRIVACY_COMPLIANCE_
+MASTER.md`, `_CONSENT_IMPLEMENTATION.md`, `_IMPLEMENTATION_DIRECTIVE.md`,
+the `11_STRICT_*`/`11B_*`/`11C_*`/`11D_*` series, and a separate EN/AR pack
+scoped to a sibling marketing site, `usamif.com`, not this platform). These
+were used strictly as **supplemental reference inputs**, per explicit user
+instruction — not as a second authoritative spec, and not copied into this
+repository verbatim. A sub-agent cross-read all of them against this
+document's own content (as it stood at commit `52984cb`) and produced a
+conservative gap list — flagging only concrete, specific requirements this
+document/codebase did not already address in some form, explicitly
+excluding wording-only differences and marketplace-specific concepts
+(wallet/payout/retainer/escrow) this platform doesn't have.
+
+Of that gap list, the following were real and have been closed this pass:
+
+1. **No Arabic (AR) legal content existed anywhere** — the single largest
+   gap found. **Closed**: `PolicyVersion.locale` and `is_machine_translated`
+   already existed in the data model (built in an earlier pass, just never
+   used for Arabic) and the frontend (`PolicyPage.tsx`) already called
+   `getPolicy(slug, isAr ? "ar" : "en")` — so this was a content gap, not
+   an architecture gap. `seed_legal.py` now seeds an Arabic `PolicyVersion`
+   DRAFT for every document, condensed relative to the English original but
+   carrying the same key facts and the same `REQUIRES LEGAL REVIEW`-
+   equivalent markers, each explicitly flagged `is_machine_translated=True`
+   (an unreviewed machine translation produced by this agent, not a
+   certified translator or legal counsel — the directive's own rule that a
+   machine translation must never be silently presented as official).
+2. **Safety-gate bug found and fixed as a direct consequence of #1**: the
+   `activate_version()` unresolved-placeholder gate (§9.21) checked only
+   the English literal `"REQUIRES LEGAL REVIEW"` — an Arabic draft
+   containing the equivalent unresolved marker (`"تتطلب مراجعة قانونية"`)
+   would have passed the gate and could have been activated with an
+   unreviewed placeholder still live. **Fixed**: `services.py` now defines
+   `UNRESOLVED_MARKER_AR` alongside the existing `UNRESOLVED_MARKER`, and
+   both `activate_version()` and `readiness_service._check_core_documents_
+   active()` check for either marker, regardless of the version's own
+   declared locale (cheap and correctly catches a mis-tagged or
+   mixed-script version too). This is exactly the kind of issue the
+   coverage matrix below exists to catch before it reaches production.
+3. **6 new policy documents added**, closing specific route/disclosure
+   gaps the supplemental specs named and this repo's prior 7-document set
+   did not cover: `acceptable-use` (Acceptable Use Policy — including the
+   real, code-enforced direct-application/aggregator-rejection rule,
+   distinct from the general Terms), `data-rights` (Your Data Rights — a
+   standalone rights explainer, not only inside the Privacy Policy),
+   `subprocessors` (Sub-processor Disclosure — a public page backing the
+   previously admin-only `ProcessorRecord` register), `international-
+   transfers` (same pattern for `DataTransferRecord`), `candidate-privacy`
+   (Candidate Privacy Notice — surfaced at the point of application, per
+   the specs' explicit instruction not to bury this inside the global
+   Privacy Policy only), and `business-terms` (Employer & Business Terms —
+   this platform has real employer accounts via `apps.employers` and had
+   no employer-specific terms document). All 6 follow the exact same
+   DRAFT-by-default, never-auto-published pattern as the original 7 — none
+   bypasses `seed_legal`'s existing safety discipline. `PolicyDocument.
+   doc_type` max_length was widened 20→30 to fit `international_transfers`
+   (23 chars); migration `0003_alter_policydocument_doc_type.py`.
+4. **Public processor/transfer register endpoints** — `ProcessorRecord`
+   and `DataTransferRecord` (and their real seeded/empty data — §9.23)
+   previously existed only behind the admin-gated API; there was no way
+   for an actual visiting data subject to read them, despite the
+   `/legal/subprocessors` and `/legal/international-transfers` pages now
+   needing real structured data to back their prose. **Added**: new public,
+   read-only `GET /api/v1/legal/processors/` and `GET /api/v1/legal/
+   transfers/` endpoints with field-filtered serializers
+   (`ProcessorRecordPublicSerializer`/`DataTransferRecordPublicSerializer`)
+   that deliberately exclude internal-only fields (`contract_reference`,
+   `notes`, `authorization_reference`) while still honestly exposing
+   unconfirmed states (`dpa_signed=NULL`, `mechanism="unknown"`) rather
+   than hiding them. 5 new tests.
+5. **Legal Center grouped into categories** instead of one flat list —
+   `LegalCenter.tsx` now groups all 13 documents into 4 named sections
+   (Platform / Payments & Commercial / Candidate & Employer / Data &
+   Governance), matching the supplemental specs' explicit "grouped, not
+   flat" requirement for the public hub page.
+6. **Footer legal column extended** — added `AI & Data Use` and
+   `Data Rights` links (previously missing against the specs' expected
+   footer item list); the other 4 new documents are reachable from the
+   Legal Center hub but were deliberately NOT all added to the footer, to
+   avoid overcrowding a navigation element real users actually scroll
+   past — this is a UX judgment call, not an oversight, and is recorded as
+   such in the new coverage matrix (see item 9 below).
+7. **Candidate privacy notice surfaced at the point of application** — a
+   short, bilingual, dismissible notice linking to `/legal/candidate-
+   privacy` was added in both of this platform's two real apply paths:
+   `JobDetail.tsx`'s in-platform custom-form application modal (above the
+   Submit Application button) and `QuickApplyPanel.tsx`'s ATS-redirect
+   review dialog (above the Apply Now button that opens the employer's own
+   site) — closing the specs' specific instruction not to rely on the
+   global Privacy Policy alone for this disclosure.
+8. **Payment & Card Security Policy intro sentence** — added the user's
+   own supplied bilingual (EN/AR) disclosure sentence about protecting
+   payment/financial data, verbatim in Arabic and translated in English,
+   using the platform's real, verified site identity (`USAM Career` /
+   `jobs.usamif.com`, the confirmed production domain) rather than
+   inventing or guessing a legal entity name — the actual registered legal
+   entity name remains separately, deliberately blank and flagged
+   `REQUIRES LEGAL REVIEW / CONFIGURATION` elsewhere in this document and
+   in `LegalEntityConfig` (§9.4), unchanged by this addition. Per the
+   user's explicit instruction, the payment/card-handling content was
+   confirmed to belong in the Payment & Card Security Policy specifically
+   (not duplicated into Privacy or Terms) — re-reading the existing seed
+   text for all three documents confirmed the split was already correct
+   and non-duplicative before this pass (Payment Security = technical/PCI/
+   webhook mechanics; Privacy = what payment-related personal data is
+   collected, at a category level, with a cross-link; Refunds = billing/
+   cancellation behavior; Terms = a cross-link to the other two) — no
+   rewrite of that split was needed.
+9. **New coverage-matrix artifact**: `audit/LEGAL_POLICY_COVERAGE_MATRIX.md`
+   — a routes-and-code-verified grid (not aspirational) with the 12
+   verification columns the supplemental specs asked for (`ROUTE`,
+   `FRONTEND_FILE`, `BACKEND_POLICY_TYPE`, `CURRENT_VERSION`, `EN_STATUS`,
+   `AR_STATUS`, `RTL_STATUS`, `MOBILE_STATUS`, `LINK_STATUS`,
+   `ACCEPTANCE_STATUS`, `E2E_TEST`, `FINAL_STATUS`) for all 13 documents.
+   It explicitly states what it does NOT verify (no browser-based RTL/
+   mobile visual check, no translation review, nothing promoted to
+   `PRODUCTION_ACTIVE`) rather than overclaiming completeness. This
+   supplements, and does not replace, this master document.
+
+**Full verification for this pass**: `pytest apps/legal apps/accounts
+apps/payments apps/jobs apps/employers apps/career apps/interviews
+apps/core apps/emails apps/scraper/ats apps/scraper/pipeline
+apps/scraper/tests --no-cov -q` → **894 passed** (889 prior-pass baseline +
+5 new, 0 failed). `npx vitest run` → **94 passed** (93 prior-pass baseline +
+1 new, 0 failed). `npx tsc --noEmit -p tsconfig.app.json` → exactly 125
+lines of errors, confirmed identical to the pre-existing baseline (0 new
+errors introduced). `npm run build` → succeeded. `manage.py makemigrations
+--check --dry-run` → "No changes detected" (non-zero exit is solely the
+sandbox's unreachable `postgres` hostname, consistent with every prior
+session, not a missing migration).
+
+**Not implemented this pass** (real, open gaps the supplemental specs
+correctly predicted, honestly carried forward rather than claimed done):
+a real browser-based End-to-End test pass (Playwright or manual) for RTL/
+mobile/signup/cookie-flow verification across these pages — coverage
+remains `pytest`/`vitest` (jsdom) only, never a real browser; a legal/
+Arabic-fluent human review of the newly machine-translated content (DRAFT-
+only + `is_machine_translated=True` make this unmistakable to the next
+reviewer, but no such review has happened yet); the DPA-confirmation gap
+for all 4 processors (unchanged, still `LEGAL REVIEW REQUIRED`); and a
+dedicated `LEGAL_LINK_AUDIT.md`/`LEGAL_CONTENT_FEATURE_AUDIT.md`-style
+exhaustive cross-reference crawl beyond what the existing automated
+"no `#` placeholders" test already covers.
+
+---
+
 ## 10. Final Acceptance checklist (A–Z areas)
 
 | Area | Done |
@@ -1509,11 +1662,11 @@ still open).
 | J. Payment & card security audit | ✅ §5 |
 | K. Admin Legal Control Plane | ✅ §4 |
 | L. Footer legal nav + checkout disclosures | ✅ §4 |
-| M. Tests (backend + frontend) | ✅ §6/§9A.25 — **889 backend + 93 frontend passing** (as of the 2026-09-21 continuation pass; was 149+75 at the prior pass) |
-| N. This master document | ✅ updated 2026-09-21, §9A |
-| O. Commit + push to `development` | ⏳ **pending this session** — see §9A note below; prior work already pushed as `d144cfb`, `a6b9366`, `a3d6de7`, `49eddd6`, `cbbd048` |
-| P. Deployment commands per increment | ✅ §8 (unchanged structurally; still requires real server discovery output before a final command set can be given for this pass's changes — new migrations exist, see §9A items 5/6/13) |
-| Q. REQUIRES LEGAL REVIEW items explicitly tracked, not invented | ✅ §7, re-confirmed unchanged by §9A — no legal fact was invented this pass either |
+| M. Tests (backend + frontend) | ✅ §6/§9A.25/§9B — **894 backend + 94 frontend passing** (as of the second 2026-09-21 continuation pass; was 149+75 two passes ago, 889+93 one pass ago) |
+| N. This master document | ✅ updated 2026-09-21, §9A + §9B |
+| O. Commit + push to `development` | ⏳ **pending this session** — see §9B; prior work already pushed as `d144cfb`, `a6b9366`, `a3d6de7`, `49eddd6`, `cbbd048`, `52984cb` |
+| P. Deployment commands per increment | ✅ §8 (unchanged structurally; still requires real server discovery output before a final command set can be given for this pass's changes — new migrations exist, see §9A items 5/6/13 and §9B item 3, `0003_alter_policydocument_doc_type.py`) |
+| Q. REQUIRES LEGAL REVIEW items explicitly tracked, not invented | ✅ §7, re-confirmed unchanged by §9A/§9B — no legal fact was invented in either pass |
 | R. No fake compliance/security claims anywhere | ✅ verified by reading every new/changed policy page's text; one prior false claim (auto-renewal) was found and corrected, §9.16/§9A.14 |
 | S. AI disclosure (assists, doesn't decide) enforced at the data layer | ✅ `AIProcessingDisclosure.makes_final_decision` validator, re-verified this pass |
 | T. Talent Pool explicit opt-in (not automatic exposure) | ✅ pre-existing `is_discoverable=False` default, surfaced in 3 places, unchanged this pass |
@@ -1542,8 +1695,11 @@ still open).
 | CSP (Report-Only) | **ENGINEERING READY** — not yet promoted to enforcing |
 | Processor register, AI disclosures | **ENGINEERING READY**; DPA confirmation = **LEGAL REVIEW REQUIRED** |
 | Legal entity identity, refund window, governing law | **CONFIGURATION REQUIRED** (§9.4) |
-| Minors' age threshold, retention periods, DPA statuses | **LEGAL REVIEW REQUIRED** (§9.4) — explicitly not invented anywhere, unchanged this pass |
-| Everything in this document | **NOT YET PRODUCTION ACTIVE** — this pass's changes are not yet committed or pushed as of this writing (see §9A note above); awaiting commit/push to `development`, then real server-discovery output from the user before any final deployment commands for this pass's changes (new migrations in `legal`, `accounts`, `jobs`, `payments`) can be given, then the live-verification pass once deployed |
+| Minors' age threshold, retention periods, DPA statuses | **LEGAL REVIEW REQUIRED** (§9.4) — explicitly not invented anywhere, unchanged across both passes |
+| 6 new policy documents (acceptable-use, data-rights, subprocessors, international-transfers, candidate-privacy, business-terms) + Arabic locale for all 13 documents | **ENGINEERING READY** (code/content exist) — every single one, English and Arabic alike, is still a `DRAFT` `PolicyVersion`; Arabic content is additionally **LEGAL/TRANSLATION REVIEW REQUIRED** (`is_machine_translated=True`, unreviewed) before either locale can be activated |
+| Public processor/transfer register endpoints (`/legal/processors/`, `/legal/transfers/`) | **ENGINEERING READY** |
+| Legal Policy Coverage Matrix (`audit/LEGAL_POLICY_COVERAGE_MATRIX.md`) | **ENGINEERING READY** as a verification artifact — itself documents what it does not verify (no browser E2E, no visual RTL/mobile check) |
+| Everything in this document | **NOT YET PRODUCTION ACTIVE** — this pass's changes are not yet committed or pushed as of this writing (see §9B note above); awaiting commit/push to `development`, then real server-discovery output from the user before any final deployment commands for this pass's changes (new migrations in `legal`, `accounts`, `jobs`, `payments`) can be given, then the live-verification pass once deployed |
 
 **This is engineering-complete and production-deployable code. It is not a
 claim of legal compliance, PCI compliance, GDPR compliance, or any other
